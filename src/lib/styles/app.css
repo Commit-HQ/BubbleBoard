@@ -1,13 +1,84 @@
 @import 'tailwindcss';
 
+/*
+ * Self-hosted variable fonts from Fontsource, Latin and Latin Extended subsets only (Croatian needs
+ * Latin Extended). src/hooks.server.ts preloads the subsets each page uses.
+ */
+@font-face {
+	font-family: 'Hanken Grotesk';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-wght-normal.woff2')
+		format('woff2');
+	unicode-range:
+		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+		U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+	font-family: 'Hanken Grotesk';
+	font-style: normal;
+	font-weight: 100 900;
+	font-display: swap;
+	src: url('@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-ext-wght-normal.woff2')
+		format('woff2');
+	unicode-range:
+		U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+		U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+		U+A720-A7FF;
+}
+@font-face {
+	font-family: 'Hedvig Letters Serif';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('@fontsource-variable/hedvig-letters-serif/files/hedvig-letters-serif-latin-opsz-normal.woff2')
+		format('woff2');
+	unicode-range:
+		U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+		U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+	font-family: 'Hedvig Letters Serif';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('@fontsource-variable/hedvig-letters-serif/files/hedvig-letters-serif-latin-ext-opsz-normal.woff2')
+		format('woff2');
+	unicode-range:
+		U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+		U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+		U+A720-A7FF;
+}
+
+/* Local fonts scaled to the web fonts' metrics (computed with Capsize), so text doesn't shift on swap. */
+@font-face {
+	font-family: 'Hanken Grotesk Fallback';
+	src: local('Arial'), local('ArialMT');
+	ascent-override: 99.0668%;
+	descent-override: 30.0173%;
+	line-gap-override: 0%;
+	size-adjust: 100.9419%;
+}
+@font-face {
+	font-family: 'Hedvig Letters Serif Fallback';
+	src: local('Georgia');
+	ascent-override: 98.4235%;
+	descent-override: 30.878%;
+	line-gap-override: 0%;
+	size-adjust: 103.6337%;
+}
+
 @theme {
-	--font-sans: 'Hanken Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
-	--font-display: 'Hedvig Letters Serif Variable', ui-serif, Georgia, serif;
+	--font-sans: 'Hanken Grotesk', 'Hanken Grotesk Fallback', ui-sans-serif, system-ui, sans-serif;
+	--font-display: 'Hedvig Letters Serif', 'Hedvig Letters Serif Fallback', ui-serif, Georgia, serif;
 
 	--color-ink: #16142b;
 	--color-muted: #57546e;
 	--color-canvas: #faf7ff;
 	--color-accent: #7c5cff;
+	--color-blush: #ff6fb1;
+	--color-apricot: #ffb36b;
 }
 
 /* Frosted surface used for the header, cards, and overlays. */
@@ -21,9 +92,19 @@
 		0 24px 60px -30px rgb(46 32 120 / 0.35);
 }
 
-/* Brand gradient shared by the logo, headline accent, and avatars. */
+/* Brand gradient for icon tiles and avatars. */
 @utility bg-sunrise {
-	background-image: linear-gradient(120deg, #7c5cff, #ff6fb1 60%, #ffb36b);
+	background-image: linear-gradient(
+		120deg,
+		var(--color-accent),
+		var(--color-blush) 60%,
+		var(--color-apricot)
+	);
+}
+
+/* Brand gradient as text, padded so descenders aren't clipped. */
+@utility text-sunrise {
+	@apply bg-sunrise bg-clip-text pb-[0.08em] text-transparent;
 }
 
 @layer base {
@@ -51,8 +132,7 @@
 			radial-gradient(24rem 24rem at 22% 96%, rgb(255 201 60 / 0.32), transparent 70%);
 	}
 	h1,
-	h2,
-	h3 {
+	h2 {
 		font-family: var(--font-display);
 		font-weight: 400;
 		line-height: 1.05;

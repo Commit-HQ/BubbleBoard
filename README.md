@@ -6,7 +6,7 @@ A small, open-source communication app for kindergarten communities. Inspired by
 
 Teachers share a moment. Parents get a notification. The hosting server stores encrypted content rather than readable classroom information.
 
-> **Status: foundation only.** This repository currently contains a responsive welcome screen and a SvelteKit + Cloudflare Workers scaffold. QR access, encryption, notifications, messages, photos, and storage are not implemented. Do not use it with real family data yet.
+> **Status: foundation only.** This repository currently contains a prerendered Croatian and English landing page and a SvelteKit + Cloudflare Workers scaffold. QR access, encryption, notifications, messages, photos, and storage are not implemented. Do not use it with real family data yet.
 
 ## What we’re building
 
@@ -108,15 +108,20 @@ No component UI library, ORM, remote font service, analytics SDK, or separate ba
 src/
   lib/
     assets/             Local brand assets and optimized photos
-    components/         Reusable Svelte components
-    styles/             Tailwind entry, theme tokens, base styles
-  routes/               Pages, layouts, and future server endpoints
-  app.d.ts              Typed Cloudflare platform boundary
+    components/         Reusable Svelte components (Photo, Icon)
+    i18n/               Croatian and English interface copy
+    styles/             Tailwind entry, fonts, theme tokens, base styles
+  params/               Route matchers (language prefix)
+  routes/               Layout, prerendered pages, future server endpoints
   app.html              Document shell
+  hooks.server.ts       Document language, font preloads, security headers
 static/                 Public static assets only
+_headers                Security headers for prerendered pages and assets
 .github/workflows/      Validation pipeline
 wrangler.jsonc          Worker and future binding configuration
 ```
+
+Croatian is served at `/` and English at `/en`, both as static HTML without client-side JavaScript. Language, design, font, and security conventions are in the [architecture notes](docs/architecture.md).
 
 ## Privacy, precisely
 
@@ -138,11 +143,5 @@ Retention, authorization, deletion, and recovery belong in the features they pro
 ## License
 
 [GNU Affero General Public License v3.0](LICENSE).
-
-## Languages and theme
-
-Croatian (`hr`) is the default; English (`en`) is available from the header. The choice persists for one year in a first-party language cookie. Server rendering sets the document language, metadata, and accessible labels consistently, without client-only language detection. Language switching works without JavaScript.
-
-All interface copy lives in `src/lib/i18n/en.ts` and `hr.ts`. Croatian must satisfy the same TypeScript message shape as English; add each new key to both dictionaries. Keep sentences whole rather than assembling translated fragments. Use native `Intl` formatters with the active locale when dates, numbers, or pluralized content are introduced. User-authored classroom content is not automatically translated.
 
 The look is cheerful glassmorphism: frosted white surfaces over soft coral, violet, sky, and sun gradients, with ink-black pill actions. Headings use Hedvig Letters Serif and body text uses Hanken Grotesk, both bundled from Fontsource (OFL) and served from the app origin. Styling uses Tailwind CSS v4 utilities in markup. Brand colors and fonts are `@theme` tokens in `src/lib/styles/app.css` (`ink`, `muted`, `canvas`, `accent`, `font-display`), plus two custom utilities: `glass` for frosted surfaces and `bg-sunrise` for the brand gradient. Prettier sorts Tailwind classes automatically. Photos are real stock images committed pre-optimized as AVIF/WebP and rendered with `src/lib/components/Photo.svelte`; sources and licenses are in `src/lib/assets/photos/CREDITS.md`. No remote images, remote fonts, or animation library are required.

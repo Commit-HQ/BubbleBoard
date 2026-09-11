@@ -1,7 +1,17 @@
 import adapter from '@sveltejs/adapter-cloudflare';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
+import { execSync } from 'node:child_process';
 import { defineConfig } from 'vite';
+
+// Shown in the footer so a deployed page can be matched to a public commit (product-spec.md §47).
+function commit() {
+	try {
+		return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+	} catch {
+		return 'unknown';
+	}
+}
 
 export default defineConfig({
 	plugins: [
@@ -13,23 +23,18 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 			adapter: adapter(),
-			// Inline the small stylesheet so first paint doesn't wait for another request.
-			inlineStyleThreshold: 32 * 1024,
+			version: { name: commit() },
 			csp: {
 				mode: 'hash',
+				// Scripts, styles, images, fonts, and connections fall back to default-src, and SvelteKit
+				// adds hashes for its inline scripts and styles. Before enabling csr on a route, plan for
+				// the route announcer's inline style attribute instead of allowing 'unsafe-inline'.
 				directives: {
 					'default-src': ['self'],
-					'script-src': ['self'],
-					// SvelteKit's route announcer uses a style attribute, which hashes can't allow.
-					// Scripts stay hash-locked; inline styles can't execute code.
-					'style-src': ['self', 'unsafe-inline'],
-					'img-src': ['self'],
-					'font-src': ['self'],
-					'connect-src': ['self'],
-					'form-action': ['self'],
 					'base-uri': ['none'],
-					'object-src': ['none'],
-					'frame-ancestors': ['none']
+					'form-action': ['self'],
+					'frame-ancestors': ['none'],
+					'object-src': ['none']
 				}
 			}
 		})

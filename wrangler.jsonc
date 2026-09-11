@@ -8,6 +8,8 @@
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"
 	},
+	// No invocation logs (product-spec.md §45).
+	"observability": { "enabled": false },
 	"workers_dev": true,
 	"preview_urls": true
 }
