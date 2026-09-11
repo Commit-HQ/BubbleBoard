@@ -11,6 +11,9 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      # Placeholder address; prerendered pages need one at build time (see .env.example).
+      PUBLIC_SITE_URL: https://bubbleboard.example.com
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

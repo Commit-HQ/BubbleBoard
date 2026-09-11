@@ -15,4 +15,10 @@ magick original.jpg -crop <crop> +repage -resize 800x -strip -quality 55 name-80
 magick original.jpg -crop <crop> +repage -resize 800x -strip -quality 78 name-800.webp
 ```
 
+`share.jpg` is the 1200×630 link-preview image, cut from the committed 1280 px `bubbles` AVIF:
+
+```sh
+magick bubbles-1280.avif -crop 1280x672+0+190 +repage -resize 1200x630 -strip -quality 82 -interlace JPEG share.jpg
+```
+
 Render photos with `src/lib/components/Photo.svelte`.

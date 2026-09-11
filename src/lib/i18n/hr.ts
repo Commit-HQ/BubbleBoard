@@ -2,26 +2,28 @@ import type { Messages } from './en';
 
 export const hr = {
 	languageName: 'Hrvatski',
+	ogLocale: 'hr_HR',
 	title: 'Malo bliže njihovom danu',
 	description:
-		'Jednostavno mjesto za vrtićke obavijesti, fotografije i razgovore. BubbleBoard je trenutačno u razvoju.',
+		'BubbleBoard je besplatna aplikacija otvorenog koda koja povezuje odgojitelje i obitelji u vrtiću. Obavijesti, fotografije dana i privatne poruke na jednom mjestu, uz privatnost ugrađenu od početka.',
 	skip: 'Preskoči na sadržaj',
 	home: 'BubbleBoard početna',
 	language: 'Jezik',
+	app: { open: 'Otvori aplikaciju', soon: 'Uskoro' },
 	nav: {
 		label: 'Glavna',
 		sections: {
 			features: 'Mogućnosti',
 			how: 'Kako radi',
 			privacy: 'Privatnost',
-			teachers: 'Za odgojitelje'
+			security: 'Sigurnost',
+			teachers: 'Za odgojitelje',
+			kindergartens: 'Za vrtiće'
 		}
 	},
 	hero: {
 		heading: 'Malo bliže',
 		headingAccent: 'njihovom danu.',
-		lead: 'Novosti, otkrića i sitnice koje su im izmamile osmijeh. Mjesto na kojem s vama dijelimo njihov dan u vrtiću.',
-		cta: 'Pogledajte kako radi',
 		quiet: 'Za obitelji. Nadahnuto skupinom Bubbles.',
 		photoAlt: 'Djeca se smiju i puhaju balone od sapunice u sunčanom parku',
 		mockTeacher: 'Odgojiteljica Ana',
@@ -58,7 +60,7 @@ export const hr = {
 	},
 	how: {
 		title: 'Jedna kartica. Vaša skupina.',
-		copy: 'Kad BubbleBoard bude spreman, odgojitelji će vam dati obiteljsku QR karticu za pristup.',
+		copy: 'Roditelji i odgojitelji pridružuju se na isti način. Vrtić vam daje osobnu QR karticu i to je sve što trebate.',
 		photoAlt: 'Odgojiteljica sjedi na podu i razgovara sa skupinom djece',
 		steps: [
 			{
@@ -67,8 +69,8 @@ export const hr = {
 			},
 			{ title: 'Uključite obavijesti', copy: 'Saznajte kada vas čeka nešto novo.' },
 			{
-				title: 'Skenirajte obiteljsku karticu',
-				copy: 'Otvorite aplikaciju i skenirajte. Bez pamćenja korisničkog imena i lozinke.'
+				title: 'Skenirajte svoju karticu',
+				copy: 'Otvorite aplikaciju i skenirajte karticu koju ste dobili u vrtiću. Bez pamćenja korisničkog imena i lozinke.'
 			}
 		]
 	},
@@ -79,9 +81,25 @@ export const hr = {
 		facts: [
 			'Bez korisničkih imena i lozinki',
 			'Lica zamućena za druge obitelji, ako tako želite',
-			'Fotografije se nakon nekog vremena same brišu',
-			'Izrađeno tako da poslužitelj ne može čitati sadržaj vaše obitelji'
+			'Fotografije se nakon nekog vremena same brišu'
 		]
+	},
+	security: {
+		title: 'Zaključano prije nego što napusti vaš mobitel.',
+		copy: 'Fotografije, poruke i imena djece šifriraju se na vašem uređaju prije slanja. Ključeve za njihovo otvaranje imaju samo obitelji i odgojitelji vaše skupine.',
+		device: {
+			title: 'Šifrirano na vašem uređaju',
+			copy: 'Sve se zaključava na mobitelu ili računalu s kojeg dolazi, prije nego što se pošalje.'
+		},
+		server: {
+			title: 'Nečitljivo i ako procuri',
+			copy: 'Poslužitelj čuva samo zaključane podatke. Iz baze koja procuri ne mogu se iščitati fotografije, imena ni poruke.'
+		},
+		host: {
+			title: 'Ne možemo vidjeti ni mi',
+			copy: 'Tko god poslužuje BubbleBoard, uključujući nas, nema ključeve vaše skupine. Kod je javan pa svatko može provjeriti.'
+		},
+		note: 'Šifriranje štiti ono što je pohranjeno na poslužitelju. Ne može vratiti fotografiju koju je netko već spremio na svoj mobitel.'
 	},
 	teachers: {
 		title: 'Stvoreno i za odgojitelje.',
@@ -103,23 +121,31 @@ export const hr = {
 			copy: 'Dajte zamjeni privremeni pristup ili zamijenite izgubljenu karticu u nekoliko koraka.'
 		}
 	},
-	open: {
-		title: 'Gradimo ga javno.',
-		copy: 'BubbleBoard je otvorenog koda pa svatko može provjeriti kako se postupa sa sadržajem obitelji. Bez oglasa, praćenja i skripti trećih strana.',
-		cta: 'Pratite razvoj na GitHubu',
-		noticeTitle: 'Tek smo na početku.',
-		noticeCopy:
-			'Ovo je pregled dizajna. Pristup skupini, obavijesti, poruke i dijeljenje fotografija još nisu dostupni. Molimo vas da ne unosite osobne podatke.'
+	kindergartens: {
+		title: 'Želite BubbleBoard u svojem vrtiću?',
+		copy: 'BubbleBoard nije usluga na koju se pretplaćujete. Svaki vrtić dobiva vlastitu instalaciju pa se sadržaj njegovih obitelji nikad ne miješa s tuđim. Recite nam nešto o svojem vrtiću i pomoći ćemo vam da započnete.',
+		facts: [
+			'Besplatno i otvorenog koda, bez oglasa i praćenja',
+			'Roditelji ništa ne kupuju niti preuzimaju iz trgovine aplikacija',
+			'Radi na mobitelima i računalima koje već imate'
+		],
+		hosting:
+			'Softver je besplatan. Svaki vrtić sam pokriva troškove poslužitelja, koji su obično mali.',
+		cta: 'Pišite nam',
+		subject: 'BubbleBoard za naš vrtić',
+		mission:
+			'BubbleBoard izrađuje Commit, mala skupina programera koja stvara besplatne aplikacije otvorenog koda za svakodnevne probleme.',
+		itTeam: 'Imate vlastiti IT tim?',
+		code: 'Kod je na GitHubu.'
 	},
 	footer: {
 		tagline: 'Mala zajednica. Puno pažnje.',
-		product: 'Proizvod',
+		explore: 'Istražite',
 		project: 'Projekt',
-		source: 'Izvorni kod',
+		github: 'GitHub',
+		madeBy: 'S ljubavlju izradio tim [Commit]',
 		license: 'Licenca (AGPL-3.0)',
-		architecture: 'Arhitektura',
 		credits: 'Izvori fotografija',
-		status: 'Rani pregled',
 		build: 'Verzija'
 	}
 } satisfies Messages;

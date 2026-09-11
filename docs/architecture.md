@@ -15,6 +15,8 @@ The bootstrap implements no authentication, encryption, uploads, or persistence.
 
 Public pages are prerendered to static HTML with no client-side JavaScript (`src/routes/+layout.ts`). Croatian is served at `/` and English at `/en`; the optional `[[locale=locale]]` route segment and `src/params/locale.ts` keep the default language unprefixed. The language switch is a plain link, so no cookie is needed. `src/hooks.server.ts` sets the document language.
 
+The landing page is identical on every installation: it names no kindergarten, and its contact details belong to the project (`src/lib/project.ts`). Canonical URLs, `hreflang` alternates, and link-preview tags need an absolute address, which prerendered pages can't take from a request, so it comes from the required build-time `PUBLIC_SITE_URL` in `.env` (read with `$env/static/public`; Worker `vars` don't exist at build time). Build absolute links with `absoluteUrl` from `src/lib/project.ts`. The app's own entry point is `src/lib/components/AppLink.svelte`, a status label until the app route exists.
+
 All interface copy lives in `src/lib/i18n/en.ts` and `hr.ts`. Croatian must satisfy the same TypeScript shape as English; add each new key to both dictionaries. Keep sentences whole rather than assembling translated fragments. Use native `Intl` formatters with the active locale when dates, numbers, or pluralized content are introduced. User-authored classroom content is not automatically translated.
 
 ## Dependency policy

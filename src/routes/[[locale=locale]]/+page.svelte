@@ -1,19 +1,46 @@
 <script lang="ts">
+	import shareImage from '$lib/assets/photos/share.jpg';
+	import AppLink from '$lib/components/AppLink.svelte';
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
 	import Photo from '$lib/components/Photo.svelte';
-	import { messages } from '$lib/i18n';
-	import { repositoryUrl } from '$lib/project';
+	import { defaultLocale, localePath, locales, messages } from '$lib/i18n';
+	import { absoluteUrl, contactEmail, repositoryUrl } from '$lib/project';
 	import type { PageProps } from './$types';
 
 	type Item = { title: string; copy: string };
 
 	let { data }: PageProps = $props();
 	const t = $derived(messages[data.locale]);
+	const url = $derived(absoluteUrl(localePath(data.locale)));
+	const writeToUs = $derived(
+		`mailto:${contactEmail}?subject=${encodeURIComponent(t.kindergartens.subject)}`
+	);
 </script>
 
 <svelte:head>
 	<title>BubbleBoard · {t.title}</title>
 	<meta name="description" content={t.description} />
+	<link rel="canonical" href={url} />
+	{#each locales as locale (locale)}
+		<link rel="alternate" hreflang={locale} href={absoluteUrl(localePath(locale))} />
+	{/each}
+	<link rel="alternate" hreflang="x-default" href={absoluteUrl(localePath(defaultLocale))} />
+
+	<!-- Link previews in messaging apps and social networks. -->
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content="BubbleBoard" />
+	<meta property="og:title" content="BubbleBoard · {t.title}" />
+	<meta property="og:description" content={t.description} />
+	<meta property="og:url" content={url} />
+	<meta property="og:locale" content={t.ogLocale} />
+	{#each locales.filter((locale) => locale !== data.locale) as locale (locale)}
+		<meta property="og:locale:alternate" content={messages[locale].ogLocale} />
+	{/each}
+	<meta property="og:image" content={absoluteUrl(shareImage)} />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:image:alt" content={t.hero.photoAlt} />
+	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
 {#snippet intro(id: string, title: string, copy: string)}
@@ -21,21 +48,19 @@
 	<p class="max-w-md text-lg text-muted">{copy}</p>
 {/snippet}
 
-{#snippet cta(href: string, label: string, icon: IconName)}
-	<a
-		class="mt-9 inline-flex items-center gap-3 rounded-full bg-ink py-2 pr-2 pl-6 font-semibold text-white shadow-xl shadow-ink/30 hover:-translate-y-0.5 motion-safe:transition-transform"
-		{href}
-	>
-		{label}
-		<span class="grid size-9 place-items-center rounded-full bg-white text-ink">
-			<Icon name={icon} class="size-4" />
-		</span>
-	</a>
-{/snippet}
-
 {#snippet feature(icon: IconName, item: Item)}
 	<li class="rounded-3xl glass p-6">
 		<span class="grid size-11 place-items-center rounded-2xl bg-sunrise text-white">
+			<Icon name={icon} />
+		</span>
+		<h3 class="mt-5 font-bold">{item.title}</h3>
+		<p class="mt-1 text-muted">{item.copy}</p>
+	</li>
+{/snippet}
+
+{#snippet safeguard(icon: IconName, item: Item)}
+	<li class="p-7 sm:p-8">
+		<span class="grid size-11 place-items-center rounded-2xl bg-ink text-white">
 			<Icon name={icon} />
 		</span>
 		<h3 class="mt-5 font-bold">{item.title}</h3>
@@ -49,12 +74,13 @@
 		aria-labelledby="hero-title"
 	>
 		<div>
-			<h1 id="hero-title" class="mb-6 text-5xl leading-none sm:text-6xl xl:text-8xl">
+			<!-- Sized so each line stays on one row in both languages ("njihovom danu." is the longest). -->
+			<h1 id="hero-title" class="mb-6 text-[2.75rem] leading-none sm:text-6xl xl:text-7xl">
 				{t.hero.heading}
 				<span class="block text-sunrise">{t.hero.headingAccent}</span>
 			</h1>
-			<p class="max-w-md text-lg text-muted">{t.hero.lead}</p>
-			{@render cta('#how', t.hero.cta, 'arrowDown')}
+			<p class="max-w-lg text-lg text-muted">{t.description}</p>
+			<AppLink labels={t.app} class="mt-9 inline-flex px-7 py-4" />
 			<p class="mt-4 text-sm text-muted">{t.hero.quiet}</p>
 		</div>
 		<div
@@ -129,6 +155,18 @@
 		</div>
 	</section>
 
+	<section id="security" aria-labelledby="security-title">
+		{@render intro('security', t.security.title, t.security.copy)}
+		<ul
+			class="mt-10 grid divide-y divide-ink/10 rounded-4xl glass md:grid-cols-3 md:divide-x md:divide-y-0"
+		>
+			{@render safeguard('lock', t.security.device)}
+			{@render safeguard('database', t.security.server)}
+			{@render safeguard('eyeOff', t.security.host)}
+		</ul>
+		<p class="mt-5 text-sm text-muted">{t.security.note}</p>
+	</section>
+
 	<section
 		id="teachers"
 		class="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16"
@@ -146,16 +184,37 @@
 	</section>
 
 	<section
-		class="grid items-center gap-8 rounded-4xl glass p-7 sm:p-12 lg:grid-cols-[1.2fr_0.8fr] lg:gap-16"
-		aria-labelledby="open-title"
+		id="kindergartens"
+		class="rounded-4xl glass bg-linear-135 from-apricot/15 via-blush/10 to-accent/15 px-6 py-12 text-center sm:px-12 sm:py-16"
+		aria-labelledby="kindergartens-title"
 	>
-		<div>
-			{@render intro('open', t.open.title, t.open.copy)}
-			{@render cta(repositoryUrl, t.open.cta, 'arrowRight')}
-		</div>
-		<aside class="rounded-3xl bg-white/60 p-6 text-muted">
-			<h3 class="font-bold text-ink">{t.open.noticeTitle}</h3>
-			<p class="mt-1">{t.open.noticeCopy}</p>
-		</aside>
+		<h2 id="kindergartens-title" class="mx-auto mb-4 max-w-2xl text-4xl sm:text-5xl">
+			{t.kindergartens.title}
+		</h2>
+		<p class="mx-auto max-w-2xl text-lg text-muted">{t.kindergartens.copy}</p>
+		<ul class="mx-auto mt-8 grid w-fit gap-3.5">
+			{#each t.kindergartens.facts as fact (fact)}
+				<li class="flex gap-2 text-left font-semibold">
+					<Icon name="check" class="mt-0.5 size-5 shrink-0 text-accent" />{fact}
+				</li>
+			{/each}
+		</ul>
+		<p class="mx-auto mt-6 max-w-xl text-muted">{t.kindergartens.hosting}</p>
+		<a
+			class="mt-9 inline-flex items-center gap-3 rounded-full bg-ink py-2 pr-2 pl-6 font-semibold text-white shadow-xl shadow-ink/30 hover:-translate-y-0.5 motion-safe:transition-transform"
+			href={writeToUs}
+		>
+			{t.kindergartens.cta}
+			<span class="grid size-9 place-items-center rounded-full bg-white text-ink">
+				<Icon name="mail" class="size-4" />
+			</span>
+		</a>
+		<p class="mx-auto mt-10 max-w-xl text-sm text-muted">
+			{t.kindergartens.mission}
+			{t.kindergartens.itTeam}
+			<a class="font-semibold text-ink underline underline-offset-4" href={repositoryUrl}
+				>{t.kindergartens.code}</a
+			>
+		</p>
 	</section>
 </div>

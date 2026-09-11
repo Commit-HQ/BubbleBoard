@@ -1,25 +1,27 @@
 export const en = {
 	languageName: 'English',
+	ogLocale: 'en_US',
 	title: 'A little closer to their day',
 	description:
-		'A simple space for kindergarten updates, photos, and conversations. BubbleBoard is currently in development.',
+		'BubbleBoard is a free, open-source app that connects kindergarten teachers and families. Notices, photos from the day, and private messages, all in one place and private by design.',
 	skip: 'Skip to content',
 	home: 'BubbleBoard home',
 	language: 'Language',
+	app: { open: 'Open the app', soon: 'Coming soon' },
 	nav: {
 		label: 'Main',
 		sections: {
 			features: 'Features',
 			how: 'How it works',
 			privacy: 'Privacy',
-			teachers: 'For teachers'
+			security: 'Security',
+			teachers: 'For teachers',
+			kindergartens: 'For kindergartens'
 		}
 	},
 	hero: {
 		heading: 'A little closer',
 		headingAccent: 'to their day.',
-		lead: 'The news, the discoveries, the little things that made them smile. A place for your kindergarten to keep you in the loop.',
-		cta: 'See how it works',
 		quiet: 'Made for families. Inspired by the Bubbles.',
 		photoAlt: 'Children laughing and blowing soap bubbles in a sunny park',
 		mockTeacher: 'Teacher Ana',
@@ -56,7 +58,7 @@ export const en = {
 	},
 	how: {
 		title: 'One card. Your classroom.',
-		copy: 'When BubbleBoard is ready, your teacher will give you a family QR card to get started.',
+		copy: 'Parents and teachers join the same way. Your kindergarten gives you a personal QR card, and that’s all you need.',
 		photoAlt: 'A kindergarten teacher sitting on the floor talking with a group of children',
 		steps: [
 			{
@@ -65,8 +67,8 @@ export const en = {
 			},
 			{ title: 'Turn on notifications', copy: 'Hear when there’s something new to see.' },
 			{
-				title: 'Scan your family card',
-				copy: 'Open the app and scan. No username or password to remember.'
+				title: 'Scan your card',
+				copy: 'Open the app and scan the card from your kindergarten. No username or password to remember.'
 			}
 		]
 	},
@@ -77,9 +79,25 @@ export const en = {
 		facts: [
 			'No usernames or passwords',
 			'Faces blurred for other families, if you prefer',
-			'Photos disappear on their own after a while',
-			'Built so the host can’t read your family’s content'
+			'Photos disappear on their own after a while'
 		]
+	},
+	security: {
+		title: 'Locked before it leaves your phone.',
+		copy: 'Photos, messages, and children’s names are encrypted on your device before they’re sent. Only the families and teachers in your classroom hold the keys to open them.',
+		device: {
+			title: 'Encrypted on your device',
+			copy: 'Everything is locked on the phone or computer it comes from, before it’s uploaded.'
+		},
+		server: {
+			title: 'Unreadable if it leaks',
+			copy: 'The server stores only locked data. A leaked database would reveal no photos, names, or messages.'
+		},
+		host: {
+			title: 'Not even we can look',
+			copy: 'Whoever hosts BubbleBoard, us included, has no keys to your classroom. The code is public, so anyone can check.'
+		},
+		note: 'Encryption protects what’s stored on the server. It can’t take back a photo someone has already saved to their own phone.'
 	},
 	teachers: {
 		title: 'Made for teachers, too.',
@@ -101,23 +119,32 @@ export const en = {
 			copy: 'Give a substitute temporary access or replace a lost card in a few taps.'
 		}
 	},
-	open: {
-		title: 'Built in the open.',
-		copy: 'BubbleBoard is open source, so anyone can check how family content is handled. No ads, no trackers, no third-party scripts.',
-		cta: 'Follow along on GitHub',
-		noticeTitle: 'We’re just getting started.',
-		noticeCopy:
-			'This is a design preview. Classroom access, notifications, messaging, and photo sharing are not available yet. Please don’t enter personal information.'
+	kindergartens: {
+		title: 'Want BubbleBoard for your kindergarten?',
+		copy: 'BubbleBoard isn’t a service you sign up for. Each kindergarten gets its own installation, so its families’ content is never mixed with anyone else’s. Tell us about your kindergarten and we’ll help you get started.',
+		facts: [
+			'Free and open source, with no ads and no tracking',
+			'Nothing for parents to buy or download from an app store',
+			'Works on the phones and computers you already have'
+		],
+		hosting:
+			'The software is free. Each kindergarten covers its own hosting, which is usually a small cost.',
+		cta: 'Write to us',
+		subject: 'BubbleBoard for our kindergarten',
+		mission:
+			'BubbleBoard is made by Commit, a small group of developers who build free, open-source apps for everyday problems.',
+		itTeam: 'Have your own IT team?',
+		code: 'The code is on GitHub.'
 	},
 	footer: {
 		tagline: 'A little community. A lot of care.',
-		product: 'Product',
+		explore: 'Explore',
 		project: 'Project',
-		source: 'Source code',
+		github: 'GitHub',
+		// The part in brackets links to Commit.
+		madeBy: 'Made with love by the people at [Commit]',
 		license: 'License (AGPL-3.0)',
-		architecture: 'Architecture',
 		credits: 'Photo credits',
-		status: 'Early preview',
 		build: 'Build'
 	}
 };

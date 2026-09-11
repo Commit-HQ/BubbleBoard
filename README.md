@@ -25,11 +25,12 @@ Use **Node.js 24 LTS** and npm. No Cloudflare account is needed for local develo
 
 ```sh
 npm ci
+cp .env.example .env
 npm run gen
 npm run dev
 ```
 
-Open the local address printed by Vite. `npm run gen` creates ignored Cloudflare runtime types from `wrangler.jsonc`; rerun it after changing bindings or updating Wrangler.
+Open the local address printed by Vite. `.env` sets `PUBLIC_SITE_URL`, the public address used for canonical links and link previews; pages are prerendered, so it's read at build time and the build fails without it. `npm run gen` creates ignored Cloudflare runtime types from `wrangler.jsonc`; rerun it after changing bindings or updating Wrangler.
 
 | Command            | Purpose                                        |
 | ------------------ | ---------------------------------------------- |
@@ -52,10 +53,12 @@ Measure performance (for example with Lighthouse) against `npm run build && npm 
 1. Clone this repository and follow the local setup above.
 2. Run `npx wrangler login` to authenticate to your Cloudflare account.
 3. Choose a unique Worker `name` in `wrangler.jsonc`.
-4. Run `npm run validate` and `npx wrangler deploy --dry-run`.
-5. Run `npm run deploy`. Wrangler prints the deployed URL.
+4. Set `PUBLIC_SITE_URL` in `.env` to the address the site will be served from.
+5. Run `npm run validate` and `npx wrangler deploy --dry-run`.
+6. Run `npm run deploy`. Wrangler prints the deployed URL.
+7. To use your own domain, add it to the Worker in the Cloudflare dashboard (**Workers & Pages → your Worker → Settings → Domains & Routes**). Domains are kept out of `wrangler.jsonc` so the configuration works for every installation.
 
-This deploys the public foundation preview, **not a working kindergarten service**. CI validates changes but does not deploy automatically. No credentials belong in Git. Local runtime secrets belong in ignored `.dev.vars`; production secrets should use `wrangler secret put` when the feature needing them exists.
+This deploys the public foundation preview, **not a working kindergarten service**. The landing page is the same on every installation: it names no kindergarten, and its contact details belong to the BubbleBoard project (`src/lib/project.ts`). CI validates changes with a placeholder `PUBLIC_SITE_URL` but does not deploy automatically. No credentials belong in Git. Local runtime secrets belong in ignored `.dev.vars`; production secrets should use `wrangler secret put` when the feature needing them exists.
 
 ### Storage when the first data feature lands
 
@@ -117,6 +120,7 @@ src/
   hooks.server.ts       Document language, font preloads, security headers
 static/                 Public static assets only
 _headers                Security headers for prerendered pages and assets
+.env.example            Build-time settings to copy into .env
 .github/workflows/      Validation pipeline
 wrangler.jsonc          Worker and future binding configuration
 ```
