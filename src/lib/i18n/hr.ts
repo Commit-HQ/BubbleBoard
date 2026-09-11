@@ -59,7 +59,7 @@ export const hr = {
 	how: {
 		title: 'Jedna kartica. Vaša skupina.',
 		copy: 'Kad BubbleBoard bude spreman, odgojitelji će vam dati obiteljsku QR karticu za pristup.',
-		photoAlt: 'Odgojiteljica čita slikovnicu skupini djece',
+		photoAlt: 'Odgojiteljica sjedi na podu i razgovara sa skupinom djece',
 		steps: [
 			{
 				title: 'Dodajte ga na početni zaslon',

@@ -57,7 +57,7 @@ export const en = {
 	how: {
 		title: 'One card. Your classroom.',
 		copy: 'When BubbleBoard is ready, your teacher will give you a family QR card to get started.',
-		photoAlt: 'A kindergarten teacher reading a picture book to a group of children',
+		photoAlt: 'A kindergarten teacher sitting on the floor talking with a group of children',
 		steps: [
 			{
 				title: 'Add it to your home screen',
