@@ -26,9 +26,18 @@ export const hr = {
 		headingAccent: 'njihovom danu.',
 		quiet: 'Za obitelji. Nadahnuto skupinom Bubbles.',
 		photoAlt: 'Djeca se smiju i puhaju balone od sapunice u sunčanom parku',
-		mockTeacher: 'Odgojiteljica Ana',
-		mockTime: 'Upravo sada',
-		mockMessage: 'Luka je danas sagradio najviši toranj!'
+		notes: [
+			{
+				teacher: 'Martina',
+				time: '8:30',
+				message: 'Sutra idemo u park, molimo spakirajte gumene čizme.'
+			},
+			{
+				teacher: 'Romana',
+				time: 'Upravo sada',
+				message: 'Una se rasplakala kad joj je pukao balončić, pa smo napuhali još stotinu.'
+			}
+		]
 	},
 	features: {
 		title: 'Sve iz vrtića, na jednom mirnom mjestu.',

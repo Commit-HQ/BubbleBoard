@@ -24,9 +24,18 @@ export const en = {
 		headingAccent: 'to their day.',
 		quiet: 'Made for families. Inspired by the Bubbles.',
 		photoAlt: 'Children laughing and blowing soap bubbles in a sunny park',
-		mockTeacher: 'Teacher Ana',
-		mockTime: 'Just now',
-		mockMessage: 'Luka built the tallest tower today!'
+		notes: [
+			{
+				teacher: 'Martina',
+				time: '8:30',
+				message: 'Tomorrow we’re off to the park. Please pack rain boots.'
+			},
+			{
+				teacher: 'Romana',
+				time: 'Just now',
+				message: 'Una cried when her bubble popped, so we blew a hundred more.'
+			}
+		]
 	},
 	features: {
 		title: 'Everything from kindergarten, in one calm place.',

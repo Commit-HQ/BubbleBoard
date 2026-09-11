@@ -91,20 +91,23 @@
 		<div class="relative w-full lg:max-w-lg lg:justify-self-end">
 			<div class="relative aspect-4/5 overflow-hidden rounded-4xl shadow-2xl shadow-indigo-950/25">
 				<Photo name="bubbles" alt={t.hero.photoAlt} eager />
-				<div
-					class="absolute inset-x-4 bottom-4 flex items-center gap-3 rounded-2xl glass p-3 pr-4 leading-snug"
-					aria-hidden="true"
-				>
-					<span
-						class="grid size-10 shrink-0 place-items-center rounded-full bg-sunrise font-bold text-white"
-						>A</span
-					>
-					<p class="text-sm sm:text-base">
-						<strong class="font-semibold">{t.hero.mockTeacher}</strong>
-						<small class="ml-1 text-xs text-muted">{t.hero.mockTime}</small><br />{t.hero
-							.mockMessage}
-					</p>
-				</div>
+				<!-- Una's real teachers: Martina keeps things organised, Romana is the creative one. -->
+				<ul class="absolute inset-x-4 bottom-4 grid gap-2" aria-hidden="true">
+					{#each t.hero.notes as { teacher, time, message }, i (teacher)}
+						<li class="flex items-center gap-3 rounded-2xl glass p-3 pr-4 leading-snug">
+							<span
+								class={[
+									'grid size-10 shrink-0 place-items-center rounded-full font-bold text-white',
+									i ? 'bg-sunrise' : 'bg-accent'
+								]}>{teacher[0]}</span
+							>
+							<p class="text-sm sm:text-base">
+								<strong class="font-semibold">{teacher}</strong>
+								<small class="ml-1 text-xs text-muted">{time}</small><br />{message}
+							</p>
+						</li>
+					{/each}
+				</ul>
 			</div>
 			<!-- Same big, medium, small grouping as the logo, drifting off the photo. -->
 			{@render bubble('top-12 -left-3 size-28 sm:-left-12 sm:size-36')}
