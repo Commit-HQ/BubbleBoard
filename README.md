@@ -43,6 +43,8 @@ Open the local address printed by Vite. `npm run gen` creates ignored Cloudflare
 | `npm run validate` | Type checks, formatting, and production build  |
 | `npm run deploy`   | Build and publish to your Cloudflare account   |
 
+Measure performance (for example with Lighthouse) against `npm run build && npm run preview`, never `npm run dev`: the dev server serves unbundled, uncompressed modules and always scores poorly.
+
 `lint` currently checks formatting; Svelte diagnostics and TypeScript run through `check`. No additional lint framework or test runner is installed yet. Add behavior tests with the first real auth/crypto/data flows.
 
 ## Deploy your own preview
@@ -94,19 +96,20 @@ Merge these fields into the existing configuration, then regenerate types. Keep 
 | Application           | Svelte 5 + SvelteKit + strict TypeScript        |
 | Build                 | Vite                                            |
 | Hosting               | Cloudflare Workers + official SvelteKit adapter |
-| Styles                | Plain CSS, shared tokens, system fonts          |
-| Formatting            | Prettier + its Svelte plugin                    |
+| Styles                | Tailwind CSS v4, self-hosted fonts              |
+| Formatting            | Prettier + Svelte and Tailwind plugins          |
 | Planned storage       | D1 for records; private R2 for encrypted media  |
 | Planned encryption    | Browser Web Crypto API                          |
 | Planned notifications | Web Push                                        |
 
-No UI framework, ORM, remote font service, analytics SDK, or separate backend. npm’s lockfile is committed for reproducible installs. The official tooling still has transitive dependencies; review additions and updates rather than assuming a small manifest means zero supply-chain risk.
+No component UI library, ORM, remote font service, analytics SDK, or separate backend. npm’s lockfile is committed for reproducible installs. The official tooling still has transitive dependencies; review additions and updates rather than assuming a small manifest means zero supply-chain risk.
 
 ```text
 src/
   lib/
-    assets/             Local brand assets
-    styles/             Shared tokens and application styles
+    assets/             Local brand assets and optimized photos
+    components/         Reusable Svelte components
+    styles/             Tailwind entry, theme tokens, base styles
   routes/               Pages, layouts, and future server endpoints
   app.d.ts              Typed Cloudflare platform boundary
   app.html              Document shell
@@ -142,4 +145,4 @@ Croatian (`hr`) is the default; English (`en`) is available from the header. The
 
 All interface copy lives in `src/lib/i18n/en.ts` and `hr.ts`. Croatian must satisfy the same TypeScript message shape as English; add each new key to both dictionaries. Keep sentences whole rather than assembling translated fragments. Use native `Intl` formatters with the active locale when dates, numbers, or pluralized content are introduced. User-authored classroom content is not automatically translated.
 
-The theme uses cyan, blush, and lilac CSS gradients with translucent white surfaces and a dark violet action color. Shared palette and surface tokens live in `src/lib/styles/tokens.css`. No image backgrounds, remote fonts, animation library, or backdrop blur are required.
+The look is cheerful glassmorphism: frosted white surfaces over soft coral, violet, sky, and sun gradients, with ink-black pill actions. Headings use Hedvig Letters Serif and body text uses Hanken Grotesk, both bundled from Fontsource (OFL) and served from the app origin. Styling uses Tailwind CSS v4 utilities in markup. Brand colors and fonts are `@theme` tokens in `src/lib/styles/app.css` (`ink`, `muted`, `canvas`, `accent`, `font-display`), plus two custom utilities: `glass` for frosted surfaces and `bg-sunrise` for the brand gradient. Prettier sorts Tailwind classes automatically. Photos are real stock images committed pre-optimized as AVIF/WebP and rendered with `src/lib/components/Photo.svelte`; sources and licenses are in `src/lib/assets/photos/CREDITS.md`. No remote images, remote fonts, or animation library are required.
