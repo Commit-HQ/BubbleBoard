@@ -10,7 +10,9 @@ declare global {
 		}
 
 		// interface Error {}
-		// interface Locals {}
+		interface Locals {
+			locale: import('$lib/i18n').Locale;
+		}
 		// interface PageData {}
 		// interface PageState {}
 	}

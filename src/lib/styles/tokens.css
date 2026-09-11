@@ -1,8 +1,20 @@
 :root {
 	color-scheme: light;
-	--background: #fafcff;
-	--ink: #172947;
-	--muted: #566781;
-	--blue: #245bea;
-	--line: #dce4ee;
+	--background: #f1f8fb;
+	--ink: #263344;
+	--muted: #526171;
+	--accent: #5552b5;
+	--accent-hover: #454397;
+	--line: #ffffffd9;
+	--surface: #ffffffa6;
+	--page-gradient:
+		radial-gradient(ellipse at 90% 5%, #c9f2fa 0%, transparent 55%),
+		radial-gradient(ellipse at 5% 90%, #f9dff0 0%, transparent 55%),
+		linear-gradient(160deg, #edfaff, #f3f0fa 65%, #ffedf5);
+	--card-gradient:
+		radial-gradient(ellipse at 100% 0%, #f6cdd8, transparent 65%),
+		radial-gradient(ellipse at 0% 100%, #c4f3f8, transparent 65%),
+		linear-gradient(135deg, #f8f3fc, #eee6f9);
+	--action-gradient: linear-gradient(120deg, #5354b7, #7160ac);
+	--shadow: 0 18px 55px -32px #69789d45;
 }

@@ -135,3 +135,11 @@ Retention, authorization, deletion, and recovery belong in the features they pro
 ## License
 
 [GNU Affero General Public License v3.0](LICENSE).
+
+## Languages and theme
+
+Croatian (`hr`) is the default; English (`en`) is available from the header. The choice persists for one year in a first-party language cookie. Server rendering sets the document language, metadata, and accessible labels consistently, without client-only language detection. Language switching works without JavaScript.
+
+All interface copy lives in `src/lib/i18n/en.ts` and `hr.ts`. Croatian must satisfy the same TypeScript message shape as English; add each new key to both dictionaries. Keep sentences whole rather than assembling translated fragments. Use native `Intl` formatters with the active locale when dates, numbers, or pluralized content are introduced. User-authored classroom content is not automatically translated.
+
+The theme uses cyan, blush, and lilac CSS gradients with translucent white surfaces and a dark violet action color. Shared palette and surface tokens live in `src/lib/styles/tokens.css`. No image backgrounds, remote fonts, animation library, or backdrop blur are required.
