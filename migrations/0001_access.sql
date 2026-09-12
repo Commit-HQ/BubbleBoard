@@ -2,7 +2,7 @@
 -- only inside the encrypted profiles. Record IDs are random and generated in the browser.
 
 -- One row, written by the first setup, so a second setup can't succeed. `revision` counts changes to
--- children and family cards (see the catalog_revision trigger).
+-- teachers, children, and family cards (see the catalog_revision trigger).
 CREATE TABLE installation (
 	id INTEGER PRIMARY KEY CHECK (id = 1),
 	set_up_at INTEGER NOT NULL,
@@ -85,8 +85,9 @@ BEGIN
 	SELECT RAISE(ABORT, 'last-admin');
 END;
 
--- A change to children or family cards starts by moving the revision on from the one its device read.
--- Only one change can do that, so a change made from outdated records fails instead of undoing another.
+-- A change to a teacher, children, or family cards starts by moving the revision on from the one its
+-- device read. Only one change can do that, so a change made from outdated records fails instead of
+-- undoing another.
 CREATE TRIGGER catalog_revision BEFORE UPDATE OF revision ON installation
 WHEN NEW.revision <> OLD.revision + 1
 BEGIN

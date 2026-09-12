@@ -45,8 +45,9 @@ export async function limitAttempts(event: RequestEvent) {
 	if (!success) error(429, 'too-many-attempts');
 }
 
-const identityQuery = `SELECT c.id AS credential, c.wrapped_key AS wrappedKey, c.teacher_id AS teacher,
-	c.family_id AS family, t.admin FROM credentials c LEFT JOIN teachers t ON t.id = c.teacher_id`;
+const identityColumns = `c.id AS credential, c.wrapped_key AS wrappedKey, c.teacher_id AS teacher,
+	c.family_id AS family, t.admin`;
+const identityTables = 'credentials c LEFT JOIN teachers t ON t.id = c.teacher_id';
 
 type IdentityRow = {
 	credential: string;
@@ -66,7 +67,7 @@ function identity(row: IdentityRow | null): Identity | undefined {
 export async function identityForCard(db: D1Database, authToken: string) {
 	const hash = await hashAuthToken(authToken);
 	const row = await db
-		.prepare(`${identityQuery} WHERE c.auth_token_hash = ?`)
+		.prepare(`SELECT ${identityColumns} FROM ${identityTables} WHERE c.auth_token_hash = ?`)
 		.bind(hash)
 		.first<IdentityRow>();
 	return identity(row);
@@ -112,11 +113,12 @@ async function currentIdentity(event: RequestEvent) {
 	const now = Date.now();
 	const row = await db
 		.prepare(
-			`${identityQuery} JOIN sessions s ON s.credential_id = c.id WHERE s.token_hash = ? AND s.expires_at > ?`
+			`SELECT ${identityColumns}, s.expires_at AS expiresAt FROM ${identityTables}
+			JOIN sessions s ON s.credential_id = c.id WHERE s.token_hash = ? AND s.expires_at > ?`
 		)
 		.bind(hash, now)
-		.first<IdentityRow & { expires_at: number }>();
-	if (row && row.expires_at < now + lifetime - renewAfter) {
+		.first<IdentityRow & { expiresAt: number }>();
+	if (row && row.expiresAt < now + lifetime - renewAfter) {
 		await db
 			.prepare('UPDATE sessions SET expires_at = ? WHERE token_hash = ?')
 			.bind(now + lifetime, hash)

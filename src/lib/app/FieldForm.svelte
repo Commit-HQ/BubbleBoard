@@ -37,7 +37,7 @@
 	function submit(event: SubmitEvent & { currentTarget: EventTarget & HTMLFormElement }) {
 		event.preventDefault();
 		const entered = formText(new FormData(event.currentTarget), 'value');
-		if (entered) task.run(() => onsubmit(entered));
+		task.run(() => onsubmit(entered));
 	}
 </script>
 

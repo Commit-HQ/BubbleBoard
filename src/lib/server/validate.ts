@@ -115,15 +115,20 @@ export const newClassroom = (body: Fields): NewClassroom => ({
 	groupKeyForStaff: wrappedKey(body.groupKeyForStaff)
 });
 
-export const teacherChange = (body: Fields): TeacherChange => ({
+const teacher = (body: Fields) => ({
 	admin: flag(body.admin),
 	profile: profile(body.profile),
 	classrooms: ids(body.classrooms)
 });
 
+export const teacherChange = (body: Fields): TeacherChange => ({
+	revision: revision(body.revision),
+	...teacher(body)
+});
+
 export const newTeacher = (body: Fields): NewTeacher => ({
 	id: id(body.id),
-	...teacherChange(body),
+	...teacher(body),
 	credential: credential(body.credential)
 });
 

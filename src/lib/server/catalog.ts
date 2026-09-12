@@ -39,6 +39,14 @@ async function transaction(db: D1Database, statements: D1PreparedStatement[]) {
 	}
 }
 
+/**
+ * Starts a change to who can open what by moving the revision on from the one its device read. The
+ * database refuses when another change came first, so an outdated device can't undo that change.
+ */
+function nextRevision(db: D1Database, revision: number) {
+	return db.prepare('UPDATE installation SET revision = ?').bind(revision + 1);
+}
+
 async function found(query: D1PreparedStatement) {
 	if (!(await query.first())) error(404, 'not-found');
 }
@@ -208,6 +216,7 @@ export async function changeTeacher(
 ) {
 	await found(db.prepare('SELECT 1 FROM teachers WHERE id = ?').bind(id));
 	await transaction(db, [
+		nextRevision(db, change.revision),
 		db
 			.prepare('UPDATE teachers SET admin = ?, profile = ? WHERE id = ?')
 			.bind(Number(change.admin), change.profile, id),
@@ -247,10 +256,7 @@ async function newFamilies(db: D1Database, families: NewFamily[]) {
 	return statements;
 }
 
-/**
- * Changes a child along with its family links. The revision moves on first, which the database refuses
- * when another change came first, and new families exist before the child's statement refers to them.
- */
+/** Changes a child along with its family links. New families exist before the child refers to them. */
 async function changeChildren(
 	db: D1Database,
 	admin: Admin,
@@ -258,7 +264,7 @@ async function changeChildren(
 	child: D1PreparedStatement
 ) {
 	await transaction(db, [
-		db.prepare('UPDATE installation SET revision = ?').bind(links.revision + 1),
+		nextRevision(db, links.revision),
 		...(await newFamilies(db, links.newFamilies)),
 		child,
 		...links.addMemberships.map(({ family, classroom, groupKeyForFamily }) =>

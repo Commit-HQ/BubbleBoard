@@ -5,8 +5,13 @@
 export type NewCredential = { id: string; authToken: string; wrappedKey: string };
 
 export type NewClassroom = { id: string; profile: string; groupKeyForStaff: string };
-export type TeacherChange = { admin: boolean; profile: string; classrooms: string[] };
-export type NewTeacher = TeacherChange & { id: string; credential: NewCredential };
+type TeacherRecord = { admin: boolean; profile: string; classrooms: string[] };
+export type NewTeacher = TeacherRecord & { id: string; credential: NewCredential };
+/**
+ * A change to a teacher carries the catalog `revision` it was made from, as `FamilyLinks` do, so a form
+ * left open can't restore rights another admin has withdrawn.
+ */
+export type TeacherChange = TeacherRecord & { revision: number };
 export type NewFamily = {
 	id: string;
 	profile: string;
@@ -50,7 +55,7 @@ export type Staff = Extract<Identity, { kind: 'staff' }>;
 
 /** The records a staff member may see: everything for admins, their own classrooms for teachers. */
 export type Kindergarten = {
-	/** Moves on with every change to children and family cards (`FamilyLinks.revision`). */
+	/** Moves on with every change a `TeacherChange` or `FamilyLinks` makes. */
 	revision: number;
 	classrooms: { id: string; profile: string; groupKeyForStaff: string }[];
 	teachers: { id: string; admin: boolean; profile: string; classrooms: string[] }[];

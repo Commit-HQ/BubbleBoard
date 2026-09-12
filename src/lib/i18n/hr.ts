@@ -386,6 +386,7 @@ export const hr = {
 			'last-admin':
 				'BubbleBoardu treba barem jedan administrator. Najprije nekoga drugog postavite za administratora.',
 			'not-empty': 'Najprije premjestite ili uklonite djecu iz ove skupine.',
+			'empty-name': 'Ime ne može ostati prazno. Upišite ga i pokušajte ponovno.',
 			stale:
 				'Netko je upravo promijenio iste podatke. Sada vidite najnovije, pa pokušajte ponovno.',
 			'not-found': 'Ovo više ne postoji.',

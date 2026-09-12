@@ -9,6 +9,7 @@ import {
 	childProfile,
 	classroomProfile,
 	createKindergarten,
+	EmptyNameError,
 	familyCard,
 	familyLinks,
 	familyProfile,
@@ -72,6 +73,7 @@ function errorCode(cause: unknown) {
 	if (cause instanceof ApiError) return cause.code;
 	if (cause instanceof UnreadableRecords) return 'unreadable-records';
 	if (cause instanceof UnreadableError) return 'unreadable';
+	if (cause instanceof EmptyNameError) return 'empty-name';
 	return 'unexpected';
 }
 
@@ -321,7 +323,8 @@ export class App {
 
 	async changeTeacher(id: string, { name, admin, classrooms }: TeacherValues) {
 		const profile = await teacherProfile(this.#staff.staffKey, id, name);
-		await this.#change('PUT', `/api/teachers/${id}`, { admin, classrooms, profile });
+		const { revision } = this.catalog;
+		await this.#change('PUT', `/api/teachers/${id}`, { revision, admin, classrooms, profile });
 	}
 
 	removeTeacher(id: string) {

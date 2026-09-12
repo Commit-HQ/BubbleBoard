@@ -379,6 +379,7 @@ export const en = {
 				'Setup isn’t ready on this installation. Ask whoever installed BubbleBoard.',
 			'last-admin': 'BubbleBoard needs at least one admin. Make someone else an admin first.',
 			'not-empty': 'Move or remove this classroom’s children first.',
+			'empty-name': 'A name can’t be left blank. Type one and try again.',
 			stale:
 				'Someone else changed this at the same time. It’s up to date now, so please try again.',
 			'not-found': 'This doesn’t exist anymore.',

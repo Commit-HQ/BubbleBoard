@@ -240,21 +240,45 @@ export async function newClassroom(staffKey: CryptoKey, name: string): Promise<N
 	return { id, profile: await classroomProfile(key, id, name), groupKeyForStaff: envelopes[0] };
 }
 
-export function classroomProfile(groupKey: CryptoKey, classroom: string, name: string) {
-	return encryptData({ name }, groupKey, { purpose: 'classroom-profile', classroom });
+/** A name that is empty once trimmed. Readers refuse such a record, so it's never written. */
+export class EmptyNameError extends Error {
+	constructor() {
+		super('Empty name');
+		this.name = 'EmptyNameError';
+	}
 }
 
-export function teacherProfile(staffKey: CryptoKey, teacher: string, name: string) {
-	return encryptData({ name }, staffKey, { purpose: 'teacher-profile', teacher });
+/** Every name goes through here before it's encrypted, so a record is never one its readers refuse. */
+function writeName(name: string) {
+	const trimmed = name.trim();
+	if (!trimmed) throw new EmptyNameError();
+	return trimmed;
 }
 
-export function familyProfile(staffKey: CryptoKey, family: string, name: string) {
-	return encryptData({ name }, staffKey, { purpose: 'family-profile', family });
+export async function classroomProfile(groupKey: CryptoKey, classroom: string, name: string) {
+	return encryptData({ name: writeName(name) }, groupKey, {
+		purpose: 'classroom-profile',
+		classroom
+	});
 }
 
-export function childProfile(staffKey: CryptoKey, child: Pick<Child, 'id' | 'name' | 'families'>) {
+export async function teacherProfile(staffKey: CryptoKey, teacher: string, name: string) {
+	return encryptData({ name: writeName(name) }, staffKey, { purpose: 'teacher-profile', teacher });
+}
+
+export async function familyProfile(staffKey: CryptoKey, family: string, name: string) {
+	return encryptData({ name: writeName(name) }, staffKey, { purpose: 'family-profile', family });
+}
+
+export async function childProfile(
+	staffKey: CryptoKey,
+	child: Pick<Child, 'id' | 'name' | 'families'>
+) {
 	const { id, name, families } = child;
-	return encryptData({ name, families }, staffKey, { purpose: 'child-profile', child: id });
+	return encryptData({ name: writeName(name), families }, staffKey, {
+		purpose: 'child-profile',
+		child: id
+	});
 }
 
 /** A card for a teacher: the Staff Key, re-wrapped from this device's own card. */

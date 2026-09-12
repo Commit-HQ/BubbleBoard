@@ -5,6 +5,7 @@ import {
 	byId,
 	childProfile,
 	createKindergarten,
+	EmptyNameError,
 	familyCard,
 	familyLinks,
 	newClassroom,
@@ -83,6 +84,20 @@ describe('kindergarten records', () => {
 		const recoveryAccess = staffAccess(teachers[1].credential, true);
 		const recoveryKeys = await openStaffKeys(recoveryAccess, recovery.unlockKey);
 		expect((await openCatalog(recoveryKeys.staffKey, records)).teachers).toHaveLength(2);
+	});
+
+	it('refuse a blank name before encrypting it, and keep names trimmed', async () => {
+		await expect(createKindergarten('   ')).rejects.toThrow(EmptyNameError);
+		const { staffKey } = (await setUpKindergarten()).keys;
+		await expect(newClassroom(staffKey, '')).rejects.toThrow(EmptyNameError);
+		await expect(newFamily(staffKey, ' \n ')).rejects.toThrow(EmptyNameError);
+		await expect(
+			childProfile(staffKey, { id: createId(), name: '  ', families: [] })
+		).rejects.toThrow(EmptyNameError);
+
+		const classroom = await newClassroom(staffKey, '  Bubbles ');
+		const catalog = await openCatalog(staffKey, { ...noRecords, classrooms: [classroom] });
+		expect(catalog.classrooms.map(({ name }) => name)).toEqual(['Bubbles']);
 	});
 
 	it('open for a teacher card made later, children with their families included', async () => {

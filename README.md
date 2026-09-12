@@ -67,12 +67,14 @@ Add interface copy to both `src/lib/i18n/en.ts` and `hr.ts`. When bundling a new
 4. Set `PUBLIC_SITE_URL` in `.env` to the origin the site will be served from, such as `https://bubbleboard.example.com`. It is read when you build.
 5. Run `npm run validate` and `npx wrangler deploy --dry-run`.
 6. Run `npm run deploy`. The first deploy creates the database, applies its migrations, stores a new `SETUP_TOKEN` secret, and prints a setup link. Later deploys apply new migrations and leave the token alone.
-7. Open the setup link on the first admin's device, enter their name, and print or save both cards before continuing. Keep the recovery card somewhere safe: it can do everything an admin can.
-8. To use your own domain, add it to the Worker in the Cloudflare dashboard (**Workers & Pages → your Worker → Settings → Domains & Routes**). Domains are kept out of `wrangler.jsonc` so the configuration works for every installation. Setup links and printed cards use the address they were opened on, so set up on the final domain.
+7. To use your own domain, add it to the Worker in the Cloudflare dashboard (**Workers & Pages → your Worker → Settings → Domains & Routes**) before opening the setup link, which points at `PUBLIC_SITE_URL`. Domains are kept out of `wrangler.jsonc` so the configuration works for every installation. Printed cards use the address setup was opened on, so set up on the final domain.
+8. Open the setup link on the first admin's device, enter their name, and print or save both cards before continuing. Keep the recovery card somewhere safe: it can do everything an admin can.
 
 The setup token only allows the first setup. If the link is lost before then, `npm run setup-link` replaces the token and prints a new link.
 
-If setup finished but its cards were neither printed nor saved, nobody can open the kindergarten's records, and the only way forward is to start over. This deletes every record:
+If setup finished but its cards were neither printed nor saved, the device that ran setup is still connected as the admin. Open BubbleBoard there, go to **Teachers**, and use **Replace card** on your own name and on the recovery card, then print or save the new cards. The old ones stop working.
+
+Start over only when no device or card can open BubbleBoard, for example when the setup page closed before it showed the cards. This deletes every record:
 
 ```sh
 npx wrangler d1 execute DB --remote --file scripts/start-over.sql

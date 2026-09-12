@@ -30,7 +30,6 @@
 		event.preventDefault();
 		const form = new FormData(event.currentTarget);
 		const name = formText(form, 'name');
-		if (!name) return;
 		const admin = self ? teacher?.admin === true : form.has('admin');
 		task.run(() => onsubmit({ name, admin, classrooms: form.getAll('classroom').map(String) }));
 	}

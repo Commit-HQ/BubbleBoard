@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import type { RequestEvent } from '@sveltejs/kit';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { FamilyLinks, NewCredential, NewFamily, Staff } from '$lib/api';
 import { toBase64Url } from '$lib/base64url';
 import { createId } from '$lib/crypto';
@@ -25,6 +25,8 @@ import { identityForCard, requireAdmin, requireStaff, startSession, type Admin }
 // placeholders, because the server never opens them.
 
 type Statement = { sql: string; params: SQLInputValue[] };
+
+const day = 24 * 60 * 60 * 1000;
 
 /** The part of D1's API the server uses, over an in-memory SQLite database with the migrations applied. */
 function localDatabase() {
@@ -267,6 +269,32 @@ describe('sessions', () => {
 		await db.prepare('UPDATE sessions SET expires_at = 0').run();
 		await expect(requireStaff(expired)).rejects.toMatchObject({ status: 401 });
 	});
+
+	it('renew while in use, in the database and in the cookie', async () => {
+		const db = localDatabase();
+		const { teachers } = await setUpKindergarten(db);
+		const request = requestTo(db);
+		await startSession(request, teachers[0].credential.id);
+		const setCookie = vi.spyOn(request.cookies, 'set');
+		await requireStaff(request);
+		expect(setCookie).not.toHaveBeenCalled();
+
+		// A session used near the end of its 90 days gets all of them again.
+		await db
+			.prepare('UPDATE sessions SET expires_at = ?')
+			.bind(Date.now() + day)
+			.run();
+		await requireStaff(request);
+		const session = await db
+			.prepare('SELECT expires_at AS expiresAt FROM sessions')
+			.first<{ expiresAt: number }>();
+		expect(session?.expiresAt).toBeGreaterThan(Date.now() + 89 * day);
+		expect(setCookie).toHaveBeenCalledWith(
+			'session',
+			expect.any(String),
+			expect.objectContaining({ maxAge: (90 * day) / 1000 })
+		);
+	});
 });
 
 describe('the kindergarten', () => {
@@ -280,6 +308,7 @@ describe('the kindergarten', () => {
 		);
 		await expect(
 			changeTeacher(db, admin, adminTeacher.id, {
+				revision: await revision(db),
 				admin: false,
 				profile: 'profile',
 				classrooms: []
@@ -337,5 +366,27 @@ describe('the kindergarten', () => {
 		await expect(changeChild(db, admin, child, move)).rejects.toMatchObject(conflict('stale'));
 		const { families } = await kindergarten(db, admin);
 		expect(families).toMatchObject([{ id: family.id, classrooms: [owls] }]);
+	});
+
+	it('refuses a teacher change from an outdated form, so it can’t give back what was taken away', async () => {
+		const db = localDatabase();
+		const { admin } = await setUpKindergarten(db);
+		const bubbles = await addClassroomTo(db, admin);
+		const { teacher } = await addTeacherTo(db, admin, [bubbles]);
+		const read = { revision: await revision(db), admin: false, classrooms: [bubbles] };
+
+		// One admin takes the teacher out of Bubbles…
+		await changeTeacher(db, admin, teacher, { ...read, profile: 'profile', classrooms: [] });
+		// …while another, with the teacher's page open from before, corrects the name.
+		await expect(
+			changeTeacher(db, admin, teacher, { ...read, profile: 'corrected' })
+		).rejects.toMatchObject(conflict('stale'));
+		const { teachers } = await kindergarten(db, admin);
+		expect(teachers).toContainEqual({
+			id: teacher,
+			admin: false,
+			profile: 'profile',
+			classrooms: []
+		});
 	});
 });
