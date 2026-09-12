@@ -19,7 +19,14 @@ import {
 	replaceTeacherCard,
 	setUp
 } from './catalog';
-import { identityForCard, requireAdmin, requireStaff, startSession, type Admin } from './session';
+import {
+	identityForCard,
+	requireAdmin,
+	requireIdentity,
+	requireStaff,
+	startSession,
+	type Admin
+} from './session';
 
 // The database boundary on the real migrations: who can read and change what. Profiles and keys are
 // placeholders, because the server never opens them.
@@ -73,6 +80,13 @@ function requestTo(db: D1Database) {
 			delete: (name: string) => void cookies.delete(name)
 		}
 	} as unknown as RequestEvent;
+}
+
+/** A device connected with a card: requests carrying the session the card started. */
+async function deviceWith(db: D1Database, credentialId: string) {
+	const request = requestTo(db);
+	await startSession(request, credentialId);
+	return request;
 }
 
 function credential(): NewCredential {
@@ -237,44 +251,58 @@ describe('sessions', () => {
 		const family = newFamily();
 		await addChildTo(db, admin, bubbles, family);
 		const teacher = await addTeacherTo(db, admin, [bubbles]);
-		const connected = async (credentialId: string) => {
-			const request = requestTo(db);
-			await startSession(request, credentialId);
-			return request;
-		};
 
-		await expect(requireAdmin(await connected(teachers[0].credential.id))).resolves.toMatchObject({
+		await expect(
+			requireAdmin(await deviceWith(db, teachers[0].credential.id))
+		).resolves.toMatchObject({
 			admin: true
 		});
-		const asTeacher = await connected(teacher.credential);
+		const asTeacher = await deviceWith(db, teacher.credential);
 		await expect(requireStaff(asTeacher)).resolves.toMatchObject({ teacher: teacher.teacher });
 		await expect(requireAdmin(asTeacher)).rejects.toMatchObject({ status: 403 });
-		await expect(requireStaff(await connected(family.credential.id))).rejects.toMatchObject({
+		await expect(requireStaff(await deviceWith(db, family.credential.id))).rejects.toMatchObject({
 			status: 403
 		});
 		await expect(requireStaff(requestTo(db))).rejects.toMatchObject({ status: 401 });
 	});
 
-	it('end when their card is replaced, or after they run out', async () => {
+	it('end when their card is replaced or its owner removed, or after they run out', async () => {
 		const db = localDatabase();
 		const { teachers, admin } = await setUpKindergarten(db);
-		const teacher = await addTeacherTo(db, admin, []);
-		const replaced = requestTo(db);
-		await startSession(replaced, teacher.credential);
-		await replaceTeacherCard(db, admin, teacher.teacher, credential());
-		await expect(requireStaff(replaced)).rejects.toMatchObject({ status: 401 });
+		const bubbles = await addClassroomTo(db, admin);
+		const [family, leaving] = [newFamily(), newFamily()];
+		await addChildTo(db, admin, bubbles, family);
+		const child = await addChildTo(db, admin, bubbles, leaving);
+		const [teacher, former] = [
+			await addTeacherTo(db, admin, [bubbles]),
+			await addTeacherTo(db, admin, [bubbles])
+		];
+		const adminDevice = await deviceWith(db, teachers[0].credential.id);
+		const devices = [
+			await deviceWith(db, teacher.credential),
+			await deviceWith(db, family.credential.id),
+			await deviceWith(db, former.credential),
+			await deviceWith(db, leaving.credential.id)
+		];
 
-		const expired = requestTo(db);
-		await startSession(expired, teachers[0].credential.id);
+		await replaceTeacherCard(db, admin, teacher.teacher, credential());
+		await replaceFamilyCard(db, admin, family.id, credential());
+		await removeTeacher(db, admin, former.teacher);
+		await removeChild(db, admin, child, await links(db, { removeFamilies: [leaving.id] }));
+		for (const device of devices) {
+			await expect(requireIdentity(device)).rejects.toMatchObject({ status: 401 });
+		}
+
+		// Other devices stay connected until their sessions run out.
+		await expect(requireAdmin(adminDevice)).resolves.toMatchObject({ admin: true });
 		await db.prepare('UPDATE sessions SET expires_at = 0').run();
-		await expect(requireStaff(expired)).rejects.toMatchObject({ status: 401 });
+		await expect(requireAdmin(adminDevice)).rejects.toMatchObject({ status: 401 });
 	});
 
 	it('renew while in use, in the database and in the cookie', async () => {
 		const db = localDatabase();
 		const { teachers } = await setUpKindergarten(db);
-		const request = requestTo(db);
-		await startSession(request, teachers[0].credential.id);
+		const request = await deviceWith(db, teachers[0].credential.id);
 		const setCookie = vi.spyOn(request.cookies, 'set');
 		await requireStaff(request);
 		expect(setCookie).not.toHaveBeenCalled();

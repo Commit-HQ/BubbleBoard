@@ -1,14 +1,75 @@
-# Next step: teacher setup and family access
+# Next step: notices with notifications
 
 ## Outcome
 
-An admin sets up the kindergarten and saves a recovery card, adds classrooms and teachers, and adds children with family cards. A parent opens BubbleBoard on another device, scans a family card, and sees the names of their children's classrooms, decrypted locally. The same card works on every device at home. Removing access blocks subsequent authenticated requests.
+A teacher posts a notice to one or more classrooms: formatted text with emoji on a paper colour, kept for the number of days they choose. Families in those classrooms and their teachers get a generic notification and open the notice, decrypted on their device. The author or an admin can edit or delete it at any time. On iPhone and iPad, parents add BubbleBoard to the Home Screen first; on Android and computers, notifications also work in the browser.
 
-This is the first working product slice, built with fictional data. Notices with push are the immediate next slice; photos follow.
+The kindergarten access slice, recorded at the end, is implemented; its checks on a real installation come first. Photos follow this slice.
 
-## Decisions from the access design sessions — 2026-09-12
+## Decisions from the notices design session — 2026-09-12
 
-Where the user experience is concerned, the simplest option won; deferred variants need no data migration later.
+BubbleBoard replaces the corkboard in the kindergarten hallway, so putting up a notice should be as easy and cheerful as pinning a note to it.
+
+- **Home is the board.** Everyone's home shows notices, newest first, each with its classrooms, author, and time, on its paper colour. Staff see "New notice" and their tiles above the notices. Admins see every classroom's notices, teachers their classrooms', and families their children's classrooms'; a family with children in two of a notice's classrooms sees it once. A family that joins later sees the notices that are still up, as on the real board.
+- **Audience:** a notice goes to the classrooms ticked when posting: a teacher's own, or any or all for an admin.
+- **Writing:** a rich editor with bold, lists, a few text colours, links, and emoji ([Editor](#editor)). The background is one of about six soft paper colours from the app's palette, or white, and text colours are limited to those readable on every paper. The author's name is stored inside the encrypted notice, because families can't open teacher records; a notice posted with the recovery card has no author name.
+- **Keeping and changing:** when posting, the teacher chooses how long the notice stays: 1, 3, 7, 14, 30, 60, or 90 days, with 30 preselected, counted from when it was first posted. The author and admins can change everything about a notice, its classrooms and days included, and choose whether the change notifies everyone again; a changed notice says it was edited, and one that notifies again moves to the top. They can also delete it at once. A removed teacher's notices stay until they expire or an admin deletes them. Expired and deleted notices leave every board at its next load, and the server deletes them (spec §52).
+- **Encryption:** every save makes a new random Notice Key. The notice's text, colour, and author name are encrypted once with it, and the key is wrapped with the Group Key of each chosen classroom: a notice for twenty classrooms is one envelope and twenty small keys, and a classroom taken off a notice can't open its later versions. Staff open Group Keys with the Staff Key, families with their Family Key. The server stores the notice's ID, the author's teacher ID, its classrooms and times, and the envelopes. The new purposes go into docs/access-format.md with the implementation.
+- **Who is notified:** devices that turned on notifications, for a family in one of the notice's classrooms or a teacher assigned to one, except the device that posted. Admins aren't notified for classrooms they aren't assigned to. The notification says only "New notice from your kindergarten" or "Nova obavijest iz vrtića", in the language notifications were turned on in.
+- **Turning notifications on:** a connected device's home shows a card, "Get a notification when there's a new notice", with Turn on and Not now. Turn on asks for permission from that tap, then sends a test notification. Not now hides the card on that device; This device always has the switch. If permission was refused, the card explains how to allow it in the device's settings, because the browser won't ask again. Where push can't work, such as Safari on iPhone outside the Home Screen app, the card isn't shown.
+- **iPhone and iPad:** push works only in the Home Screen app, a card link from the camera always opens in Safari, and the installed app doesn't share Safari's storage. So on iPhone and iPad, a card link opened outside the Home Screen app shows short Add to Home Screen steps instead of connecting, with a quiet "Continue in Safari without notifications". Inside the installed app, the parent connects with Scan card or the code. Android and computers connect right away; installing there is optional, and Chrome's installed app shares the browser's connection.
+- **Words:** notice and notification in English. Croatian keeps "obavijest" for both, as the landing page does.
+- **Delivery:** pushes carry no content. The service worker always shows the fixed text, so the server needs no payload encryption, and every push shows a notification, as Safari requires. Publishing puts the devices to notify on a Cloudflare Queue in groups of 40, below the Free plan's 50 outgoing requests per invocation. The same Worker sends each group with the installation's VAPID key, retries 429 and 5xx responses later, and deletes subscriptions the push service reports gone (404 and 410). SvelteKit's Cloudflare adapter builds only a `fetch` handler, so a small Worker entry file adds the queue consumer and a daily cleanup of expired notices.
+- **Subscriptions** belong to the session that created them (spec §39): signing out, a replaced card, a removed teacher or family, or an expired session deletes them. The app sends its subscription whenever it opens, which keeps it current and moves it to a new session. The VAPID key pair is one Worker secret per installation, created when missing by `npm run deploy` and by local setup, like the setup token, and never rotated: a new key silently ends every subscription.
+- **Installing:** a web app manifest for each language, starting at `/app` or `/en/app`, with the same app ID and scope, PNG icons, and an Apple touch icon. The service worker handles only pushes and notification taps: no caching or offline copies.
+
+### Editor
+
+Decided after comparing editors for Svelte on phones, output that renders without HTML, and the CSP.
+
+## Deferred
+
+- Unread markers and app icon badges.
+- Declarative Web Push (iOS 18.4 and later), which needs an encrypted payload.
+- Scheduled, pinned, or recurring notices; reactions, comments, and read receipts, which would tell the server who read what.
+- Filtering the board by classroom.
+- Files and images in notices, which come with documents and photos.
+
+## Scope and constraints
+
+- Croatian and English throughout, including install steps and notification text.
+- The editor loads only on the page where notices are written. Boards render a notice's stored structure with the app's own components, never as HTML (spec §36). Colours and backgrounds are classes from a fixed set, because the CSP allows no inline styles.
+- The server authorizes every request: teachers post, change, and delete in their assigned classrooms, admins everywhere, and families read their children's classrooms. Every staff card opens the same Staff Key, so check each new query against that trade-off (docs/access-format.md).
+- The Free plan keeps working: queue operations and D1 writes per notice stay small, and nothing polls.
+- No offline content, background sync, or notice content in notifications.
+
+## Review and acceptance evidence
+
+Return this slice in reviewable checkpoints. The owner reviews and commits each checkpoint; agents do not commit automatically. Use synthetic people and content until the access boundary is reviewed; this is a review gate for real data, not a new approval flow for routine development.
+
+Before calling the slice complete, demonstrate:
+
+1. A notice to two classrooms reaching a family with children in both once, a family in one of them, and their teachers, but not an unassigned admin, with notifications on a real iPhone Home Screen app, an Android phone, and a desktop browser.
+2. Installing first on iPhone and iPad, Continue in Safari included, and connecting in the installed app with a photo and with the code.
+3. Changing a notice with and without notifying again, deleting one, and expiry, each removing the old notice from every board and from D1.
+4. Notifications stopping after signing out, a replaced card, a removed teacher or family, and an expired session, and gone subscriptions being deleted.
+5. Automated tests for Notice Key wrapping and wrong-key, tampering, and context failures; authorization for posting, changing, deleting, and reading across classrooms; and delivery groups, retries, and cleanup.
+6. The production build with its CSP, manifest, and service worker, and Croatian and English phone and desktop walkthroughs.
+7. A D1 export and captured requests showing no notice text, colours, or names in plaintext, and pushes without content.
+
+## First: check kindergarten access on a real installation
+
+The access slice is implemented and passes `npm run validate`. Deploy the first installation, then:
+
+- try card links, photos of cards, typed codes, and browser storage on a real iPhone and Android phone;
+- inspect a D1 export and captured requests: no names, content, or card secrets, only tokens, hashes, and ciphertext;
+- walk through setup, a family card, and a second device in Croatian and English, on a phone and a desktop.
+
+Once a family can connect there, the landing page links to the app instead of saying it's coming.
+
+## Earlier decisions: kindergarten access — 2026-09-12
+
+Where the user experience is concerned, the simplest option won; deferred variants need no data migration later. The notices decisions above take precedence where they differ.
 
 - **A kindergarten, not a classroom.** An installation holds any number of classrooms and one catalog of children and families. The spec's Teacher Key for each classroom becomes one **Staff Key** for the kindergarten, opened by every staff card. The server enforces which classrooms teachers see and what admins may change; families stay separated by encryption. docs/access-format.md records the trade-off.
 - **Roles:** an admin is a teacher who also manages classrooms, teachers, children, and family cards. There can be several, and the last working admin card can't be revoked. Teachers see the children and family cards of their own classrooms and can replace those families' cards; later they post notices and photos there.
@@ -17,47 +78,17 @@ Where the user experience is concerned, the simplest option won; deferred varian
 - **Classrooms** can be added and renamed, and deleted only when they have no children.
 - **Teachers:** "Add teacher" asks for a name, classrooms, and whether they're an admin, then shows their card. Replacing a lost card keeps the classrooms and admin setting. If every admin card is lost, the recovery card is the answer; a command that makes a teacher an admin can come later.
 - **Children and families:** a child has a name and one classroom. A family has one named card, such as "Ivana (mum)", used on every device at home, and one or more children. A sibling is added with the brother's or sister's family cards; parents who live apart get separate cards ("Add another family card"). A family's classrooms follow from its children, so moving a child moves its families' access. Removing a child also removes family cards left without children, after a confirmation that names them. "Replace card" issues a new card and disconnects every device that used the old one.
-- **Parents** use one card for all their children's classrooms. They see a built-in "You've joined" screen naming their classrooms, and the empty feed; how one feed shows several classrooms is decided with notices.
+- **Parents** use one card for all their children's classrooms. They see a built-in "You've joined" screen naming their classrooms, which the board replaces.
 - **Cards:** a 128-bit secret as a 28-character typeable code with two check characters, carried in the QR link as `#card=`. Every card has the same format; the server knows what a card is. Card derivation is versioned separately from envelopes, with a fixed compatibility test (docs/access-format.md).
 - **Connecting:** a phone's camera opens the card link; in the app, "Scan card" takes or chooses a photo and "Enter code" accepts the typed code.
 - **One active card per browser.** A working card is never replaced without confirmation, and device keys are stored per card.
 - **Names** of classrooms, teachers, children, and family cards live only in encrypted records.
-- **Screens:** home has a tile for each of the viewer's classrooms (every classroom for admins), Add classroom and Teachers for admins, and This device. A classroom lists its children. A child's page shows its family cards, with siblings and their classrooms, and the actions the viewer may take; teachers see only siblings in their own classrooms. When notices arrive, decide whether they become a tile or the home screen.
+- **Screens:** home has a tile for each of the viewer's classrooms (every classroom for admins), Add classroom and Teachers for admins, and This device. A classroom lists its children. A child's page shows its family cards, with siblings and their classrooms, and the actions the viewer may take; teachers see only siblings in their own classrooms.
 
-## Deferred
+Deferred from that slice:
 
 - Expiry for staff cards (spec §32); staff cards are permanent for now.
 - A family card replacement that keeps devices connected.
 - A live camera scanner.
 - A kindergarten-wide Families list.
 - An admin reset for a suspected key compromise; it stays a documented procedure. Revocation stops server access but doesn't erase keys or copies a device already has.
-
-## Scope and constraints
-
-- One installation per kindergarten.
-- Croatian and English throughout the app, including errors and recovery instructions.
-- The marketing URLs stay `/` and `/en`. App URLs are `/app` and `/en/app`; setup is `/app/setup` and `/en/app/setup`. Route construction stays centralized and QR parsing independent of translated copy.
-- No email/password accounts, external identity provider, ORM, global state framework, or device-specific encryption hierarchy.
-- D1 for the access records. R2 is unnecessary until media exists.
-- No messaging UI, document uploads, face editor, offline content library, or notification permission prompt in this slice, and no controls that pretend those features work.
-- Route handlers and a few cohesive modules: client crypto, local key storage, server sessions and access, and database operations. No repository, service, or controller layer for each table. Server-only helpers belong under `src/lib/server`; browser keys never cross that boundary.
-
-## Review and acceptance evidence
-
-Return this slice in reviewable checkpoints. The owner reviews and commits each checkpoint; agents do not commit automatically.
-
-Before calling the slice complete, demonstrate:
-
-1. Fresh local setup using documented commands and D1 migrations, with no remote account needed.
-2. Admin setup → saved recovery card → family card → another device opening its classrooms.
-3. Family card replacement, device disconnection, teacher card revocation, and recovery card tests.
-4. Automated wrong-key, tampering, and context tests, and authorization and isolation tests.
-5. Production build and CSP verification, plus Croatian/English phone and desktop walkthroughs.
-6. A real iPhone and Android check of QR scanning or import and browser storage behavior. PWA installation isn't required for this slice; notification onboarding and the browser-to-installed-app handoff are verified in the next slice.
-7. Inspection of a local D1 export and captured requests showing that test names, content, and card secrets are absent from server persistence and requests, while expected auth tokens and ciphertext are present.
-
-Use synthetic people and content until the access boundary is reviewed. This is a review gate for real data, not a new approval flow for routine development.
-
-## Immediately afterward: encrypted notices with push
-
-Teacher publishes an encrypted notice; a family receives a generic notification and opens the decrypted notice. Add manifest/service-worker installation, notification enrollment and a test notification, session-owned subscriptions, revoke/expiry cleanup, and simple retry handling as part of that complete flow. Keep push prominent and test actual iOS/Android behavior before expanding into photo work.

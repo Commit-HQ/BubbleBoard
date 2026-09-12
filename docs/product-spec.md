@@ -7,7 +7,8 @@
 > - **Kindergarten-wide access** (replaces the Teacher Key for each classroom in §2, §5–6, §9–14, §17, and §49–51). An installation has any number of classrooms and one catalog of children and families. Every staff card opens one Staff Key; admins manage classrooms, teachers, and the catalog, and teachers work in their assigned classrooms, which the server enforces. A family card opens every classroom the family's children are in. The [access format](access-format.md) records the keys and the security trade-off, and the [next step plan](next-step-plan.md) the product decisions.
 > - **Language URLs** (not covered by this specification). Croatian is served at `/` and English at `/en`, without a language cookie. App routes and QR links (§33) must fit this scheme.
 > - **Build order** (replaces the pilot steps in §60). Follow the README's “Next slices”: teacher setup and family enrollment; an encrypted notice with push notifications; privacy-aware photos; then private messages and attachments.
-> - **Media retention** (§42) is decided as written: 1, 3, 7, 14, 30, 60, or 90 days, with 30 days as the default for classroom photos.
+> - **Notices** (extends §6, §34, §39–40, and §53): a notice can go to several classrooms, encrypted once with its own Notice Key, which each classroom's Group Key opens. Pushes carry no content. On iPhone and iPad, parents add the app to the Home Screen before connecting; other devices connect in the browser and turn on notifications from home. The [next step plan](next-step-plan.md) records the decisions.
+> - **Media retention** (§42) is decided as written: 1, 3, 7, 14, 30, 60, or 90 days, with 30 days as the default for classroom photos and notices.
 > - **Deployment** (§46–47) is not automated yet. CI only validates; automated deploys, build manifests, and post-deploy verification come with deployment work, opt-in for each installation.
 
 # 1. Product Goal
