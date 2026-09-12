@@ -3,8 +3,9 @@
 	"name": "bubbleboard",
 	"compatibility_date": "2026-09-11",
 	"compatibility_flags": ["nodejs_als"],
-	// SvelteKit's fetch handler, with the queue and scheduled handlers it doesn't build (worker/index.js).
-	"main": "worker/index.js",
+	// Where SvelteKit's Cloudflare adapter writes its fetch handler. Deploys and previews run worker/index.js
+	// instead, which adds the queue and scheduled handlers the adapter doesn't build.
+	"main": ".svelte-kit/cloudflare/_worker.js",
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"

@@ -6,7 +6,7 @@
 	"scripts": {
 		"dev": "node scripts/push-key.js --local && wrangler d1 migrations apply DB --local && vite dev",
 		"build": "vite build",
-		"preview": "node scripts/push-key.js --local && wrangler d1 migrations apply DB --local && wrangler dev --port 4173",
+		"preview": "node scripts/push-key.js --local && wrangler d1 migrations apply DB --local && wrangler dev worker/index.js --port 4173",
 		"setup-link": "node scripts/setup-link.js",
 		"setup-link:local": "node scripts/setup-link.js --local",
 		"prepare": "svelte-kit sync",
@@ -16,7 +16,7 @@
 		"format": "prettier --write .",
 		"gen": "wrangler types",
 		"test": "vitest run",
-		"deploy": "npm run build && wrangler deploy && wrangler d1 migrations apply DB --remote && node scripts/push-key.js && node scripts/setup-link.js --if-missing",
+		"deploy": "npm run build && wrangler deploy worker/index.js &&wrangler d1 migrations apply DB --remote && node scripts/push-key.js && node scripts/setup-link.js --if-missing",
 		"validate": "npm run check && npm run lint && npm run test && npm run build"
 	},
 	"devDependencies": {
