@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { toBase64Url } from '$lib/base64url';
 import { createId } from '$lib/crypto';
-import { familyCards, familyLinks, newChild, setup } from './validate';
+import { familyCards, familyLinks, newChild, newNotice, noticeChange, setup } from './validate';
 
 // Structure the server enforces on requests it can't read. Envelopes only need the right form here.
 
@@ -54,4 +54,20 @@ it('refuses new family cards that repeat a family or a card', () => {
 	expect(() => familyCards({ cards: [first, { ...second, family: first.family }] })).toThrow();
 	const shared = { ...second.credential, id: first.credential.id };
 	expect(() => familyCards({ cards: [first, { ...second, credential: shared }] })).toThrow();
+});
+
+it('refuses notices without classrooms, with a classroom twice, too big, or up for other days', () => {
+	const key = () => ({ classroom: createId(), noticeKey: envelope(48) });
+	const notice = { id: createId(), content: envelope(200), days: 30, classrooms: [key(), key()] };
+	expect(newNotice(notice).classrooms).toHaveLength(2);
+	expect(noticeChange({ ...notice, announce: false }).announce).toBe(false);
+	for (const refused of [
+		{ ...notice, classrooms: [] },
+		{ ...notice, classrooms: [notice.classrooms[0], notice.classrooms[0]] },
+		{ ...notice, days: 2 },
+		{ ...notice, content: envelope(40 * 1024) }
+	]) {
+		expect(() => newNotice(refused)).toThrow();
+	}
+	expect(() => noticeChange(notice)).toThrow();
 });

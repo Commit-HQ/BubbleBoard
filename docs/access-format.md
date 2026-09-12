@@ -16,11 +16,12 @@ Cards and encrypted records are versioned separately, because they age different
 
 Every key is 256 random bits from `crypto.getRandomValues`, generated in the browser and used with AES-256-GCM.
 
-| Key        | One for each | Opens                                                                                             |
-| ---------- | ------------ | ------------------------------------------------------------------------------------------------- |
-| Staff Key  | kindergarten | every Group Key and Family Key, and the teacher, child, and family records                        |
-| Group Key  | classroom    | the classroom profile (its name); later notices, roster, and photos                               |
-| Family Key | family       | the Group Key of each classroom its children are in; later its private messages and photo reveals |
+| Key        | One for each              | Opens                                                                                               |
+| ---------- | ------------------------- | --------------------------------------------------------------------------------------------------- |
+| Staff Key  | kindergarten              | every Group Key and Family Key, and the teacher, child, and family records                          |
+| Group Key  | classroom                 | the classroom profile (its name) and the Notice Key of each of its notices; later roster and photos |
+| Family Key | family                    | the Group Key of each classroom its children are in; later its private messages and photo reveals   |
+| Notice Key | notice, new at every save | the notice's text, paper colour, and author name                                                    |
 
 Every staff card, admin or teacher, opens the same Staff Key. Which classrooms a teacher sees, and what an admin may change, is decided by server authorization, not encryption. A teacher who also holds a copy of the database, or a server bug that serves another classroom's records, could therefore decrypt that classroom, and a lost staff card together with a database copy exposes the whole kindergarten. Whoever runs the server still reads nothing, and families stay separated by encryption. Separating teachers by encryption too would take an Admin Key, a key for each teacher, and a teacher key for each classroom, re-wrapped in an admin's browser at every change of assignment.
 
@@ -68,19 +69,21 @@ Everything encrypted, wrapped keys and data alike, is stored as one string:
 ["BubbleBoard", 1, "<purpose>", "<classroom ID or null>", "<subject ID or null>"]
 ```
 
-The classroom is set for records that belong to one classroom, and the subject is the credential, family, teacher, or child a record belongs to. An envelope opens only with the right key _in the record it was written for_: moved to another row, classroom, family, or purpose, even under the same key, it fails to decrypt rather than yielding the wrong key.
+The classroom is set for records that belong to one classroom, and the subject is the credential, family, teacher, child, or notice a record belongs to. An envelope opens only with the right key _in the record it was written for_: moved to another row, classroom, family, notice, or purpose, even under the same key, it fails to decrypt rather than yielding the wrong key.
 
-| Purpose                     | Holds                         | Encrypted with                     | Classroom    | Subject       |
-| --------------------------- | ----------------------------- | ---------------------------------- | ------------ | ------------- |
-| `staff-key-for-credential`  | Staff Key                     | the staff credential's unlock key  | `null`       | credential ID |
-| `family-key-for-credential` | Family Key                    | the family credential's unlock key | `null`       | credential ID |
-| `family-key-for-staff`      | Family Key                    | Staff Key                          | `null`       | family ID     |
-| `group-key-for-staff`       | Group Key                     | Staff Key                          | classroom ID | `null`        |
-| `group-key-for-family`      | Group Key                     | Family Key                         | classroom ID | family ID     |
-| `classroom-profile`         | the classroom's name          | Group Key                          | classroom ID | `null`        |
-| `teacher-profile`           | the teacher's name            | Staff Key                          | `null`       | teacher ID    |
-| `child-profile`             | the child's name and families | Staff Key                          | `null`       | child ID      |
-| `family-profile`            | the family card's name        | Staff Key                          | `null`       | family ID     |
+| Purpose                     | Holds                                            | Encrypted with                     | Classroom    | Subject       |
+| --------------------------- | ------------------------------------------------ | ---------------------------------- | ------------ | ------------- |
+| `staff-key-for-credential`  | Staff Key                                        | the staff credential's unlock key  | `null`       | credential ID |
+| `family-key-for-credential` | Family Key                                       | the family credential's unlock key | `null`       | credential ID |
+| `family-key-for-staff`      | Family Key                                       | Staff Key                          | `null`       | family ID     |
+| `group-key-for-staff`       | Group Key                                        | Staff Key                          | classroom ID | `null`        |
+| `group-key-for-family`      | Group Key                                        | Family Key                         | classroom ID | family ID     |
+| `classroom-profile`         | the classroom's name                             | Group Key                          | classroom ID | `null`        |
+| `teacher-profile`           | the teacher's name                               | Staff Key                          | `null`       | teacher ID    |
+| `child-profile`             | the child's name and families                    | Staff Key                          | `null`       | child ID      |
+| `family-profile`            | the family card's name                           | Staff Key                          | `null`       | family ID     |
+| `notice-key-for-classroom`  | Notice Key                                       | Group Key                          | classroom ID | notice ID     |
+| `notice-content`            | the notice's text, paper colour, and author name | Notice Key                         | `null`       | notice ID     |
 
 A wrapped key is its 32 raw bytes, encrypted like data; data records hold JSON. Record IDs are 128 random bits in base64url (22 characters) and encode nothing. The browser generates them, because it binds them into envelopes before the server stores anything. Names, such as "Ivana (mum)" on a family card, and which families a child belongs to live only inside these records.
 
@@ -106,7 +109,7 @@ Other keys are unwrapped into memory from envelopes fetched with the device's se
 
 ## What the server stores
 
-Opaque IDs, timestamps, hashes of auth and session tokens, envelopes, and a count of changes to teachers, children, and family cards, which keeps two devices from undoing each other's changes. To authorize requests and address notifications, it also knows which classroom each child is in, which classrooms each teacher and family belongs to, and which staff are admins. It never receives a card code or secret, an unlock key, a raw key, any classroom, teacher, child, family, or card name, or which families a child belongs to.
+Opaque IDs, timestamps, hashes of auth and session tokens, envelopes, and a count of changes to teachers, children, and family cards, which keeps two devices from undoing each other's changes. To authorize requests and address notifications, it also knows which classroom each child is in, which classrooms each teacher and family belongs to, which staff are admins, and which classrooms each notice is for, who posted it, and when it was posted, changed, and taken down. It never receives a card code or secret, an unlock key, a raw key, any classroom, teacher, child, family, or card name, or which families a child belongs to.
 
 ## Limits
 

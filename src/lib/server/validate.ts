@@ -9,12 +9,16 @@ import type {
 	NewClassroom,
 	NewCredential,
 	NewFamily,
+	NewNotice,
 	NewTeacher,
+	NoticeChange,
+	NoticeKey,
 	Setup,
 	TeacherChange
 } from '$lib/api';
 import { fromBase64Url } from '$lib/base64url';
 import { AUTH_TOKEN_BYTES, envelopeSize, isId, KEY_BYTES } from '$lib/crypto';
+import { noticeDays } from '$lib/notices';
 
 // Request bodies, checked before anything reaches the database. The server can't open profiles or keys,
 // so it checks their form; the browsers that open them check the rest.
@@ -189,3 +193,38 @@ export function childChange(body: Fields): ChildChange {
 }
 
 export const newChild = (body: Fields): NewChild => ({ id: id(body.id), ...childChange(body) });
+
+/** A notice's text, paper, and author name: a long notice with formatting stays well below this. */
+const maxNoticeBytes = 32 * 1024;
+
+function noticeContent(value: unknown) {
+	const size = envelopeSize(value);
+	return size !== undefined && size <= maxNoticeBytes ? (value as string) : invalid();
+}
+
+const days = (value: unknown) =>
+	noticeDays.includes(value as (typeof noticeDays)[number]) ? (value as number) : invalid();
+
+/** A notice's key for each of its classrooms: at least one, and each classroom once. */
+function noticeKeys(value: unknown): NoticeKey[] {
+	const keys = list(value, (item) => {
+		const key = fields(item);
+		return { classroom: id(key.classroom), noticeKey: wrappedKey(key.noticeKey) };
+	});
+	const classrooms = new Set(keys.map(({ classroom }) => classroom));
+	return keys.length && classrooms.size === keys.length ? keys : invalid();
+}
+
+export const newNotice = (body: Fields): NewNotice => ({
+	id: id(body.id),
+	content: noticeContent(body.content),
+	days: days(body.days),
+	classrooms: noticeKeys(body.classrooms)
+});
+
+export const noticeChange = (body: Fields): NoticeChange => ({
+	content: noticeContent(body.content),
+	days: days(body.days),
+	announce: flag(body.announce),
+	classrooms: noticeKeys(body.classrooms)
+});

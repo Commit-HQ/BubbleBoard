@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import type { RequestEvent } from '@sveltejs/kit';
 import { describe, expect, it, vi } from 'vitest';
@@ -19,6 +19,7 @@ import {
 	replaceTeacherCard,
 	setUp
 } from './catalog';
+import { board, changeNotice, deleteNotice, postNotice } from './notices';
 import {
 	identityForCard,
 	requireAdmin,
@@ -39,7 +40,12 @@ const day = 24 * 60 * 60 * 1000;
 function localDatabase() {
 	const sqlite = new DatabaseSync(':memory:');
 	sqlite.exec('PRAGMA foreign_keys = ON');
-	sqlite.exec(readFileSync('migrations/0001_access.sql', 'utf8'));
+	// Every migration, in order, as D1 applies them.
+	for (const file of readdirSync('migrations')
+		.filter((name) => name.endsWith('.sql'))
+		.sort()) {
+		sqlite.exec(readFileSync(`migrations/${file}`, 'utf8'));
+	}
 	const execute = ({ sql, params }: Statement) => {
 		const prepared = sqlite.prepare(sql);
 		if (prepared.columns().length) {
@@ -427,5 +433,142 @@ describe('the kindergarten', () => {
 			profile: 'profile',
 			classrooms: []
 		});
+	});
+});
+
+describe('notices', () => {
+	const keys = (classrooms: string[]) =>
+		classrooms.map((classroom) => ({ classroom, noticeKey: 'wrapped key' }));
+	const notice = (classrooms: string[], days = 30) => ({
+		id: createId(),
+		content: 'content',
+		days,
+		classrooms: keys(classrooms)
+	});
+	const change = (classrooms: string[], announce = false) => ({
+		content: 'changed',
+		days: 30,
+		announce,
+		classrooms: keys(classrooms)
+	});
+	const ids = (records: { id: string }[]) => records.map(({ id }) => id);
+	const count = async (db: D1Database) =>
+		(await db.prepare('SELECT COUNT(*) AS count FROM notices').first<{ count: number }>())?.count;
+
+	it('go to a teacher’s own classrooms, or any for an admin', async () => {
+		const db = localDatabase();
+		const { admin } = await setUpKindergarten(db);
+		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
+		const teacher = await addTeacherTo(db, admin, [bubbles]);
+
+		await expect(postNotice(db, teacher, notice([bubbles, owls]))).rejects.toMatchObject(
+			conflict('stale')
+		);
+		const own = notice([bubbles]);
+		expect(ids(await postNotice(db, teacher, own))).toEqual([own.id]);
+		const elsewhere = notice([owls]);
+		expect(ids(await postNotice(db, admin, elsewhere)).sort()).toEqual(
+			[own.id, elsewhere.id].sort()
+		);
+		expect(ids(await board(db, teacher))).toEqual([own.id]);
+	});
+
+	it('reach each family once, with the keys of its own classrooms only', async () => {
+		const db = localDatabase();
+		const { admin } = await setUpKindergarten(db);
+		const [bubbles, owls, ladybirds] = [
+			await addClassroomTo(db, admin),
+			await addClassroomTo(db, admin),
+			await addClassroomTo(db, admin)
+		];
+		const [both, owlsOnly, elsewhere] = [newFamily(), newFamily(), newFamily()];
+		await addChildTo(db, admin, bubbles, both);
+		await addChildTo(db, admin, owls, both.id);
+		await addChildTo(db, admin, owls, owlsOnly);
+		await addChildTo(db, admin, ladybirds, elsewhere);
+		await postNotice(db, admin, notice([bubbles, owls]));
+		const boardOf = async (family: NewFamily) =>
+			board(db, (await identityForCard(db, family.credential.authToken))!);
+
+		const [seen] = await boardOf(both);
+		expect(await boardOf(both)).toHaveLength(1);
+		expect(seen.classrooms.map(({ classroom }) => classroom).sort()).toEqual(
+			[bubbles, owls].sort()
+		);
+		expect((await boardOf(owlsOnly)).map(({ classrooms }) => classrooms)).toEqual([keys([owls])]);
+		expect(await boardOf(elsewhere)).toEqual([]);
+	});
+
+	it('change and delete for their author and admins, and a removed teacher’s for admins', async () => {
+		const db = localDatabase();
+		const { admin } = await setUpKindergarten(db);
+		const bubbles = await addClassroomTo(db, admin);
+		const [author, colleague] = [
+			await addTeacherTo(db, admin, [bubbles]),
+			await addTeacherTo(db, admin, [bubbles])
+		];
+		const posted = notice([bubbles]);
+		await postNotice(db, author, posted);
+
+		await expect(changeNotice(db, colleague, posted.id, change([bubbles]))).rejects.toMatchObject({
+			status: 403
+		});
+		await expect(deleteNotice(db, colleague, posted.id)).rejects.toMatchObject({ status: 403 });
+		expect(await changeNotice(db, author, posted.id, change([bubbles]))).toMatchObject([
+			{ id: posted.id, content: 'changed', editedAt: expect.any(Number) }
+		]);
+
+		await removeTeacher(db, admin, author.teacher);
+		expect(await board(db, admin)).toMatchObject([{ id: posted.id, teacher: null }]);
+		await expect(deleteNotice(db, author, posted.id)).rejects.toMatchObject({ status: 403 });
+		expect(await deleteNotice(db, admin, posted.id)).toEqual([]);
+		expect(await count(db)).toBe(0);
+	});
+
+	it('go back to the top when a change announces them, and leave when their days are up', async () => {
+		const db = localDatabase();
+		const { admin } = await setUpKindergarten(db);
+		const bubbles = await addClassroomTo(db, admin);
+		const [first, second] = [notice([bubbles]), notice([bubbles], 1)];
+		const day = 24 * 60 * 60 * 1000;
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			vi.setSystemTime(1_000_000);
+			await postNotice(db, admin, first);
+			vi.setSystemTime(2_000_000);
+			expect(ids(await postNotice(db, admin, second))).toEqual([second.id, first.id]);
+			vi.setSystemTime(3_000_000);
+			expect(ids(await changeNotice(db, admin, first.id, change([bubbles])))).toEqual([
+				second.id,
+				first.id
+			]);
+			vi.setSystemTime(4_000_000);
+			expect(ids(await changeNotice(db, admin, first.id, change([bubbles], true)))).toEqual([
+				first.id,
+				second.id
+			]);
+
+			// A day after it was posted, the second notice is off every board, and gone at the next change.
+			vi.setSystemTime(2_000_000 + day);
+			expect(ids(await board(db, admin))).toEqual([first.id]);
+			expect(await count(db)).toBe(2);
+			await postNotice(db, admin, notice([bubbles]));
+			expect(await count(db)).toBe(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('go with the last of their classrooms', async () => {
+		const db = localDatabase();
+		const { admin } = await setUpKindergarten(db);
+		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
+		const shared = notice([bubbles, owls]);
+		await postNotice(db, admin, shared);
+		await postNotice(db, admin, notice([owls]));
+
+		await deleteClassroom(db, admin, owls);
+		expect(await board(db, admin)).toMatchObject([{ id: shared.id, classrooms: keys([bubbles]) }]);
+		expect(await count(db)).toBe(1);
 	});
 });

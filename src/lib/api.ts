@@ -65,12 +65,44 @@ export type Kindergarten = {
 	families: { id: string; profile: string; familyKeyForStaff: string; classrooms: string[] }[];
 };
 
-/** What a connected device opens: a staff member's records, or the classrooms a family's card joined. */
-export type Access =
+/** A notice's key, wrapped with the Group Key of one of its classrooms. */
+export type NoticeKey = { classroom: string; noticeKey: string };
+
+/** A notice as the server stores it, with its keys for the classrooms the device belongs to. */
+export type NoticeRecord = {
+	id: string;
+	/** The teacher who posted it, until they're removed. */
+	teacher: string | null;
+	content: string;
+	postedAt: number;
+	/** When it last went to the top of the board: when posted, or changed with `announce`. */
+	announcedAt: number;
+	editedAt: number | null;
+	expiresAt: number;
+	classrooms: NoticeKey[];
+};
+
+/** A notice as a device changes it, sealed again under a new Notice Key. */
+export type NoticeChange = {
+	content: string;
+	/** How long it stays up, counted from when it was first posted. */
+	days: number;
+	/** Puts the notice back at the top of the board. */
+	announce: boolean;
+	classrooms: NoticeKey[];
+};
+export type NewNotice = Omit<NoticeChange, 'announce'> & { id: string };
+
+/**
+ * What a connected device opens: a staff member's records, or the classrooms a family's card joined, with
+ * the notices of the classrooms it sees.
+ */
+export type Access = (
 	| (Staff & { kindergarten: Kindergarten })
 	| (Extract<Identity, { kind: 'family' }> & {
 			classrooms: { id: string; profile: string; groupKeyForFamily: string }[];
-	  });
+	  })
+) & { notices: NoticeRecord[] };
 
 /** A request that failed: `status` is 0 when the server couldn't be reached, and `code` says why. */
 export class ApiError extends Error {

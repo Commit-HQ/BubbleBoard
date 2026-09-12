@@ -16,6 +16,8 @@ import type {
 	TeacherChange
 } from '$lib/api';
 import { hashAuthToken } from '$lib/crypto';
+import { transaction } from './database';
+import { board } from './notices';
 import type { Admin } from './session';
 
 // The kindergarten's records: plain SQL, and one batch, which D1 runs as a transaction, for each change.
@@ -24,21 +26,6 @@ import type { Admin } from './session';
 // doesn't have to ask for them again.
 
 type Owner = { teacher: string } | { family: string };
-
-/** Runs statements as one transaction, turning broken invariants into conflicts the app can explain. */
-async function transaction(db: D1Database, statements: D1PreparedStatement[]) {
-	try {
-		return await db.batch(statements);
-	} catch (cause) {
-		const message = cause instanceof Error ? cause.message : '';
-		if (message.includes('last-admin')) error(409, 'last-admin');
-		// The records changed since the device read them, or something the change refers to is gone.
-		if (message.includes('stale') || message.includes('FOREIGN KEY constraint failed')) {
-			error(409, 'stale');
-		}
-		throw cause;
-	}
-}
 
 /**
  * Starts a change to who can open what by moving the revision on from the one its device read. The
@@ -108,10 +95,15 @@ export async function setUp(db: D1Database, teachers: Setup['teachers']) {
 	}
 }
 
-/** What a connected device opens: a staff member's records, or the classrooms a family's card joined. */
+/**
+ * What a connected device opens: a staff member's records, or the classrooms a family's card joined, with
+ * the notices of the classrooms it sees.
+ */
 export async function accessFor(db: D1Database, current: Identity): Promise<Access> {
-	if (current.kind === 'staff')
-		return { ...current, kindergarten: await kindergarten(db, current) };
+	const notices = await board(db, current);
+	if (current.kind === 'staff') {
+		return { ...current, kindergarten: await kindergarten(db, current), notices };
+	}
 	const { results } = await db
 		.prepare(
 			`SELECT c.id, c.profile, fc.group_key_for_family AS groupKeyForFamily FROM family_classrooms fc
@@ -119,7 +111,7 @@ export async function accessFor(db: D1Database, current: Identity): Promise<Acce
 		)
 		.bind(current.family)
 		.all<{ id: string; profile: string; groupKeyForFamily: string }>();
-	return { ...current, classrooms: results };
+	return { ...current, classrooms: results, notices };
 }
 
 export async function kindergarten(db: D1Database, staff: Staff): Promise<Kindergarten> {
@@ -186,7 +178,12 @@ export async function deleteClassroom(db: D1Database, admin: Admin, id: string) 
 	if (await db.prepare('SELECT 1 FROM children WHERE classroom_id = ?').bind(id).first()) {
 		error(409, 'not-empty');
 	}
-	await changesOne(db, db.prepare('DELETE FROM classrooms WHERE id = ?').bind(id));
+	const [{ meta }] = await transaction(db, [
+		db.prepare('DELETE FROM classrooms WHERE id = ?').bind(id),
+		// Notices for this classroom alone go with it.
+		db.prepare('DELETE FROM notices WHERE id NOT IN (SELECT notice_id FROM notice_classrooms)')
+	]);
+	if (!meta.changes) error(404, 'not-found');
 	return kindergarten(db, admin);
 }
 

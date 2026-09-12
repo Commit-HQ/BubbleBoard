@@ -181,6 +181,7 @@ function familyAccess(
 			id: classroom,
 			profile: byId(classrooms, classroom).profile,
 			groupKeyForFamily
-		}))
+		})),
+		notices: []
 	};
 }

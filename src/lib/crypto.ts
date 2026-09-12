@@ -28,14 +28,16 @@ type KeyContext =
 	| { purpose: 'family-key-for-credential'; credential: string }
 	| { purpose: 'family-key-for-staff'; family: string }
 	| { purpose: 'group-key-for-staff'; classroom: string }
-	| { purpose: 'group-key-for-family'; classroom: string; family: string };
+	| { purpose: 'group-key-for-family'; classroom: string; family: string }
+	| { purpose: 'notice-key-for-classroom'; classroom: string; notice: string };
 
 /** The record encrypted data belongs to. */
 type DataContext =
 	| { purpose: 'classroom-profile'; classroom: string }
 	| { purpose: 'teacher-profile'; teacher: string }
 	| { purpose: 'child-profile'; child: string }
-	| { purpose: 'family-profile'; family: string };
+	| { purpose: 'family-profile'; family: string }
+	| { purpose: 'notice-content'; notice: string };
 
 /** A key that wraps or opens another key, and the record the wrapped key belongs to. */
 export type Wrapping = { key: CryptoKey; context: KeyContext };
@@ -218,8 +220,8 @@ async function open(envelope: string, key: CryptoKey, context: KeyContext | Data
 }
 
 // Binds an envelope to its record: format, purpose, the classroom of a classroom record, and the
-// credential, family, teacher, or child it belongs to. Moved to any other record, even one encrypted
-// with the same key, it doesn't open.
+// credential, family, teacher, child, or notice it belongs to. Moved to any other record, even one
+// encrypted with the same key, it doesn't open.
 function additionalData(context: KeyContext | DataContext) {
 	const ids: {
 		classroom?: string;
@@ -227,8 +229,9 @@ function additionalData(context: KeyContext | DataContext) {
 		family?: string;
 		teacher?: string;
 		child?: string;
+		notice?: string;
 	} = context;
-	const subject = ids.credential ?? ids.family ?? ids.teacher ?? ids.child ?? null;
+	const subject = ids.credential ?? ids.family ?? ids.teacher ?? ids.child ?? ids.notice ?? null;
 	return encoder.encode(
 		JSON.stringify([
 			'BubbleBoard',
