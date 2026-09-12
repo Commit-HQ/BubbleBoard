@@ -355,7 +355,7 @@ export class App {
 				: created.map(({ family }) => family.id);
 		const child = { id: createId(), name: values.name, classroom: values.classroom, families };
 		await this.#saveChild(child, undefined, created);
-		return { id: child.id, secret: created[0]?.secret };
+		return created[0]?.secret;
 	}
 
 	renameChild(child: Child, name: string) {
@@ -407,11 +407,14 @@ export class App {
 		await this.#change('PUT', `/api/families/${family.id}`, { profile });
 	}
 
-	/** Returns the new card's secret, to print. */
-	async replaceFamilyCard(family: Family) {
-		const card = await familyCard(this.#staff.staffKey, family);
-		await request('POST', `/api/families/${family.id}/card`, { credential: card.credential });
-		return card.secret;
+	/** Replaces the cards of these families together. Returns the new cards' secrets, in order, to print. */
+	async replaceFamilyCards(families: Family[]) {
+		const { staffKey } = this.#staff;
+		const cards = await Promise.all(families.map((family) => familyCard(staffKey, family)));
+		await request('POST', '/api/families/cards', {
+			cards: cards.map(({ credential }, index) => ({ family: families[index].id, credential }))
+		});
+		return cards.map(({ secret }) => secret);
 	}
 }
 

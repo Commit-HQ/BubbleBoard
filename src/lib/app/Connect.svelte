@@ -4,34 +4,44 @@
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import Panel from './Panel.svelte';
 	import { readQrCode } from './scan';
+	import Scanner from './Scanner.svelte';
 	import { getApp } from './state.svelte';
 	import { alert, button, buttonRow, field, formText } from './ui';
 
-	// Connecting a device: a photo of the card (on a phone, the camera opens from here), or its typed code.
-	// A phone's own camera app opens the card's link instead, which the app reads on start.
+	// Connecting a device: scanning the card with the camera or from a photo, or typing its code. A phone's
+	// own camera app opens the card's link instead, which the app reads on start.
 	let { locale }: { locale: Locale } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app);
-	let entering = $state(false);
-	let scanning = $state(false);
+	let open = $state<'scan' | 'code'>();
+	let reading = $state(false);
 	let codeInput = $state<HTMLInputElement>();
 
 	// The code field opens when someone asks for it, so typing can start right away.
 	$effect(() => {
-		if (entering) codeInput?.focus();
+		if (open === 'code') codeInput?.focus();
 	});
 
-	async function scan(event: Event & { currentTarget: EventTarget & HTMLInputElement }) {
-		const input = event.currentTarget;
-		const [photo] = input.files ?? [];
-		input.value = '';
-		if (!photo) return;
-		scanning = true;
+	function toggle(choice: 'scan' | 'code') {
+		open = open === choice ? undefined : choice;
+	}
+
+	/** Uses a scanned code. A QR code that isn't a card says why, and scanning goes on. */
+	function read(text: string) {
+		const card = readCard(text, location.origin);
+		const found = !('error' in card);
+		if (found) open = undefined;
+		void app.useCard(card);
+		return found;
+	}
+
+	async function readPhoto(photo: File) {
+		reading = true;
 		app.cardError = undefined;
 		const text = await readQrCode(photo);
-		scanning = false;
+		reading = false;
 		if (text === undefined) app.cardError = 'no-code';
-		else await app.useCard(readCard(text, location.origin));
+		else read(text);
 	}
 
 	async function enter(event: SubmitEvent & { currentTarget: EventTarget & HTMLFormElement }) {
@@ -49,29 +59,27 @@
 	{/if}
 
 	<div class={buttonRow}>
-		<label
-			class="{button.primary} cursor-pointer has-focus-visible:outline-3 has-focus-visible:outline-offset-4 has-focus-visible:outline-accent"
+		<button
+			class={button.primary}
+			type="button"
+			aria-expanded={open === 'scan'}
+			onclick={() => toggle('scan')}
 		>
 			<Icon name="camera" class="size-4" />{t.connect.scan}
-			<input
-				class="sr-only"
-				type="file"
-				accept="image/*"
-				disabled={scanning || app.connecting}
-				onchange={scan}
-			/>
-		</label>
+		</button>
 		<button
 			class={button.secondary}
 			type="button"
-			aria-expanded={entering}
-			onclick={() => (entering = !entering)}
+			aria-expanded={open === 'code'}
+			onclick={() => toggle('code')}
 		>
 			<Icon name="key" class="size-4" />{t.connect.enter}
 		</button>
 	</div>
 
-	{#if entering}
+	{#if open === 'scan'}
+		<Scanner {locale} disabled={reading || app.connecting} onread={read} onphoto={readPhoto} />
+	{:else if open === 'code'}
 		<form class="mt-6 grid gap-3" onsubmit={enter}>
 			<label class={field.label}>
 				<span class={field.name}>{t.connect.code}</span>
@@ -93,7 +101,7 @@
 	{/if}
 
 	<p class="mt-5 min-h-6 font-semibold text-muted" aria-live="polite">
-		{scanning ? t.connect.scanning : app.connecting ? t.connect.connecting : ''}
+		{reading ? t.connect.scanning : app.connecting ? t.connect.connecting : ''}
 	</p>
 	{#if app.cardError}
 		<p class={alert} role="alert">{errorMessage(locale, app.cardError)}</p>

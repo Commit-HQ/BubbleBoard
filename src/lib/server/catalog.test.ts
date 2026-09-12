@@ -15,7 +15,7 @@ import {
 	kindergarten,
 	removeChild,
 	removeTeacher,
-	replaceFamilyCard,
+	replaceFamilyCards,
 	replaceTeacherCard,
 	setUp
 } from './catalog';
@@ -221,25 +221,36 @@ describe('staff', () => {
 		expect(JSON.stringify(seen)).not.toContain(sister);
 	});
 
-	it('replace family cards only in their own classrooms, which ends the old card', async () => {
+	it('replace family cards together, only in their own classrooms, which ends the old cards', async () => {
 		const db = localDatabase();
 		const { admin } = await setUpKindergarten(db);
 		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
-		const [inBubbles, inOwls] = [newFamily(), newFamily()];
-		await addChildTo(db, admin, bubbles, inBubbles);
+		const [first, second, inOwls] = [newFamily(), newFamily(), newFamily()];
+		await addChildTo(db, admin, bubbles, first);
+		await addChildTo(db, admin, bubbles, second);
 		await addChildTo(db, admin, owls, inOwls);
 		const teacher = await addTeacherTo(db, admin, [bubbles]);
+		const newCards = (...families: NewFamily[]) =>
+			families.map(({ id }) => ({ family: id, credential: credential() }));
 
-		await expect(replaceFamilyCard(db, teacher, inOwls.id, credential())).rejects.toMatchObject({
+		// A family outside the teacher's classrooms stops the whole change.
+		await expect(replaceFamilyCards(db, teacher, newCards(first, inOwls))).rejects.toMatchObject({
 			status: 404
 		});
-		const card = credential();
-		await replaceFamilyCard(db, teacher, inBubbles.id, card);
-		expect(await identityForCard(db, inBubbles.credential.authToken)).toBeUndefined();
-		expect(await identityForCard(db, card.authToken)).toMatchObject({
-			kind: 'family',
-			family: inBubbles.id
+		expect(await identityForCard(db, first.credential.authToken)).toMatchObject({
+			family: first.id
 		});
+
+		const cards = newCards(first, second);
+		await replaceFamilyCards(db, teacher, cards);
+		for (const [index, family] of [first, second].entries()) {
+			expect(await identityForCard(db, family.credential.authToken)).toBeUndefined();
+			expect(await identityForCard(db, cards[index].credential.authToken)).toMatchObject({
+				kind: 'family',
+				family: family.id
+			});
+		}
+		await expect(replaceFamilyCards(db, admin, newCards(inOwls))).resolves.toBeUndefined();
 	});
 });
 
@@ -286,7 +297,7 @@ describe('sessions', () => {
 		];
 
 		await replaceTeacherCard(db, admin, teacher.teacher, credential());
-		await replaceFamilyCard(db, admin, family.id, credential());
+		await replaceFamilyCards(db, admin, [{ family: family.id, credential: credential() }]);
 		await removeTeacher(db, admin, former.teacher);
 		await removeChild(db, admin, child, await links(db, { removeFamilies: [leaving.id] }));
 		for (const device of devices) {

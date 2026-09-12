@@ -2,6 +2,7 @@ import { error } from '@sveltejs/kit';
 import type {
 	Access,
 	ChildChange,
+	FamilyCard,
 	FamilyLinks,
 	Identity,
 	Kindergarten,
@@ -70,14 +71,14 @@ async function insertCredential(db: D1Database, owner: Owner, credential: NewCre
 		);
 }
 
-/** A new card replaces its owner's earlier card, which also ends every session that card started. */
+/** A new card in place of its owner's earlier card, whose removal ends every session that card started. */
 async function replaceCard(db: D1Database, owner: Owner, credential: NewCredential) {
 	// Teacher and family IDs are random, so one ID never matches both columns.
 	const ownerId = 'teacher' in owner ? owner.teacher : owner.family;
-	await transaction(db, [
+	return [
 		db.prepare('DELETE FROM credentials WHERE teacher_id = ?1 OR family_id = ?1').bind(ownerId),
 		await insertCredential(db, owner, credential)
-	]);
+	];
 }
 
 /** Sets up the installation once. Repeating a setup that succeeded, after a lost response, is fine. */
@@ -239,7 +240,7 @@ export async function replaceTeacherCard(
 	credential: NewCredential
 ) {
 	await found(db.prepare('SELECT 1 FROM teachers WHERE id = ?').bind(id));
-	await replaceCard(db, { teacher: id }, credential);
+	await transaction(db, await replaceCard(db, { teacher: id }, credential));
 	return kindergarten(db, admin);
 }
 
@@ -323,22 +324,31 @@ export async function renameFamily(db: D1Database, admin: Admin, id: string, pro
 	return kindergarten(db, admin);
 }
 
-/** Admins can replace any family's card, and teachers those of families in their classrooms. */
-export async function replaceFamilyCard(
-	db: D1Database,
-	staff: Staff,
-	id: string,
-	credential: NewCredential
-) {
-	await found(
+/**
+ * Replaces the cards of several families together, or of none when one isn't the staff member's to
+ * replace: admins can replace any family's card, and teachers those of families in their classrooms.
+ */
+export async function replaceFamilyCards(db: D1Database, staff: Staff, cards: FamilyCard[]) {
+	// Each family comes once (validate.ts), so the count of those allowed says whether all are.
+	const families = JSON.stringify(cards.map(({ family }) => family));
+	const allowed = await (
 		staff.admin
-			? db.prepare('SELECT 1 FROM families WHERE id = ?').bind(id)
+			? db
+					.prepare(
+						'SELECT COUNT(*) AS count FROM families WHERE id IN (SELECT value FROM json_each(?))'
+					)
+					.bind(families)
 			: db
 					.prepare(
-						`SELECT 1 FROM family_classrooms fc JOIN teacher_classrooms tc ON tc.classroom_id = fc.classroom_id
-						WHERE fc.family_id = ? AND tc.teacher_id = ?`
+						`SELECT COUNT(DISTINCT fc.family_id) AS count FROM family_classrooms fc
+						JOIN teacher_classrooms tc ON tc.classroom_id = fc.classroom_id
+						WHERE tc.teacher_id = ? AND fc.family_id IN (SELECT value FROM json_each(?))`
 					)
-					.bind(id, staff.teacher)
+					.bind(staff.teacher, families)
+	).first<{ count: number }>();
+	if (allowed?.count !== cards.length) error(404, 'not-found');
+	const replacements = await Promise.all(
+		cards.map(({ family, credential }) => replaceCard(db, { family }, credential))
 	);
-	await replaceCard(db, { family: id }, credential);
+	await transaction(db, replacements.flat());
 }

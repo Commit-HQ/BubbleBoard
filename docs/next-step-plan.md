@@ -50,7 +50,7 @@ Return this slice in reviewable checkpoints. The owner reviews and commits each 
 Before calling the slice complete, demonstrate:
 
 1. A notice to two classrooms reaching a family with children in both once, a family in one of them, and their teachers, but not an unassigned admin, with notifications on a real iPhone Home Screen app, an Android phone, and a desktop browser.
-2. Installing first on iPhone and iPad, Continue in Safari included, and connecting in the installed app with a photo and with the code.
+2. Installing first on iPhone and iPad, Continue in Safari included, and connecting in the installed app with the camera, a photo, and the code.
 3. Changing a notice with and without notifying again, deleting one, and expiry, each removing the old notice from every board and from D1.
 4. Notifications stopping after signing out, a replaced card, a removed teacher or family, and an expired session, and gone subscriptions being deleted.
 5. Automated tests for Notice Key wrapping and wrong-key, tampering, and context failures; authorization for posting, changing, deleting, and reading across classrooms; and delivery groups, retries, and cleanup.
@@ -61,7 +61,7 @@ Before calling the slice complete, demonstrate:
 
 The access slice is implemented and passes `npm run validate`. Deploy the first installation, then:
 
-- try card links, photos of cards, typed codes, and browser storage on a real iPhone and Android phone;
+- print a sheet of cards, then try their links with each phone's camera app, Scan card with the camera and with a photo, typed codes, and browser storage on a real iPhone and Android phone;
 - inspect a D1 export and captured requests: no names, content, or card secrets, only tokens, hashes, and ciphertext;
 - walk through setup, a family card, and a second device in Croatian and English, on a phone and a desktop.
 
@@ -77,10 +77,10 @@ Where the user experience is concerned, the simplest option won; deferred varian
 - **Setup** asks for the admin's name only. It creates the admin's card and a recovery card, an admin without classrooms, connects the setup device, and ends on a print page that asks for confirmation. Card codes are never stored in the browser: the page retries while open. If the cards weren't printed, the setup device, which stays connected, replaces both; the install docs keep starting over for when no device or card works, such as a setup that succeeded after its page closed.
 - **Classrooms** can be added and renamed, and deleted only when they have no children.
 - **Teachers:** "Add teacher" asks for a name, classrooms, and whether they're an admin, then shows their card. Replacing a lost card keeps the classrooms and admin setting. If every admin card is lost, the recovery card is the answer; a command that makes a teacher an admin can come later.
-- **Children and families:** a child has a name and one classroom. A family has one named card, such as "Ivana (mum)", used on every device at home, and one or more children. A sibling is added with the brother's or sister's family cards; parents who live apart get separate cards ("Add another family card"). A family's classrooms follow from its children, so moving a child moves its families' access. Removing a child also removes family cards left without children, after a confirmation that names them. "Replace card" issues a new card and disconnects every device that used the old one.
+- **Children and families:** a child has a name and one classroom. A family has one named card, such as "Ivana (mum)", used on every device at home, and one or more children. A sibling is added with the brother's or sister's family cards; parents who live apart get separate cards ("Add another family card"). A family's classrooms follow from its children, so moving a child moves its families' access. Removing a child also removes family cards left without children, after a confirmation that names them. "Replace card" issues a new card and disconnects every device that used the old one. Add child keeps each new family card on the page and clears the form for the next child, so a classroom's cards print together; leaving with cards unprinted asks first. A classroom's page replaces any selection of its families' cards at once, for the staff who may replace them, and prints the new cards together: for cards that were never printed, or were lost.
 - **Parents** use one card for all their children's classrooms. They see a built-in "You've joined" screen naming their classrooms, which the board replaces.
-- **Cards:** a 128-bit secret as a 28-character typeable code with two check characters, carried in the QR link as `#card=`. Every card has the same format; the server knows what a card is. Card derivation is versioned separately from envelopes, with a fixed compatibility test (docs/access-format.md).
-- **Connecting:** a phone's camera opens the card link; in the app, "Scan card" takes or chooses a photo and "Enter code" accepts the typed code.
+- **Cards:** a 128-bit secret as a 28-character typeable code with two check characters, carried in the QR link as `#card=`. Every card has the same format; the server knows what a card is. Card derivation is versioned separately from envelopes, with a fixed compatibility test (docs/access-format.md). Cards print plain, on white, two to a row with a dashed edge to cut along. Their QR code is dots in the brand's dark colours inside a round bubble outline, with the app icon in the middle, which quartile error correction covers; a code big enough to have an alignment pattern in its middle leaves the icon out.
+- **Connecting:** a phone's camera opens the card link; in the app, "Scan card" reads the code with the camera, with "Choose a photo" in the same view for devices without a camera or where it isn't allowed, and "Enter code" accepts the typed code.
 - **One active card per browser.** A working card is never replaced without confirmation, and device keys are stored per card.
 - **Names** of classrooms, teachers, children, and family cards live only in encrypted records.
 - **Screens:** home has a tile for each of the viewer's classrooms (every classroom for admins), Add classroom and Teachers for admins, and This device. A classroom lists its children. A child's page shows its family cards, with siblings and their classrooms, and the actions the viewer may take; teachers see only siblings in their own classrooms.
@@ -89,6 +89,5 @@ Deferred from that slice:
 
 - Expiry for staff cards (spec §32); staff cards are permanent for now.
 - A family card replacement that keeps devices connected.
-- A live camera scanner.
 - A kindergarten-wide Families list.
 - An admin reset for a suspected key compromise; it stays a documented procedure. Revocation stops server access but doesn't erase keys or copies a device already has.

@@ -33,7 +33,7 @@ JSON endpoints live in `src/routes/api`, one small handler per user action. A ha
 
 Use platform APIs and Svelte first. Add a library only for an implemented need, after checking maintenance, licensing, bundle cost, and transitive dependencies. Tailwind CSS is the styling standard. No component UI library, ORM, global state package, date library, analytics, remote fonts, or image editor is needed for this foundation.
 
-`qr` (MIT, no dependencies) draws cards' QR codes, rendered as an SVG path, and reads them from photos. Its decoder loads only when someone scans a card. Load future photo tooling only in the routes that use it.
+`qr` (MIT, no dependencies) encodes cards' QR codes, which `src/lib/app/qr.ts` draws as SVG dots in a bubble with the app icon, and reads them from the camera (`qr/dom.js`) or a photo. Its decoder loads only when someone scans a card, and `qr.test.ts` reads the drawing back with it. Load future photo tooling only in the routes that use it.
 
 Vitest is the one test runner, a development dependency only. It reuses the Vite and SvelteKit configuration, so tests import `$lib` modules as the app does, and it runs the same Web Crypto API in Node. Test behavior the code guarantees, such as encryption, card links, and authorization, not component markup. Database tests run the real migrations in Node's built-in SQLite behind a small D1-shaped adapter (`src/lib/server/catalog.test.ts`), which keeps them fast and needs no Workers runtime.
 
@@ -45,7 +45,7 @@ The look is cheerful glassmorphism: translucent white surfaces over soft coral, 
 - `frosted` adds the blur, with a nearly opaque fallback where `backdrop-filter` is unsupported. Use it only where content moves or sits behind the surface: the sticky header and overlays on photos.
 - `bg-sunrise` is the decorative brand gradient for icon tiles. `text-sunrise` is its version for heading text, with darker stops, and falls back to plain text in forced-colours mode.
 
-App screens reuse these surfaces: `glass` panels and tiles, the buttons and fields in `src/lib/app/ui.ts`, `bg-sunrise` icon tiles, and a few static soap bubbles. Questions before a change that can't be undone use the native `<dialog>` (`ConfirmDialog.svelte`); forms read `FormData` when submitted.
+App screens reuse these surfaces: `glass` panels and tiles, the buttons and fields in `src/lib/app/ui.ts`, `bg-sunrise` icon tiles, and a few static soap bubbles. Printed pages drop the backdrop and surfaces (`app.css` and `print:` variants): card sheets come out on white, two cards to a row with a dashed edge to cut along, so a classroom's cards take little ink. Questions before a change that can't be undone use the native `<dialog>` (`ConfirmDialog.svelte`); forms read `FormData` when submitted.
 
 Palette colours are not automatically text colours: blush and apricot are too light for text on this page. Check text contrast (4.5:1, or 3:1 for large headings) against the tinted backdrop, not only the canvas. Don't let colour alone mark a state; forced colours remove fills.
 

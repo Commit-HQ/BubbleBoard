@@ -53,7 +53,7 @@
 				copy: t.card.replaceCopy,
 				confirm: t.card.replace,
 				run: async () => {
-					const secret = await app.replaceFamilyCard(family);
+					const [secret] = await app.replaceFamilyCards([family]);
 					confirming = undefined;
 					printFamilyCard(secret, family.name, family.classrooms);
 				}

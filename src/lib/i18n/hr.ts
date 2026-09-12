@@ -207,6 +207,12 @@ export const hr = {
 			copy: 'Upotrijebite QR karticu koju ste dobili u vrtiću. Možete i usmjeriti kameru mobitela prema kartici.',
 			scan: 'Skeniraj karticu',
 			enter: 'Upiši kod',
+			camera: 'Usmjerite kameru prema QR kodu na kartici.',
+			cameraStarting: 'Otvaramo kameru…',
+			cameraBlocked:
+				'BubbleBoard nema dopuštenje za kameru. Dopustite ga u postavkama preglednika ili odaberite fotografiju kartice.',
+			noCamera: 'Ovdje nema kamere koju BubbleBoard može koristiti. Odaberite fotografiju kartice.',
+			photo: 'Odaberi fotografiju',
 			code: 'Kod kartice',
 			codeHint: '28 slova i brojeva otisnutih na kartici.',
 			submit: 'Poveži',
@@ -285,7 +291,16 @@ export const hr = {
 			delete: 'Obriši skupinu',
 			deleteTitle: (name: string) => `Obrisati skupinu „${name}”?`,
 			deleteCopy: 'To se ne može poništiti.',
-			noCards: 'Još nema obiteljske kartice'
+			noCards: 'Još nema obiteljske kartice',
+			replaceCards: 'Zamijeni kartice',
+			replaceTitle: 'Zamjena obiteljskih kartica',
+			replaceCopy: 'Odaberite kartice koje želite zamijeniti pa zajedno ispišite nove.',
+			selectAll: 'Odaberi sve',
+			replaceSubmit: (value: number) => `Zamijeni ${count(value, 'karticu', 'kartice', 'kartica')}`,
+			replaceConfirm: (value: number) =>
+				`Zamijeniti ${count(value, 'karticu', 'kartice', 'kartica')}?`,
+			replaceConfirmCopy:
+				'Stare kartice prestaju raditi, a svi uređaji koji su ih koristili bit će odjavljeni.'
 		},
 		newChild: {
 			title: 'Dodaj dijete',
@@ -298,7 +313,18 @@ export const hr = {
 				'Na primjer „Ivana (mama)”. Roditelji koji ne žive zajedno kasnije mogu dobiti zasebne kartice.',
 			sibling: 'Kartica koju već ima brat ili sestra',
 			siblingName: 'Brat ili sestra',
-			submit: 'Dodaj dijete'
+			submit: 'Dodaj dijete',
+			added: (name: string) => `Dodano: ${name}.`,
+			toPrint: (value: number) => `Za ispis: ${count(value, 'kartica', 'kartice', 'kartica')}`,
+			toPrintCopy:
+				'Dodajte još djece pa ispišite sve nove obiteljske kartice zajedno. Njihovi su kodovi vidljivi samo na ovoj stranici.',
+			print: (value: number) =>
+				value === 1 ? 'Ispiši karticu' : `Ispiši ${count(value, 'karticu', 'kartice', 'kartica')}`,
+			leaveTitle: 'Otići bez ispisa?',
+			leaveCopy:
+				'Kodovi novih kartica vidljivi su samo na ovoj stranici. Za kasniji ispis zamijenite kartice u skupini.',
+			leave: 'Otiđi',
+			stay: 'Ostani'
 		},
 		child: {
 			cards: 'Obiteljske kartice',

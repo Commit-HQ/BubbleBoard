@@ -209,6 +209,12 @@ export const en = {
 			copy: 'Use the QR card from your kindergarten. You can also point your phone’s camera at the card.',
 			scan: 'Scan card',
 			enter: 'Enter code',
+			camera: 'Point the camera at the QR code on the card.',
+			cameraStarting: 'Opening the camera…',
+			cameraBlocked:
+				'BubbleBoard isn’t allowed to use the camera. Allow it in your browser’s settings, or choose a photo of the card.',
+			noCamera: 'There’s no camera BubbleBoard can use here. Choose a photo of the card instead.',
+			photo: 'Choose a photo',
 			code: 'Card code',
 			codeHint: 'The 28 letters and numbers printed on the card.',
 			submit: 'Connect',
@@ -285,7 +291,16 @@ export const en = {
 			delete: 'Delete classroom',
 			deleteTitle: (name: string) => `Delete ${name}?`,
 			deleteCopy: 'This can’t be undone.',
-			noCards: 'No family card yet'
+			noCards: 'No family card yet',
+			replaceCards: 'Replace cards',
+			replaceTitle: 'Replace family cards',
+			replaceCopy: 'Choose the cards to replace, then print the new ones together.',
+			selectAll: 'Select all',
+			replaceSubmit: (count: number) => (count === 1 ? 'Replace 1 card' : `Replace ${count} cards`),
+			replaceConfirm: (count: number) =>
+				count === 1 ? 'Replace 1 card?' : `Replace ${count} cards?`,
+			replaceConfirmCopy:
+				'The old cards stop working, and every device that used them is signed out.'
 		},
 		newChild: {
 			title: 'Add child',
@@ -298,7 +313,17 @@ export const en = {
 				'For example “Ivana (mum)”. Parents who live apart can each get their own card later.',
 			sibling: 'The card a brother or sister already has',
 			siblingName: 'Brother or sister',
-			submit: 'Add child'
+			submit: 'Add child',
+			added: (name: string) => `Added ${name}.`,
+			toPrint: (count: number) => (count === 1 ? '1 card to print' : `${count} cards to print`),
+			toPrintCopy:
+				'Add more children, then print all the new family cards together. Their codes are shown only on this page.',
+			print: (count: number) => (count === 1 ? 'Print the card' : `Print ${count} cards`),
+			leaveTitle: 'Leave without printing?',
+			leaveCopy:
+				'The new cards’ codes are shown only on this page. To print them later, replace the cards from the classroom.',
+			leave: 'Leave',
+			stay: 'Stay'
 		},
 		child: {
 			cards: 'Family cards',

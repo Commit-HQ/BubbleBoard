@@ -14,9 +14,7 @@
 <script lang="ts">
 	import { beforeNavigate } from '$app/navigation';
 	import { page } from '$app/state';
-	import favicon from '$lib/assets/favicon.svg';
 	import { cardLink, formatCardCode } from '$lib/card';
-	import Bubble from '$lib/components/Bubble.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import { messages, teacherName, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
@@ -26,7 +24,8 @@
 
 	// New cards, shown once to print or save as a PDF. Card codes are never stored (docs/access-format.md),
 	// so this page is the only place they appear. With `confirm`, for setup's two cards, nothing leaves
-	// the page until someone ticks that the cards are printed or saved.
+	// the page until someone ticks that the cards are printed or saved. Cards print plain, on white with a
+	// dashed edge to cut along, two to a row, so a classroom's cards take a few sheets and little ink.
 	let {
 		locale,
 		cards,
@@ -65,41 +64,40 @@
 		</button>
 	</div>
 
-	<ul class="grid gap-4 print:gap-10">
+	<ul class="grid gap-4 print:grid-cols-2">
 		{#each cards as card (card.secret)}
 			{@const label = teacherName(locale, { name: card.name, recovery: card.kind === 'recovery' })}
 			<li
-				class="relative isolate break-inside-avoid overflow-hidden rounded-3xl glass p-6 sm:p-7 print:border print:border-ink/40 print:shadow-none"
+				class="grid break-inside-avoid content-start gap-4 rounded-3xl bg-white p-5 text-ink shadow-xl ring-1 shadow-ink/5 ring-ink/10 print:gap-3 print:rounded-2xl print:border print:border-dashed print:border-ink/40 print:p-4 print:shadow-none print:ring-0"
 			>
-				<Bubble class="-top-10 -right-10 -z-10 size-32 print:hidden" />
-				<p class="flex items-center justify-between gap-3">
-					<span class="inline-flex items-center gap-2 font-bold">
-						<img src={favicon} alt="" width="28" height="28" />BubbleBoard
-					</span>
+				<p class="flex items-baseline justify-between gap-3">
+					<span class="font-display text-lg">BubbleBoard</span>
 					{#if card.kind !== 'recovery'}
 						<span class="text-sm font-semibold text-muted">{t.card.kinds[card.kind]}</span>
 					{/if}
 				</p>
-				<div class="mt-5 grid items-center gap-5 sm:grid-cols-[auto_1fr]">
+				<div class="flex items-center gap-4">
 					<QrCode
-						class="size-44 rounded-2xl bg-white p-2 text-ink"
+						class="size-40 shrink-0"
 						text={cardLink(page.url.origin, locale, card.secret)}
 						label={t.card.qr(label)}
 					/>
 					<div class="min-w-0">
-						<p class="font-display text-3xl leading-tight">{label}</p>
-						{#if card.detail}<p class="mt-1 text-muted">{card.detail}</p>{/if}
-						{#if card.kind === 'family'}<p class="mt-1 text-muted">{t.card.about}</p>{/if}
-						<p class="mt-4 text-sm text-muted">{t.card.scan(address)}</p>
-						<!-- Lines break at the dashes, not inside a group of four. -->
-						<p class="mt-1 font-mono text-lg font-semibold tracking-wide wrap-break-word">
-							{formatCardCode(card.secret)}
-						</p>
-						<p class="mt-3 text-xs text-muted">
-							{card.kind === 'recovery' ? t.card.recovery : t.card.private}
-						</p>
+						<p class="font-display text-2xl leading-tight">{label}</p>
+						{#if card.detail}<p class="mt-1 text-sm text-muted">{card.detail}</p>{/if}
+						{#if card.kind === 'family'}<p class="mt-1 text-sm text-muted">{t.card.about}</p>{/if}
 					</div>
 				</div>
+				<div>
+					<p class="text-xs text-muted">{t.card.scan(address)}</p>
+					<!-- Lines break at the dashes, not inside a group of four. -->
+					<p class="mt-1 font-mono text-sm font-semibold tracking-wide wrap-break-word">
+						{formatCardCode(card.secret)}
+					</p>
+				</div>
+				<p class="text-xs text-muted">
+					{card.kind === 'recovery' ? t.card.recovery : t.card.private}
+				</p>
 			</li>
 		{/each}
 	</ul>

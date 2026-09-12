@@ -6,7 +6,7 @@ A small, open-source communication app for kindergarten communities. Inspired by
 
 Teachers share a moment. Parents get a notification. The hosting server stores encrypted content without the keys needed to read it.
 
-> **Status: early development.** This repository contains a prerendered Croatian and English landing page and the first part of the app: setting up a kindergarten, classrooms, teachers and admins, children with their family cards, printing cards, and connecting devices with a card's link, a photo of it, or its code. Everything is encrypted in the browser ([access format](docs/access-format.md)). Notices, notifications, messages, and photos are not implemented yet. Do not use it with real family data yet. The landing page deliberately describes the finished product; this README tracks what exists.
+> **Status: early development.** This repository contains a prerendered Croatian and English landing page and the first part of the app: setting up a kindergarten, classrooms, teachers and admins, children with their family cards, printing cards, and connecting devices with a card's link, the camera, a photo of it, or its code. Everything is encrypted in the browser ([access format](docs/access-format.md)). Notices, notifications, messages, and photos are not implemented yet. Do not use it with real family data yet. The landing page deliberately describes the finished product; this README tracks what exists.
 
 ## What we’re building
 
@@ -67,7 +67,7 @@ Add interface copy to both `src/lib/i18n/en.ts` and `hr.ts`. When bundling a new
 4. Set `PUBLIC_SITE_URL` in `.env` to the origin the site will be served from, such as `https://bubbleboard.example.com`. It is read when you build.
 5. Run `npm run validate` and `npx wrangler deploy --dry-run`.
 6. Run `npm run deploy`. The first deploy creates the database, applies its migrations, stores a new `SETUP_TOKEN` secret, and prints a setup link. Later deploys apply new migrations and leave the token alone.
-7. To use your own domain, add it to the Worker in the Cloudflare dashboard (**Workers & Pages → your Worker → Settings → Domains & Routes**) before opening the setup link, which points at `PUBLIC_SITE_URL`. Domains are kept out of `wrangler.jsonc` so the configuration works for every installation. Printed cards use the address setup was opened on, so set up on the final domain.
+7. To use your own domain, add it to the Worker in the Cloudflare dashboard (**Workers & Pages → your Worker → Settings → Domains & Routes**) before opening the setup link, which points at `PUBLIC_SITE_URL`. The domain must first be active in the same Cloudflare account: for a domain registered elsewhere, add it under **Domains**, turn off DNSSEC at the registrar if it's on, and replace the registrar's nameservers with the two Cloudflare shows. Turn on **Always Use HTTPS** for the domain (**SSL/TLS → Edge Certificates**): the app needs `https://`, and the domain otherwise also answers plain `http://`. Domains are kept out of `wrangler.jsonc` so the configuration works for every installation. Printed cards use the address setup was opened on, so set up on the final domain.
 8. Open the setup link on the first admin's device, enter their name, and print or save both cards before continuing. Keep the recovery card somewhere safe: it can do everything an admin can.
 
 The setup token only allows the first setup. If the link is lost before then, `npm run setup-link` replaces the token and prints a new link.
@@ -89,25 +89,25 @@ The Worker keeps its records in a D1 database bound as `DB`, with the schema in 
 
 ## Small by design
 
-| Layer         | Choice                                                     |
-| ------------- | ---------------------------------------------------------- |
-| Application   | Svelte 5 + SvelteKit + strict TypeScript                   |
-| Build         | Vite                                                       |
-| Hosting       | Cloudflare Workers + official SvelteKit adapter            |
-| Styles        | Tailwind CSS v4, self-hosted fonts                         |
-| Formatting    | Prettier + Svelte and Tailwind plugins                     |
-| Tests         | Vitest                                                     |
-| Encryption    | Browser Web Crypto API                                     |
-| Storage       | D1 for records; private R2 for encrypted media later       |
-| QR codes      | `qr`, drawn for printed cards and read from photos of them |
-| Notifications | Web Push, planned                                          |
+| Layer         | Choice                                                                |
+| ------------- | --------------------------------------------------------------------- |
+| Application   | Svelte 5 + SvelteKit + strict TypeScript                              |
+| Build         | Vite                                                                  |
+| Hosting       | Cloudflare Workers + official SvelteKit adapter                       |
+| Styles        | Tailwind CSS v4, self-hosted fonts                                    |
+| Formatting    | Prettier + Svelte and Tailwind plugins                                |
+| Tests         | Vitest                                                                |
+| Encryption    | Browser Web Crypto API                                                |
+| Storage       | D1 for records; private R2 for encrypted media later                  |
+| QR codes      | `qr`, drawn for printed cards and read with the camera or from photos |
+| Notifications | Web Push, planned                                                     |
 
 No component UI library, ORM, remote font service, analytics SDK, or separate backend. npm’s lockfile is committed for reproducible installs. The official tooling still has transitive dependencies; review additions and updates rather than assuming a small manifest means zero supply-chain risk.
 
 ```text
 src/
   lib/
-    app/                App screens: components, browser state, photo scanning
+    app/                App screens: components, browser state, QR drawing and scanning
     assets/             Local brand assets and optimized photos
     components/         Reusable Svelte components
     i18n/               Croatian and English interface copy

@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type {
 	ChildChange,
+	FamilyCard,
 	FamilyLinks,
 	Membership,
 	MembershipKey,
@@ -94,6 +95,18 @@ function credential(value: unknown): NewCredential {
 }
 
 export const newCredential = (body: Fields) => credential(body.credential);
+
+/** New cards for families: each family once, each with a card of its own. */
+export function familyCards(body: Fields): FamilyCard[] {
+	const cards = list(body.cards, (value) => {
+		const card = fields(value);
+		return { family: id(card.family), credential: credential(card.credential) };
+	});
+	const families = new Set(cards.map((card) => card.family));
+	const credentials = new Set(cards.map((card) => card.credential.id));
+	const distinct = families.size === cards.length && credentials.size === cards.length;
+	return cards.length && distinct ? cards : invalid();
+}
 
 export function setup(body: Fields): Setup {
 	if (typeof body.token !== 'string' || body.token.length > 256) invalid();

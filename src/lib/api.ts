@@ -18,6 +18,8 @@ export type NewFamily = {
 	familyKeyForStaff: string;
 	credential: NewCredential;
 };
+/** A new card for a family, in place of the one it has. */
+export type FamilyCard = { family: string; credential: NewCredential };
 
 export type MembershipKey = { family: string; classroom: string };
 /** A family's access to a classroom: the classroom's Group Key, wrapped for the Family Key. */

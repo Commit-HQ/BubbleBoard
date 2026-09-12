@@ -172,4 +172,13 @@
 	::selection {
 		background-color: #ffd6ea;
 	}
+	/* Printed pages stay plain whatever the browser's background setting: no page colour or backdrop. */
+	@media print {
+		html {
+			background: none;
+		}
+		body::before {
+			display: none;
+		}
+	}
 }

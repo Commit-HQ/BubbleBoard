@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { toBase64Url } from '$lib/base64url';
 import { createId } from '$lib/crypto';
-import { familyLinks, newChild, setup } from './validate';
+import { familyCards, familyLinks, newChild, setup } from './validate';
 
 // Structure the server enforces on requests it can't read. Envelopes only need the right form here.
 
@@ -44,4 +44,14 @@ it('refuses a setup whose two cards share an ID', () => {
 	expect(setup({ token: 'token', teachers: [admin, recovery] }).teachers).toHaveLength(2);
 	const shared = { ...recovery, credential: { ...recovery.credential, id: admin.credential.id } };
 	expect(() => setup({ token: 'token', teachers: [admin, shared] })).toThrow();
+});
+
+it('refuses new family cards that repeat a family or a card', () => {
+	const card = () => ({ family: createId(), credential: credential() });
+	const [first, second] = [card(), card()];
+	expect(familyCards({ cards: [first, second] })).toHaveLength(2);
+	expect(() => familyCards({ cards: [] })).toThrow();
+	expect(() => familyCards({ cards: [first, { ...second, family: first.family }] })).toThrow();
+	const shared = { ...second.credential, id: first.credential.id };
+	expect(() => familyCards({ cards: [first, { ...second, credential: shared }] })).toThrow();
 });
