@@ -1,11 +1,10 @@
-import { error, json } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import { accessFor } from '$lib/server/catalog';
-import { currentIdentity, database, endSession } from '$lib/server/session';
+import { database, endSession, requireIdentity } from '$lib/server/session';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async (event) => {
-	const current = await currentIdentity(event);
-	if (!current) error(401, 'signed-out');
+	const current = await requireIdentity(event);
 	return json(await accessFor(database(event), current));
 };
 

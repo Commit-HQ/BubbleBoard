@@ -14,15 +14,18 @@ export type NewFamily = {
 	credential: NewCredential;
 };
 
-/** A family's access to a classroom: the classroom's Group Key, wrapped for the Family Key. */
-export type Membership = { family: string; classroom: string; groupKeyForFamily: string };
 export type MembershipKey = { family: string; classroom: string };
+/** A family's access to a classroom: the classroom's Group Key, wrapped for the Family Key. */
+export type Membership = MembershipKey & { groupKeyForFamily: string };
 
 /**
  * How families change along with a child. A family's classrooms follow from its children, which only the
- * browser can read, so the browser works these out and the server applies them in one transaction.
+ * browser can read, so the browser works these out and the server applies them in one transaction. They
+ * carry the catalog `revision` they were worked out from, so a change made from outdated records fails as
+ * stale instead of undoing another device's change.
  */
 export type FamilyLinks = {
+	revision: number;
 	newFamilies: NewFamily[];
 	addMemberships: Membership[];
 	removeMemberships: MembershipKey[];
@@ -30,40 +33,37 @@ export type FamilyLinks = {
 	removeFamilies: string[];
 };
 
-/**
- * Changes to children carry the catalog `revision` they were based on (`Kindergarten.revision`), so a
- * change made from outdated records fails as stale instead of undoing another device's change.
- */
-type Revised = { revision: number };
-
-export type NewChild = FamilyLinks & Revised & { id: string; classroom: string; profile: string };
-export type ChildChange = FamilyLinks & Revised & { classroom: string; profile: string };
-export type ChildRemoval = Pick<FamilyLinks, 'removeMemberships' | 'removeFamilies'> & Revised;
+export type ChildChange = FamilyLinks & { classroom: string; profile: string };
+export type NewChild = ChildChange & { id: string };
 
 /** The first setup: the admin's card and the recovery card, both admins. */
 export type Setup = {
 	token: string;
-	teachers: { id: string; profile: string; credential: NewCredential }[];
+	teachers: Pick<NewTeacher, 'id' | 'profile' | 'credential'>[];
 };
 
-/** What a connected device needs to open its keys. */
-export type Access =
-	| { kind: 'staff'; credential: string; wrappedKey: string; teacher: string; admin: boolean }
-	| {
-			kind: 'family';
-			credential: string;
-			wrappedKey: string;
-			family: string;
-			classrooms: { id: string; profile: string; groupKeyForFamily: string }[];
-	  };
+/** Whose card a session belongs to, and the wrapped key that card opens. */
+export type Identity = { credential: string; wrappedKey: string } & (
+	{ kind: 'staff'; teacher: string; admin: boolean } | { kind: 'family'; family: string }
+);
+export type Staff = Extract<Identity, { kind: 'staff' }>;
 
 /** The records a staff member may see: everything for admins, their own classrooms for teachers. */
-export type Kindergarten = Revised & {
+export type Kindergarten = {
+	/** Moves on with every change to children and family cards (`FamilyLinks.revision`). */
+	revision: number;
 	classrooms: { id: string; profile: string; groupKeyForStaff: string }[];
 	teachers: { id: string; admin: boolean; profile: string; classrooms: string[] }[];
 	children: { id: string; classroom: string; profile: string }[];
 	families: { id: string; profile: string; familyKeyForStaff: string; classrooms: string[] }[];
 };
+
+/** What a connected device opens: a staff member's records, or the classrooms a family's card joined. */
+export type Access =
+	| (Staff & { kindergarten: Kindergarten })
+	| (Extract<Identity, { kind: 'family' }> & {
+			classrooms: { id: string; profile: string; groupKeyForFamily: string }[];
+	  });
 
 /** A request that failed: `status` is 0 when the server couldn't be reached, and `code` says why. */
 export class ApiError extends Error {

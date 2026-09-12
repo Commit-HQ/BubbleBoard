@@ -27,6 +27,9 @@ export const field = {
 /** A panel for a form or a group of actions. */
 export const surface = 'rounded-4xl glass p-6 sm:p-8';
 
+/** The buttons under a page-sized panel's text. */
+export const buttonRow = 'mt-8 flex flex-wrap gap-3';
+
 /** An error, said gently. */
 export const alert = 'rounded-2xl bg-blush/10 px-4 py-3 font-semibold text-red-800';
 

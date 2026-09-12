@@ -9,19 +9,21 @@ import { fromBase64Url, toBase64Url } from '$lib/base64url';
 // Raw key bytes exist only inside createKey, rewrapKey, and unwrapKey. Every CryptoKey returned here is
 // non-extractable, which prevents accidental export, not use by a malicious script running in the app.
 
-/** Card format 1: the secret's size and the HKDF labels for its two values. Never change them. */
+/** Card format 1: the secret's size, the auth token's, and the HKDF labels for its two values. Never change them. */
 export const SECRET_BYTES = 16;
+export const AUTH_TOKEN_BYTES = 32;
 const cardLabels = { auth: 'BubbleBoard card 1 auth', unlock: 'BubbleBoard card 1 key-wrap' };
 
 /** Envelope format 1. A new format gets a new number, and readers keep opening the old ones. */
 const ENVELOPE_FORMAT = 1;
-const KEY_BYTES = 32;
+export const KEY_BYTES = 32;
 const IV_BYTES = 12;
+const TAG_BYTES = 16;
 const aesGcm = { name: 'AES-GCM', length: 256 };
 const encoder = new TextEncoder();
 
 /** The record a wrapped key belongs to, named `<key>-key-for-<whoever opens it>`. */
-export type KeyContext =
+type KeyContext =
 	| { purpose: 'staff-key-for-credential'; credential: string }
 	| { purpose: 'family-key-for-credential'; credential: string }
 	| { purpose: 'family-key-for-staff'; family: string }
@@ -29,7 +31,7 @@ export type KeyContext =
 	| { purpose: 'group-key-for-family'; classroom: string; family: string };
 
 /** The record encrypted data belongs to. */
-export type DataContext =
+type DataContext =
 	| { purpose: 'classroom-profile'; classroom: string }
 	| { purpose: 'teacher-profile'; teacher: string }
 	| { purpose: 'child-profile'; child: string }
@@ -53,6 +55,10 @@ export function createId() {
 
 export function isId(value: unknown): value is string {
 	return typeof value === 'string' && fromBase64Url(value)?.length === 16;
+}
+
+export function randomBytes(length: number) {
+	return crypto.getRandomValues(new Uint8Array(length));
 }
 
 /** A token as the server stores it: the SHA-256 of its bytes, in base64url. */
@@ -89,7 +95,7 @@ export async function deriveCredential(secret: Uint8Array<ArrayBuffer>) {
 		info: encoder.encode(label)
 	});
 	const [authToken, unlockKey] = await Promise.all([
-		crypto.subtle.deriveBits(hkdf(cardLabels.auth), base, 256),
+		crypto.subtle.deriveBits(hkdf(cardLabels.auth), base, AUTH_TOKEN_BYTES * 8),
 		crypto.subtle.deriveKey(hkdf(cardLabels.unlock), base, aesGcm, false, ['encrypt', 'decrypt'])
 	]);
 	return { authToken: toBase64Url(new Uint8Array(authToken)), unlockKey };
@@ -142,8 +148,10 @@ export async function decryptData(envelope: string, key: CryptoKey, context: Dat
 	}
 }
 
-function randomBytes(length: number) {
-	return crypto.getRandomValues(new Uint8Array(length));
+/** How many bytes a value in envelope form holds, for the server, which checks envelopes it can't open. */
+export function envelopeSize(value: unknown) {
+	const envelope = parseEnvelope(value);
+	return envelope && envelope.ciphertext.length - TAG_BYTES;
 }
 
 function importKey(raw: Uint8Array<ArrayBuffer>) {
@@ -173,6 +181,13 @@ function assertOneKind(wrappings: Wrapping[]) {
 // tag at the end of the ciphertext, and the record's context as additional authenticated data.
 const envelopePattern = /^1\.([\w-]{16})\.([\w-]{22,})$/;
 
+function parseEnvelope(value: unknown) {
+	const parts = typeof value === 'string' ? envelopePattern.exec(value) : null;
+	const iv = parts && fromBase64Url(parts[1]);
+	const ciphertext = parts && fromBase64Url(parts[2]);
+	return iv && ciphertext ? { iv, ciphertext } : undefined;
+}
+
 async function seal(
 	plaintext: Uint8Array<ArrayBuffer>,
 	key: CryptoKey,
@@ -188,15 +203,13 @@ async function seal(
 }
 
 async function open(envelope: string, key: CryptoKey, context: KeyContext | DataContext) {
-	const parts = envelopePattern.exec(envelope);
-	const iv = parts && fromBase64Url(parts[1]);
-	const ciphertext = parts && fromBase64Url(parts[2]);
-	if (!iv || !ciphertext) throw new UnreadableError();
+	const parts = parseEnvelope(envelope);
+	if (!parts) throw new UnreadableError();
 	try {
 		const plaintext = await crypto.subtle.decrypt(
-			{ name: 'AES-GCM', iv, additionalData: additionalData(context) },
+			{ name: 'AES-GCM', iv: parts.iv, additionalData: additionalData(context) },
 			key,
-			ciphertext
+			parts.ciphertext
 		);
 		return new Uint8Array(plaintext);
 	} catch (cause) {

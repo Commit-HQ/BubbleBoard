@@ -2,7 +2,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import BuildLabel from '$lib/components/BuildLabel.svelte';
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
-	import LanguageSwitch from '$lib/components/LanguageSwitch.svelte';
+	import SiteHeader from '$lib/components/SiteHeader.svelte';
 	import { messages } from '$lib/i18n';
 	import { homePath } from '$lib/paths';
 	import { contactEmail, organizationUrl, repositoryUrl } from '$lib/project';
@@ -30,18 +30,7 @@
 <!-- Decorative bubbles are clipped rather than scrolling the page sideways when enlarged text leaves no
 room. `clip`, unlike `hidden`, keeps the header sticky. -->
 <div class="mx-auto max-w-7xl overflow-x-clip px-4 sm:px-8 lg:px-10">
-	<header
-		class="sticky top-3 z-10 my-3 flex items-center justify-between gap-4 rounded-full frosted py-1.5 pr-1.5 pl-3"
-	>
-		<a
-			class="inline-flex items-center gap-2.5 text-xl font-bold tracking-tight"
-			href={home}
-			aria-label={t.home}
-		>
-			<img src={favicon} alt="" width="36" height="36" />
-			<!-- Enlarged text on a phone narrows the page below 20rem; then only the logo shows. -->
-			<span class="max-[20rem]:hidden">BubbleBoard</span>
-		</a>
+	<SiteHeader locale={data.locale} href={home} label={t.home}>
 		<nav class="hidden xl:block" aria-label={t.nav.label}>
 			<ul class="flex">
 				{#each sections as { href, label } (href)}
@@ -54,8 +43,7 @@ room. `clip`, unlike `hidden`, keeps the header sticky. -->
 				{/each}
 			</ul>
 		</nav>
-		<LanguageSwitch locale={data.locale} />
-	</header>
+	</SiteHeader>
 
 	<main id="main">
 		{@render children()}

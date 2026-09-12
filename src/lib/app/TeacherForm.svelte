@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { messages, type Locale } from '$lib/i18n';
+	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import type { Teacher } from '$lib/kindergarten';
-	import { getApp, type TeacherValues } from './state.svelte';
-	import { alert, button, field, formText } from './ui';
+	import { getApp, Task, type TeacherValues } from './state.svelte';
+	import { alert, button, field, formText, surface } from './ui';
 
 	// A teacher's name, classrooms, and admin rights. Admins can't take away their own rights here: that
 	// would lock them out of this very page, so another admin does it.
@@ -11,8 +11,6 @@
 		teacher,
 		self = false,
 		submitLabel,
-		busy = false,
-		error,
 		onsubmit,
 		oninput
 	}: {
@@ -20,14 +18,13 @@
 		teacher?: Teacher;
 		self?: boolean;
 		submitLabel: string;
-		busy?: boolean;
-		error?: string;
-		onsubmit: (values: TeacherValues) => void;
+		onsubmit: (values: TeacherValues) => Promise<unknown>;
 		oninput?: () => void;
 	} = $props();
 
 	const app = getApp();
 	const t = $derived(messages[locale].app.teacher);
+	const task = new Task();
 
 	function submit(event: SubmitEvent & { currentTarget: EventTarget & HTMLFormElement }) {
 		event.preventDefault();
@@ -35,11 +32,11 @@
 		const name = formText(form, 'name');
 		if (!name) return;
 		const admin = self ? teacher?.admin === true : form.has('admin');
-		onsubmit({ name, admin, classrooms: form.getAll('classroom').map(String) });
+		task.run(() => onsubmit({ name, admin, classrooms: form.getAll('classroom').map(String) }));
 	}
 </script>
 
-<form class="grid gap-6 rounded-4xl glass p-6 sm:p-8" onsubmit={submit} {oninput}>
+<form class="{surface} grid gap-6" onsubmit={submit} {oninput}>
 	<label class={field.label}>
 		<span class={field.name}>{t.name}</span>
 		<input
@@ -81,8 +78,8 @@
 			</span>
 		</label>
 	{/if}
-	{#if error}<p class={alert} role="alert">{error}</p>{/if}
-	<button class="{button.primary} justify-self-start" type="submit" disabled={busy}>
+	{#if task.error}<p class={alert} role="alert">{errorMessage(locale, task.error)}</p>{/if}
+	<button class="{button.primary} justify-self-start" type="submit" disabled={task.busy}>
 		{submitLabel}
 	</button>
 </form>

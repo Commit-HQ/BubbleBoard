@@ -4,7 +4,7 @@
 	import { appPath } from '$lib/paths';
 	import Panel from './Panel.svelte';
 	import { getApp } from './state.svelte';
-	import { button } from './ui';
+	import { button, buttonRow } from './ui';
 
 	// What an app page shows until the device is ready for it. Prerendered pages show the loading state.
 	let { locale }: { locale: Locale } = $props();
@@ -28,12 +28,16 @@
 {:else if app.status === 'offline' || app.status === 'unreadable'}
 	{@const problem = app.status === 'offline' ? t.offline : t.unreadable}
 	<Panel icon="alert" title={problem.title} copy={problem.copy} alert>
-		<button class={button.primary} type="button" onclick={() => app.retry()}>
-			<Icon name="refresh" class="size-4" />{t.offline.retry}
-		</button>
+		<div class={buttonRow}>
+			<button class={button.primary} type="button" onclick={() => app.retry()}>
+				<Icon name="refresh" class="size-4" />{t.offline.retry}
+			</button>
+		</div>
 	</Panel>
 {:else}
 	<Panel icon="key" title={t.connectFirst.title} copy={t.connectFirst.copy}>
-		<a class={button.primary} href={appPath(locale)}>{t.connectFirst.action}</a>
+		<div class={buttonRow}>
+			<a class={button.primary} href={appPath(locale)}>{t.connectFirst.action}</a>
+		</div>
 	</Panel>
 {/if}

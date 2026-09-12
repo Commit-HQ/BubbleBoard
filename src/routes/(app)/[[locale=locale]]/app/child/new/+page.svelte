@@ -3,8 +3,9 @@
 	import CardSheet, { type PrintableCard } from '$lib/app/CardSheet.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp, Task, type ChildValues } from '$lib/app/state.svelte';
-	import { alert, button, field, formText, queryParam } from '$lib/app/ui';
+	import { alert, button, field, formText, queryParam, surface } from '$lib/app/ui';
 	import { errorMessage, messages } from '$lib/i18n';
+	import { byId } from '$lib/kindergarten';
 	import { appPath } from '$lib/paths';
 	import type { PageProps } from './$types';
 
@@ -13,7 +14,7 @@
 	const t = $derived(messages[data.locale].app);
 	const preset = $derived(queryParam('classroom'));
 	const presetClassroom = $derived(app.catalog.classrooms.find(({ id }) => id === preset));
-	const task = new Task(app);
+	const task = new Task();
 	let cardFor = $state<'new' | 'sibling'>('new');
 	let printed = $state.raw<{ child: string; cards: PrintableCard[] }>();
 
@@ -31,7 +32,7 @@
 				await goto(appPath(data.locale, 'child', { id: added.id }));
 				return;
 			}
-			const detail = app.classroomNames([values.classroom])[0];
+			const detail = byId(app.catalog.classrooms, values.classroom).name;
 			const card = { secret: added.secret, name: values.cardName, kind: 'family' as const, detail };
 			printed = { child: added.id, cards: [card] };
 		});
@@ -56,7 +57,7 @@
 		}}
 	>
 		{#if app.catalog.classrooms.length}
-			<form class="grid gap-6 rounded-4xl glass p-6 sm:p-8" onsubmit={submit}>
+			<form class="{surface} grid gap-6" onsubmit={submit}>
 				<label class={field.label}>
 					<span class={field.name}>{t.newChild.name}</span>
 					<input class={field.input} name="name" required maxlength="80" autocomplete="off" />
@@ -113,7 +114,7 @@
 								<select class={field.input} name="sibling" required>
 									{#each app.catalog.children as sibling (sibling.id)}
 										<option value={sibling.id}>
-											{sibling.name} ({app.classroomNames([sibling.classroom])[0]})
+											{sibling.name} ({byId(app.catalog.classrooms, sibling.classroom).name})
 										</option>
 									{/each}
 								</select>

@@ -1,9 +1,11 @@
 <script module lang="ts">
+	import type { CardKind } from '$lib/kindergarten';
+
 	export type PrintableCard = {
 		secret: Uint8Array;
-		kind: 'admin' | 'teacher' | 'recovery' | 'family';
-		/** Who holds the card. The recovery card has no name. */
-		name?: string;
+		kind: CardKind;
+		/** Who holds the card. The recovery card has no name, so every language can label it. */
+		name: string;
 		/** A short line under the name, such as the family's classrooms. */
 		detail?: string;
 	};
@@ -12,15 +14,15 @@
 <script lang="ts">
 	import { beforeNavigate } from '$app/navigation';
 	import { page } from '$app/state';
-	import bubble from '$lib/assets/bubble.svg';
 	import favicon from '$lib/assets/favicon.svg';
 	import { cardLink, formatCardCode } from '$lib/card';
+	import Bubble from '$lib/components/Bubble.svelte';
 	import Icon from '$lib/components/Icon.svelte';
-	import { messages, type Locale } from '$lib/i18n';
+	import { messages, teacherName, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
 	import { onMount } from 'svelte';
 	import QrCode from './QrCode.svelte';
-	import { alert, button } from './ui';
+	import { alert, button, field, surface } from './ui';
 
 	// New cards, shown once to print or save as a PDF. Card codes are never stored (docs/access-format.md),
 	// so this page is the only place they appear. With `confirm`, for setup's two cards, nothing leaves
@@ -53,7 +55,7 @@
 </script>
 
 <section class="grid gap-5">
-	<div class="rounded-4xl glass p-6 sm:p-8 print:hidden">
+	<div class="{surface} print:hidden">
 		<h1 class="text-3xl focus:outline-none sm:text-4xl" tabindex="-1" bind:this={heading}>
 			{t.card.title(cards.length)}
 		</h1>
@@ -65,15 +67,11 @@
 
 	<ul class="grid gap-4 print:gap-10">
 		{#each cards as card (card.secret)}
-			{@const label = card.kind === 'recovery' ? t.card.kinds.recovery : (card.name ?? '')}
+			{@const label = teacherName(locale, { name: card.name, recovery: card.kind === 'recovery' })}
 			<li
 				class="relative isolate break-inside-avoid overflow-hidden rounded-3xl glass p-6 sm:p-7 print:border print:border-ink/40 print:shadow-none"
 			>
-				<img
-					src={bubble}
-					alt=""
-					class="pointer-events-none absolute -top-10 -right-10 -z-10 size-32 print:hidden"
-				/>
+				<Bubble class="-top-10 -right-10 -z-10 size-32 print:hidden" />
 				<p class="flex items-center justify-between gap-3">
 					<span class="inline-flex items-center gap-2 font-bold">
 						<img src={favicon} alt="" width="28" height="28" />BubbleBoard
@@ -109,7 +107,7 @@
 	<div class="grid justify-items-start gap-4 print:hidden">
 		{#if confirm}
 			<label class="flex items-center gap-3 font-semibold">
-				<input class="size-5 accent-accent" type="checkbox" bind:checked={confirmed} />
+				<input class={field.check} type="checkbox" bind:checked={confirmed} />
 				{t.card.confirm}
 			</label>
 			{#if blocked && !confirmed}<p class={alert} role="alert">{t.card.leaveFirst}</p>{/if}

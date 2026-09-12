@@ -1,21 +1,21 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
+import type { Identity, Staff } from '$lib/api';
 import { fromBase64Url, toBase64Url } from '$lib/base64url';
-import { hashAuthToken, hashToken } from '$lib/crypto';
+import { hashAuthToken, hashToken, randomBytes } from '$lib/crypto';
 
 // A device connects with a card once and then uses a session: a random token in an HttpOnly, SameSite
 // cookie, stored only as a hash. A session authorizes requests but opens nothing: keys stay on the device.
 
 const cookieName = 'session';
+const tokenBytes = 32;
 const day = 24 * 60 * 60 * 1000;
 /** A session ends after 90 days without use (product-spec.md §32). */
 const lifetime = 90 * day;
 /** A session in use is extended once it's this old, so most requests don't write. */
 const renewAfter = 7 * day;
 
-export type Identity = { credential: string; wrappedKey: string } & (
-	{ kind: 'staff'; teacher: string; admin: boolean } | { kind: 'family'; family: string }
-);
-export type Staff = Extract<Identity, { kind: 'staff' }>;
+/** A staff member whose admin rights were checked for this request. Changes that need them take one. */
+export type Admin = Staff & { admin: true };
 
 export function database(event: RequestEvent) {
 	const db = event.platform?.env.DB;
@@ -45,20 +45,20 @@ export async function limitAttempts(event: RequestEvent) {
 	if (!success) error(429, 'too-many-attempts');
 }
 
-const identityQuery = `SELECT c.id AS credential, c.wrapped_key, c.teacher_id, c.family_id, t.admin
-	FROM credentials c LEFT JOIN teachers t ON t.id = c.teacher_id`;
+const identityQuery = `SELECT c.id AS credential, c.wrapped_key AS wrappedKey, c.teacher_id AS teacher,
+	c.family_id AS family, t.admin FROM credentials c LEFT JOIN teachers t ON t.id = c.teacher_id`;
 
 type IdentityRow = {
 	credential: string;
-	wrapped_key: string;
-	teacher_id: string | null;
-	family_id: string | null;
+	wrappedKey: string;
+	teacher: string | null;
+	family: string | null;
 	admin: number | null;
 };
 
 function identity(row: IdentityRow | null): Identity | undefined {
 	if (!row) return undefined;
-	const { credential, wrapped_key: wrappedKey, teacher_id: teacher, family_id: family } = row;
+	const { credential, wrappedKey, teacher, family } = row;
 	if (teacher) return { kind: 'staff', credential, wrappedKey, teacher, admin: row.admin === 1 };
 	return family ? { kind: 'family', credential, wrappedKey, family } : undefined;
 }
@@ -83,12 +83,12 @@ function setCookie(event: RequestEvent, token: Uint8Array) {
 
 function cookieToken(event: RequestEvent) {
 	const token = fromBase64Url(event.cookies.get(cookieName) ?? '');
-	return token?.length === 32 ? token : undefined;
+	return token?.length === tokenBytes ? token : undefined;
 }
 
 export async function startSession(event: RequestEvent, credential: string) {
 	const db = database(event);
-	const token = crypto.getRandomValues(new Uint8Array(32));
+	const token = randomBytes(tokenBytes);
 	const previous = cookieToken(event);
 	const now = Date.now();
 	await db.batch([
@@ -104,7 +104,7 @@ export async function startSession(event: RequestEvent, credential: string) {
 }
 
 /** The card behind this request's session, extending the session when it's due. */
-export async function currentIdentity(event: RequestEvent) {
+async function currentIdentity(event: RequestEvent) {
 	const token = cookieToken(event);
 	if (!token) return undefined;
 	const db = database(event);
@@ -137,15 +137,21 @@ export async function endSession(event: RequestEvent) {
 	event.cookies.delete(cookieName, { path: '/api' });
 }
 
-export async function requireStaff(event: RequestEvent): Promise<Staff> {
+/** The session's card. Without one, the app asks for the card again. */
+export async function requireIdentity(event: RequestEvent) {
 	const current = await currentIdentity(event);
 	if (!current) error(401, 'signed-out');
+	return current;
+}
+
+export async function requireStaff(event: RequestEvent): Promise<Staff> {
+	const current = await requireIdentity(event);
 	if (current.kind !== 'staff') error(403, 'forbidden');
 	return current;
 }
 
-export async function requireAdmin(event: RequestEvent) {
+export async function requireAdmin(event: RequestEvent): Promise<Admin> {
 	const staff = await requireStaff(event);
 	if (!staff.admin) error(403, 'forbidden');
-	return staff;
+	return { ...staff, admin: true };
 }

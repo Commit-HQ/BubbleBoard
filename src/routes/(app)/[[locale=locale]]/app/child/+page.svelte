@@ -2,13 +2,14 @@
 	import { goto } from '$app/navigation';
 	import CardSheet, { type PrintableCard } from '$lib/app/CardSheet.svelte';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
-	import NameForm from '$lib/app/NameForm.svelte';
+	import FieldForm from '$lib/app/FieldForm.svelte';
 	import Screen from '$lib/app/Screen.svelte';
-	import { getApp, Task } from '$lib/app/state.svelte';
-	import { alert, button, field, formText, queryParam, surface } from '$lib/app/ui';
+	import { getApp } from '$lib/app/state.svelte';
+	import { button, queryParam, surface } from '$lib/app/ui';
 	import Icon from '$lib/components/Icon.svelte';
-	import { errorMessage, listNames, messages } from '$lib/i18n';
-	import type { Family } from '$lib/kindergarten';
+	import IconTile from '$lib/components/IconTile.svelte';
+	import { listNames, messages } from '$lib/i18n';
+	import { byId, namesOf, type Child, type Family } from '$lib/kindergarten';
 	import { appPath } from '$lib/paths';
 	import type { PageProps } from './$types';
 
@@ -30,8 +31,6 @@
 	const otherClassrooms = $derived(
 		app.catalog.classrooms.filter((candidate) => candidate.id !== child?.classroom)
 	);
-	const task = new Task(app);
-	const error = $derived(task.error && errorMessage(data.locale, task.error));
 	let editing = $state<Editing>();
 	let confirming = $state<Confirming>();
 	let printed = $state.raw<PrintableCard[]>();
@@ -43,97 +42,67 @@
 		);
 	}
 
+	/** The question to ask, and the change it confirms. */
 	const dialog = $derived.by(() => {
 		if (!confirming || !child) return undefined;
+		const current = child;
 		if (confirming.action === 'replaceCard') {
-			const { name } = confirming.family;
+			const { family } = confirming;
 			return {
-				title: t.card.replaceTitle(name),
+				title: t.card.replaceTitle(family.name),
 				copy: t.card.replaceCopy,
-				confirm: t.card.replace
+				confirm: t.card.replace,
+				run: async () => {
+					const secret = await app.replaceFamilyCard(family);
+					confirming = undefined;
+					printFamilyCard(secret, family.name, family.classrooms);
+				}
 			};
 		}
 		if (confirming.action === 'removeCard') {
-			const others = siblings(confirming.family).map((other) => other.name);
+			const { family } = confirming;
+			const others = siblings(family).map((other) => other.name);
 			return {
-				title: t.child.removeCardTitle(confirming.family.name),
+				title: t.child.removeCardTitle(family.name),
 				copy: others.length ? t.child.removeCardShared(others) : t.child.removeCardLast,
 				confirm: t.actions.remove,
-				danger: true
+				danger: true,
+				run: () => close(app.removeFamilyCard(current, family.id))
 			};
 		}
 		// Family cards used only for this child stop working with it.
 		const ending = families.filter((family) => !siblings(family).length);
+		const back = classroom
+			? appPath(data.locale, 'classroom', { id: classroom.id })
+			: appPath(data.locale);
 		return {
-			title: t.child.removeTitle(child.name),
+			title: t.child.removeTitle(current.name),
 			copy: t.child.removeCopy(ending.map((family) => family.name)),
 			confirm: t.child.remove,
-			danger: true
+			danger: true,
+			run: async () => {
+				await app.removeChild(current);
+				await goto(back);
+			}
 		};
 	});
 
-	function edit(next?: Editing) {
-		task.reset();
-		editing = next;
-	}
-
-	function ask(next?: Confirming) {
-		task.reset();
-		confirming = next;
-	}
-
-	/** Runs a change and closes whatever form or question started it. */
-	async function change(work: () => Promise<unknown>) {
-		const done = await task.run(work);
-		if (done) {
-			editing = undefined;
-			confirming = undefined;
-		}
-		return done;
+	/** Closes the form or question once its change is saved. */
+	async function close(change: Promise<unknown>) {
+		await change;
+		editing = undefined;
+		confirming = undefined;
 	}
 
 	function printFamilyCard(secret: Uint8Array, name: string, classrooms: string[]) {
-		const detail = listNames(data.locale, app.classroomNames(classrooms));
+		const detail = listNames(data.locale, namesOf(app.catalog.classrooms, classrooms));
 		printed = [{ secret, name, kind: 'family', detail }];
 	}
 
-	function addCard(name: string) {
-		const current = child;
-		if (!current) return;
-		change(async () => {
-			printFamilyCard(await app.addFamilyCard(current, name), name, [current.classroom]);
-		});
-	}
-
-	async function confirm() {
-		const current = child;
-		const action = confirming;
-		if (!current || !action) return;
-		if (action.action === 'replaceCard') {
-			await change(async () => {
-				const secret = await app.replaceFamilyCard(action.family);
-				printFamilyCard(secret, action.family.name, action.family.classrooms);
-			});
-		} else if (action.action === 'removeCard') {
-			await change(() => app.removeFamilyCard(current, action.family.id));
-		} else {
-			const back = classroom
-				? appPath(data.locale, 'classroom', { id: classroom.id })
-				: appPath(data.locale);
-			if (await change(() => app.removeChild(current))) await goto(back);
-		}
-	}
-
-	function renameChild(name: string) {
-		const current = child;
-		if (current) change(() => app.renameChild(current, name));
-	}
-
-	function move(event: SubmitEvent & { currentTarget: EventTarget & HTMLFormElement }) {
-		event.preventDefault();
-		const current = child;
-		const target = formText(new FormData(event.currentTarget), 'classroom');
-		if (current && target) change(() => app.moveChild(current, target));
+	async function addCard(current: Child, name: string) {
+		const secret = await app.addFamilyCard(current, name);
+		editing = undefined;
+		printFamilyCard(secret, name, [current.classroom]);
 	}
 </script>
 
@@ -156,18 +125,15 @@
 						{@const others = siblings(family)}
 						<li class="rounded-3xl glass p-5">
 							<div class="flex items-start gap-3">
-								<span
-									class="grid size-10 shrink-0 place-items-center rounded-2xl bg-sunrise text-white"
-								>
-									<Icon name="heart" class="size-5" />
-								</span>
+								<IconTile icon="heart" />
 								<div class="min-w-0">
 									<p id="card-{family.id}" class="font-bold">{family.name}</p>
 									{#if others.length}
 										<p class="text-sm text-muted">
 											{t.child.also(
 												others.map(
-													(other) => `${other.name} (${app.classroomNames([other.classroom])[0]})`
+													(other) =>
+														`${other.name} (${byId(app.catalog.classrooms, other.classroom).name})`
 												)
 											)}
 										</p>
@@ -176,15 +142,13 @@
 							</div>
 							{#if typeof editing === 'object' && editing.renameCard === family.id}
 								<div class="mt-4">
-									<NameForm
+									<FieldForm
+										locale={data.locale}
 										label={t.child.cardName}
 										value={family.name}
 										submitLabel={t.actions.save}
-										cancelLabel={t.actions.cancel}
-										busy={task.busy}
-										{error}
-										onsubmit={(name) => change(() => app.renameFamily(family, name))}
-										oncancel={() => edit()}
+										onsubmit={(name) => close(app.renameFamily(family, name))}
+										oncancel={() => (editing = undefined)}
 									/>
 								</div>
 							{:else}
@@ -193,7 +157,7 @@
 										class={button.secondary}
 										type="button"
 										aria-describedby="card-{family.id}"
-										onclick={() => ask({ action: 'replaceCard', family })}
+										onclick={() => (confirming = { action: 'replaceCard', family })}
 									>
 										<Icon name="refresh" class="size-4" />{t.card.replace}
 									</button>
@@ -202,7 +166,7 @@
 											class={button.quiet}
 											type="button"
 											aria-describedby="card-{family.id}"
-											onclick={() => edit({ renameCard: family.id })}
+											onclick={() => (editing = { renameCard: family.id })}
 										>
 											<Icon name="pencil" class="size-4" />{t.actions.rename}
 										</button>
@@ -210,7 +174,7 @@
 											class={button.danger}
 											type="button"
 											aria-describedby="card-{family.id}"
-											onclick={() => ask({ action: 'removeCard', family })}
+											onclick={() => (confirming = { action: 'removeCard', family })}
 										>
 											<Icon name="trash" class="size-4" />{t.actions.remove}
 										</button>
@@ -225,22 +189,20 @@
 				{#if app.admin}
 					{#if editing === 'addCard'}
 						<div class={surface}>
-							<NameForm
+							<FieldForm
+								locale={data.locale}
 								label={t.newChild.cardName}
 								hint={families.length ? t.child.addCardHint : undefined}
 								submitLabel={families.length ? t.child.addCard : t.child.addFirstCard}
-								cancelLabel={t.actions.cancel}
-								busy={task.busy}
-								{error}
-								onsubmit={addCard}
-								oncancel={() => edit()}
+								onsubmit={(name) => addCard(child, name)}
+								oncancel={() => (editing = undefined)}
 							/>
 						</div>
 					{:else}
 						<button
 							class="{button.secondary} justify-self-start"
 							type="button"
-							onclick={() => edit('addCard')}
+							onclick={() => (editing = 'addCard')}
 						>
 							<Icon name="plus" class="size-4" />{families.length
 								? t.child.addCard
@@ -254,70 +216,59 @@
 				<section class="grid gap-4 border-t border-ink/10 pt-6">
 					<div class="flex flex-wrap gap-2">
 						{#if otherClassrooms.length}
-							<button class={button.secondary} type="button" onclick={() => edit('move')}>
+							<button class={button.secondary} type="button" onclick={() => (editing = 'move')}>
 								{t.child.move}
 							</button>
 						{/if}
-						<button class={button.quiet} type="button" onclick={() => edit('rename')}>
+						<button class={button.quiet} type="button" onclick={() => (editing = 'rename')}>
 							<Icon name="pencil" class="size-4" />{t.child.rename}
 						</button>
 						<button
 							class={button.danger}
 							type="button"
-							onclick={() => ask({ action: 'removeChild' })}
+							onclick={() => (confirming = { action: 'removeChild' })}
 						>
 							<Icon name="trash" class="size-4" />{t.child.remove}
 						</button>
 					</div>
 					{#if editing === 'rename'}
 						<div class={surface}>
-							<NameForm
+							<FieldForm
+								locale={data.locale}
 								label={t.newChild.name}
 								value={child.name}
 								submitLabel={t.actions.save}
-								cancelLabel={t.actions.cancel}
-								busy={task.busy}
-								{error}
-								onsubmit={renameChild}
-								oncancel={() => edit()}
+								onsubmit={(name) => close(app.renameChild(child, name))}
+								oncancel={() => (editing = undefined)}
 							/>
 						</div>
 					{:else if editing === 'move'}
-						<form class="{surface} grid gap-3" onsubmit={move}>
-							<label class={field.label}>
-								<span class={field.name}>{t.newChild.classroom}</span>
-								<select class={field.input} name="classroom">
-									{#each otherClassrooms as option (option.id)}
-										<option value={option.id}>{option.name}</option>
-									{/each}
-								</select>
-							</label>
-							{#if error}<p class={alert} role="alert">{error}</p>{/if}
-							<div class="flex flex-wrap gap-2">
-								<button class={button.primary} type="submit" disabled={task.busy}>
-									{t.child.moveSubmit}
-								</button>
-								<button class={button.quiet} type="button" onclick={() => edit()}>
-									{t.actions.cancel}
-								</button>
-							</div>
-						</form>
+						<div class={surface}>
+							<FieldForm
+								locale={data.locale}
+								label={t.newChild.classroom}
+								options={otherClassrooms.map((option) => ({
+									value: option.id,
+									label: option.name
+								}))}
+								submitLabel={t.child.moveSubmit}
+								onsubmit={(target) => close(app.moveChild(child, target))}
+								oncancel={() => (editing = undefined)}
+							/>
+						</div>
 					{/if}
 				</section>
 			{/if}
 
 			{#if dialog}
 				<ConfirmDialog
+					locale={data.locale}
 					title={dialog.title}
 					copy={dialog.copy}
 					confirmLabel={dialog.confirm}
-					cancelLabel={t.actions.cancel}
-					busyLabel={t.actions.working}
 					danger={dialog.danger}
-					busy={task.busy}
-					{error}
-					onconfirm={confirm}
-					onclose={() => ask()}
+					onconfirm={dialog.run}
+					onclose={() => (confirming = undefined)}
 				/>
 			{/if}
 		{:else}

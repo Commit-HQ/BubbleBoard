@@ -1,11 +1,11 @@
 <script lang="ts">
-	import bubble from '$lib/assets/bubble.svg';
 	import { readCard } from '$lib/card';
 	import Icon from '$lib/components/Icon.svelte';
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
+	import Panel from './Panel.svelte';
 	import { readQrCode } from './scan';
 	import { getApp } from './state.svelte';
-	import { alert, button, field, formText } from './ui';
+	import { alert, button, buttonRow, field, formText } from './ui';
 
 	// Connecting a device: a photo of the card (on a phone, the camera opens from here), or its typed code.
 	// A phone's own camera app opens the card's link instead, which the app reads on start.
@@ -41,26 +41,14 @@
 	}
 </script>
 
-<section class="relative isolate my-auto overflow-hidden rounded-4xl glass p-7 sm:p-10">
-	<img
-		src={bubble}
-		alt=""
-		class="pointer-events-none absolute -top-14 -right-14 -z-10 size-44 sm:size-56"
-	/>
-	<img src={bubble} alt="" class="pointer-events-none absolute top-28 right-8 -z-10 size-10" />
-	<span class="grid size-11 place-items-center rounded-2xl bg-sunrise text-white">
-		<Icon name="key" />
-	</span>
-	<h1 class="mt-5 max-w-sm text-4xl sm:text-5xl">{t.connect.title}</h1>
-	<p class="mt-3 max-w-md text-lg text-muted">{t.connect.copy}</p>
-
+<Panel icon="key" title={t.connect.title} copy={t.connect.copy}>
 	{#if app.notice}
 		<p class="mt-6 rounded-2xl bg-apricot/15 px-4 py-3 font-semibold" role="status">
 			{errorMessage(locale, app.notice)}
 		</p>
 	{/if}
 
-	<div class="mt-8 flex flex-wrap gap-3">
+	<div class={buttonRow}>
 		<label
 			class="{button.primary} cursor-pointer has-focus-visible:outline-3 has-focus-visible:outline-offset-4 has-focus-visible:outline-accent"
 		>
@@ -110,4 +98,4 @@
 	{#if app.cardError}
 		<p class={alert} role="alert">{errorMessage(locale, app.cardError)}</p>
 	{/if}
-</section>
+</Panel>

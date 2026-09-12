@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Access, Membership, NewClassroom, NewCredential } from './api';
+import type { Access, Membership, NewClassroom, NewCredential, Staff } from './api';
 import { createId, deriveCredential, UnreadableError } from './crypto';
 import {
 	byId,
@@ -22,10 +22,7 @@ import {
 
 const noRecords = { revision: 0, classrooms: [], teachers: [], families: [], children: [] };
 
-function staffAccess(
-	credential: NewCredential,
-	admin: boolean
-): Extract<Access, { kind: 'staff' }> {
+function staffAccess(credential: NewCredential, admin: boolean): Staff {
 	const { id, wrappedKey } = credential;
 	return { kind: 'staff', credential: id, wrappedKey, teacher: createId(), admin };
 }
@@ -42,8 +39,8 @@ describe('family links', () => {
 	it('follow the classrooms a family’s children are in', () => {
 		const children = [{ classroom: 'owls', families: ['family'] }];
 		expect(planFamilyLinks(current, children, ['family'])).toEqual({
-			add: [{ family: 'family', classroom: 'owls' }],
-			remove: [{ family: 'family', classroom: 'bubbles' }],
+			addMemberships: [{ family: 'family', classroom: 'owls' }],
+			removeMemberships: [{ family: 'family', classroom: 'bubbles' }],
 			removeFamilies: []
 		});
 	});
@@ -54,8 +51,8 @@ describe('family links', () => {
 			{ classroom: 'bubbles', families: ['family'] }
 		];
 		expect(planFamilyLinks(current, children, ['family'])).toEqual({
-			add: [{ family: 'family', classroom: 'owls' }],
-			remove: [],
+			addMemberships: [{ family: 'family', classroom: 'owls' }],
+			removeMemberships: [],
 			removeFamilies: []
 		});
 	});
@@ -63,8 +60,8 @@ describe('family links', () => {
 	it('remove a family left without children, and leave the families a change didn’t touch', () => {
 		const families = [...current, { id: 'untouched', classrooms: ['bubbles'] }];
 		expect(planFamilyLinks(families, [], ['family'])).toEqual({
-			add: [],
-			remove: [],
+			addMemberships: [],
+			removeMemberships: [],
 			removeFamilies: ['family']
 		});
 	});
@@ -79,8 +76,8 @@ describe('kindergarten records', () => {
 		};
 		const catalog = await openCatalog(keys.staffKey, records);
 		expect(catalog.teachers.map(({ name, recovery }) => ({ name, recovery }))).toEqual([
-			{ name: '', recovery: true },
-			{ name: 'Ana', recovery: false }
+			{ name: 'Ana', recovery: false },
+			{ name: '', recovery: true }
 		]);
 
 		const recoveryAccess = staffAccess(teachers[1].credential, true);
@@ -118,7 +115,7 @@ describe('kindergarten records', () => {
 		const { family } = created;
 
 		// A brother and a sister in two classrooms, with one family card.
-		const children = [bubbles, ladybirds].map(({ id }) => ({
+		const children = [ladybirds, bubbles].map(({ id }) => ({
 			classroom: id,
 			families: [family.id]
 		}));

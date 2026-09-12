@@ -10,7 +10,7 @@ export function homePath(locale: Locale) {
 }
 
 /** App pages. Pages are prerendered once, so record IDs go in the query; they aren't secret. */
-export type AppPage =
+type AppPage =
 	'setup' | 'device' | 'classroom' | 'child' | 'child/new' | 'teachers' | 'teacher' | 'teacher/new';
 
 export function appPath(locale: Locale, page?: AppPage, query?: Record<string, string>) {

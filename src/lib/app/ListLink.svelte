@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
 
-	let { href, title, detail }: { href: string; title: string; detail?: string } = $props();
+	let { href, title, detail }: { href: string; title: string; detail: string } = $props();
 </script>
 
 <li>
@@ -11,7 +11,7 @@
 	>
 		<span class="min-w-0">
 			<span class="block font-bold">{title}</span>
-			{#if detail}<span class="block text-sm text-muted">{detail}</span>{/if}
+			<span class="block text-sm text-muted">{detail}</span>
 		</span>
 		<Icon name="chevronRight" class="size-5 shrink-0 text-muted" />
 	</a>

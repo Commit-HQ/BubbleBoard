@@ -6,7 +6,7 @@
 	import Panel from './Panel.svelte';
 	import { getApp } from './state.svelte';
 	import StatusView from './StatusView.svelte';
-	import { button } from './ui';
+	import { button, buttonRow } from './ui';
 
 	// The frame of an app page below home: a way back, a title, and the page once this device may see it.
 	let {
@@ -30,14 +30,16 @@
 </script>
 
 {#snippet home()}
-	<a class={button.secondary} href={appPath(locale)}>{t.home.title}</a>
+	<div class={buttonRow}>
+		<a class={button.secondary} href={appPath(locale)}>{t.home.title}</a>
+	</div>
 {/snippet}
 
 {#if app.status === 'family' && need !== 'anyone'}
 	<Panel icon="smile" title={t.staffOnly.title} copy={t.staffOnly.copy} children={home} />
 {:else if app.status === 'staff' && need === 'admin' && !app.admin}
 	<Panel icon="lock" title={t.adminOnly.title} copy={t.adminOnly.copy} children={home} />
-{:else if app.status === 'staff' || app.status === 'family'}
+{:else if app.connected}
 	<div class="grid gap-6">
 		<header class="print:hidden">
 			<a class="{button.quiet} -ml-3" href={back?.href ?? appPath(locale)}>

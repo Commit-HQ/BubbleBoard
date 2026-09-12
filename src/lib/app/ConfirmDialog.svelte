@@ -1,10 +1,14 @@
 <script lang="ts">
+	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import { onMount } from 'svelte';
+	import { Task } from './state.svelte';
 	import { alert, button } from './ui';
 
-	// A question before a change that can't be taken back. It opens when mounted; `onclose` runs when it
-	// closes, by Escape, Cancel, or the parent removing it. With `safe`, cancelling is the main action.
+	// A question before a change that can't be taken back. It opens when mounted and runs its own change,
+	// staying open with the error if that fails. `onclose` runs when it closes, by Escape, Cancel, or the
+	// parent removing it. With `safe`, cancelling is the main action.
 	let {
+		locale,
 		title,
 		copy,
 		confirmLabel,
@@ -12,25 +16,24 @@
 		busyLabel,
 		danger = false,
 		safe = false,
-		busy = false,
-		error,
 		onconfirm,
 		onclose
 	}: {
+		locale: Locale;
 		title: string;
-		copy?: string;
+		copy: string;
 		confirmLabel: string;
-		cancelLabel: string;
+		cancelLabel?: string;
 		busyLabel?: string;
 		danger?: boolean;
 		safe?: boolean;
-		busy?: boolean;
-		error?: string;
-		onconfirm: () => void;
+		onconfirm: () => Promise<unknown>;
 		onclose: () => void;
 	} = $props();
 
+	const t = $derived(messages[locale].app.actions);
 	const id = $props.id();
+	const task = new Task();
 	let dialog = $state<HTMLDialogElement>();
 	onMount(() => dialog?.showModal());
 
@@ -43,20 +46,25 @@
 	bind:this={dialog}
 	class="m-auto w-[calc(100%-2rem)] max-w-md rounded-4xl bg-white p-7 text-ink shadow-2xl shadow-indigo-950/25 backdrop:bg-ink/30"
 	aria-labelledby="{id}-title"
-	aria-describedby={copy ? `${id}-copy` : undefined}
+	aria-describedby="{id}-copy"
 	{onclose}
 >
 	<h2 id="{id}-title" class="text-3xl">{title}</h2>
-	{#if copy}<p id="{id}-copy" class="mt-3 text-muted">{copy}</p>{/if}
-	{#if error}<p class="{alert} mt-4" role="alert">{error}</p>{/if}
+	<p id="{id}-copy" class="mt-3 text-muted">{copy}</p>
+	{#if task.error}<p class="{alert} mt-4" role="alert">{errorMessage(locale, task.error)}</p>{/if}
 	<div class="mt-7 flex flex-wrap justify-end gap-2">
 		<button
 			class={safe ? button.primary : button.quiet}
 			type="button"
-			onclick={() => dialog?.close()}>{cancelLabel}</button
+			onclick={() => dialog?.close()}>{cancelLabel ?? t.cancel}</button
 		>
-		<button class={confirmClass} type="button" disabled={busy} onclick={onconfirm}>
-			{busy && busyLabel ? busyLabel : confirmLabel}
+		<button
+			class={confirmClass}
+			type="button"
+			disabled={task.busy}
+			onclick={() => task.run(onconfirm)}
+		>
+			{task.busy ? (busyLabel ?? t.working) : confirmLabel}
 		</button>
 	</div>
 </dialog>

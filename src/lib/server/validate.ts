@@ -1,7 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type {
 	ChildChange,
-	ChildRemoval,
 	FamilyLinks,
 	Membership,
 	MembershipKey,
@@ -14,7 +13,7 @@ import type {
 	TeacherChange
 } from '$lib/api';
 import { fromBase64Url } from '$lib/base64url';
-import { isId } from '$lib/crypto';
+import { AUTH_TOKEN_BYTES, envelopeSize, isId, KEY_BYTES } from '$lib/crypto';
 
 // Request bodies, checked before anything reaches the database. The server can't open profiles or keys,
 // so it checks their form; the browsers that open them check the rest.
@@ -23,6 +22,8 @@ type Fields = Record<string, unknown>;
 
 /** Requests are small JSON; a big change to children and family cards stays far below this. */
 const maxBytes = 64 * 1024;
+/** A profile holds a name and a few IDs. */
+const maxProfileBytes = 6 * 1024;
 
 function invalid(): never {
 	error(400, 'invalid');
@@ -69,15 +70,19 @@ const ids = (value: unknown) => [...new Set(list(value, id))];
 const flag = (value: unknown) => (typeof value === 'boolean' ? value : invalid());
 const revision = (value: unknown) =>
 	Number.isSafeInteger(value) && (value as number) >= 0 ? (value as number) : invalid();
-const pattern = (regex: RegExp) => (value: unknown) =>
-	typeof value === 'string' && regex.test(value) ? value : invalid();
 
 export const authToken = (value: unknown) =>
-	typeof value === 'string' && fromBase64Url(value)?.length === 32 ? value : invalid();
+	typeof value === 'string' && fromBase64Url(value)?.length === AUTH_TOKEN_BYTES
+		? value
+		: invalid();
 
-// Envelope format 1. A wrapped key is always 32 bytes plus the tag; a profile holds a name and some IDs.
-const wrappedKey = pattern(/^1\.[\w-]{16}\.[\w-]{64}$/);
-export const profile = pattern(/^1\.[\w-]{16}\.[\w-]{22,8192}$/);
+const wrappedKey = (value: unknown) =>
+	envelopeSize(value) === KEY_BYTES ? (value as string) : invalid();
+
+export function profile(value: unknown) {
+	const size = envelopeSize(value);
+	return size !== undefined && size <= maxProfileBytes ? (value as string) : invalid();
+}
 
 function credential(value: unknown): NewCredential {
 	const body = fields(value);
@@ -142,22 +147,17 @@ const membership = (value: unknown): Membership => ({
 	groupKeyForFamily: wrappedKey(fields(value).groupKeyForFamily)
 });
 
-const removals = (body: Fields) => ({
-	removeMemberships: list(body.removeMemberships, membershipKey),
-	removeFamilies: ids(body.removeFamilies)
-});
-
-export const childRemoval = (body: Fields): ChildRemoval => ({
-	revision: revision(body.revision),
-	...removals(body)
-});
-
-/** Family links for a child in `classroom`: every new family reaches it, and no membership repeats. */
-function familyLinks(body: Fields, classroom: string): FamilyLinks {
+/**
+ * Family links for a change to a child in `classroom`: no membership repeats, and every new family
+ * reaches that classroom. A child being removed is in no classroom, so its links add no family.
+ */
+export function familyLinks(body: Fields, classroom?: string): FamilyLinks {
 	const links = {
+		revision: revision(body.revision),
 		newFamilies: list(body.newFamilies, newFamily, 20),
 		addMemberships: list(body.addMemberships, membership),
-		...removals(body)
+		removeMemberships: list(body.removeMemberships, membershipKey),
+		removeFamilies: ids(body.removeFamilies)
 	};
 	const added = links.addMemberships.map((link) => `${link.family}/${link.classroom}`);
 	if (new Set(added).size !== added.length) invalid();
@@ -165,23 +165,9 @@ function familyLinks(body: Fields, classroom: string): FamilyLinks {
 	return links;
 }
 
-export function newChild(body: Fields): NewChild {
-	const classroom = id(body.classroom);
-	return {
-		revision: revision(body.revision),
-		id: id(body.id),
-		classroom,
-		profile: profile(body.profile),
-		...familyLinks(body, classroom)
-	};
-}
-
 export function childChange(body: Fields): ChildChange {
 	const classroom = id(body.classroom);
-	return {
-		revision: revision(body.revision),
-		classroom,
-		profile: profile(body.profile),
-		...familyLinks(body, classroom)
-	};
+	return { classroom, profile: profile(body.profile), ...familyLinks(body, classroom) };
 }
+
+export const newChild = (body: Fields): NewChild => ({ id: id(body.id), ...childChange(body) });

@@ -1,8 +1,9 @@
 <script lang="ts">
-	import bubbleImage from '$lib/assets/bubble.svg';
 	import favicon from '$lib/assets/favicon.svg';
 	import shareImage from '$lib/assets/photos/share.jpg';
+	import Bubble from '$lib/components/Bubble.svelte';
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
+	import IconTile from '$lib/components/IconTile.svelte';
 	import Photo from '$lib/components/Photo.svelte';
 	import { defaultLocale, locales, messages } from '$lib/i18n';
 	import { homePath } from '$lib/paths';
@@ -50,10 +51,6 @@
 	<p class="max-w-md text-lg text-muted">{copy}</p>
 {/snippet}
 
-{#snippet bubble(position: string)}
-	<img src={bubbleImage} alt="" class="pointer-events-none absolute {position}" />
-{/snippet}
-
 {#snippet action(href: string, label: string, icon: IconName)}
 	<a
 		class="inline-flex items-center gap-3 rounded-full bg-ink py-2 pr-2 pl-6 font-semibold text-white shadow-xl shadow-ink/30 hover:-translate-y-0.5 motion-safe:transition-transform"
@@ -68,9 +65,7 @@
 
 {#snippet feature(icon: IconName, item: Item)}
 	<li class="rounded-3xl glass p-6">
-		<span class="grid size-11 place-items-center rounded-2xl bg-sunrise text-white">
-			<Icon name={icon} />
-		</span>
+		<IconTile {icon} />
 		<h3 class="mt-5 font-bold">{item.title}</h3>
 		<p class="mt-1 text-muted">{item.copy}</p>
 	</li>
@@ -78,9 +73,7 @@
 
 {#snippet safeguard(icon: IconName, item: Item)}
 	<li class="p-7 sm:p-8">
-		<span class="grid size-11 place-items-center rounded-2xl bg-ink text-white">
-			<Icon name={icon} />
-		</span>
+		<IconTile {icon} tone="ink" />
 		<h3 class="mt-5 font-bold">{item.title}</h3>
 		<p class="mt-1 text-muted">{item.copy}</p>
 	</li>
@@ -132,9 +125,9 @@
 				</ul>
 			</div>
 			<!-- Same big, medium, small grouping as the logo, drifting off the photo. -->
-			{@render bubble('top-12 -left-3 size-28 sm:-left-12 sm:size-36')}
-			{@render bubble('-top-5 left-28 size-14 sm:left-32 sm:size-16')}
-			{@render bubble('top-52 -left-2 size-8 sm:top-60 sm:-left-20 sm:size-10')}
+			<Bubble class="top-12 -left-3 size-28 sm:-left-12 sm:size-36" />
+			<Bubble class="-top-5 left-28 size-14 sm:left-32 sm:size-16" />
+			<Bubble class="top-52 -left-2 size-8 sm:top-60 sm:-left-20 sm:size-10" />
 		</div>
 	</section>
 
@@ -232,7 +225,7 @@
 		aria-labelledby="kindergartens-title"
 	>
 		<!-- Behind the text but above the section's own background, which is what `isolate` is for. -->
-		{@render bubble('-z-10 -top-20 -right-20 size-48 sm:-top-24 sm:-right-16 sm:size-80')}
+		<Bubble class="-top-20 -right-20 -z-10 size-48 sm:-top-24 sm:-right-16 sm:size-80" />
 		<h2 id="kindergartens-title" class="mx-auto mb-4 max-w-2xl text-4xl sm:text-5xl">
 			{t.kindergartens.title}
 		</h2>

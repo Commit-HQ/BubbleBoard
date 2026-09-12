@@ -5,7 +5,8 @@ import type {
 	MembershipKey,
 	NewClassroom,
 	NewCredential,
-	NewFamily
+	NewFamily,
+	Staff
 } from '$lib/api';
 import {
 	createId,
@@ -43,8 +44,8 @@ export type Catalog = {
 	families: Family[];
 	children: Child[];
 };
+export type CardKind = 'admin' | 'teacher' | 'recovery' | 'family';
 
-type StaffAccess = Extract<Access, { kind: 'staff' }>;
 type FamilyAccess = Extract<Access, { kind: 'family' }>;
 
 /** A staff device's keys: its card's unlock key, and the Staff Key that card opens. */
@@ -56,7 +57,7 @@ export type StaffKeys = {
 };
 
 /** A card that was just made: the secret, printed once, and the credential for the server. */
-export type NewCard = { secret: Uint8Array<ArrayBuffer>; credential: NewCredential };
+type NewCard = { secret: Uint8Array<ArrayBuffer>; credential: NewCredential };
 
 /** How each kind of key is wrapped for whoever opens it (docs/access-format.md). */
 const wrapping = {
@@ -122,7 +123,7 @@ export async function createKindergarten(adminName: string) {
 	return { teachers, admin: { ...admin, name: adminName }, recovery };
 }
 
-export async function openStaffKeys(access: StaffAccess, unlockKey: CryptoKey): Promise<StaffKeys> {
+export async function openStaffKeys(access: Staff, unlockKey: CryptoKey): Promise<StaffKeys> {
 	const { credential, wrappedKey } = access;
 	const staffKey = await unwrapKey(wrappedKey, wrapping.staffKeyForCard(unlockKey, credential));
 	return { staffKey, unlockKey, credential, wrappedKey };
@@ -140,25 +141,27 @@ export async function openFamily(access: FamilyAccess, familyKey: CryptoKey) {
 				groupKeyForFamily,
 				wrapping.groupKeyForFamily(familyKey, id, access.family)
 			);
-			return readName(
-				await decryptData(profile, groupKey, { purpose: 'classroom-profile', classroom: id })
-			);
+			return openClassroomName(groupKey, id, profile);
 		})
 	);
 	return names.sort(collator.compare);
 }
 
-/** Decrypts what a staff member may see, sorted by name. Anything that doesn't open fails the whole read. */
+/**
+ * Decrypts what a staff member may see, sorted by name, with the recovery card after the teachers: it's
+ * kept away, not someone at work. Anything that doesn't open fails the whole read.
+ */
 export async function openCatalog(staffKey: CryptoKey, records: Kindergarten): Promise<Catalog> {
 	const [classrooms, teachers, families, children] = await Promise.all([
 		Promise.all(
 			records.classrooms.map(async ({ id, profile, groupKeyForStaff }) => {
 				const groupKey = await unwrapKey(groupKeyForStaff, wrapping.groupKeyForStaff(staffKey, id));
-				const data = await decryptData(profile, groupKey, {
-					purpose: 'classroom-profile',
-					classroom: id
-				});
-				return { id, name: readName(data), groupKey, groupKeyForStaff };
+				return {
+					id,
+					name: await openClassroomName(groupKey, id, profile),
+					groupKey,
+					groupKeyForStaff
+				};
 			})
 		),
 		Promise.all(
@@ -189,10 +192,16 @@ export async function openCatalog(staffKey: CryptoKey, records: Kindergarten): P
 	return {
 		revision: records.revision,
 		classrooms: byName(classrooms),
-		teachers: byName(teachers),
+		teachers: byName(teachers).sort((a, b) => Number(a.recovery) - Number(b.recovery)),
 		families: byName(families),
 		children: byName(children)
 	};
+}
+
+async function openClassroomName(groupKey: CryptoKey, classroom: string, profile: string) {
+	return readName(
+		await decryptData(profile, groupKey, { purpose: 'classroom-profile', classroom })
+	);
 }
 
 // Anyone holding a key could have written a profile, so its shape is checked like any other input.
@@ -220,18 +229,19 @@ function byName<T extends { name: string }>(items: T[]) {
 	return items.sort((a, b) => collator.compare(a.name, b.name));
 }
 
+/** Which kind of card a staff member holds. */
+export function cardKind(teacher: Pick<Teacher, 'admin' | 'recovery'>): CardKind {
+	return teacher.recovery ? 'recovery' : teacher.admin ? 'admin' : 'teacher';
+}
+
 export async function newClassroom(staffKey: CryptoKey, name: string): Promise<NewClassroom> {
 	const id = createId();
 	const { key, envelopes } = await createKey([wrapping.groupKeyForStaff(staffKey, id)]);
-	const profile = await encryptData({ name }, key, { purpose: 'classroom-profile', classroom: id });
-	return { id, profile, groupKeyForStaff: envelopes[0] };
+	return { id, profile: await classroomProfile(key, id, name), groupKeyForStaff: envelopes[0] };
 }
 
-export function classroomProfile(classroom: Classroom, name: string) {
-	return encryptData({ name }, classroom.groupKey, {
-		purpose: 'classroom-profile',
-		classroom: classroom.id
-	});
+export function classroomProfile(groupKey: CryptoKey, classroom: string, name: string) {
+	return encryptData({ name }, groupKey, { purpose: 'classroom-profile', classroom });
 }
 
 export function teacherProfile(staffKey: CryptoKey, teacher: string, name: string) {
@@ -305,8 +315,8 @@ export function planFamilyLinks(
 	}
 	const had = new Map(current.map((family) => [family.id, family.classrooms]));
 	const plan = {
-		add: [] as MembershipKey[],
-		remove: [] as MembershipKey[],
+		addMemberships: [] as MembershipKey[],
+		removeMemberships: [] as MembershipKey[],
 		removeFamilies: [] as string[]
 	};
 	for (const [family, classrooms] of wanted) {
@@ -316,16 +326,19 @@ export function planFamilyLinks(
 			continue;
 		}
 		for (const classroom of classrooms) {
-			if (!before.includes(classroom)) plan.add.push({ family, classroom });
+			if (!before.includes(classroom)) plan.addMemberships.push({ family, classroom });
 		}
 		for (const classroom of before) {
-			if (!classrooms.has(classroom)) plan.remove.push({ family, classroom });
+			if (!classrooms.has(classroom)) plan.removeMemberships.push({ family, classroom });
 		}
 	}
 	return plan;
 }
 
-/** The family links for a change, with the Group Key wrapped for each family that gains a classroom. */
+/**
+ * The family links for a change, from the catalog's revision, with the Group Key wrapped for each family
+ * that gains a classroom.
+ */
 export async function familyLinks(
 	staffKey: CryptoKey,
 	catalog: Catalog,
@@ -336,7 +349,7 @@ export async function familyLinks(
 	const plan = planFamilyLinks(catalog.families, children, families);
 	const createdKeys = new Map(created.map(({ family, familyKey }) => [family.id, familyKey]));
 	const addMemberships = await Promise.all(
-		plan.add.map(async ({ family, classroom }) => {
+		plan.addMemberships.map(async ({ family, classroom }) => {
 			const familyKey =
 				createdKeys.get(family) ??
 				(await unwrapKey(
@@ -352,10 +365,10 @@ export async function familyLinks(
 		})
 	);
 	return {
+		...plan,
+		revision: catalog.revision,
 		newFamilies: created.map(({ family }) => family),
-		addMemberships,
-		removeMemberships: plan.remove,
-		removeFamilies: plan.removeFamilies
+		addMemberships
 	};
 }
 
@@ -363,4 +376,9 @@ export function byId<T extends { id: string }>(items: T[], id: string) {
 	const item = items.find((candidate) => candidate.id === id);
 	if (!item) throw new Error(`No record ${id} on this device`);
 	return item;
+}
+
+/** The names of the records with these IDs, in the records' order. */
+export function namesOf(items: { id: string; name: string }[], ids: string[]) {
+	return items.filter(({ id }) => ids.includes(id)).map(({ name }) => name);
 }

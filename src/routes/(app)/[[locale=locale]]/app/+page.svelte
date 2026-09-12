@@ -13,14 +13,13 @@
 	let { data }: PageProps = $props();
 	const app = getApp();
 	const t = $derived(messages[data.locale].app.connect);
-	const connected = $derived(app.status === 'staff' || app.status === 'family');
 	/** What this device stops being if a new card takes its place. */
 	const replacing = $derived(
 		app.me ? t.replaceStaff(teacherName(data.locale, app.me)) : t.replaceOther
 	);
 </script>
 
-{#if connected && app.cardError}
+{#if app.connected && app.cardError}
 	<p class="{alert} mb-6" role="alert">{errorMessage(data.locale, app.cardError)}</p>
 {/if}
 
@@ -37,13 +36,13 @@
 {#if app.pendingCard}
 	{@const secret = app.pendingCard}
 	<ConfirmDialog
+		locale={data.locale}
 		title={t.replaceTitle}
 		copy={replacing}
 		confirmLabel={t.replaceConfirm}
 		cancelLabel={t.keep}
 		busyLabel={t.connecting}
 		safe
-		busy={app.connecting}
 		onconfirm={() => app.connect(secret)}
 		onclose={() => (app.pendingCard = undefined)}
 	/>

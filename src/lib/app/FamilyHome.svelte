@@ -1,5 +1,5 @@
 <script lang="ts">
-	import bubble from '$lib/assets/bubble.svg';
+	import Bubble from '$lib/components/Bubble.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import { messages, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
@@ -15,12 +15,8 @@
 <section
 	class="relative isolate my-auto overflow-hidden rounded-4xl glass px-7 py-12 text-center sm:px-12 sm:py-16"
 >
-	<img
-		src={bubble}
-		alt=""
-		class="pointer-events-none absolute -top-16 -right-16 -z-10 size-48 sm:size-64"
-	/>
-	<img src={bubble} alt="" class="pointer-events-none absolute bottom-10 -left-5 -z-10 size-16" />
+	<Bubble class="-top-16 -right-16 -z-10 size-48 sm:size-64" />
+	<Bubble class="bottom-10 -left-5 -z-10 size-16" />
 	<span class="mx-auto grid size-14 place-items-center rounded-2xl bg-sunrise text-white">
 		<Icon name="smile" class="size-7" />
 	</span>
