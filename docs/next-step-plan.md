@@ -30,7 +30,7 @@ Tiptap 3 (MIT), chosen by the owner on 2026-09-12. It doesn't depend on a framew
 - **Tools:** bold, italic, bullet and numbered lists, links, a few text colours, and emoji. Markdown typed as you go, such as `- ` for a list or `**bold**`, formats the text. StarterKit's headings, code, quotes, strikethrough, underline, and rules are turned off, so a notice stays simple.
 - **Storage:** a notice keeps Tiptap's JSON document inside its encrypted envelope. Boards check it against the allowed nodes, marks, and colours and render it with the app's own components, never as HTML. Links open only `https:` and `mailto:` addresses.
 - **CSP:** the editor's injected stylesheet is off (`injectCSS: false`), with its few rules in `app.css`. Tiptap's Color extension writes inline `style` attributes, which the CSP blocks, so text colour is a small mark of our own that renders a class from the fixed palette.
-- **Emoji:** phone keyboards have them; on computers, a small picker offers a few classroom emoji without bundling an emoji data set.
+- **Emoji:** phone keyboards have them, and a small picker in the toolbar offers a few classroom emoji on every device, without bundling an emoji data set.
 
 ## Deferred
 

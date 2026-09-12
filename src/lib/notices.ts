@@ -110,11 +110,15 @@ export function readDocument(value: unknown): NoticeDocument {
 	return type === 'doc' ? { type, content: list(content, (child) => block(child, 0)) } : fail();
 }
 
-/** Links a notice may hold: web pages over https, and email addresses. */
-function readHref(value: unknown) {
-	if (typeof value !== 'string' || value.length > maxLinkLength || !URL.canParse(value)) fail();
+/** Whether a notice may link to an address: web pages over https, and email addresses. */
+export function allowedLink(value: string) {
+	if (value.length > maxLinkLength || !URL.canParse(value)) return false;
 	const { protocol } = new URL(value);
-	return protocol === 'https:' || protocol === 'mailto:' ? value : fail();
+	return protocol === 'https:' || protocol === 'mailto:';
+}
+
+function readHref(value: unknown) {
+	return typeof value === 'string' && allowedLink(value) ? value : fail();
 }
 
 function readContent(value: unknown): NoticeContent {
@@ -125,33 +129,19 @@ function readContent(value: unknown): NoticeContent {
 	return author === undefined ? content : { author: author as string, ...content };
 }
 
-/** A document of plain paragraphs, one for each line of `text`. */
-export function textDocument(text: string): NoticeDocument {
-	return {
-		type: 'doc',
-		content: text
-			.split('\n')
-			.map((line) =>
-				line
-					? { type: 'paragraph', content: [{ type: 'text', text: line }] }
-					: { type: 'paragraph' }
-			)
-	};
-}
-
-/** A document's text, a line for each paragraph and list item. */
-export function documentText(document: NoticeDocument) {
-	const inline = (content: NoticeInline[] = []) =>
-		content.map((node) => (node.type === 'text' ? node.text : '\n')).join('');
-	const block = (node: NoticeBlock): string[] =>
-		node.type === 'paragraph'
-			? [inline(node.content)]
-			: node.content.flatMap((item) => item.content.flatMap(block));
-	return document.content.flatMap(block).join('\n');
-}
-
 function noticeKeyFor(groupKey: CryptoKey, classroom: string, notice: string): Wrapping {
 	return { key: groupKey, context: { purpose: 'notice-key-for-classroom', classroom, notice } };
+}
+
+/** The most a notice's content may take, in bytes of JSON, which the server also holds it to. */
+export const maxNoticeBytes = 32 * 1024;
+
+/** A notice too long to store. A long notice with formatting stays well below the limit. */
+export class NoticeTooLongError extends Error {
+	constructor() {
+		super('Notice too long');
+		this.name = 'NoticeTooLongError';
+	}
 }
 
 /** Seals a notice, as a device posts or changes it, under a new Notice Key for each of its classrooms. */
@@ -160,6 +150,9 @@ export async function sealNotice(
 	content: NoticeContent,
 	classrooms: { id: string; groupKey: CryptoKey }[]
 ) {
+	if (new TextEncoder().encode(JSON.stringify(content)).length > maxNoticeBytes) {
+		throw new NoticeTooLongError();
+	}
 	const { key, envelopes } = await createKey(
 		classrooms.map((classroom) => noticeKeyFor(classroom.groupKey, classroom.id, id))
 	);

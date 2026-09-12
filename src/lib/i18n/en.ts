@@ -412,8 +412,32 @@ export const en = {
 			save: 'Save changes',
 			noClassrooms: 'You can post notices once an admin adds you to a classroom.'
 		},
+		editor: {
+			toolbar: 'Formatting',
+			loading: 'Opening the editor…',
+			bold: 'Bold',
+			italic: 'Italic',
+			bulletList: 'Bulleted list',
+			orderedList: 'Numbered list',
+			link: 'Link',
+			linkAddress: 'Web or email address',
+			addLink: 'Add link',
+			removeLink: 'Remove link',
+			invalidLink: 'Use a web address that starts with https://, or an email address.',
+			colour: 'Text colour',
+			colours: {
+				ink: 'Black',
+				red: 'Red',
+				orange: 'Orange',
+				green: 'Green',
+				blue: 'Blue',
+				purple: 'Purple'
+			},
+			emoji: 'Emoji'
+		},
 		errors: {
 			'empty-notice': 'Write the notice first.',
+			'notice-too-long': 'This notice is too long. Shorten it, then try again.',
 			'no-classrooms': 'Choose at least one classroom.',
 			offline: 'BubbleBoard can’t be reached. Check your internet connection and try again.',
 			'signed-out': 'This device was signed out. Scan your card again to continue.',

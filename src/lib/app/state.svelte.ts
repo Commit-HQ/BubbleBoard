@@ -30,6 +30,7 @@ import {
 	type Teacher
 } from '$lib/kindergarten';
 import {
+	NoticeTooLongError,
 	openBoard,
 	sealNotice,
 	type Notice,
@@ -91,6 +92,7 @@ function errorCode(cause: unknown) {
 	if (cause instanceof UnreadableRecords) return 'unreadable-records';
 	if (cause instanceof UnreadableError) return 'unreadable';
 	if (cause instanceof EmptyNameError) return 'empty-name';
+	if (cause instanceof NoticeTooLongError) return 'notice-too-long';
 	return 'unexpected';
 }
 

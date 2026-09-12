@@ -3,12 +3,13 @@ import type { NoticeRecord } from './api';
 import { fromBase64Url, toBase64Url } from './base64url';
 import { createId, UnreadableError } from './crypto';
 import {
-	documentText,
+	allowedLink,
+	maxNoticeBytes,
+	NoticeTooLongError,
 	openBoard,
 	openNotice,
 	readDocument,
 	sealNotice,
-	textDocument,
 	type NoticeContent
 } from './notices';
 
@@ -18,7 +19,10 @@ import {
 const content: NoticeContent = {
 	author: 'Ana',
 	paper: 'yellow',
-	body: textDocument('Picnic on Friday\nBring a hat')
+	body: {
+		type: 'doc',
+		content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Picnic on Friday' }] }]
+	}
 };
 
 /** A Group Key, as a device holds one once it has opened it. */
@@ -64,8 +68,7 @@ describe('notices', () => {
 		});
 		const owlsOnly = new Map([[owls, keys.get(owls)!]]);
 		const opened = await openNotice(served(id, sealed, [owls]), owlsOnly);
-		expect(opened.classrooms).toEqual([owls]);
-		expect(documentText(opened.body)).toBe('Picnic on Friday\nBring a hat');
+		expect(opened).toMatchObject({ body: content.body, classrooms: [owls] });
 
 		// Another classroom's key opens nothing, and keys moved to another notice or classroom don't open.
 		const ladybirdsOnly = new Map([[ladybirds, keys.get(ladybirds)!]]);
@@ -93,6 +96,16 @@ describe('notices', () => {
 		const board = await openBoard([{ ...bad, content: parts.join('.') }, good], keys);
 		expect(board.notices.map(({ id }) => id)).toEqual([kept]);
 		expect(board.unreadable).toBe(1);
+	});
+
+	it('refuse to seal more than the server stores', async () => {
+		const classroom = { id: createId(), groupKey: await groupKey() };
+		const text = 'Bring a hat. '.repeat(maxNoticeBytes / 12);
+		const long = {
+			...content,
+			body: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] }
+		} satisfies NoticeContent;
+		await expect(sealNotice(createId(), long, [classroom])).rejects.toThrow(NoticeTooLongError);
 	});
 });
 
@@ -150,5 +163,19 @@ describe('notice text', () => {
 			expect(() => readDocument(written), JSON.stringify(written)).toThrow(UnreadableError);
 		}
 		expect(readDocument(doc(nested(4)))).toEqual(doc(nested(4)));
+	});
+
+	it('links only to web pages over https and to email addresses', () => {
+		expect(allowedLink('https://vrtic.example.com/jelovnik')).toBe(true);
+		expect(allowedLink('mailto:ana@example.com')).toBe(true);
+		for (const refused of [
+			'http://example.com',
+			'javascript:alert(1)',
+			'data:text/html,x',
+			'ftp://x',
+			'example.com'
+		]) {
+			expect(allowedLink(refused), refused).toBe(false);
+		}
 	});
 });

@@ -4,8 +4,9 @@ BubbleBoard third-party notices
 BubbleBoard is licensed under the GNU Affero General Public License v3.0:
 https://github.com/Commit-HQ/BubbleBoard/blob/main/LICENSE
 
-The photos, fonts, and icons below are redistributed with BubbleBoard, in its
-source code and on every site built from it. They keep their own licenses.
+The photos, fonts, icons, and libraries below are redistributed with
+BubbleBoard, in its source code and on every site built from it. They keep
+their own licenses.
 
 Every installation serves this file at /third-party-notices.txt. In the source
 code it is static/third-party-notices.txt.
@@ -290,6 +291,39 @@ Apache License 2.0. BubbleBoard uses it under the MIT License, which follows.
 The MIT License (MIT)
 
 Copyright (c) 2023 Paul Miller (https://paulmillr.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+NOTICE EDITOR
+-------------
+
+Teachers write notices with Tiptap 3.31.3 (https://tiptap.dev) and the
+ProseMirror libraries it is built on (https://prosemirror.net), among them
+orderedmap, rope-sequence, and w3c-keyname, with linkifyjs 4.3.3
+(https://github.com/nfrasser/linkifyjs) recognizing typed links. All of them
+are available under the MIT License. Their copyright notices follow, then the
+license text.
+
+Copyright (c) 2025, Tiptap GmbH
+Copyright (C) 2015-2017 by Marijn Haverbeke <marijn@haverbeke.berlin> and others
+Copyright (c) 2024 Nick Frasser
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

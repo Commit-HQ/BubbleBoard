@@ -100,6 +100,7 @@ The Worker keeps its records in a D1 database bound as `DB`, with the schema in 
 | Encryption    | Browser Web Crypto API                                                |
 | Storage       | D1 for records; private R2 for encrypted media later                  |
 | QR codes      | `qr`, drawn for printed cards and read with the camera or from photos |
+| Notice editor | Tiptap, loaded only on the page where notices are written             |
 | Notifications | Web Push, planned                                                     |
 
 No component UI library, ORM, remote font service, analytics SDK, or separate backend. npm’s lockfile is committed for reproducible installs. The official tooling still has transitive dependencies; review additions and updates rather than assuming a small manifest means zero supply-chain risk.

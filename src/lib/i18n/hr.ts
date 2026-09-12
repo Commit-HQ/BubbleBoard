@@ -414,8 +414,32 @@ export const hr = {
 			save: 'Spremi promjene',
 			noClassrooms: 'Obavijesti možete objavljivati kad vas administrator doda u skupinu.'
 		},
+		editor: {
+			toolbar: 'Oblikovanje',
+			loading: 'Otvaramo uređivač…',
+			bold: 'Podebljano',
+			italic: 'Kurziv',
+			bulletList: 'Popis s oznakama',
+			orderedList: 'Numerirani popis',
+			link: 'Poveznica',
+			linkAddress: 'Web-adresa ili e-adresa',
+			addLink: 'Dodaj poveznicu',
+			removeLink: 'Ukloni poveznicu',
+			invalidLink: 'Upišite web-adresu koja počinje s https:// ili e-adresu.',
+			colour: 'Boja teksta',
+			colours: {
+				ink: 'Crna',
+				red: 'Crvena',
+				orange: 'Narančasta',
+				green: 'Zelena',
+				blue: 'Plava',
+				purple: 'Ljubičasta'
+			},
+			emoji: 'Emoji'
+		},
 		errors: {
 			'empty-notice': 'Najprije napišite obavijest.',
+			'notice-too-long': 'Obavijest je predugačka. Skratite je i pokušajte ponovno.',
 			'no-classrooms': 'Odaberite barem jednu skupinu.',
 			offline:
 				'BubbleBoard trenutno nije dostupan. Provjerite internetsku vezu i pokušajte ponovno.',

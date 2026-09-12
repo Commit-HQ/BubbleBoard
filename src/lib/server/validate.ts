@@ -18,7 +18,7 @@ import type {
 } from '$lib/api';
 import { fromBase64Url } from '$lib/base64url';
 import { AUTH_TOKEN_BYTES, envelopeSize, isId, KEY_BYTES } from '$lib/crypto';
-import { noticeDays } from '$lib/notices';
+import { maxNoticeBytes, noticeDays } from '$lib/notices';
 
 // Request bodies, checked before anything reaches the database. The server can't open profiles or keys,
 // so it checks their form; the browsers that open them check the rest.
@@ -193,9 +193,6 @@ export function childChange(body: Fields): ChildChange {
 }
 
 export const newChild = (body: Fields): NewChild => ({ id: id(body.id), ...childChange(body) });
-
-/** A notice's text, paper, and author name: a long notice with formatting stays well below this. */
-const maxNoticeBytes = 32 * 1024;
 
 function noticeContent(value: unknown) {
 	const size = envelopeSize(value);
