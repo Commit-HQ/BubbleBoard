@@ -4,10 +4,15 @@ import tailwindcss from '@tailwindcss/vite';
 import { execSync } from 'node:child_process';
 import { defineConfig } from 'vite';
 
-// Shown in the footer so a deployed page can be matched to a public commit (product-spec.md §47).
+// Shown in the footer so a page can be traced to the commit it was built from (product-spec.md §47).
+// "-dirty" marks uncommitted changes to tracked files, which the commit alone doesn't describe. Builds
+// without Git metadata, such as from a source ZIP, are "unknown".
 function commit() {
+	const git = (command: string) =>
+		execSync(`git ${command}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
 	try {
-		return execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+		const sha = git('rev-parse --short HEAD');
+		return git('status --porcelain --untracked-files=no') ? `${sha}-dirty` : sha;
 	} catch {
 		return 'unknown';
 	}

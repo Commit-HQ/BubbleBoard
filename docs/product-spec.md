@@ -1,6 +1,14 @@
 # Kindergarten Communication PWA
 ## Production Product & Architecture Specification — Operator-Blind Vault
 
+> **Current decisions (2026-09-12).** This specification is the original target. The decisions below replace or settle parts of it; where they differ, follow them. The [README](../README.md) tracks what is implemented, and the [architecture notes](architecture.md) hold the conventions.
+>
+> - **One installation per kindergarten** (replaces the SaaS model in §48). BubbleBoard is free, open-source software, not a hosted service with sign-ups. Each kindergarten runs its own installation of the same code on its own Cloudflare account, and the public landing page is identical on every installation.
+> - **Language URLs** (not covered by this specification). Croatian is served at `/` and English at `/en`, without a language cookie. App routes and QR links (§33) must fit this scheme.
+> - **Build order** (replaces the pilot steps in §60). Follow the README's “Next slices”: teacher setup and family enrollment; an encrypted notice with push notifications; privacy-aware photos; then private messages and attachments.
+> - **Media retention** (§42) is decided as written: 1, 3, 7, 14, 30, 60, or 90 days, with 30 days as the default for classroom photos.
+> - **Deployment** (§46–47) is not automated yet. CI only validates; automated deploys, build manifests, and post-deploy verification come with deployment work, opt-in for each installation.
+
 # 1. Product Goal
 
 Build a simple communication application for kindergartens that works on mobile and desktop while ensuring that the application operator cannot read sensitive child data merely because it hosts the system.
@@ -1565,6 +1573,8 @@ Do not add more elaborate build-provenance infrastructure unless a real audit or
 
 # 48. Deployment Trust Model
 
+> **Superseded in part:** there is no SaaS product; each kindergarten runs its own installation. See *Current decisions* at the top.
+
 Client-side encryption cannot completely remove trust in the application operator because the operator controls the JavaScript delivered to browsers.
 
 The product addresses this through transparency and deployment discipline:
@@ -2225,6 +2235,8 @@ Every family downloads the same reveal package and can decrypt only its own entr
 ---
 
 # 60. Recommended V1 Pilot Rollout
+
+> **Superseded:** the build order is the README's “Next slices”. See *Current decisions* at the top.
 
 The architecture in this specification remains the complete V1 target, but rollout should be staged so the simplest and most common real-world flows are validated first.
 

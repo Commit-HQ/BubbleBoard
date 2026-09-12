@@ -21,4 +21,4 @@ magick original.jpg -crop <crop> +repage -resize 800x -strip -quality 78 name-80
 magick bubbles-1280.avif -crop 1280x672+0+190 +repage -resize 1200x630 -strip -quality 82 -interlace JPEG share.jpg
 ```
 
-Render photos with `src/lib/components/Photo.svelte`.
+Render photos with `src/lib/components/Photo.svelte`, which lists each photo by name. The credits above are also published with the site in `static/third-party-notices.txt`; update both when a photo changes.

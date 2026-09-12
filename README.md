@@ -4,18 +4,18 @@
 
 A small, open-source communication app for kindergarten communities. Inspired by a group called **Bubbles**, BubbleBoard aims to give families classroom updates, private conversations, and thoughtfully shared photos—without another daily place to check.
 
-Teachers share a moment. Parents get a notification. The hosting server stores encrypted content rather than readable classroom information.
+Teachers share a moment. Parents get a notification. The hosting server stores encrypted content without the keys needed to read it.
 
-> **Status: foundation only.** This repository currently contains a prerendered Croatian and English landing page and a SvelteKit + Cloudflare Workers scaffold. QR access, encryption, notifications, messages, photos, and storage are not implemented. Do not use it with real family data yet.
+> **Status: foundation only.** This repository currently contains a prerendered Croatian and English landing page and a SvelteKit + Cloudflare Workers scaffold. QR access, encryption, notifications, messages, photos, and storage are not implemented. Do not use it with real family data yet. The landing page deliberately describes the finished product; this README tracks what exists.
 
 ## What we’re building
 
-- **One family QR card:** simple access across family devices.
+- **QR cards instead of passwords:** one family card for all of a family’s devices, and a card for each teacher.
 - **Updates that find you:** generic push notifications for new classroom content.
 - **A single feed:** notices, photos, and attachments together.
 - **A private family conversation:** a direct line to teachers.
 - **A practical photo workflow:** teachers mark a region and select a child; the app prepares a covered classroom image and private reveals for that child’s family.
-- **Your own installation:** deploy to your own Cloudflare account.
+- **Your own installation:** each kindergarten deploys the same code to its own Cloudflare account.
 
 Keep parents’ choices few, give teachers sensible defaults, and keep the implementation small enough to understand.
 
@@ -30,7 +30,9 @@ npm run gen
 npm run dev
 ```
 
-Open the local address printed by Vite. `.env` sets `PUBLIC_SITE_URL`, the public address used for canonical links and link previews; pages are prerendered, so it's read at build time and the build fails without it. `npm run gen` creates ignored Cloudflare runtime types from `wrangler.jsonc`; rerun it after changing bindings or updating Wrangler.
+Open the local address printed by Vite. `npm run gen` creates ignored Cloudflare runtime types from `wrangler.jsonc`; rerun it after changing bindings or updating Wrangler.
+
+`.env` sets `PUBLIC_SITE_URL`, the public origin used for canonical links and link previews: `https://` and a hostname, with no path, query, or credentials (`http://localhost` also works). Pages are prerendered, so the address is written into the HTML at build time; a Worker variable set at runtime can't change pages that were already generated. The build stops with a message naming `PUBLIC_SITE_URL` when it's missing or invalid. Local Worker secrets, once a feature needs them, belong in the ignored `.dev.vars`.
 
 | Command            | Purpose                                        |
 | ------------------ | ---------------------------------------------- |
@@ -44,21 +46,27 @@ Open the local address printed by Vite. `.env` sets `PUBLIC_SITE_URL`, the publi
 | `npm run validate` | Type checks, formatting, and production build  |
 | `npm run deploy`   | Build and publish to your Cloudflare account   |
 
-Measure performance (for example with Lighthouse) against `npm run build && npm run preview`, never `npm run dev`: the dev server serves unbundled, uncompressed modules and always scores poorly.
+Measure performance (for example with Lighthouse) on a production build, `npm run build && npm run preview`; development performance is not representative.
 
 `lint` currently checks formatting; Svelte diagnostics and TypeScript run through `check`. No additional lint framework or test runner is installed yet. Add behavior tests with the first real auth/crypto/data flows.
+
+## Contributing
+
+Run `npm run validate` before opening a pull request. The **Validate** GitHub Actions workflow runs the same checks, plus a Wrangler dry run, on every pull request and every push to `main`. It is validation only: it uses a placeholder `PUBLIC_SITE_URL`, needs no Cloudflare credentials, and never deploys, so don't publish its build. GitHub doesn't run workflows in a fork until Actions are enabled there, and a fork's runs deploy nothing either.
+
+Add interface copy to both `src/lib/i18n/en.ts` and `hr.ts`. When bundling a new third-party asset, add its license to `static/third-party-notices.txt`. Conventions are in the [architecture notes](docs/architecture.md) and requirements in the [product specification](docs/product-spec.md).
 
 ## Deploy your own preview
 
 1. Clone this repository and follow the local setup above.
 2. Run `npx wrangler login` to authenticate to your Cloudflare account.
 3. Choose a unique Worker `name` in `wrangler.jsonc`.
-4. Set `PUBLIC_SITE_URL` in `.env` to the address the site will be served from.
+4. Set `PUBLIC_SITE_URL` in `.env` to the origin the site will be served from, such as `https://bubbleboard.example.com`. It is read when you build.
 5. Run `npm run validate` and `npx wrangler deploy --dry-run`.
 6. Run `npm run deploy`. Wrangler prints the deployed URL.
 7. To use your own domain, add it to the Worker in the Cloudflare dashboard (**Workers & Pages → your Worker → Settings → Domains & Routes**). Domains are kept out of `wrangler.jsonc` so the configuration works for every installation.
 
-This deploys the public foundation preview, **not a working kindergarten service**. The landing page is the same on every installation: it names no kindergarten, and its contact details belong to the BubbleBoard project (`src/lib/project.ts`). CI validates changes with a placeholder `PUBLIC_SITE_URL` but does not deploy automatically. No credentials belong in Git. Local runtime secrets belong in ignored `.dev.vars`; production secrets should use `wrangler secret put` when the feature needing them exists.
+This deploys the public foundation preview, **not a working kindergarten service**. The landing page is the same on every installation: it names no kindergarten, and its contact details belong to the BubbleBoard project (`src/lib/project.ts`). No credentials belong in Git. Production secrets should use `wrangler secret put` when the feature needing them exists.
 
 ### Storage when the first data feature lands
 
@@ -114,14 +122,16 @@ src/
     components/         Reusable Svelte components (Photo, Icon)
     i18n/               Croatian and English interface copy
     styles/             Tailwind entry, fonts, theme tokens, base styles
+    project.ts          Project links and the validated site address
   params/               Route matchers (language prefix)
   routes/               Layout, prerendered pages, future server endpoints
   app.html              Document shell
   hooks.server.ts       Document language, font preloads, security headers
-static/                 Public static assets only
+static/                 Public static files, including third-party notices
+docs/                   Architecture notes and product specification
 _headers                Security headers for prerendered pages and assets
 .env.example            Build-time settings to copy into .env
-.github/workflows/      Validation pipeline
+.github/workflows/      Validation pipeline (never deploys)
 wrangler.jsonc          Worker and future binding configuration
 ```
 
@@ -133,7 +143,7 @@ The intended design encrypts sensitive content on users’ devices and does not 
 
 Teachers manage family access and visibility choices. Removing access cannot recall saved copies or erase keys already held by a device. Kindergarten approval and consent remain part of operating the service.
 
-See [architecture notes](docs/architecture.md) and the original [product specification](product-spec.md). The specification describes the target system; it is not an implementation or a security audit.
+See the [architecture notes](docs/architecture.md) and the [product specification](docs/product-spec.md). The specification describes the target system, and its opening note lists the decisions that have since replaced parts of it; it is not an implementation or a security audit.
 
 ## Next slices
 
@@ -146,6 +156,4 @@ Retention, authorization, deletion, and recovery belong in the features they pro
 
 ## License
 
-[GNU Affero General Public License v3.0](LICENSE).
-
-The look is cheerful glassmorphism: frosted white surfaces over soft coral, violet, sky, and sun gradients, with ink-black pill actions. Headings use Hedvig Letters Serif and body text uses Hanken Grotesk, both bundled from Fontsource (OFL) and served from the app origin. Styling uses Tailwind CSS v4 utilities in markup. Brand colors and fonts are `@theme` tokens in `src/lib/styles/app.css` (`ink`, `muted`, `canvas`, `accent`, `font-display`), plus two custom utilities: `glass` for frosted surfaces and `bg-sunrise` for the brand gradient. Prettier sorts Tailwind classes automatically. Photos are real stock images committed pre-optimized as AVIF/WebP and rendered with `src/lib/components/Photo.svelte`; sources and licenses are in `src/lib/assets/photos/CREDITS.md`. No remote images, remote fonts, or animation library are required.
+BubbleBoard is licensed under the [GNU Affero General Public License v3.0](LICENSE). The third-party photos, fonts, and icons it bundles keep their own licenses. Their notices are in [`static/third-party-notices.txt`](static/third-party-notices.txt), which every installation also serves at `/third-party-notices.txt`.

@@ -9,7 +9,6 @@ export const hr = {
 	skip: 'Preskoči na sadržaj',
 	home: 'BubbleBoard početna',
 	language: 'Jezik',
-	app: { open: 'Otvori aplikaciju', soon: 'Uskoro' },
 	nav: {
 		label: 'Glavna',
 		sections: {
@@ -24,19 +23,13 @@ export const hr = {
 	hero: {
 		heading: 'Malo bliže',
 		headingAccent: 'njihovom danu.',
+		cta: 'Za vaš vrtić',
+		status: 'Aplikacija stiže uskoro',
 		quiet: 'Za obitelji. Nadahnuto skupinom Bubbles.',
 		photoAlt: 'Djeca se smiju i puhaju balone od sapunice u sunčanom parku',
-		notes: [
-			{
-				teacher: 'Martina',
-				time: '8:30',
-				message: 'Sutra idemo u park, molimo spakirajte gumene čizme.'
-			},
-			{
-				teacher: 'Romana',
-				time: 'Upravo sada',
-				message: 'Una se rasplakala kad joj je pukao balončić, pa smo napuhali još stotinu.'
-			}
+		notifications: [
+			{ time: 'Upravo sada', message: 'Nove fotografije dana' },
+			{ time: '8:30', message: 'Nova obavijest iz vrtića' }
 		]
 	},
 	features: {
@@ -48,11 +41,11 @@ export const hr = {
 		},
 		photos: {
 			title: 'Fotografije dana',
-			copy: 'Trenuci iz skupine, podijeljeni s pažnjom, koji nakon nekog vremena nestaju.'
+			copy: 'Trenuci iz skupine, podijeljeni s pažnjom, koji se nakon zadanog vremena uklanjaju iz aplikacije.'
 		},
 		messages: {
 			title: 'Izravno s odgojiteljima',
-			copy: 'Privatni razgovori između vaše obitelji i odgojitelja.'
+			copy: 'Privatni razgovori između vaše obitelji i odgojitelja vašeg djeteta.'
 		},
 		documents: {
 			title: 'Zajednički dokumenti',
@@ -69,7 +62,7 @@ export const hr = {
 	},
 	how: {
 		title: 'Jedna kartica. Vaša skupina.',
-		copy: 'Roditelji i odgojitelji pridružuju se na isti način. Vrtić vam daje osobnu QR karticu i to je sve što trebate.',
+		copy: 'Roditelji i odgojitelji pridružuju se na isti način. Vrtić dijeli QR kartice: jednu obiteljsku za sve uređaje vaše obitelji i odgojiteljsku za svakog odgojitelja. To je sve što trebate.',
 		photoAlt: 'Odgojiteljica sjedi na podu i razgovara sa skupinom djece',
 		steps: [
 			{
@@ -90,23 +83,23 @@ export const hr = {
 		facts: [
 			'Bez korisničkih imena i lozinki',
 			'Lica zamućena za druge obitelji, ako tako želite',
-			'Fotografije se nakon nekog vremena same brišu'
+			'Fotografije se uklanjaju iz aplikacije nakon zadanog vremena'
 		]
 	},
 	security: {
 		title: 'Zaključano prije nego što napusti vaš mobitel.',
-		copy: 'Fotografije, poruke i imena djece šifriraju se na vašem uređaju prije slanja. Ključeve za njihovo otvaranje imaju samo obitelji i odgojitelji vaše skupine.',
+		copy: 'Fotografije, poruke i imena djece šifriraju se prije nego što napuste uređaj. Obavijesti i fotografije skupine mogu otvoriti samo obitelji i odgojitelji vaše skupine, a privatne razgovore samo vaša obitelj i odgojitelji vašeg djeteta.',
 		device: {
 			title: 'Šifrirano na vašem uređaju',
-			copy: 'Sve se zaključava na mobitelu ili računalu s kojeg dolazi, prije nego što se pošalje.'
+			copy: 'Sadržaj se šifrira na vašem mobitelu ili računalu prije slanja.'
 		},
 		server: {
 			title: 'Nečitljivo i ako procuri',
-			copy: 'Poslužitelj čuva samo zaključane podatke. Iz baze koja procuri ne mogu se iščitati fotografije, imena ni poruke.'
+			copy: 'Poslužitelj pohranjuje sadržaj bez ključeva potrebnih za njegovo čitanje. Curenje podataka ne bi otkrilo fotografije, imena ni poruke.'
 		},
 		host: {
-			title: 'Ne možemo vidjeti ni mi',
-			copy: 'Tko god poslužuje BubbleBoard, uključujući nas, nema ključeve vaše skupine. Kod je javan pa svatko može provjeriti.'
+			title: 'Ključevi ostaju u vašoj skupini',
+			copy: 'Nema ih nitko tko poslužuje BubbleBoard, uključujući nas. Kod je javan, pa svatko može vidjeti kako radi.'
 		},
 		note: 'Šifriranje štiti ono što je pohranjeno na poslužitelju. Ne može vratiti fotografiju koju je netko već spremio na svoj mobitel.'
 	},
@@ -119,11 +112,11 @@ export const hr = {
 		},
 		remove: {
 			title: 'Brisanje odmah',
-			copy: 'Uklonite objavu istog trena ako nešto promakne.'
+			copy: 'Uklonite objavu iz aplikacije istog trena ako nešto promakne.'
 		},
 		retention: {
-			title: 'Ništa ne ostaje zauvijek',
-			copy: 'Odaberite koliko dugo fotografije ostaju, od jednog dana do tri mjeseca.'
+			title: 'Vi birate koliko dugo',
+			copy: 'Fotografije se uklanjaju iz aplikacije nakon vremena koje odaberete, od jednog dana do tri mjeseca.'
 		},
 		access: {
 			title: 'Pristup pod vašom kontrolom',
@@ -152,9 +145,11 @@ export const hr = {
 		explore: 'Istražite',
 		project: 'Projekt',
 		github: 'GitHub',
-		madeBy: 'S ljubavlju izradio tim [Commit]',
+		madeBy: 'S ljubavlju izradio tim',
 		license: 'Licenca (AGPL-3.0)',
-		credits: 'Izvori fotografija',
-		build: 'Verzija'
+		credits: 'Izvori i licence',
+		build: 'Verzija',
+		modified: 'izmijenjena',
+		unknownBuild: 'Nepoznata verzija'
 	}
 } satisfies Messages;

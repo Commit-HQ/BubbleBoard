@@ -1,7 +1,7 @@
 <script lang="ts">
 	import bubbleImage from '$lib/assets/bubble.svg';
+	import favicon from '$lib/assets/favicon.svg';
 	import shareImage from '$lib/assets/photos/share.jpg';
-	import AppLink from '$lib/components/AppLink.svelte';
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
 	import Photo from '$lib/components/Photo.svelte';
 	import { defaultLocale, localePath, locales, messages } from '$lib/i18n';
@@ -53,6 +53,18 @@
 	<img src={bubbleImage} alt="" class="pointer-events-none absolute {position}" />
 {/snippet}
 
+{#snippet action(href: string, label: string, icon: IconName)}
+	<a
+		class="inline-flex items-center gap-3 rounded-full bg-ink py-2 pr-2 pl-6 font-semibold text-white shadow-xl shadow-ink/30 hover:-translate-y-0.5 motion-safe:transition-transform"
+		{href}
+	>
+		{label}
+		<span class="grid size-9 shrink-0 place-items-center rounded-full bg-white text-ink">
+			<Icon name={icon} class="size-4" />
+		</span>
+	</a>
+{/snippet}
+
 {#snippet feature(icon: IconName, item: Item)}
 	<li class="rounded-3xl glass p-6">
 		<span class="grid size-11 place-items-center rounded-2xl bg-sunrise text-white">
@@ -79,32 +91,41 @@
 		aria-labelledby="hero-title"
 	>
 		<div>
-			<!-- Sized so each line stays on one row in both languages ("njihovom danu." is the longest). -->
+			<!-- Sized so each line stays on one row in both languages from 375px ("njihovom danu." is the longest). -->
 			<h1 id="hero-title" class="mb-6 text-[2.75rem] leading-none sm:text-6xl xl:text-7xl">
 				{t.hero.heading}
 				<span class="block text-sunrise">{t.hero.headingAccent}</span>
 			</h1>
 			<p class="max-w-lg text-lg text-muted">{t.description}</p>
-			<AppLink labels={t.app} class="mt-9 inline-flex px-7 py-4" />
-			<p class="mt-4 text-sm text-muted">{t.hero.quiet}</p>
+			<!-- The app isn't out yet: its status is plain text, and the action leads to getting in touch. -->
+			<div class="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
+				{@render action('#kindergartens', t.hero.cta, 'arrowDown')}
+				<p class="flex items-center gap-2 font-semibold text-muted">
+					<Icon name="clock" class="size-4 shrink-0" />{t.hero.status}
+				</p>
+			</div>
+			<p class="mt-5 text-sm text-muted">{t.hero.quiet}</p>
 		</div>
 		<div class="relative w-full lg:max-w-lg lg:justify-self-end">
 			<div class="relative aspect-4/5 overflow-hidden rounded-4xl shadow-2xl shadow-indigo-950/25">
-				<Photo name="bubbles" alt={t.hero.photoAlt} eager />
-				<!-- Una's real teachers: Martina keeps things organised, Romana is the creative one. -->
+				<Photo
+					name="bubbles"
+					alt={t.hero.photoAlt}
+					sizes="(min-width: 1024px) 32rem, calc(100vw - 2rem)"
+					eager
+				/>
+				<!-- Lock-screen notifications are generic on purpose; the details are only in the app. -->
 				<ul class="absolute inset-x-4 bottom-4 grid gap-2" aria-hidden="true">
-					{#each t.hero.notes as { teacher, time, message }, i (teacher)}
-						<li class="flex items-center gap-3 rounded-2xl glass p-3 pr-4 leading-snug">
-							<span
-								class={[
-									'grid size-10 shrink-0 place-items-center rounded-full font-bold text-white',
-									i ? 'bg-sunrise' : 'bg-accent'
-								]}>{teacher[0]}</span
-							>
-							<p class="text-sm sm:text-base">
-								<strong class="font-semibold">{teacher}</strong>
-								<small class="ml-1 text-xs text-muted">{time}</small><br />{message}
-							</p>
+					{#each t.hero.notifications as { time, message } (message)}
+						<li class="flex items-center gap-3 rounded-2xl frosted p-3 pr-4 leading-snug">
+							<img src={favicon} alt="" width="40" height="40" class="shrink-0" />
+							<div class="min-w-0 grow text-sm sm:text-base">
+								<p class="flex items-baseline justify-between gap-3">
+									<strong class="font-semibold">BubbleBoard</strong>
+									<small class="text-xs text-ink/70">{time}</small>
+								</p>
+								<p>{message}</p>
+							</div>
 						</li>
 					{/each}
 				</ul>
@@ -130,7 +151,11 @@
 
 	<section id="how" class="grid gap-4 lg:grid-cols-2" aria-labelledby="how-title">
 		<div class="aspect-square overflow-hidden rounded-4xl lg:aspect-auto lg:min-h-96">
-			<Photo name="classroom" alt={t.how.photoAlt} />
+			<Photo
+				name="classroom"
+				alt={t.how.photoAlt}
+				sizes="(min-width: 1024px) 37rem, calc(100vw - 2rem)"
+			/>
 		</div>
 		<div class="rounded-4xl glass p-7 sm:p-12">
 			{@render intro('how', t.how.title, t.how.copy)}
@@ -164,7 +189,11 @@
 			</ul>
 		</div>
 		<div class="aspect-4/5 overflow-hidden rounded-3xl">
-			<Photo name="painting" alt={t.privacy.photoAlt} />
+			<Photo
+				name="painting"
+				alt={t.privacy.photoAlt}
+				sizes="(min-width: 1024px) 30rem, calc(100vw - 4.5rem)"
+			/>
 		</div>
 	</section>
 
@@ -198,9 +227,10 @@
 
 	<section
 		id="kindergartens"
-		class="relative overflow-hidden rounded-4xl glass bg-linear-135 from-apricot/15 via-blush/10 to-accent/15 px-6 py-12 text-center sm:px-12 sm:py-16"
+		class="relative isolate overflow-hidden rounded-4xl glass bg-linear-135 from-apricot/15 via-blush/10 to-accent/15 px-6 py-12 text-center sm:px-12 sm:py-16"
 		aria-labelledby="kindergartens-title"
 	>
+		<!-- Behind the text but above the section's own background, which is what `isolate` is for. -->
 		{@render bubble('-z-10 -top-20 -right-20 size-48 sm:-top-24 sm:-right-16 sm:size-80')}
 		<h2 id="kindergartens-title" class="mx-auto mb-4 max-w-2xl text-4xl sm:text-5xl">
 			{t.kindergartens.title}
@@ -214,15 +244,9 @@
 			{/each}
 		</ul>
 		<p class="mx-auto mt-6 max-w-xl text-muted">{t.kindergartens.hosting}</p>
-		<a
-			class="mt-9 inline-flex items-center gap-3 rounded-full bg-ink py-2 pr-2 pl-6 font-semibold text-white shadow-xl shadow-ink/30 hover:-translate-y-0.5 motion-safe:transition-transform"
-			href={writeToUs}
-		>
-			{t.kindergartens.cta}
-			<span class="grid size-9 place-items-center rounded-full bg-white text-ink">
-				<Icon name="mail" class="size-4" />
-			</span>
-		</a>
+		<div class="mt-9">
+			{@render action(writeToUs, t.kindergartens.cta, 'mail')}
+		</div>
 		<p class="mx-auto mt-10 max-w-xl text-sm text-muted">
 			{t.kindergartens.mission}
 			{t.kindergartens.itTeam}

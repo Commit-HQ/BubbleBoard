@@ -1,6 +1,8 @@
 <script module lang="ts">
-	// Stroke icons adapted from Lucide (ISC License, https://lucide.dev).
+	// Stroke icons adapted from Lucide (https://lucide.dev), some of which Lucide derived from Feather.
+	// Their license notices (ISC and MIT) are in static/third-party-notices.txt, published with the site.
 	const paths = {
+		arrowDown: 'M12 5v14M19 12l-7 7-7-7',
 		bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
 		check: 'M20 6 9 17l-5-5',
 		clock: 'M3 12a9 9 0 1 0 18 0 9 9 0 1 0-18 0M12 7v5l3 2',

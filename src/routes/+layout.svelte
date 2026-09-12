@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { version } from '$app/environment';
 	import favicon from '$lib/assets/favicon.svg';
-	import AppLink from '$lib/components/AppLink.svelte';
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
 	import { localePath, locales, messages } from '$lib/i18n';
 	import { contactEmail, organizationUrl, repositoryUrl } from '$lib/project';
@@ -17,14 +16,11 @@
 	const project: { href: string; label: string; icon: IconName }[] = $derived([
 		{ href: repositoryUrl, label: t.footer.github, icon: 'github' },
 		{ href: `${repositoryUrl}/blob/main/LICENSE`, label: t.footer.license, icon: 'file' },
-		{
-			href: `${repositoryUrl}/blob/main/src/lib/assets/photos/CREDITS.md`,
-			label: t.footer.credits,
-			icon: 'image'
-		}
+		// Photo, font, and icon licenses, served by every installation.
+		{ href: '/third-party-notices.txt', label: t.footer.credits, icon: 'image' }
 	]);
-	// "Made with love by the people at [Commit]": the bracketed part is the link.
-	const madeBy = $derived(t.footer.madeBy.split(/\[|\]/));
+	// "abc1234", "abc1234-dirty" when built with uncommitted changes, or "unknown" (vite.config.ts).
+	const [, commit, modified] = version.match(/^([0-9a-f]+)(-dirty)?$/) ?? [];
 </script>
 
 <svelte:head>
@@ -37,16 +33,20 @@
 	href="#main">{t.skip}</a
 >
 
-<div class="mx-auto max-w-7xl px-4 sm:px-8 lg:px-10">
+<!-- Decorative bubbles are clipped rather than scrolling the page sideways when enlarged text leaves no
+room. `clip`, unlike `hidden`, keeps the header sticky. -->
+<div class="mx-auto max-w-7xl overflow-x-clip px-4 sm:px-8 lg:px-10">
 	<header
-		class="sticky top-3 z-10 my-3 flex items-center justify-between gap-4 rounded-full glass py-1.5 pr-1.5 pl-3"
+		class="sticky top-3 z-10 my-3 flex items-center justify-between gap-4 rounded-full frosted py-1.5 pr-1.5 pl-3"
 	>
 		<a
 			class="inline-flex items-center gap-2.5 text-xl font-bold tracking-tight"
 			href={home}
 			aria-label={t.home}
 		>
-			<img src={favicon} alt="" width="36" height="36" />BubbleBoard
+			<img src={favicon} alt="" width="36" height="36" />
+			<!-- Enlarged text on a phone narrows the page below 20rem; then only the logo shows. -->
+			<span class="max-[20rem]:hidden">BubbleBoard</span>
 		</a>
 		<nav class="hidden xl:block" aria-label={t.nav.label}>
 			<ul class="flex">
@@ -60,21 +60,19 @@
 				{/each}
 			</ul>
 		</nav>
-		<div class="flex items-center gap-2">
-			<nav class="flex rounded-full bg-ink/5 p-0.5" aria-label={t.language}>
-				{#each locales as locale (locale)}
-					<a
-						class="grid min-h-11 min-w-11 place-items-center rounded-full text-sm font-bold text-muted transition-colors aria-[current=page]:bg-ink aria-[current=page]:text-white"
-						href={localePath(locale)}
-						hreflang={locale}
-						lang={locale}
-						aria-label={messages[locale].languageName}
-						aria-current={locale === data.locale ? 'page' : undefined}>{locale.toUpperCase()}</a
-					>
-				{/each}
-			</nav>
-			<AppLink labels={t.app} class="hidden px-5 py-3 text-sm sm:inline-flex" />
-		</div>
+		<nav class="flex rounded-full bg-ink/5 p-0.5" aria-label={t.language}>
+			{#each locales as locale (locale)}
+				<!-- Forced colours drop the dark fill, so the current language is underlined there instead. -->
+				<a
+					class="grid min-h-11 min-w-11 place-items-center rounded-full text-sm font-bold text-muted transition-colors aria-[current=page]:bg-ink aria-[current=page]:text-white forced-colors:aria-[current=page]:underline"
+					href={localePath(locale)}
+					hreflang={locale}
+					lang={locale}
+					aria-label={messages[locale].languageName}
+					aria-current={locale === data.locale ? 'page' : undefined}>{locale.toUpperCase()}</a
+				>
+			{/each}
+		</nav>
 	</header>
 
 	<main id="main">
@@ -124,16 +122,20 @@
 		>
 			<p class="flex items-center gap-1.5">
 				<Icon name="heart" class="size-4 shrink-0 fill-blush text-blush" />
-				<span
-					>{madeBy[0]}<a class="font-semibold text-ink hover:underline" href={organizationUrl}
-						>{madeBy[1]}</a
-					>{madeBy[2]}</span
-				>
+				<span>
+					{t.footer.madeBy}
+					<a class="font-semibold text-ink hover:underline" href={organizationUrl}>Commit</a>
+				</span>
 			</p>
-			<a class="hover:text-ink" href="{repositoryUrl}/commit/{version}">
-				{t.footer.build}
-				{version}
-			</a>
+			{#if commit}
+				<a class="hover:text-ink" href="{repositoryUrl}/commit/{commit}">
+					{t.footer.build}
+					{commit}
+					{#if modified}({t.footer.modified}){/if}
+				</a>
+			{:else}
+				<p>{t.footer.unknownBuild}</p>
+			{/if}
 		</div>
 	</footer>
 </div>

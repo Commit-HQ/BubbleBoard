@@ -9,10 +9,13 @@ concurrency:
 permissions:
   contents: read
 jobs:
+  # Validation only: needs no cloud credentials and never deploys. Deployment, when added, is a separate
+  # opt-in workflow.
   validate:
     runs-on: ubuntu-latest
     env:
-      # Placeholder address; prerendered pages need one at build time (see .env.example).
+      # Placeholder address; prerendered pages need one at build time (see .env.example). Its canonical
+      # and link-preview URLs point at the placeholder, so never publish this build.
       PUBLIC_SITE_URL: https://bubbleboard.example.com
     steps:
       - uses: actions/checkout@v4

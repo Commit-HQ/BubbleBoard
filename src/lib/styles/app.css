@@ -1,4 +1,5 @@
-@import 'tailwindcss';
+/* Class names come from src only, so words in docs and license texts don't generate CSS. */
+@import 'tailwindcss' source('../..');
 
 /*
  * Self-hosted variable fonts from Fontsource, Latin and Latin Extended subsets only (Croatian needs
@@ -81,18 +82,34 @@
 	--color-apricot: #ffb36b;
 }
 
-/* Frosted surface used for the header, cards, and overlays. */
+/*
+ * Translucent surface for cards and sections. It doesn't blur: over the soft, fixed page backdrop a
+ * blur looks almost the same but repaints while scrolling. It also creates no stacking context, so give
+ * its element `isolate` when a child uses a negative z-index.
+ */
 @utility glass {
 	background-color: rgb(255 255 255 / 0.5);
-	-webkit-backdrop-filter: blur(22px) saturate(170%);
-	backdrop-filter: blur(22px) saturate(170%);
 	border: 1px solid rgb(255 255 255 / 0.75);
 	box-shadow:
 		inset 0 1px 0 rgb(255 255 255 / 0.9),
 		0 24px 60px -30px rgb(46 32 120 / 0.35);
 }
 
-/* Brand gradient for icon tiles and avatars. */
+/*
+ * Glass that blurs what's behind it, only where content moves or sits behind the surface: the sticky
+ * header and overlays on photos. Nearly opaque where backdrop-filter isn't supported.
+ */
+@utility frosted {
+	@apply glass;
+	background-color: rgb(255 255 255 / 0.85);
+	@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+		background-color: rgb(255 255 255 / 0.5);
+		-webkit-backdrop-filter: blur(22px) saturate(170%);
+		backdrop-filter: blur(22px) saturate(170%);
+	}
+}
+
+/* Brand gradient for icon tiles. Decorative only: its blush and apricot stops are too light for text. */
 @utility bg-sunrise {
 	background-image: linear-gradient(
 		120deg,
@@ -102,9 +119,17 @@
 	);
 }
 
-/* Brand gradient as text, padded so descenders aren't clipped. */
+/*
+ * Brand gradient for heading text, with darker stops than bg-sunrise: at least 4.5:1 on the canvas and
+ * 3:1 where the backdrop is most tinted. Padded so descenders aren't clipped, and plain text when forced
+ * colours replace backgrounds.
+ */
 @utility text-sunrise {
-	@apply bg-sunrise bg-clip-text pb-[0.08em] text-transparent;
+	background-image: linear-gradient(120deg, #5b3fe0, #c81e6e 60%, #c2410c);
+	@apply bg-clip-text pb-[0.08em] text-transparent;
+	@media (forced-colors: active) {
+		color: CanvasText;
+	}
 }
 
 @layer base {
@@ -113,6 +138,8 @@
 		color: var(--color-ink);
 		scroll-padding-top: 6rem;
 		-webkit-font-smoothing: antialiased;
+		/* Long words, common in Croatian and with enlarged text, wrap instead of widening the page. */
+		overflow-wrap: anywhere;
 	}
 	@media (prefers-reduced-motion: no-preference) {
 		html {

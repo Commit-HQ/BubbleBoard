@@ -7,7 +7,6 @@ export const en = {
 	skip: 'Skip to content',
 	home: 'BubbleBoard home',
 	language: 'Language',
-	app: { open: 'Open the app', soon: 'Coming soon' },
 	nav: {
 		label: 'Main',
 		sections: {
@@ -22,19 +21,14 @@ export const en = {
 	hero: {
 		heading: 'A little closer',
 		headingAccent: 'to their day.',
+		cta: 'For your kindergarten',
+		status: 'App coming soon',
 		quiet: 'Made for families. Inspired by the Bubbles.',
 		photoAlt: 'Children laughing and blowing soap bubbles in a sunny park',
-		notes: [
-			{
-				teacher: 'Martina',
-				time: '8:30',
-				message: 'Tomorrow we’re off to the park. Please pack rain boots.'
-			},
-			{
-				teacher: 'Romana',
-				time: 'Just now',
-				message: 'Una cried when her bubble popped, so we blew a hundred more.'
-			}
+		// Lock-screen notifications, newest first. They stay this generic; the details wait in the app.
+		notifications: [
+			{ time: 'Just now', message: 'New photos from today' },
+			{ time: '8:30', message: 'New notice from your kindergarten' }
 		]
 	},
 	features: {
@@ -46,11 +40,11 @@ export const en = {
 		},
 		photos: {
 			title: 'Photos from the day',
-			copy: 'Moments from the classroom, shared with care and gone after a while.'
+			copy: 'Moments from the classroom, shared with care and removed from the app after a set time.'
 		},
 		messages: {
 			title: 'A direct line to teachers',
-			copy: 'Private conversations between your family and the classroom.'
+			copy: 'Private conversations between your family and your child’s teachers.'
 		},
 		documents: {
 			title: 'Shared documents',
@@ -67,7 +61,7 @@ export const en = {
 	},
 	how: {
 		title: 'One card. Your classroom.',
-		copy: 'Parents and teachers join the same way. Your kindergarten gives you a personal QR card, and that’s all you need.',
+		copy: 'Parents and teachers join the same way. Your kindergarten hands out QR cards: one family card for all your family’s devices, and a teacher card for each teacher. That’s all you need.',
 		photoAlt: 'A kindergarten teacher sitting on the floor talking with a group of children',
 		steps: [
 			{
@@ -88,23 +82,23 @@ export const en = {
 		facts: [
 			'No usernames or passwords',
 			'Faces blurred for other families, if you prefer',
-			'Photos disappear on their own after a while'
+			'Photos removed from the app after a set time'
 		]
 	},
 	security: {
 		title: 'Locked before it leaves your phone.',
-		copy: 'Photos, messages, and children’s names are encrypted on your device before they’re sent. Only the families and teachers in your classroom hold the keys to open them.',
+		copy: 'Photos, messages, and children’s names are encrypted before they leave the device. Classroom notices and photos open only for families and teachers in your classroom, and private conversations only for your family and your child’s teachers.',
 		device: {
 			title: 'Encrypted on your device',
-			copy: 'Everything is locked on the phone or computer it comes from, before it’s uploaded.'
+			copy: 'Content is encrypted on your phone or computer before it’s uploaded.'
 		},
 		server: {
 			title: 'Unreadable if it leaks',
-			copy: 'The server stores only locked data. A leaked database would reveal no photos, names, or messages.'
+			copy: 'The server stores content without the keys needed to read it. A leak would reveal no photos, names, or messages.'
 		},
 		host: {
-			title: 'Not even we can look',
-			copy: 'Whoever hosts BubbleBoard, us included, has no keys to your classroom. The code is public, so anyone can check.'
+			title: 'Keys stay in your classroom',
+			copy: 'Whoever runs the server, us included, doesn’t have them. The code is public, so anyone can see how it works.'
 		},
 		note: 'Encryption protects what’s stored on the server. It can’t take back a photo someone has already saved to their own phone.'
 	},
@@ -117,11 +111,11 @@ export const en = {
 		},
 		remove: {
 			title: 'Delete right away',
-			copy: 'Take a post down instantly if something slips through.'
+			copy: 'Remove a post from the app instantly if something slips through.'
 		},
 		retention: {
-			title: 'Nothing stays forever',
-			copy: 'Choose how long photos stay, from one day to three months.'
+			title: 'You choose how long',
+			copy: 'Photos are removed from the app after the time you choose, from one day to three months.'
 		},
 		access: {
 			title: 'Access you control',
@@ -150,11 +144,15 @@ export const en = {
 		explore: 'Explore',
 		project: 'Project',
 		github: 'GitHub',
-		// The part in brackets links to Commit.
-		madeBy: 'Made with love by the people at [Commit]',
+		// Followed by a link to Commit.
+		madeBy: 'Made with love by the people at',
 		license: 'License (AGPL-3.0)',
-		credits: 'Photo credits',
-		build: 'Build'
+		credits: 'Credits and licenses',
+		build: 'Build',
+		// The build had uncommitted changes, so its commit doesn't fully describe it.
+		modified: 'modified',
+		// Built without Git, for example from a source ZIP.
+		unknownBuild: 'Unknown build'
 	}
 };
 
