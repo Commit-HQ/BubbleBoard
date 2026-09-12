@@ -20,6 +20,10 @@
 </script>
 
 <svelte:window onhashchange={() => app.openLink()} />
+<!-- Back in view, such as after a tap on a notification, the app loads the board again. -->
+<svelte:document
+	onvisibilitychange={() => document.visibilityState === 'visible' && app.refresh()}
+/>
 
 <svelte:head>
 	<!-- A plain title: tab titles and browser history shouldn't hold children's or families' names. -->

@@ -6,7 +6,7 @@ A small, open-source communication app for kindergarten communities. Inspired by
 
 Teachers share a moment. Parents get a notification. The hosting server stores encrypted content without the keys needed to read it.
 
-> **Status: early development.** This repository contains a prerendered Croatian and English landing page and the first part of the app: setting up a kindergarten, classrooms, teachers and admins, children with their family cards, printing cards, and connecting devices with a card's link, the camera, a photo of it, or its code. Everything is encrypted in the browser ([access format](docs/access-format.md)). Teachers post notices, written with a rich text editor, to the board on everyone's home, and phones and tablets install the app before using it; notifications, messages, and photos are not implemented yet. Do not use it with real family data yet. The landing page deliberately describes the finished product; this README tracks what exists.
+> **Status: early development.** This repository contains a prerendered Croatian and English landing page and the first part of the app: setting up a kindergarten, classrooms, teachers and admins, children with their family cards, printing cards, and connecting devices with a card's link, the camera, a photo of it, or its code. Everything is encrypted in the browser ([access format](docs/access-format.md)). Teachers post notices, written with a rich text editor, to the board on everyone's home, phones and tablets install the app before using it, and devices can turn on notifications for new notices, which carry no content; messages and photos are not implemented yet. Do not use it with real family data yet. The landing page deliberately describes the finished product; this README tracks what exists.
 
 ## What we’re building
 
@@ -30,24 +30,24 @@ npm run setup-link:local
 npm run dev
 ```
 
-`npm run setup-link:local` writes a setup token to the ignored `.dev.vars`, generates the ignored Cloudflare runtime types, and prints a setup link for `http://localhost:5173`. Open it once `npm run dev` is running (if Vite prints another port, use that port with the same `/app/setup#token=…`). Setup asks for your name and makes two cards to print: yours and a recovery card. `npm run dev` applies the database migrations to a local copy in `.wrangler/` before starting. To start over locally, stop the server, delete `.wrangler/state`, and run `npm run setup-link:local` again.
+`npm run setup-link:local` writes a setup token to the ignored `.dev.vars`, generates the ignored Cloudflare runtime types, and prints a setup link for `http://localhost:5173`. Open it once `npm run dev` is running (if Vite prints another port, use that port with the same `/app/setup#token=…`). Setup asks for your name and makes two cards to print: yours and a recovery card. `npm run dev` applies the database migrations to a local copy in `.wrangler/` before starting, and the first time adds a local key for signing notifications to `.dev.vars`. To start over locally, stop the server, delete `.wrangler/state`, and run `npm run setup-link:local` again.
 
 `.env` sets `PUBLIC_SITE_URL`, the public origin used for canonical links and link previews: `https://` and a hostname, with no path, query, or credentials (`http://localhost` also works). Pages are prerendered, so the address is written into the HTML at build time; a Worker variable set at runtime can't change pages that were already generated. The build stops with a message naming `PUBLIC_SITE_URL` when it's missing or invalid. Local Worker secrets, such as the setup token, belong in the ignored `.dev.vars`.
 
-| Command                    | Purpose                                                                 |
-| -------------------------- | ----------------------------------------------------------------------- |
-| `npm run dev`              | Apply local database migrations, then run the development server        |
-| `npm run setup-link:local` | Write a local setup token and print its setup link                      |
-| `npm run gen`              | Generate Cloudflare binding/runtime types                               |
-| `npm run check`            | Svelte and TypeScript checks                                            |
-| `npm run lint`             | Check formatting with Prettier                                          |
-| `npm run format`           | Apply formatting                                                        |
-| `npm test`                 | Behavior tests with Vitest                                              |
-| `npm run build`            | Build for Cloudflare Workers                                            |
-| `npm run preview`          | Apply local migrations, then run the build in the local Workers runtime |
-| `npm run validate`         | Type checks, formatting, tests, and build                               |
-| `npm run deploy`           | Build, publish, migrate the database, and print the first setup link    |
-| `npm run setup-link`       | Replace the deployed setup token and print a new setup link             |
+| Command                    | Purpose                                                                           |
+| -------------------------- | --------------------------------------------------------------------------------- |
+| `npm run dev`              | Prepare the local database and notifications key, then run the development server |
+| `npm run setup-link:local` | Write a local setup token and print its setup link                                |
+| `npm run gen`              | Generate Cloudflare binding/runtime types                                         |
+| `npm run check`            | Svelte and TypeScript checks                                                      |
+| `npm run lint`             | Check formatting with Prettier                                                    |
+| `npm run format`           | Apply formatting                                                                  |
+| `npm test`                 | Behavior tests with Vitest                                                        |
+| `npm run build`            | Build for Cloudflare Workers                                                      |
+| `npm run preview`          | Prepare the same, then run the build in the local Workers runtime                 |
+| `npm run validate`         | Type checks, formatting, tests, and build                                         |
+| `npm run deploy`           | Build, publish, migrate the database, and print the first setup link              |
+| `npm run setup-link`       | Replace the deployed setup token and print a new setup link                       |
 
 Measure performance (for example with Lighthouse) on a production build, `npm run build && npm run preview`; development performance is not representative. The app needs a secure context: use `localhost` or `https://`, not a plain `http://` network address, when opening it from another device.
 
@@ -138,7 +138,7 @@ docs/                   Architecture notes, access format, product specification
 _headers                Security headers for prerendered pages and assets
 .env.example            Build-time settings to copy into .env
 .github/workflows/      Validation pipeline (never deploys)
-wrangler.jsonc          Worker, database, and rate limit configuration
+wrangler.jsonc          Worker, database, queue, schedule, and rate limit configuration
 ```
 
 Croatian is served at `/` and English at `/en`, both as static HTML without client-side JavaScript. The app is at `/app` and `/en/app`. Language, design, font, and security conventions are in the [architecture notes](docs/architecture.md).

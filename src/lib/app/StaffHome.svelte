@@ -7,6 +7,7 @@
 	import { appPath } from '$lib/paths';
 	import Board from './Board.svelte';
 	import FieldForm from './FieldForm.svelte';
+	import NotificationCard from './NotificationCard.svelte';
 	import { getApp } from './state.svelte';
 	import { button } from './ui';
 
@@ -69,6 +70,8 @@
 			</a>
 		{/if}
 	</div>
+
+	<NotificationCard {locale} />
 
 	<ul class="grid grid-cols-2 gap-3 sm:gap-4">
 		{#each app.catalog.classrooms as classroom (classroom.id)}

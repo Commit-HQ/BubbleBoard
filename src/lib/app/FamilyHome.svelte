@@ -4,6 +4,7 @@
 	import { listNames, messages, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
 	import Board from './Board.svelte';
+	import NotificationCard from './NotificationCard.svelte';
 	import { getApp } from './state.svelte';
 	import { button } from './ui';
 
@@ -26,6 +27,7 @@
 			)}
 		</p>
 	</div>
+	<NotificationCard {locale} />
 	<div class="grid gap-4">
 		<Board {locale} empty={t.notices.empty} />
 	</div>

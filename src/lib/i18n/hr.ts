@@ -408,11 +408,26 @@ export const hr = {
 			},
 			days: 'Neka ostane',
 			dayCount: (value: number) => count(value, 'dan', 'dana', 'dana'),
-			announce: 'Vrati je na vrh',
-			announceHint: 'Za promjenu koju svi trebaju vidjeti.',
+			announce: 'Ponovno obavijesti sve',
+			announceHint: 'Za promjenu koju svi trebaju vidjeti. Obavijest se vraća na vrh ploče.',
 			post: 'Objavi obavijest',
 			save: 'Spremi promjene',
 			noClassrooms: 'Obavijesti možete objavljivati kad vas administrator doda u skupinu.'
+		},
+		notifications: {
+			push: 'Nova obavijest iz vrtića',
+			test: 'Obavijesti su uključene. Ovakvu ćete dobiti kad stigne nova obavijest.',
+			cardTitle: 'Saznajte kad stigne nova obavijest',
+			cardCopy: 'Na zaslonu piše samo da je stiglo nešto novo. Sama obavijest ostaje u aplikaciji.',
+			turnOn: 'Uključi',
+			turnOff: 'Isključi',
+			notNow: 'Ne sada',
+			blocked:
+				'Obavijesti za BubbleBoard su blokirane. Dopustite ih u postavkama uređaja, pa ih ovdje uključite.',
+			title: 'Obavijesti',
+			on: 'Uključene: ovaj uređaj javlja nove obavijesti.',
+			off: 'Isključene na ovom uređaju.',
+			unsupported: 'Ovaj preglednik ne može prikazivati obavijesti BubbleBoarda.'
 		},
 		install: {
 			iosTitle: 'Dodajte BubbleBoard na početni zaslon',

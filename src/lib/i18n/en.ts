@@ -406,11 +406,27 @@ export const en = {
 			},
 			days: 'Keep it up for',
 			dayCount: (count: number) => (count === 1 ? '1 day' : `${count} days`),
-			announce: 'Put it back on top',
-			announceHint: 'For a change everyone should see.',
+			announce: 'Notify everyone again',
+			announceHint:
+				'For a change everyone should see. The notice goes back to the top of the board.',
 			post: 'Post notice',
 			save: 'Save changes',
 			noClassrooms: 'You can post notices once an admin adds you to a classroom.'
+		},
+		notifications: {
+			push: 'New notice from your kindergarten',
+			test: 'Notifications are on. You’ll get one like this when there’s a new notice.',
+			cardTitle: 'Get a notification when there’s a new notice',
+			cardCopy: 'It says only that there’s something new. The notice itself stays in the app.',
+			turnOn: 'Turn on',
+			turnOff: 'Turn off',
+			notNow: 'Not now',
+			blocked:
+				'Notifications are blocked for BubbleBoard. Allow them in your device’s settings, then turn them on here.',
+			title: 'Notifications',
+			on: 'On: this device hears about new notices.',
+			off: 'Off on this device.',
+			unsupported: 'This browser can’t show notifications from BubbleBoard.'
 		},
 		install: {
 			iosTitle: 'Add BubbleBoard to your Home Screen',

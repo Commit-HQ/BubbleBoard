@@ -4,6 +4,7 @@ import { ApiError, request, type Access, type Kindergarten, type NoticeRecord } 
 import { readCard, type CardReading } from '$lib/card';
 import { createId, deriveCredential, hashAuthToken, UnreadableError } from '$lib/crypto';
 import { forgetCard, loadCard, saveCard, type DeviceCard } from '$lib/device';
+import type { Locale } from '$lib/i18n';
 import { installStep, type InstallPlatform, type InstallPrompt } from '$lib/install';
 import {
 	byId,
@@ -30,6 +31,14 @@ import {
 	type StaffKeys,
 	type Teacher
 } from '$lib/kindergarten';
+import {
+	forgetSubscription,
+	notificationState,
+	sendSubscription,
+	turnOff,
+	turnOn,
+	type NotificationState
+} from '$lib/notifications';
 import {
 	NoticeTooLongError,
 	openBoard,
@@ -58,7 +67,7 @@ export type TeacherValues = { name: string; admin: boolean; classrooms: string[]
 export type ChildValues = { name: string; classroom: string } & (
 	{ cardName: string } | { sibling: string }
 );
-/** A notice as its form fills it in. `announce` puts a changed notice back on top of the board. */
+/** A notice as its form fills it in. `announce` puts a changed notice back on top and notifies again. */
 export type NoticeValues = {
 	classrooms: string[];
 	paper: Paper;
@@ -74,6 +83,9 @@ const emptyCatalog: Catalog = {
 	families: [],
 	children: []
 };
+
+/** The app loads the board again when it comes back into view, but not more often than this. */
+const refreshAfter = 60 * 1000;
 
 /**
  * The kindergarten's records didn't open, although this device's card did. Unlike a card that stopped
@@ -132,6 +144,8 @@ export class App {
 	install = $state<InstallPlatform>();
 	/** The browser's own install prompt, when it offers one. */
 	installPrompt = $state.raw<InstallPrompt>();
+	/** Whether this device gets a notification for new notices. */
+	notifications = $state<NotificationState>('unsupported');
 	catalog = $state.raw(emptyCatalog);
 	me = $state.raw<Teacher>();
 	/** The classrooms a family device has joined. */
@@ -149,6 +163,7 @@ export class App {
 
 	#card?: DeviceCard;
 	#keys?: StaffKeys;
+	#loadedAt = 0;
 
 	get admin() {
 		return this.me?.admin === true;
@@ -215,6 +230,18 @@ export class App {
 		await this.#resume();
 	}
 
+	/** Loads the records and board again, quietly, when the app comes back into view. */
+	async refresh() {
+		const card = this.#card;
+		if (!this.connected || !card || Date.now() - this.#loadedAt < refreshAfter) return;
+		this.#loadedAt = Date.now();
+		try {
+			await this.#open(await request<Access>('GET', '/api/session'), card);
+		} catch (cause) {
+			if (isDisconnection(cause)) await this.#disconnect('signed-out');
+		}
+	}
+
 	async #resume() {
 		const card = this.#card;
 		if (!card) {
@@ -247,7 +274,15 @@ export class App {
 			throw new UnreadableError();
 		}
 		this.#card = card;
+		this.#loadedAt = Date.now();
 		this.status = access.kind;
+		void this.#keepNotifications();
+	}
+
+	/** Reads whether notifications are on, and sends the subscription so it stays with this session. */
+	async #keepNotifications() {
+		this.notifications = await notificationState().catch(() => 'unsupported' as const);
+		if (this.notifications === 'on') await sendSubscription().catch(() => {});
 	}
 
 	async #load(records: Kindergarten, teacher = this.me?.id) {
@@ -300,7 +335,10 @@ export class App {
 	}
 
 	async #disconnect(notice?: string) {
-		await forgetCard().catch(() => {});
+		// Notifications end with the session, whose subscription the server forgets: after connecting again,
+		// the device turns them on again.
+		await Promise.all([forgetCard(), forgetSubscription()].map((done) => done.catch(() => {})));
+		this.notifications = 'off';
 		this.#card = undefined;
 		this.#keys = undefined;
 		this.me = undefined;
@@ -364,6 +402,16 @@ export class App {
 	async signOut() {
 		await this.#disconnect();
 		await request('DELETE', '/api/session').catch(() => {});
+	}
+
+	/** Turns notifications on, from a tap: the permission request can't wait for anything before it. */
+	async turnOnNotifications(locale: Locale) {
+		this.notifications = await turnOn(locale);
+	}
+
+	async turnOffNotifications() {
+		await turnOff();
+		this.notifications = 'off';
 	}
 
 	/** Stores the first setup and connects this device with the admin's card. */
