@@ -9,13 +9,13 @@ One SvelteKit application, deployed as one Cloudflare Worker with static assets.
 - D1: future opaque identifiers, sessions, and encrypted records.
 - Private R2: future encrypted media, fetched through authorized Worker routes.
 
-So far there is the app shell and the tested access format (`src/lib/crypto.ts`, `src/lib/paths.ts`), but no authentication, persistence, or uploads. Do not accept real classroom information yet, and do not add public upload endpoints. Records are encrypted from the first one persisted; there is no plaintext version to migrate later.
+So far there is the app shell and the tested access format (`src/lib/crypto.ts`, `src/lib/card.ts`), but no authentication, persistence, or uploads. Do not accept real classroom information yet, and do not add public upload endpoints. Records are encrypted from the first one persisted; there is no plaintext version to migrate later.
 
 ## Pages and languages
 
 Pages live in two route groups. `(marketing)` holds the landing pages, prerendered to static HTML without client-side JavaScript (`prerender` and `csr` in its `+layout.ts`). `(app)` holds the app: pages prerendered as static shells that then run in the browser. Their HTML carries no classroom data, and the server never renders any; protected data arrives as ciphertext and is decrypted on the device. The root layout only adds the stylesheet, favicon, and locale.
 
-Croatian is served at `/` and `/app`, English at `/en` and `/en/app`; the optional `[[locale=locale]]` route segment and `src/params/locale.ts` keep the default language unprefixed. `src/lib/paths.ts` builds every path, including the language switch's link to the same page in the other language, and the QR card links. Card links are read by their origin and fragment only, so printed cards keep working in either language; `/app` and `/en/app` must always open the app. The language switch is a plain link, so no cookie is needed. `src/hooks.server.ts` sets the document language.
+Croatian is served at `/` and `/app`, English at `/en` and `/en/app`; the optional `[[locale=locale]]` route segment and `src/params/locale.ts` keep the default language unprefixed. `src/lib/paths.ts` builds every path, including the language switch's link to the same page in the other language, and `src/lib/card.ts` writes and reads card codes and their links. Card links are read by their origin and fragment only, so printed cards keep working in either language; `/app` and `/en/app` must always open the app. The language switch is a plain link, so no cookie is needed. `src/hooks.server.ts` sets the document language.
 
 The landing page is identical on every installation: it names no kindergarten, and its contact details belong to the project (`src/lib/project.ts`). It describes the finished product in the present tense, while README tracks what is implemented. Until families can connect with a card, the page says the app is coming in plain text and its call to action leads to the contact section; link to the app once they can.
 

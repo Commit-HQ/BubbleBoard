@@ -8,110 +8,126 @@ import {
 	deriveCredential,
 	encryptData,
 	rewrapKey,
+	SECRET_BYTES,
 	UnreadableError,
 	unwrapKey,
-	type Role,
 	type Wrapping
 } from './crypto';
 
 // Synthetic content only.
-const profileData = { name: 'Bubbles', welcome: 'Welcome to our classroom!' };
-const adminData = { children: [{ name: 'Test Child' }] };
+const profileData = { name: 'Bubbles' };
+const teacherData = { name: 'Test Teacher' };
 
 type Card = Awaited<ReturnType<typeof createCard>>;
-type Classroom = Awaited<ReturnType<typeof createClassroom>>;
+type Kindergarten = Awaited<ReturnType<typeof setUp>>;
+type Classroom = Awaited<ReturnType<typeof addClassroom>>;
 type Family = Awaited<ReturnType<typeof addFamily>>;
 
-async function createCard(role: Role) {
+async function createCard() {
 	const secret = createSecret();
-	return { id: createId(), secret, ...(await deriveCredential(secret, role)) };
+	return { id: createId(), secret, ...(await deriveCredential(secret)) };
 }
 
-// A classroom as setup creates it: one Teacher Key for a teacher card and a recovery card, a Group Key,
-// and the encrypted profile and administration records.
-async function createClassroom() {
-	const classroom = createId();
-	const [teacherCard, recoveryCard] = [await createCard('teacher'), await createCard('teacher')];
-	const teacherKey = await createKey(
-		[teacherCard, recoveryCard].map((card): Wrapping => ({
+// A kindergarten as setup creates it: one Staff Key for the admin's card and a recovery card, and the
+// admin's encrypted teacher profile.
+async function setUp() {
+	const teacher = createId();
+	const [adminCard, recoveryCard] = [await createCard(), await createCard()];
+	const staffKey = await createKey(
+		[adminCard, recoveryCard].map((card): Wrapping => ({
 			key: card.unlockKey,
-			context: { purpose: 'teacher-key-for-credential', classroom, credential: card.id }
+			context: { purpose: 'staff-key-for-credential', credential: card.id }
 		}))
 	);
+	return {
+		teacher,
+		adminCard,
+		recoveryCard,
+		staffKey: staffKey.key,
+		staffKeyForAdmin: staffKey.envelopes[0],
+		staffKeyForRecovery: staffKey.envelopes[1],
+		teacherProfile: await encryptData(teacherData, staffKey.key, {
+			purpose: 'teacher-profile',
+			teacher
+		})
+	};
+}
+
+// A classroom as an admin device adds it: a Group Key wrapped for staff, and the encrypted profile.
+async function addClassroom({ staffKey }: Kindergarten) {
+	const classroom = createId();
 	const groupKey = await createKey([
-		{ key: teacherKey.key, context: { purpose: 'group-key-for-teacher', classroom } }
+		{ key: staffKey, context: { purpose: 'group-key-for-staff', classroom } }
 	]);
 	return {
 		classroom,
-		teacherCard,
-		recoveryCard,
-		teacherKey: teacherKey.key,
-		teacherKeyForCard: teacherKey.envelopes[0],
-		teacherKeyForRecovery: teacherKey.envelopes[1],
 		groupKey: groupKey.key,
-		groupKeyForTeacher: groupKey.envelopes[0],
+		groupKeyForStaff: groupKey.envelopes[0],
 		profile: await encryptData(profileData, groupKey.key, {
 			purpose: 'classroom-profile',
 			classroom
-		}),
-		admin: await encryptData(adminData, teacherKey.key, { purpose: 'classroom-admin', classroom })
+		})
 	};
 }
 
-// A family as a teacher device adds it: a Family Key wrapped for the teacher and the family card, and
-// the Group Key re-wrapped from the teacher's copy.
-async function addFamily({ classroom, teacherKey, groupKeyForTeacher }: Classroom) {
+// A family as an admin device adds it: a Family Key wrapped for staff and the family card, and the Group
+// Key of each classroom its children are in, re-wrapped from the staff copy.
+async function addFamily({ staffKey }: Kindergarten, classrooms: Classroom[]) {
 	const family = createId();
-	const card = await createCard('family');
+	const card = await createCard();
 	const familyKey = await createKey([
-		{ key: teacherKey, context: { purpose: 'family-key-for-teacher', classroom, family } },
-		{
-			key: card.unlockKey,
-			context: { purpose: 'family-key-for-credential', classroom, credential: card.id }
-		}
+		{ key: staffKey, context: { purpose: 'family-key-for-staff', family } },
+		{ key: card.unlockKey, context: { purpose: 'family-key-for-credential', credential: card.id } }
 	]);
-	const [groupKeyForFamily] = await rewrapKey(
-		groupKeyForTeacher,
-		{ key: teacherKey, context: { purpose: 'group-key-for-teacher', classroom } },
-		[{ key: familyKey.key, context: { purpose: 'group-key-for-family', classroom, family } }]
-	);
+	const groupKeysForFamily: Record<string, string> = {};
+	for (const { classroom, groupKeyForStaff } of classrooms) {
+		const [envelope] = await rewrapKey(
+			groupKeyForStaff,
+			{ key: staffKey, context: { purpose: 'group-key-for-staff', classroom } },
+			[{ key: familyKey.key, context: { purpose: 'group-key-for-family', classroom, family } }]
+		);
+		groupKeysForFamily[classroom] = envelope;
+	}
 	return {
 		family,
 		card,
-		familyKeyForTeacher: familyKey.envelopes[0],
+		familyKeyForStaff: familyKey.envelopes[0],
 		familyKeyForCard: familyKey.envelopes[1],
-		groupKeyForFamily
+		groupKeysForFamily
 	};
 }
 
-// What a family device does with a scanned card: open the Family Key, then the Group Key, then the
-// classroom profile.
+// What a family device does with a scanned card: open the Family Key, then a classroom's Group Key, then
+// that classroom's profile.
 async function openAsFamily(
 	{ classroom, profile }: Classroom,
-	{ family, card, familyKeyForCard, groupKeyForFamily }: Family,
-	secret = card.secret,
-	envelope = familyKeyForCard
+	{ family, card, familyKeyForCard, groupKeysForFamily }: Family,
+	secret = card.secret
 ) {
-	const { unlockKey } = await deriveCredential(secret, 'family');
-	const familyKey = await unwrapKey(envelope, {
+	const { unlockKey } = await deriveCredential(secret);
+	const familyKey = await unwrapKey(familyKeyForCard, {
 		key: unlockKey,
-		context: { purpose: 'family-key-for-credential', classroom, credential: card.id }
+		context: { purpose: 'family-key-for-credential', credential: card.id }
 	});
-	const groupKey = await unwrapKey(groupKeyForFamily, {
+	const groupKey = await unwrapKey(groupKeysForFamily[classroom] ?? '', {
 		key: familyKey,
 		context: { purpose: 'group-key-for-family', classroom, family }
 	});
 	return decryptData(profile, groupKey, { purpose: 'classroom-profile', classroom });
 }
 
-// What a teacher device does with a scanned card: open the Teacher Key, then classroom administration.
-async function openAsTeacher({ classroom, admin }: Classroom, card: Card, envelope: string) {
-	const { unlockKey } = await deriveCredential(card.secret, 'teacher');
-	const teacherKey = await unwrapKey(envelope, {
+// What a staff device does with a scanned card: open the Staff Key, then a teacher profile.
+async function openAsStaff(
+	{ teacher, teacherProfile }: Kindergarten,
+	card: Card,
+	envelope: string
+) {
+	const { unlockKey } = await deriveCredential(card.secret);
+	const staffKey = await unwrapKey(envelope, {
 		key: unlockKey,
-		context: { purpose: 'teacher-key-for-credential', classroom, credential: card.id }
+		context: { purpose: 'staff-key-for-credential', credential: card.id }
 	});
-	return decryptData(admin, teacherKey, { purpose: 'classroom-admin', classroom });
+	return decryptData(teacherProfile, staffKey, { purpose: 'teacher-profile', teacher });
 }
 
 // Flips one bit in an envelope's IV (part 1) or ciphertext (part 2), keeping the encoding valid.
@@ -123,32 +139,41 @@ function tamper(envelope: string, part: 1 | 2, index: number) {
 	return parts.join('.');
 }
 
-describe('cards', () => {
-	it('derive a stable auth token, different for each card and role', async () => {
+describe('card secrets', () => {
+	it('derive a stable auth token, different for each card', async () => {
 		const secret = createSecret();
-		const { authToken } = await deriveCredential(secret, 'family');
+		const { authToken } = await deriveCredential(secret);
 		expect(authToken).toMatch(/^[\w-]{43}$/);
-		expect((await deriveCredential(secret, 'family')).authToken).toBe(authToken);
-		expect((await deriveCredential(secret, 'teacher')).authToken).not.toBe(authToken);
-		expect((await deriveCredential(createSecret(), 'family')).authToken).not.toBe(authToken);
+		expect((await deriveCredential(secret)).authToken).toBe(authToken);
+		expect((await deriveCredential(createSecret())).authToken).not.toBe(authToken);
 	});
 
 	it('reject secrets of the wrong length', async () => {
-		await expect(deriveCredential(new Uint8Array(31), 'family')).rejects.toThrow(UnreadableError);
+		for (const length of [SECRET_BYTES - 1, SECRET_BYTES + 1, 32]) {
+			await expect(deriveCredential(new Uint8Array(length))).rejects.toThrow(UnreadableError);
+		}
 	});
 
 	it('open nothing with the auth token alone', async () => {
-		const c = await createClassroom();
-		const token = fromBase64Url(c.teacherCard.authToken)!;
+		const k = await setUp();
+		const token = fromBase64Url(k.adminCard.authToken)!;
+		// The token used directly as a key, and put through the documented unlock-key derivation.
 		const tokenAsKey = await crypto.subtle.importKey('raw', token, 'AES-GCM', false, ['decrypt']);
-		const tokenAsSecret = (await deriveCredential(token, 'teacher')).unlockKey;
+		const tokenAsSecret = await crypto.subtle.deriveKey(
+			{
+				name: 'HKDF',
+				hash: 'SHA-256',
+				salt: new Uint8Array(),
+				info: new TextEncoder().encode('BubbleBoard card 1 key-wrap')
+			},
+			await crypto.subtle.importKey('raw', token, 'HKDF', false, ['deriveKey']),
+			{ name: 'AES-GCM', length: 256 },
+			false,
+			['decrypt']
+		);
+		const context = { purpose: 'staff-key-for-credential', credential: k.adminCard.id } as const;
 		for (const key of [tokenAsKey, tokenAsSecret]) {
-			const context = {
-				purpose: 'teacher-key-for-credential',
-				classroom: c.classroom,
-				credential: c.teacherCard.id
-			} as const;
-			await expect(unwrapKey(c.teacherKeyForCard, { key, context })).rejects.toThrow(
+			await expect(unwrapKey(k.staffKeyForAdmin, { key, context })).rejects.toThrow(
 				UnreadableError
 			);
 		}
@@ -157,29 +182,22 @@ describe('cards', () => {
 
 describe('envelopes', () => {
 	it('refuse the wrong key', async () => {
-		const c = await createClassroom();
-		const other = await createClassroom();
-		const family = await addFamily(c);
+		const k = await setUp();
+		const [a, b] = [await addClassroom(k), await addClassroom(k)];
+		const family = await addFamily(k, [a]);
 		await expect(
-			decryptData(c.profile, other.groupKey, {
-				purpose: 'classroom-profile',
-				classroom: c.classroom
-			})
+			decryptData(a.profile, b.groupKey, { purpose: 'classroom-profile', classroom: a.classroom })
 		).rejects.toThrow(UnreadableError);
 		await expect(
-			unwrapKey(c.teacherKeyForCard, {
+			unwrapKey(k.staffKeyForAdmin, {
 				key: family.card.unlockKey,
-				context: {
-					purpose: 'teacher-key-for-credential',
-					classroom: c.classroom,
-					credential: c.teacherCard.id
-				}
+				context: { purpose: 'staff-key-for-credential', credential: k.adminCard.id }
 			})
 		).rejects.toThrow(UnreadableError);
 	});
 
 	it('refuse modified envelopes', async () => {
-		const c = await createClassroom();
+		const c = await addClassroom(await setUp());
 		const context = { purpose: 'classroom-profile', classroom: c.classroom } as const;
 		for (const envelope of [
 			tamper(c.profile, 1, 0),
@@ -198,78 +216,70 @@ describe('envelopes', () => {
 	});
 
 	it('refuse an envelope moved to another record, even under the right key', async () => {
-		const c = await createClassroom();
-		const [a, b] = [await addFamily(c), await addFamily(c)];
-		const forTeacher = (family: string) =>
-			({ purpose: 'family-key-for-teacher', classroom: c.classroom, family }) as const;
+		const k = await setUp();
+		const [a, b] = [await addClassroom(k), await addClassroom(k)];
+		const [x, y] = [await addFamily(k, [a]), await addFamily(k, [a])];
+		const familyForStaff = (family: string) =>
+			({ purpose: 'family-key-for-staff', family }) as const;
+		const groupForStaff = (classroom: string) =>
+			({ purpose: 'group-key-for-staff', classroom }) as const;
 
-		// Family A's key served in family B's record: the Teacher Key opens both, only in their own.
+		// Family X's key served in family Y's record: the Staff Key opens both, only in their own.
 		await expect(
-			unwrapKey(a.familyKeyForTeacher, { key: c.teacherKey, context: forTeacher(b.family) })
+			unwrapKey(x.familyKeyForStaff, { key: k.staffKey, context: familyForStaff(y.family) })
 		).rejects.toThrow(UnreadableError);
 		await expect(
-			unwrapKey(a.familyKeyForTeacher, { key: c.teacherKey, context: forTeacher(a.family) })
+			unwrapKey(x.familyKeyForStaff, { key: k.staffKey, context: familyForStaff(x.family) })
 		).resolves.toBeInstanceOf(CryptoKey);
 
-		// The Group Key passed off as a Family Key.
+		// One classroom's Group Key served as another's, or passed off as a Family Key.
 		await expect(
-			unwrapKey(c.groupKeyForTeacher, { key: c.teacherKey, context: forTeacher(a.family) })
+			unwrapKey(a.groupKeyForStaff, { key: k.staffKey, context: groupForStaff(b.classroom) })
+		).rejects.toThrow(UnreadableError);
+		await expect(
+			unwrapKey(a.groupKeyForStaff, { key: k.staffKey, context: familyForStaff(x.family) })
 		).rejects.toThrow(UnreadableError);
 
-		// Administration read as the profile, or as another classroom's.
+		// A teacher profile read as a family profile with the same ID, or as another teacher's.
 		await expect(
-			decryptData(c.admin, c.teacherKey, { purpose: 'classroom-profile', classroom: c.classroom })
+			decryptData(k.teacherProfile, k.staffKey, { purpose: 'family-profile', family: k.teacher })
 		).rejects.toThrow(UnreadableError);
 		await expect(
-			decryptData(c.admin, c.teacherKey, { purpose: 'classroom-admin', classroom: createId() })
+			decryptData(k.teacherProfile, k.staffKey, { purpose: 'teacher-profile', teacher: createId() })
 		).rejects.toThrow(UnreadableError);
 
-		// The teacher card's envelope under the recovery card's credential.
+		// The admin card's envelope under the recovery card's credential.
 		await expect(
-			unwrapKey(c.teacherKeyForCard, {
-				key: c.teacherCard.unlockKey,
-				context: {
-					purpose: 'teacher-key-for-credential',
-					classroom: c.classroom,
-					credential: c.recoveryCard.id
-				}
+			unwrapKey(k.staffKeyForAdmin, {
+				key: k.adminCard.unlockKey,
+				context: { purpose: 'staff-key-for-credential', credential: k.recoveryCard.id }
 			})
 		).rejects.toThrow(UnreadableError);
 	});
 
 	it('produce keys that cannot be exported', async () => {
-		const c = await createClassroom();
-		const unwrapped = await unwrapKey(c.teacherKeyForCard, {
-			key: c.teacherCard.unlockKey,
-			context: {
-				purpose: 'teacher-key-for-credential',
-				classroom: c.classroom,
-				credential: c.teacherCard.id
-			}
+		const k = await setUp();
+		const unwrapped = await unwrapKey(k.staffKeyForAdmin, {
+			key: k.adminCard.unlockKey,
+			context: { purpose: 'staff-key-for-credential', credential: k.adminCard.id }
 		});
-		for (const key of [c.teacherKey, c.teacherCard.unlockKey, unwrapped]) {
+		for (const key of [k.staffKey, k.adminCard.unlockKey, unwrapped]) {
 			expect(key.extractable).toBe(false);
 			await expect(crypto.subtle.exportKey('raw', key)).rejects.toThrow();
 		}
 	});
 
 	it('never re-wrap a key as another kind of key', async () => {
-		const c = await createClassroom();
+		const k = await setUp();
+		const c = await addClassroom(k);
 		await expect(
 			rewrapKey(
-				c.groupKeyForTeacher,
-				{
-					key: c.teacherKey,
-					context: { purpose: 'group-key-for-teacher', classroom: c.classroom }
-				},
+				c.groupKeyForStaff,
+				{ key: k.staffKey, context: { purpose: 'group-key-for-staff', classroom: c.classroom } },
 				[
 					{
-						key: c.recoveryCard.unlockKey,
-						context: {
-							purpose: 'teacher-key-for-credential',
-							classroom: c.classroom,
-							credential: c.recoveryCard.id
-						}
+						key: k.recoveryCard.unlockKey,
+						context: { purpose: 'staff-key-for-credential', credential: k.recoveryCard.id }
 					}
 				]
 			)
@@ -277,94 +287,93 @@ describe('envelopes', () => {
 	});
 });
 
-describe('classroom access', () => {
-	it('lets a family device open the classroom profile', async () => {
-		const c = await createClassroom();
-		expect(await openAsFamily(c, await addFamily(c))).toEqual(profileData);
+describe('kindergarten access', () => {
+	it('lets a family card open every classroom its children are in, and no other', async () => {
+		const k = await setUp();
+		const [a, b, other] = [await addClassroom(k), await addClassroom(k), await addClassroom(k)];
+		const f = await addFamily(k, [a, b]);
+		expect(await openAsFamily(a, f)).toEqual(profileData);
+		expect(await openAsFamily(b, f)).toEqual(profileData);
+		await expect(openAsFamily(other, f)).rejects.toThrow(UnreadableError);
+
+		// Classroom A's Group Key envelope, served as the other classroom's, doesn't open.
+		const familyKey = await unwrapKey(f.familyKeyForCard, {
+			key: f.card.unlockKey,
+			context: { purpose: 'family-key-for-credential', credential: f.card.id }
+		});
+		await expect(
+			unwrapKey(f.groupKeysForFamily[a.classroom], {
+				key: familyKey,
+				context: { purpose: 'group-key-for-family', classroom: other.classroom, family: f.family }
+			})
+		).rejects.toThrow(UnreadableError);
 	});
 
-	it('restores teacher access with the recovery card alone, including issuing a new card', async () => {
-		const c = await createClassroom();
-		expect(await openAsTeacher(c, c.recoveryCard, c.teacherKeyForRecovery)).toEqual(adminData);
+	it('restores staff access with the recovery card alone, including issuing a new card', async () => {
+		const k = await setUp();
+		expect(await openAsStaff(k, k.recoveryCard, k.staffKeyForRecovery)).toEqual(teacherData);
 
-		const card = await createCard('teacher');
+		const card = await createCard();
 		const [envelope] = await rewrapKey(
-			c.teacherKeyForRecovery,
+			k.staffKeyForRecovery,
 			{
-				key: c.recoveryCard.unlockKey,
-				context: {
-					purpose: 'teacher-key-for-credential',
-					classroom: c.classroom,
-					credential: c.recoveryCard.id
-				}
+				key: k.recoveryCard.unlockKey,
+				context: { purpose: 'staff-key-for-credential', credential: k.recoveryCard.id }
 			},
 			[
 				{
 					key: card.unlockKey,
-					context: {
-						purpose: 'teacher-key-for-credential',
-						classroom: c.classroom,
-						credential: card.id
-					}
+					context: { purpose: 'staff-key-for-credential', credential: card.id }
 				}
 			]
 		);
-		expect(await openAsTeacher(c, card, envelope)).toEqual(adminData);
+		expect(await openAsStaff(k, card, envelope)).toEqual(teacherData);
 	});
 
 	it('keeps the Family Key when a family card is replaced, and retires the old card', async () => {
-		const c = await createClassroom();
-		const f = await addFamily(c);
+		const k = await setUp();
+		const c = await addClassroom(k);
+		const f = await addFamily(k, [c]);
 
-		// Replaced in place: same credential ID, a new secret, and the Family Key re-wrapped from the
-		// teacher's copy. The family's Group Key envelope doesn't change.
-		const replacement = createSecret();
-		const { unlockKey } = await deriveCredential(replacement, 'family');
+		// A new card gets the Family Key re-wrapped from the staff copy. The family's Group Key envelopes
+		// don't change.
+		const card = await createCard();
 		const [envelope] = await rewrapKey(
-			f.familyKeyForTeacher,
-			{
-				key: c.teacherKey,
-				context: { purpose: 'family-key-for-teacher', classroom: c.classroom, family: f.family }
-			},
+			f.familyKeyForStaff,
+			{ key: k.staffKey, context: { purpose: 'family-key-for-staff', family: f.family } },
 			[
 				{
-					key: unlockKey,
-					context: {
-						purpose: 'family-key-for-credential',
-						classroom: c.classroom,
-						credential: f.card.id
-					}
+					key: card.unlockKey,
+					context: { purpose: 'family-key-for-credential', credential: card.id }
 				}
 			]
 		);
+		const replaced = { ...f, card, familyKeyForCard: envelope };
 
-		expect(await openAsFamily(c, f, replacement, envelope)).toEqual(profileData);
-		await expect(openAsFamily(c, f, f.card.secret, envelope)).rejects.toThrow(UnreadableError);
+		expect(await openAsFamily(c, replaced)).toEqual(profileData);
+		await expect(openAsFamily(c, replaced, f.card.secret)).rejects.toThrow(UnreadableError);
 	});
 
 	it("keeps each family's keys to that family", async () => {
-		const c = await createClassroom();
-		const [a, b] = [await addFamily(c), await addFamily(c)];
+		const k = await setUp();
+		const c = await addClassroom(k);
+		const [a, b] = [await addFamily(k, [c]), await addFamily(k, [c])];
 		await expect(openAsFamily(c, a, b.card.secret)).rejects.toThrow(UnreadableError);
 
 		const familyKeyB = await unwrapKey(b.familyKeyForCard, {
 			key: b.card.unlockKey,
-			context: {
-				purpose: 'family-key-for-credential',
-				classroom: c.classroom,
-				credential: b.card.id
-			}
+			context: { purpose: 'family-key-for-credential', credential: b.card.id }
 		});
 		await expect(
-			unwrapKey(a.groupKeyForFamily, {
+			unwrapKey(a.groupKeysForFamily[c.classroom], {
 				key: familyKeyB,
 				context: { purpose: 'group-key-for-family', classroom: c.classroom, family: a.family }
 			})
 		).rejects.toThrow(UnreadableError);
 		await expect(
-			unwrapKey(a.familyKeyForTeacher, {
+			unwrapKey(a.familyKeyForStaff, {
 				key: familyKeyB,
-				context: { purpose: 'family-key-for-teacher', classroom: c.classroom, family: a.family }
+				context: { purpose: 'family-key-for-staff', family: a.family }
 			})
 		).rejects.toThrow(UnreadableError);
 	});

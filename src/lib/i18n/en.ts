@@ -87,7 +87,7 @@ export const en = {
 	},
 	security: {
 		title: 'Locked before it leaves your phone.',
-		copy: 'Photos, messages, and children’s names are encrypted before they leave the device. Classroom notices and photos open only for families and teachers in your classroom, and private conversations only for your family and your child’s teachers.',
+		copy: 'Photos, messages, and children’s names are encrypted before they leave the device. Classroom notices and photos open only for families in your classroom and teachers at your kindergarten, and private conversations only for your family and those teachers.',
 		device: {
 			title: 'Encrypted on your device',
 			copy: 'Content is encrypted on your phone or computer before it’s uploaded.'
@@ -97,7 +97,7 @@ export const en = {
 			copy: 'The server stores content without the keys needed to read it. A leak of stored content, without the keys on your devices, reveals no photos, names, or messages.'
 		},
 		host: {
-			title: 'Keys stay in your classroom',
+			title: 'Keys stay in your kindergarten',
 			copy: 'Whoever runs the server, us included, doesn’t have them. The code is public, so anyone can see how it works.'
 		},
 		note: 'Encryption protects what’s stored on the server. It can’t take back a photo someone has already saved to their own phone.'

@@ -1,4 +1,4 @@
-// Base64url without padding (RFC 4648 §5), for card secrets, auth tokens, record IDs, and envelopes.
+// Base64url without padding (RFC 4648 §5), for auth tokens, record IDs, and envelopes.
 
 export function toBase64Url(bytes: Uint8Array): string {
 	let binary = '';

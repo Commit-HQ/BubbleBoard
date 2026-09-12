@@ -124,9 +124,10 @@ src/
     components/         Reusable Svelte components
     i18n/               Croatian and English interface copy
     styles/             Tailwind entry, fonts, theme tokens, base styles
-    base64url.ts        Encoding for card secrets, tokens, IDs, and envelopes
+    base64url.ts        Encoding for tokens, IDs, and envelopes
+    card.ts             Card codes and QR card links
     crypto.ts           Browser keys, card derivation, and encrypted envelopes
-    paths.ts            Site paths and QR card links
+    paths.ts            Site paths
     project.ts          Project links and the validated site address
   params/               Route matchers (language prefix)
   routes/
@@ -154,7 +155,7 @@ See the [architecture notes](docs/architecture.md), the [access format](docs/acc
 
 ## Next slices
 
-1. Teacher setup, recovery QR, and family enrollment (in progress: the access format is in place).
+1. Kindergarten setup with admin, teacher, and recovery cards, classrooms, and family enrollment (in progress: the access format is in place).
 2. An encrypted notice with push onboarding and a test notification on real iOS/Android devices.
 3. Manual photo regions, consent lookup, private reveals, and exact audience previews.
 4. Private messages and attachments.

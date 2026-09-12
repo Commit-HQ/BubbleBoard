@@ -2,9 +2,28 @@
 
 ## Outcome
 
-A teacher creates a classroom, saves a recovery card, and gives a family its QR card. A parent opens BubbleBoard on another device, scans that card, and sees the classroom welcome decrypted locally. The same card works on a second family device. Removing access blocks subsequent authenticated requests.
+An admin sets up the kindergarten and saves a recovery card, adds a classroom and a teacher, and adds a child with a family card. A parent opens BubbleBoard on another device, scans that card, and sees the classroom's name decrypted locally. The same card works on a second family device and opens every classroom the family's children are in. Removing access blocks subsequent authenticated requests.
 
 This is the first working product slice. Build it with fictional classroom data first. Notices with push are the immediate next slice; photos follow. Do not spend another iteration redesigning the landing page.
+
+## Decisions from the access design sessions — 2026-09-12
+
+These replace the sections below where they differ. Where the user experience is concerned, the simplest option won; deferred variants need no data migration later.
+
+- **A kindergarten, not a classroom.** An installation holds any number of classrooms and one catalog of children and families. The spec's Teacher Key for each classroom becomes one **Staff Key** for the kindergarten, opened by every staff card. The server enforces which classrooms teachers see and what admins may change; families stay separated by encryption. docs/access-format.md records the trade-off.
+- **Roles:** an admin is a teacher who also manages classrooms, teachers, children, and family cards. There can be several, and the last working admin card can't be revoked. Teachers see the children and family cards of their own classrooms and can replace those families' cards; later they post notices and photos there. Staff cards are permanent for now; credential expiry (step 6) is deferred.
+- **First admin:** `npm run deploy` creates the `SETUP_TOKEN` Worker secret when it's missing and prints a setup link (`/app/setup#token=…`) once. `npm run setup-link` replaces the token and prints a new link. Pasting the token works too, and it only permits the first setup.
+- **Setup** asks for the admin's name only. It creates the admin's card and a recovery card, an admin without classrooms, connects the setup device, and ends on a print page that asks for confirmation. Card codes are never stored in the browser: the page retries while open, and the install docs explain starting over if setup succeeds after the page has closed.
+- **Classrooms** can be added and renamed, and deleted only when they have no children.
+- **Teachers:** "Add teacher" asks for a name, classrooms, and whether they're an admin, then shows their card. Replacing a lost card keeps the classrooms and admin setting. If every admin card is lost, the recovery card is the answer; a command that makes a teacher an admin can come later.
+- **Children and families:** a child has a name and one classroom. A family has one named card, such as "Ivana (mum)", used on every device at home, and one or more children. A sibling is added with the brother's or sister's family cards; parents who live apart get separate cards ("Add another family card"). A family's classrooms follow from its children, so moving a child moves its families' access. Removing a child also removes family cards left without children, after a confirmation that names them. "Replace card" issues a new card and disconnects every device that used the old one; the spec's replacement that keeps devices connected is deferred.
+- **Parents** use one card for all their children's classrooms. They see a built-in "You've joined" screen naming their classrooms, and the empty feed; how one feed shows several classrooms is decided with notices.
+- **Cards:** a 128-bit secret as a 28-character typeable code with two check characters, carried in the QR link as `#card=`. Every card has the same format; the server knows what a card is. Card derivation is versioned separately from envelopes, with a fixed compatibility test (docs/access-format.md).
+- **Connecting:** a phone's camera opens the card link; in the app, "Scan card" takes or chooses a photo and "Enter code" accepts the typed code. A live camera scanner comes later.
+- **One active card per browser.** A working card is never replaced without confirmation, and device keys are stored per card.
+- **Names** of classrooms, teachers, children, and family cards live only in encrypted records.
+- **Screens:** home has a tile for each of the viewer's classrooms (every classroom for admins), Add classroom and Teachers for admins, and This device. A classroom lists its children. A child's page shows its family cards, with siblings and their classrooms, and the actions the viewer may take; teachers see only siblings in their own classrooms. A kindergarten-wide Families list can come later. When notices arrive, decide whether they become a tile or the home screen.
+- **Checkpoints:** (1) app shell and access format, including these card and key decisions; (2) staff access: D1, setup token and link, setup and printing, connecting by link, photo, or code, classrooms, teachers with their classrooms and admin rights, replacing and revoking staff cards, signing out, sessions and rate limits; (3) children and families: the catalog, family cards, replacing and removing them, parent connection, and isolation tests for families and for teachers' classrooms.
 
 ## Quick review of the current polish — 2026-09-12
 

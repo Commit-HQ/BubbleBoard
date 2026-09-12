@@ -88,7 +88,7 @@ export const hr = {
 	},
 	security: {
 		title: 'Zaključano prije nego što napusti vaš mobitel.',
-		copy: 'Fotografije, poruke i imena djece šifriraju se prije nego što napuste uređaj. Obavijesti i fotografije skupine mogu otvoriti samo obitelji i odgojitelji vaše skupine, a privatne razgovore samo vaša obitelj i odgojitelji vašeg djeteta.',
+		copy: 'Fotografije, poruke i imena djece šifriraju se prije nego što napuste uređaj. Obavijesti i fotografije skupine mogu otvoriti samo obitelji vaše skupine i odgojitelji vašeg vrtića, a privatne razgovore samo vaša obitelj i odgojitelji vrtića.',
 		device: {
 			title: 'Šifrirano na vašem uređaju',
 			copy: 'Sadržaj se šifrira na vašem mobitelu ili računalu prije slanja.'
@@ -98,7 +98,7 @@ export const hr = {
 			copy: 'Poslužitelj pohranjuje sadržaj bez ključeva potrebnih za njegovo čitanje. Curenje pohranjenog sadržaja, bez ključeva s vaših uređaja, ne otkriva fotografije, imena ni poruke.'
 		},
 		host: {
-			title: 'Ključevi ostaju u vašoj skupini',
+			title: 'Ključevi ostaju u vašem vrtiću',
 			copy: 'Nema ih nitko tko poslužuje BubbleBoard, uključujući nas. Kod je javan, pa svatko može vidjeti kako radi.'
 		},
 		note: 'Šifriranje štiti ono što je pohranjeno na poslužitelju. Ne može vratiti fotografiju koju je netko već spremio na svoj mobitel.'

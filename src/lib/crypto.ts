@@ -1,32 +1,39 @@
 import { fromBase64Url, toBase64Url } from '$lib/base64url';
 
-// Keys and encryption for classroom access, run in the browser. docs/access-format.md describes the
-// format: keep the two in step, and give any change to the bytes it describes a new format version.
+// Keys and encryption for kindergarten access, run in the browser, as docs/access-format.md describes.
+//
+// Cards and envelopes are versioned separately. Printed cards derive their values with the card format 1
+// labels below for good, whatever happens to envelopes. A change to the bytes of either breaks cards or
+// records that already exist; src/lib/compatibility.test.ts holds values from September 2026 to catch it.
 //
 // Raw key bytes exist only inside createKey, rewrapKey, and unwrapKey. Every CryptoKey returned here is
 // non-extractable, which prevents accidental export, not use by a malicious script running in the app.
 
-const FORMAT = 1;
-export const SECRET_BYTES = 32;
+/** Card format 1: the secret's size and the HKDF labels for its two values. Never change them. */
+export const SECRET_BYTES = 16;
+const cardLabels = { auth: 'BubbleBoard card 1 auth', unlock: 'BubbleBoard card 1 key-wrap' };
+
+/** Envelope format 1. A new format gets a new number, and readers keep opening the old ones. */
+const ENVELOPE_FORMAT = 1;
 const KEY_BYTES = 32;
 const IV_BYTES = 12;
 const aesGcm = { name: 'AES-GCM', length: 256 };
 const encoder = new TextEncoder();
 
-export type Role = 'teacher' | 'family';
-
 /** The record a wrapped key belongs to, named `<key>-key-for-<whoever opens it>`. */
 export type KeyContext =
-	| { purpose: 'teacher-key-for-credential'; classroom: string; credential: string }
-	| { purpose: 'family-key-for-credential'; classroom: string; credential: string }
-	| { purpose: 'family-key-for-teacher'; classroom: string; family: string }
-	| { purpose: 'group-key-for-teacher'; classroom: string }
+	| { purpose: 'staff-key-for-credential'; credential: string }
+	| { purpose: 'family-key-for-credential'; credential: string }
+	| { purpose: 'family-key-for-staff'; family: string }
+	| { purpose: 'group-key-for-staff'; classroom: string }
 	| { purpose: 'group-key-for-family'; classroom: string; family: string };
 
 /** The record encrypted data belongs to. */
 export type DataContext =
 	| { purpose: 'classroom-profile'; classroom: string }
-	| { purpose: 'classroom-admin'; classroom: string };
+	| { purpose: 'teacher-profile'; teacher: string }
+	| { purpose: 'child-profile'; child: string }
+	| { purpose: 'family-profile'; family: string };
 
 /** A key that wraps or opens another key, and the record the wrapped key belongs to. */
 export type Wrapping = { key: CryptoKey; context: KeyContext };
@@ -53,7 +60,7 @@ export function createSecret() {
  * Derives a card's two independent values: the auth token, which is sent to the server, and the unlock
  * key, which opens the credential's wrapped key and never leaves the device.
  */
-export async function deriveCredential(secret: Uint8Array<ArrayBuffer>, role: Role) {
+export async function deriveCredential(secret: Uint8Array<ArrayBuffer>) {
 	if (secret.length !== SECRET_BYTES) throw new UnreadableError();
 	const base = await crypto.subtle.importKey('raw', secret, 'HKDF', false, [
 		'deriveBits',
@@ -63,11 +70,11 @@ export async function deriveCredential(secret: Uint8Array<ArrayBuffer>, role: Ro
 		name: 'HKDF',
 		hash: 'SHA-256',
 		salt: new Uint8Array(),
-		info: encoder.encode(`BubbleBoard ${FORMAT} ${role}-${label}`)
+		info: encoder.encode(label)
 	});
 	const [authToken, unlockKey] = await Promise.all([
-		crypto.subtle.deriveBits(hkdf('auth'), base, 256),
-		crypto.subtle.deriveKey(hkdf('key-wrap'), base, aesGcm, false, ['encrypt', 'decrypt'])
+		crypto.subtle.deriveBits(hkdf(cardLabels.auth), base, 256),
+		crypto.subtle.deriveKey(hkdf(cardLabels.unlock), base, aesGcm, false, ['encrypt', 'decrypt'])
 	]);
 	return { authToken: toBase64Url(new Uint8Array(authToken)), unlockKey };
 }
@@ -141,12 +148,13 @@ async function openKey(envelope: string, { key, context }: Wrapping) {
 // A key keeps its kind for every recipient: a Group Key is never stored as a Family Key.
 function assertOneKind(wrappings: Wrapping[]) {
 	const kinds = new Set(wrappings.map(({ context }) => context.purpose.split('-')[0]));
-	if (kinds.size !== 1)
+	if (kinds.size !== 1) {
 		throw new TypeError('Wrap a key for at least one recipient, as one kind of key');
+	}
 }
 
-// Format 1: `1.<iv>.<ciphertext>` in base64url. AES-256-GCM with a fresh 96-bit IV, the 128-bit tag at
-// the end of the ciphertext, and the record's context as additional authenticated data.
+// Envelope format 1: `1.<iv>.<ciphertext>` in base64url. AES-256-GCM with a fresh 96-bit IV, the 128-bit
+// tag at the end of the ciphertext, and the record's context as additional authenticated data.
 const envelopePattern = /^1\.([\w-]{16})\.([\w-]{22,})$/;
 
 async function seal(
@@ -160,7 +168,7 @@ async function seal(
 		key,
 		plaintext
 	);
-	return `${FORMAT}.${toBase64Url(iv)}.${toBase64Url(new Uint8Array(ciphertext))}`;
+	return `${ENVELOPE_FORMAT}.${toBase64Url(iv)}.${toBase64Url(new Uint8Array(ciphertext))}`;
 }
 
 async function open(envelope: string, key: CryptoKey, context: KeyContext | DataContext) {
@@ -180,12 +188,25 @@ async function open(envelope: string, key: CryptoKey, context: KeyContext | Data
 	}
 }
 
-// Binds an envelope to its record: format, purpose, classroom, and the credential or family it belongs
-// to. Moved to any other record, even one encrypted with the same key, it doesn't open.
+// Binds an envelope to its record: format, purpose, the classroom of a classroom record, and the
+// credential, family, teacher, or child it belongs to. Moved to any other record, even one encrypted
+// with the same key, it doesn't open.
 function additionalData(context: KeyContext | DataContext) {
-	const subject =
-		'credential' in context ? context.credential : 'family' in context ? context.family : null;
+	const ids: {
+		classroom?: string;
+		credential?: string;
+		family?: string;
+		teacher?: string;
+		child?: string;
+	} = context;
+	const subject = ids.credential ?? ids.family ?? ids.teacher ?? ids.child ?? null;
 	return encoder.encode(
-		JSON.stringify(['BubbleBoard', FORMAT, context.purpose, context.classroom, subject])
+		JSON.stringify([
+			'BubbleBoard',
+			ENVELOPE_FORMAT,
+			context.purpose,
+			ids.classroom ?? null,
+			subject
+		])
 	);
 }
