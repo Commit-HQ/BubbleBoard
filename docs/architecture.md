@@ -33,7 +33,7 @@ JSON endpoints live in `src/routes/api`, one small handler per user action. A ha
 
 Use platform APIs and Svelte first. Add a library only for an implemented need, after checking maintenance, licensing, bundle cost, and transitive dependencies. Tailwind CSS is the styling standard. No component UI library, ORM, global state package, date library, analytics, remote fonts, or image editor is needed for this foundation.
 
-`qr` (MIT, no dependencies) encodes cards' QR codes, which `src/lib/app/qr.ts` draws as SVG dots in a bubble with the app icon, and reads them from the camera (`qr/dom.js`) or a photo. Its decoder loads only when someone scans a card, and `qr.test.ts` reads the drawing back with it. Load future photo tooling only in the routes that use it.
+`qr` (MIT, no dependencies) encodes cards' QR codes, which `src/lib/app/qr.ts` draws as a bubble full of SVG dots with the app icon, and reads them from the camera (`qr/dom.js`) or a photo. Its decoder loads only when someone scans a card, and `qr.test.ts` reads the drawing back with it. Load future photo tooling only in the routes that use it.
 
 Vitest is the one test runner, a development dependency only. It reuses the Vite and SvelteKit configuration, so tests import `$lib` modules as the app does, and it runs the same Web Crypto API in Node. Test behavior the code guarantees, such as encryption, card links, and authorization, not component markup. Database tests run the real migrations in Node's built-in SQLite behind a small D1-shaped adapter (`src/lib/server/catalog.test.ts`), which keeps them fast and needs no Workers runtime.
 
