@@ -4,7 +4,8 @@
 	import shareImage from '$lib/assets/photos/share.jpg';
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
 	import Photo from '$lib/components/Photo.svelte';
-	import { defaultLocale, localePath, locales, messages } from '$lib/i18n';
+	import { defaultLocale, locales, messages } from '$lib/i18n';
+	import { homePath } from '$lib/paths';
 	import { absoluteUrl, contactEmail, repositoryUrl } from '$lib/project';
 	import type { PageProps } from './$types';
 
@@ -12,7 +13,7 @@
 
 	let { data }: PageProps = $props();
 	const t = $derived(messages[data.locale]);
-	const url = $derived(absoluteUrl(localePath(data.locale)));
+	const url = $derived(absoluteUrl(homePath(data.locale)));
 	const writeToUs = $derived(
 		`mailto:${contactEmail}?subject=${encodeURIComponent(t.kindergartens.subject)}`
 	);
@@ -23,9 +24,9 @@
 	<meta name="description" content={t.description} />
 	<link rel="canonical" href={url} />
 	{#each locales as locale (locale)}
-		<link rel="alternate" hreflang={locale} href={absoluteUrl(localePath(locale))} />
+		<link rel="alternate" hreflang={locale} href={absoluteUrl(homePath(locale))} />
 	{/each}
-	<link rel="alternate" hreflang="x-default" href={absoluteUrl(localePath(defaultLocale))} />
+	<link rel="alternate" hreflang="x-default" href={absoluteUrl(homePath(defaultLocale))} />
 
 	<!-- Link previews in messaging apps and social networks. -->
 	<meta property="og:type" content="website" />

@@ -95,7 +95,7 @@ export const hr = {
 		},
 		server: {
 			title: 'Nečitljivo i ako procuri',
-			copy: 'Poslužitelj pohranjuje sadržaj bez ključeva potrebnih za njegovo čitanje. Curenje podataka ne bi otkrilo fotografije, imena ni poruke.'
+			copy: 'Poslužitelj pohranjuje sadržaj bez ključeva potrebnih za njegovo čitanje. Curenje pohranjenog sadržaja, bez ključeva s vaših uređaja, ne otkriva fotografije, imena ni poruke.'
 		},
 		host: {
 			title: 'Ključevi ostaju u vašoj skupini',
@@ -147,9 +147,25 @@ export const hr = {
 		github: 'GitHub',
 		madeBy: 'S ljubavlju izradio tim',
 		license: 'Licenca (AGPL-3.0)',
-		credits: 'Izvori i licence',
-		build: 'Verzija',
+		credits: 'Izvori i licence'
+	},
+	build: {
+		label: 'Verzija',
 		modified: 'izmijenjena',
-		unknownBuild: 'Nepoznata verzija'
+		unknown: 'Nepoznata verzija'
+	},
+	app: {
+		about: 'O BubbleBoardu',
+		loading: 'Otvaramo BubbleBoard…',
+		noscript:
+			'BubbleBoardu treba JavaScript da bi otvorio vašu skupinu. Uključite ga u postavkama preglednika ili otvorite BubbleBoard u drugom pregledniku.',
+		unsupported: {
+			title: 'Ovaj preglednik ne može otvoriti BubbleBoard',
+			copy: 'BubbleBoard mora sigurno čuvati ključeve vaše skupine na ovom uređaju, a ovaj preglednik to ne dopušta. Ažurirajte preglednik ili otvorite BubbleBoard u novijoj verziji Safarija, Chromea, Firefoxa ili Edgea.'
+		},
+		notConnected: {
+			title: 'Ovaj uređaj još nije povezan',
+			copy: 'Obitelji i odgojitelji povezuju se QR karticom koju dobiju u vrtiću. Povezivanje karticom još nije dostupno.'
+		}
 	}
 } satisfies Messages;

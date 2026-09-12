@@ -94,7 +94,7 @@ export const en = {
 		},
 		server: {
 			title: 'Unreadable if it leaks',
-			copy: 'The server stores content without the keys needed to read it. A leak would reveal no photos, names, or messages.'
+			copy: 'The server stores content without the keys needed to read it. A leak of stored content, without the keys on your devices, reveals no photos, names, or messages.'
 		},
 		host: {
 			title: 'Keys stay in your classroom',
@@ -147,12 +147,28 @@ export const en = {
 		// Followed by a link to Commit.
 		madeBy: 'Made with love by the people at',
 		license: 'License (AGPL-3.0)',
-		credits: 'Credits and licenses',
-		build: 'Build',
+		credits: 'Credits and licenses'
+	},
+	build: {
+		label: 'Build',
 		// The build had uncommitted changes, so its commit doesn't fully describe it.
 		modified: 'modified',
 		// Built without Git, for example from a source ZIP.
-		unknownBuild: 'Unknown build'
+		unknown: 'Unknown build'
+	},
+	app: {
+		about: 'About BubbleBoard',
+		loading: 'Opening BubbleBoard…',
+		noscript:
+			'BubbleBoard needs JavaScript to open your classroom. Turn it on in your browser settings, or open BubbleBoard in another browser.',
+		unsupported: {
+			title: 'This browser can’t open BubbleBoard',
+			copy: 'BubbleBoard needs to keep your classroom’s keys safely on this device, and this browser doesn’t allow it. Update your browser, or open BubbleBoard in a current version of Safari, Chrome, Firefox, or Edge.'
+		},
+		notConnected: {
+			title: 'This device isn’t connected yet',
+			copy: 'Families and teachers connect with the QR card they get from their kindergarten. Connecting with a card isn’t available yet.'
+		}
 	}
 };
 

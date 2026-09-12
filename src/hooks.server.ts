@@ -14,13 +14,17 @@ const securityHeaders = {
 
 export const handle: Handle = async ({ event, resolve }) => {
 	const locale = isLocale(event.params.locale) ? event.params.locale : defaultLocale;
+	const app = event.route.id?.startsWith('/(app)') ?? false;
 	const response = await resolve(event, {
 		transformPageChunk: ({ html }) => html.replace('%lang%', locale),
-		// Preload the fonts first paint needs. Only Croatian uses Latin Extended (č ć đ š ž).
+		// Preload the fonts first paint needs. Only Croatian uses Latin Extended (č ć đ š ž), and app
+		// pages open with body text, so they skip the display font.
 		preload: ({ type, path }) =>
 			type === 'js' ||
 			type === 'css' ||
-			(type === 'font' && (locale === 'hr' || !path.includes('-latin-ext-')))
+			(type === 'font' &&
+				(locale === 'hr' || !path.includes('-latin-ext-')) &&
+				!(app && path.includes('hedvig-letters-serif')))
 	});
 	response.headers.set('Content-Language', locale);
 	response.headers.set('Cache-Control', 'private, no-store');

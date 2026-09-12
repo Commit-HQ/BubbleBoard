@@ -6,7 +6,7 @@ A small, open-source communication app for kindergarten communities. Inspired by
 
 Teachers share a moment. Parents get a notification. The hosting server stores encrypted content without the keys needed to read it.
 
-> **Status: foundation only.** This repository currently contains a prerendered Croatian and English landing page and a SvelteKit + Cloudflare Workers scaffold. QR access, encryption, notifications, messages, photos, and storage are not implemented. Do not use it with real family data yet. The landing page deliberately describes the finished product; this README tracks what exists.
+> **Status: early development.** This repository contains a prerendered Croatian and English landing page, the shell of the app, and the tested format for keys, QR cards, and encrypted records ([access format](docs/access-format.md)). Setup, QR access, storage, notifications, messages, and photos are not implemented yet. Do not use it with real family data yet. The landing page deliberately describes the finished product; this README tracks what exists.
 
 ## What we’re building
 
@@ -41,20 +41,21 @@ Open the local address printed by Vite. `npm run gen` creates ignored Cloudflare
 | `npm run check`    | Svelte and TypeScript checks                   |
 | `npm run lint`     | Check formatting with Prettier                 |
 | `npm run format`   | Apply formatting                               |
+| `npm test`         | Behavior tests with Vitest                     |
 | `npm run build`    | Build for Cloudflare Workers                   |
 | `npm run preview`  | Run the built app in the local Workers runtime |
-| `npm run validate` | Type checks, formatting, and production build  |
+| `npm run validate` | Type checks, formatting, tests, and build      |
 | `npm run deploy`   | Build and publish to your Cloudflare account   |
 
-Measure performance (for example with Lighthouse) on a production build, `npm run build && npm run preview`; development performance is not representative.
+Measure performance (for example with Lighthouse) on a production build, `npm run build && npm run preview`; development performance is not representative. The app needs a secure context: use `localhost` or `https://`, not a plain `http://` network address, when opening it from another device.
 
-`lint` currently checks formatting; Svelte diagnostics and TypeScript run through `check`. No additional lint framework or test runner is installed yet. Add behavior tests with the first real auth/crypto/data flows.
+`lint` checks formatting; Svelte diagnostics and TypeScript run through `check`. `npm test` covers what the code guarantees rather than component markup: key derivation, encryption, and card links now, and the database and session boundary as they land.
 
 ## Contributing
 
 Run `npm run validate` before opening a pull request. The **Validate** GitHub Actions workflow runs the same checks, plus a Wrangler dry run, on every pull request and every push to `main`. It is validation only: it uses a placeholder `PUBLIC_SITE_URL`, needs no Cloudflare credentials, and never deploys, so don't publish its build. GitHub doesn't run workflows in a fork until Actions are enabled there, and a fork's runs deploy nothing either.
 
-Add interface copy to both `src/lib/i18n/en.ts` and `hr.ts`. When bundling a new third-party asset, add its license to `static/third-party-notices.txt`. Conventions are in the [architecture notes](docs/architecture.md) and requirements in the [product specification](docs/product-spec.md).
+Add interface copy to both `src/lib/i18n/en.ts` and `hr.ts`. When bundling a new third-party asset, add its license to `static/third-party-notices.txt`. Conventions are in the [architecture notes](docs/architecture.md), the encryption format in the [access format](docs/access-format.md), and requirements in the [product specification](docs/product-spec.md).
 
 ## Deploy your own preview
 
@@ -70,7 +71,7 @@ This deploys the public foundation preview, **not a working kindergarten service
 
 ### Storage when the first data feature lands
 
-D1 and R2 are intentionally not provisioned by this bootstrap. No unused cloud resources or speculative database schema are required to run it.
+D1 and R2 are intentionally not provisioned yet. No unused cloud resources or speculative database schema are required to run the project.
 
 ```sh
 npx wrangler d1 create bubbleboard
@@ -109,8 +110,9 @@ Merge these fields into the existing configuration, then regenerate types. Keep 
 | Hosting               | Cloudflare Workers + official SvelteKit adapter |
 | Styles                | Tailwind CSS v4, self-hosted fonts              |
 | Formatting            | Prettier + Svelte and Tailwind plugins          |
+| Tests                 | Vitest                                          |
+| Encryption            | Browser Web Crypto API                          |
 | Planned storage       | D1 for records; private R2 for encrypted media  |
-| Planned encryption    | Browser Web Crypto API                          |
 | Planned notifications | Web Push                                        |
 
 No component UI library, ORM, remote font service, analytics SDK, or separate backend. npm’s lockfile is committed for reproducible installs. The official tooling still has transitive dependencies; review additions and updates rather than assuming a small manifest means zero supply-chain risk.
@@ -119,23 +121,28 @@ No component UI library, ORM, remote font service, analytics SDK, or separate ba
 src/
   lib/
     assets/             Local brand assets and optimized photos
-    components/         Reusable Svelte components (Photo, Icon)
+    components/         Reusable Svelte components
     i18n/               Croatian and English interface copy
     styles/             Tailwind entry, fonts, theme tokens, base styles
+    base64url.ts        Encoding for card secrets, tokens, IDs, and envelopes
+    crypto.ts           Browser keys, card derivation, and encrypted envelopes
+    paths.ts            Site paths and QR card links
     project.ts          Project links and the validated site address
   params/               Route matchers (language prefix)
-  routes/               Layout, prerendered pages, future server endpoints
+  routes/
+    (marketing)/        Landing pages: static HTML without JavaScript
+    (app)/              App pages: prerendered shells that run in the browser
   app.html              Document shell
   hooks.server.ts       Document language, font preloads, security headers
 static/                 Public static files, including third-party notices
-docs/                   Architecture notes and product specification
+docs/                   Architecture notes, access format, product specification
 _headers                Security headers for prerendered pages and assets
 .env.example            Build-time settings to copy into .env
 .github/workflows/      Validation pipeline (never deploys)
 wrangler.jsonc          Worker and future binding configuration
 ```
 
-Croatian is served at `/` and English at `/en`, both as static HTML without client-side JavaScript. Language, design, font, and security conventions are in the [architecture notes](docs/architecture.md).
+Croatian is served at `/` and English at `/en`, both as static HTML without client-side JavaScript. The app is at `/app` and `/en/app`. Language, design, font, and security conventions are in the [architecture notes](docs/architecture.md).
 
 ## Privacy, precisely
 
@@ -143,11 +150,11 @@ The intended design encrypts sensitive content on users’ devices and does not 
 
 Teachers manage family access and visibility choices. Removing access cannot recall saved copies or erase keys already held by a device. Kindergarten approval and consent remain part of operating the service.
 
-See the [architecture notes](docs/architecture.md) and the [product specification](docs/product-spec.md). The specification describes the target system, and its opening note lists the decisions that have since replaced parts of it; it is not an implementation or a security audit.
+See the [architecture notes](docs/architecture.md), the [access format](docs/access-format.md), and the [product specification](docs/product-spec.md). The specification describes the target system, and its opening note lists the decisions that have since replaced parts of it; it is not an implementation or a security audit.
 
 ## Next slices
 
-1. Teacher setup, recovery QR, and family enrollment.
+1. Teacher setup, recovery QR, and family enrollment (in progress: the access format is in place).
 2. An encrypted notice with push onboarding and a test notification on real iOS/Android devices.
 3. Manual photo regions, consent lookup, private reveals, and exact audience previews.
 4. Private messages and attachments.
