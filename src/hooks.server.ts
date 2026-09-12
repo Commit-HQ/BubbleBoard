@@ -1,4 +1,4 @@
-import type { Handle } from '@sveltejs/kit';
+import { json, type Handle, type RequestEvent } from '@sveltejs/kit';
 import { defaultLocale, isLocale } from '$lib/i18n';
 
 // Headers for Worker-rendered responses. Prerendered pages and static assets are served without the
@@ -15,19 +15,30 @@ const securityHeaders = {
 export const handle: Handle = async ({ event, resolve }) => {
 	const locale = isLocale(event.params.locale) ? event.params.locale : defaultLocale;
 	const app = event.route.id?.startsWith('/(app)') ?? false;
-	const response = await resolve(event, {
-		transformPageChunk: ({ html }) => html.replace('%lang%', locale),
-		// Preload the fonts first paint needs. Only Croatian uses Latin Extended (č ć đ š ž), and app
-		// pages open with body text, so they skip the display font.
-		preload: ({ type, path }) =>
-			type === 'js' ||
-			type === 'css' ||
-			(type === 'font' &&
-				(locale === 'hr' || !path.includes('-latin-ext-')) &&
-				!(app && path.includes('hedvig-letters-serif')))
-	});
+	const response = isCrossSite(event)
+		? json({ message: 'cross-site' }, { status: 403 })
+		: await resolve(event, {
+				transformPageChunk: ({ html }) => html.replace('%lang%', locale),
+				// Preload the fonts first paint needs. Only Croatian uses Latin Extended (č ć đ š ž), and app
+				// pages open with body text, so they skip the display font.
+				preload: ({ type, path }) =>
+					type === 'js' ||
+					type === 'css' ||
+					(type === 'font' &&
+						(locale === 'hr' || !path.includes('-latin-ext-')) &&
+						!(app && path.includes('hedvig-letters-serif')))
+			});
 	response.headers.set('Content-Language', locale);
 	response.headers.set('Cache-Control', 'private, no-store');
 	for (const [name, value] of Object.entries(securityHeaders)) response.headers.set(name, value);
 	return response;
 };
+
+// Requests that change something must come from this installation's own pages. Browsers send Origin with
+// them, so a request from another site, or one without Origin, is refused before any route runs. Every
+// such request is checked, whatever its path looks like. Session cookies are also SameSite=Strict
+// (src/lib/server/session.ts).
+function isCrossSite({ request, url }: RequestEvent) {
+	const changes = request.method !== 'GET' && request.method !== 'HEAD';
+	return changes && request.headers.get('origin') !== url.origin;
+}

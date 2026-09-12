@@ -10,6 +10,13 @@ it('leaves the default language unprefixed', () => {
 	]);
 });
 
+it('puts record IDs in the query of app pages', () => {
+	expect(appPath('en', 'child', { id: 'mZxpy8xpAEm4t5zbrn9CrA' })).toBe(
+		'/en/app/child?id=mZxpy8xpAEm4t5zbrn9CrA'
+	);
+	expect(appPath('hr', 'teacher/new')).toBe('/app/teacher/new');
+});
+
 it('switches the language of the current page', () => {
 	expect(localizedPath('/', 'en')).toBe('/en');
 	expect(localizedPath('/en', 'hr')).toBe('/');

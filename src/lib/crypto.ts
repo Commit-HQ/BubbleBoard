@@ -51,6 +51,22 @@ export function createId() {
 	return toBase64Url(randomBytes(16));
 }
 
+export function isId(value: unknown): value is string {
+	return typeof value === 'string' && fromBase64Url(value)?.length === 16;
+}
+
+/** A token as the server stores it: the SHA-256 of its bytes, in base64url. */
+export async function hashToken(token: Uint8Array<ArrayBuffer>) {
+	return toBase64Url(new Uint8Array(await crypto.subtle.digest('SHA-256', token)));
+}
+
+/** A card's auth token as the server stores it, which is also how a device recognizes its own card. */
+export async function hashAuthToken(authToken: string) {
+	const token = fromBase64Url(authToken);
+	if (!token) throw new UnreadableError();
+	return hashToken(token);
+}
+
 /** A new card secret. */
 export function createSecret() {
 	return randomBytes(SECRET_BYTES);

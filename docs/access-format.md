@@ -93,7 +93,7 @@ A wrapped key is its 32 raw bytes, encrypted like data; data records hold JSON. 
 
 ## Stored on a device
 
-A browser has one active card at a time. Its keys are kept in IndexedDB as `CryptoKey` objects, never as key strings, in a record keyed by credential ID, so a later version can keep several cards without migrating data.
+A browser has one active card at a time. Its keys are kept in IndexedDB as `CryptoKey` objects, never as key strings, in a record keyed by credential ID, so a later version can keep several cards without migrating data. The record also holds the SHA-256 of the card's auth token, the value the server stores, which is how the device recognizes its own card when it's scanned again (`src/lib/device.ts`).
 
 | Card   | Keeps                        | Because                                                                                                                                                                            |
 | ------ | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -106,7 +106,7 @@ Other keys are unwrapped into memory from envelopes fetched with the device's se
 
 ## What the server stores
 
-Opaque IDs, timestamps, hashes of auth and session tokens, and envelopes. To authorize requests and address notifications, it also knows which classroom each child is in, which classrooms each teacher and family belongs to, and which staff are admins. It never receives a card code or secret, an unlock key, a raw key, any classroom, teacher, child, family, or card name, or which families a child belongs to.
+Opaque IDs, timestamps, hashes of auth and session tokens, envelopes, and a count of changes to children and family cards, which keeps two devices from undoing each other's changes. To authorize requests and address notifications, it also knows which classroom each child is in, which classrooms each teacher and family belongs to, and which staff are admins. It never receives a card code or secret, an unlock key, a raw key, any classroom, teacher, child, family, or card name, or which families a child belongs to.
 
 ## Limits
 

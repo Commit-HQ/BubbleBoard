@@ -4,9 +4,11 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
+		"dev": "wrangler d1 migrations apply DB --local && vite dev",
 		"build": "vite build",
-		"preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173",
+		"preview": "wrangler d1 migrations apply DB --local && wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173",
+		"setup-link": "node scripts/setup-link.js",
+		"setup-link:local": "node scripts/setup-link.js --local",
 		"prepare": "svelte-kit sync",
 		"check": "wrangler types --check && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -14,7 +16,7 @@
 		"format": "prettier --write .",
 		"gen": "wrangler types",
 		"test": "vitest run",
-		"deploy": "npm run build && wrangler deploy",
+		"deploy": "npm run build && wrangler deploy && wrangler d1 migrations apply DB --remote && node scripts/setup-link.js --if-missing",
 		"validate": "npm run check && npm run lint && npm run test && npm run build"
 	},
 	"devDependencies": {
@@ -38,5 +40,8 @@
 	},
 	"engines": {
 		"node": ">=24 <25"
+	},
+	"dependencies": {
+		"qr": "^0.7.0"
 	}
 }

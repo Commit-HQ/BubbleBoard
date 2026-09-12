@@ -165,11 +165,232 @@ export const en = {
 			title: 'This browser can’t open BubbleBoard',
 			copy: 'BubbleBoard needs to keep your classroom’s keys safely on this device, and this browser doesn’t allow it. Update your browser, or open BubbleBoard in a current version of Safari, Chrome, Firefox, or Edge.'
 		},
-		notConnected: {
-			title: 'This device isn’t connected yet',
-			copy: 'Families and teachers connect with the QR card they get from their kindergarten. Connecting with a card isn’t available yet.'
+		offline: {
+			title: 'BubbleBoard can’t be reached',
+			copy: 'Check your internet connection, then try again.',
+			retry: 'Try again'
+		},
+		connectFirst: {
+			title: 'Connect this device first',
+			copy: 'Open BubbleBoard’s home page and use your card.',
+			action: 'Go to BubbleBoard'
+		},
+		adminOnly: {
+			title: 'Only admins can open this page',
+			copy: 'If you need something here, ask an admin at your kindergarten.'
+		},
+		notFound: {
+			title: 'Not found',
+			copy: 'It may have been moved or removed. Go back and try again.'
+		},
+		actions: {
+			cancel: 'Cancel',
+			save: 'Save',
+			saved: 'Saved',
+			done: 'Done',
+			rename: 'Rename',
+			remove: 'Remove',
+			working: 'Just a moment…'
+		},
+		counts: {
+			children: (count: number) => (count === 1 ? '1 child' : `${count} children`),
+			teachers: (count: number) => (count === 1 ? '1 teacher' : `${count} teachers`)
+		},
+		unreadable: {
+			title: 'Some records didn’t open',
+			copy: 'BubbleBoard couldn’t open some of your kindergarten’s records on this device. Try again, and if it keeps happening, tell an admin.'
+		},
+		staffOnly: {
+			title: 'This page is for teachers',
+			copy: 'A family card opens the home page, where notices and photos will appear.'
+		},
+		connect: {
+			title: 'Connect this device',
+			copy: 'Use the QR card from your kindergarten. You can also point your phone’s camera at the card.',
+			scan: 'Scan card',
+			enter: 'Enter code',
+			code: 'Card code',
+			codeHint: 'The 28 letters and numbers printed on the card.',
+			submit: 'Connect',
+			scanning: 'Reading the card…',
+			connecting: 'Connecting…',
+			replaceTitle: 'Use a different card?',
+			replaceStaff: (name: string) =>
+				`This device is connected as ${name}. To connect it that way again later, you’ll need that card.`,
+			replaceOther:
+				'This device is already connected with another card. To connect it that way again later, you’ll need that card.',
+			replaceConfirm: 'Use the new card',
+			keep: 'Keep the current card'
+		},
+		setup: {
+			title: 'Set up BubbleBoard',
+			copy: 'You’ll get two cards: your own, and a recovery card to keep somewhere safe. Both can manage everything.',
+			name: 'Your name',
+			nameHint: 'Other teachers will see it, for example “Ana Horvat”.',
+			token: 'Setup code',
+			tokenHint: 'It’s in the setup link. Ask whoever installed BubbleBoard.',
+			submit: 'Create cards',
+			creating: 'Creating your cards…',
+			connectedTitle: 'This device is already connected',
+			connectedCopy: 'BubbleBoard is set up and ready to use.',
+			open: 'Open BubbleBoard',
+			connect: 'Connect with your card'
+		},
+		card: {
+			title: (count: number): string =>
+				count === 1 ? 'Print or save this card' : 'Print or save these cards',
+			copy: 'The code is shown only now. If you leave before printing, use Replace card to make a new one.',
+			setupCopy:
+				'The codes are shown only now. Print both cards, or save them as a PDF, before you continue.',
+			print: 'Print',
+			confirm: 'I’ve printed or saved both cards',
+			continue: 'Continue',
+			leaveFirst: 'Print or save both cards first, then tick the box.',
+			kinds: {
+				admin: 'Admin card',
+				teacher: 'Teacher card',
+				recovery: 'Recovery card',
+				family: 'Family card'
+			},
+			scan: (address: string) =>
+				`Point your phone’s camera at the QR code, or go to ${address} and enter:`,
+			about: 'Notices and photos from your kindergarten.',
+			private: 'Don’t share this card. If it’s lost, your kindergarten can give you a new one.',
+			recovery:
+				'Use it only if every admin card is lost. Keep it locked away, apart from your own card.',
+			qr: (name: string) => `QR code for ${name}`,
+			replace: 'Replace card',
+			replaceTitle: (name: string) => `Replace the card for ${name}?`,
+			replaceCopy: 'The old card stops working, and every device that used it is signed out.'
+		},
+		home: {
+			title: 'Home',
+			greeting: (name: string) => `Hello, ${name}`,
+			admin: 'Here’s your kindergarten.',
+			teacher: 'Here are your classrooms.',
+			addClassroom: 'Add classroom',
+			classroomName: 'Classroom name',
+			classroomExample: 'For example, Bubbles',
+			teachers: 'Teachers',
+			device: 'This device',
+			emptyAdmin: 'Start by adding your first classroom.',
+			emptyTeacher: 'You haven’t been added to a classroom yet. An admin can add you.'
+		},
+		classroom: {
+			children: 'Children',
+			addChild: 'Add child',
+			empty: 'No children in this classroom yet.',
+			teachers: (names: string[]) => `Teachers: ${list(names)}`,
+			noTeachers: 'No teachers in this classroom yet.',
+			delete: 'Delete classroom',
+			deleteTitle: (name: string) => `Delete ${name}?`,
+			deleteCopy: 'This can’t be undone.',
+			noCards: 'No family card yet'
+		},
+		newChild: {
+			title: 'Add child',
+			name: 'Child’s name',
+			classroom: 'Classroom',
+			cards: 'Family card',
+			newCard: 'A new family card',
+			cardName: 'Who gets the card?',
+			cardNameHint:
+				'For example “Ivana (mum)”. Parents who live apart can each get their own card later.',
+			sibling: 'The card a brother or sister already has',
+			siblingName: 'Brother or sister',
+			submit: 'Add child'
+		},
+		child: {
+			cards: 'Family cards',
+			noCards: 'No family card yet. Add one so the family can connect.',
+			also: (children: string[]) => `Also for ${list(children)}`,
+			removeCardTitle: (name: string) => `Remove the card for ${name}?`,
+			removeCardShared: (children: string[]) => `The card keeps working for ${list(children)}.`,
+			removeCardLast: 'The card stops working, and every device that used it is signed out.',
+			cardName: 'Name on the card',
+			addFirstCard: 'Add a family card',
+			addCard: 'Add another family card',
+			addCardHint: 'For parents who live apart: each card gets its own private messages.',
+			move: 'Move to another classroom',
+			moveSubmit: 'Move',
+			rename: 'Rename child',
+			remove: 'Remove child',
+			removeTitle: (name: string) => `Remove ${name}?`,
+			removeCopy: (cards: string[]) =>
+				cards.length
+					? `Family cards that will stop working: ${list(cards)}.`
+					: 'This can’t be undone.'
+		},
+		teachers: {
+			title: 'Teachers',
+			add: 'Add teacher',
+			admin: 'Admin',
+			you: 'you',
+			noClassrooms: 'No classrooms'
+		},
+		teacher: {
+			newTitle: 'Add teacher',
+			name: 'Name',
+			classrooms: 'Classrooms',
+			noClassrooms: 'There are no classrooms yet.',
+			admin: 'Admin',
+			adminHint: 'Can add classrooms, teachers, and children, and open every classroom.',
+			selfAdmin: 'Another admin can change this.',
+			create: 'Create card',
+			remove: 'Remove teacher',
+			removeTitle: (name: string) => `Remove ${name}?`,
+			removeCopy: (name: string) =>
+				`${name} won’t be able to open BubbleBoard anymore, and devices using their card will be signed out.`,
+			self: 'This is you. Another admin can remove you.',
+			recovery:
+				'The recovery card can do everything an admin can. Keep it locked away, and replace it if someone else may have seen it.'
+		},
+		device: {
+			title: 'This device',
+			staff: (name: string) => `Connected as ${name}`,
+			family: 'Connected with a family card',
+			signOut: 'Sign out of this device',
+			signOutTitle: 'Sign out of this device?',
+			signOutCopy: 'To use BubbleBoard here again, you’ll need your card.'
+		},
+		family: {
+			joined: (classrooms: string[]) =>
+				classrooms.length ? `You’ve joined ${list(classrooms)}` : 'You’re connected',
+			copy: 'Notices and photos from your kindergarten will appear here. To come back, scan your card again or bookmark this page.'
+		},
+		errors: {
+			offline: 'BubbleBoard can’t be reached. Check your internet connection and try again.',
+			'signed-out': 'This device was signed out. Scan your card again to continue.',
+			'unreadable-records':
+				'Some of your kindergarten’s records didn’t open on this device. Try again, and if it keeps happening, tell an admin.',
+			'unknown-card': 'This card doesn’t work anymore. Ask your kindergarten for a new one.',
+			'invalid-card': 'That isn’t a BubbleBoard card code. Check it and try again.',
+			mistyped: 'One of the characters doesn’t match. Check the code and try again.',
+			'other-installation': 'This card is for a different BubbleBoard.',
+			'no-code':
+				'There’s no readable QR code in that photo. Try again with the whole card in view.',
+			unreadable:
+				'This card couldn’t open BubbleBoard’s records. Ask your kindergarten for a new card.',
+			'too-many-attempts': 'Too many attempts. Wait a minute, then try again.',
+			'wrong-setup-token':
+				'This setup code isn’t right. Ask whoever installed BubbleBoard for a new setup link.',
+			'already-set-up': 'BubbleBoard is already set up here. Connect with your card instead.',
+			'setup-unavailable':
+				'Setup isn’t ready on this installation. Ask whoever installed BubbleBoard.',
+			'last-admin': 'BubbleBoard needs at least one admin. Make someone else an admin first.',
+			'not-empty': 'Move or remove this classroom’s children first.',
+			stale:
+				'Someone else changed this at the same time. It’s up to date now, so please try again.',
+			'not-found': 'This doesn’t exist anymore.',
+			forbidden: 'You don’t have access to this.',
+			unexpected: 'Something went wrong. Please try again.'
 		}
 	}
 };
+
+/** Names in a sentence, such as “Bubbles and Ladybirds”. */
+function list(names: string[]) {
+	return new Intl.ListFormat('en', { type: 'conjunction' }).format(names);
+}
 
 export type Messages = typeof en;

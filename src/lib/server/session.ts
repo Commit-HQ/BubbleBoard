@@ -1,0 +1,151 @@
+import { error, type RequestEvent } from '@sveltejs/kit';
+import { fromBase64Url, toBase64Url } from '$lib/base64url';
+import { hashAuthToken, hashToken } from '$lib/crypto';
+
+// A device connects with a card once and then uses a session: a random token in an HttpOnly, SameSite
+// cookie, stored only as a hash. A session authorizes requests but opens nothing: keys stay on the device.
+
+const cookieName = 'session';
+const day = 24 * 60 * 60 * 1000;
+/** A session ends after 90 days without use (product-spec.md §32). */
+const lifetime = 90 * day;
+/** A session in use is extended once it's this old, so most requests don't write. */
+const renewAfter = 7 * day;
+
+export type Identity = { credential: string; wrappedKey: string } & (
+	{ kind: 'staff'; teacher: string; admin: boolean } | { kind: 'family'; family: string }
+);
+export type Staff = Extract<Identity, { kind: 'staff' }>;
+
+export function database(event: RequestEvent) {
+	const db = event.platform?.env.DB;
+	if (!db) error(503, 'unavailable');
+	return db;
+}
+
+/** Compares hashes, so the time a comparison takes says nothing about the secret. */
+export async function isSetupToken(event: RequestEvent, token: string) {
+	const secret = event.platform?.env.SETUP_TOKEN;
+	if (!secret) error(503, 'setup-unavailable');
+	const encoder = new TextEncoder();
+	const [given, expected] = await Promise.all(
+		[token, secret].map((value) => hashToken(encoder.encode(value)))
+	);
+	return given === expected;
+}
+
+/**
+ * Limits setup and card attempts from one address. Card secrets are far beyond guessing, so this keeps
+ * the database from being flooded rather than protecting the cards. Without the limiter, nothing runs.
+ */
+export async function limitAttempts(event: RequestEvent) {
+	const limiter = event.platform?.env.CARD_ATTEMPTS;
+	if (!limiter) error(503, 'unavailable');
+	const { success } = await limiter.limit({ key: event.getClientAddress() });
+	if (!success) error(429, 'too-many-attempts');
+}
+
+const identityQuery = `SELECT c.id AS credential, c.wrapped_key, c.teacher_id, c.family_id, t.admin
+	FROM credentials c LEFT JOIN teachers t ON t.id = c.teacher_id`;
+
+type IdentityRow = {
+	credential: string;
+	wrapped_key: string;
+	teacher_id: string | null;
+	family_id: string | null;
+	admin: number | null;
+};
+
+function identity(row: IdentityRow | null): Identity | undefined {
+	if (!row) return undefined;
+	const { credential, wrapped_key: wrappedKey, teacher_id: teacher, family_id: family } = row;
+	if (teacher) return { kind: 'staff', credential, wrappedKey, teacher, admin: row.admin === 1 };
+	return family ? { kind: 'family', credential, wrappedKey, family } : undefined;
+}
+
+export async function identityForCard(db: D1Database, authToken: string) {
+	const hash = await hashAuthToken(authToken);
+	const row = await db
+		.prepare(`${identityQuery} WHERE c.auth_token_hash = ?`)
+		.bind(hash)
+		.first<IdentityRow>();
+	return identity(row);
+}
+
+function setCookie(event: RequestEvent, token: Uint8Array) {
+	event.cookies.set(cookieName, toBase64Url(token), {
+		path: '/api',
+		httpOnly: true,
+		sameSite: 'strict',
+		maxAge: lifetime / 1000
+	});
+}
+
+function cookieToken(event: RequestEvent) {
+	const token = fromBase64Url(event.cookies.get(cookieName) ?? '');
+	return token?.length === 32 ? token : undefined;
+}
+
+export async function startSession(event: RequestEvent, credential: string) {
+	const db = database(event);
+	const token = crypto.getRandomValues(new Uint8Array(32));
+	const previous = cookieToken(event);
+	const now = Date.now();
+	await db.batch([
+		// This browser's earlier session, and every session that has ended.
+		db
+			.prepare('DELETE FROM sessions WHERE token_hash = ? OR expires_at <= ?')
+			.bind(previous ? await hashToken(previous) : '', now),
+		db
+			.prepare('INSERT INTO sessions (token_hash, credential_id, expires_at) VALUES (?, ?, ?)')
+			.bind(await hashToken(token), credential, now + lifetime)
+	]);
+	setCookie(event, token);
+}
+
+/** The card behind this request's session, extending the session when it's due. */
+export async function currentIdentity(event: RequestEvent) {
+	const token = cookieToken(event);
+	if (!token) return undefined;
+	const db = database(event);
+	const hash = await hashToken(token);
+	const now = Date.now();
+	const row = await db
+		.prepare(
+			`${identityQuery} JOIN sessions s ON s.credential_id = c.id WHERE s.token_hash = ? AND s.expires_at > ?`
+		)
+		.bind(hash, now)
+		.first<IdentityRow & { expires_at: number }>();
+	if (row && row.expires_at < now + lifetime - renewAfter) {
+		await db
+			.prepare('UPDATE sessions SET expires_at = ? WHERE token_hash = ?')
+			.bind(now + lifetime, hash)
+			.run();
+		setCookie(event, token);
+	}
+	return identity(row);
+}
+
+export async function endSession(event: RequestEvent) {
+	const token = cookieToken(event);
+	if (token) {
+		await database(event)
+			.prepare('DELETE FROM sessions WHERE token_hash = ?')
+			.bind(await hashToken(token))
+			.run();
+	}
+	event.cookies.delete(cookieName, { path: '/api' });
+}
+
+export async function requireStaff(event: RequestEvent): Promise<Staff> {
+	const current = await currentIdentity(event);
+	if (!current) error(401, 'signed-out');
+	if (current.kind !== 'staff') error(403, 'forbidden');
+	return current;
+}
+
+export async function requireAdmin(event: RequestEvent) {
+	const staff = await requireStaff(event);
+	if (!staff.admin) error(403, 'forbidden');
+	return staff;
+}

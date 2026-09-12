@@ -9,8 +9,13 @@ export function homePath(locale: Locale) {
 	return prefix(locale) || '/';
 }
 
-export function appPath(locale: Locale) {
-	return `${prefix(locale)}/app`;
+/** App pages. Pages are prerendered once, so record IDs go in the query; they aren't secret. */
+export type AppPage =
+	'setup' | 'device' | 'classroom' | 'child' | 'child/new' | 'teachers' | 'teacher' | 'teacher/new';
+
+export function appPath(locale: Locale, page?: AppPage, query?: Record<string, string>) {
+	const path = `${prefix(locale)}/app${page ? `/${page}` : ''}`;
+	return query ? `${path}?${new URLSearchParams(query)}` : path;
 }
 
 /** The current page in another language, without the query or fragment: a fragment can hold a card. */

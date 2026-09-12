@@ -8,6 +8,22 @@
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"
 	},
+	// Access records; the schema is in migrations/.
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "bubbleboard",
+			"migrations_dir": "migrations"
+		}
+	],
+	// Attempts to set up the installation or connect a card, per client address.
+	"ratelimits": [
+		{
+			"name": "CARD_ATTEMPTS",
+			"namespace_id": "1001",
+			"simple": { "limit": 10, "period": 60 }
+		}
+	],
 	// No invocation logs (product-spec.md §45).
 	"observability": { "enabled": false },
 	"workers_dev": true,
