@@ -498,6 +498,10 @@ export const en = {
 				'Someone else changed this at the same time. It’s up to date now, so please try again.',
 			'not-found': 'This doesn’t exist anymore.',
 			forbidden: 'You don’t have access to this.',
+			'push-unavailable':
+				'This browser couldn’t turn on notifications: its notification service didn’t answer. Try again later, or use another browser.',
+			'push-brave':
+				'Brave needs one setting before it can get notifications from websites. Type brave://settings/privacy in the address bar, turn on “Use Google services for push messaging”, restart Brave, then try again.',
 			unexpected: 'Something went wrong. Please try again.'
 		}
 	}

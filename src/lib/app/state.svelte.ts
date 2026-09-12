@@ -34,6 +34,7 @@ import {
 import {
 	forgetSubscription,
 	notificationState,
+	PushUnavailableError,
 	sendSubscription,
 	turnOff,
 	turnOn,
@@ -113,6 +114,10 @@ function errorCode(cause: unknown) {
 	if (cause instanceof UnreadableError) return 'unreadable';
 	if (cause instanceof EmptyNameError) return 'empty-name';
 	if (cause instanceof NoticeTooLongError) return 'notice-too-long';
+	// Brave says it has a push service but refuses until its privacy settings allow Google's.
+	if (cause instanceof PushUnavailableError) {
+		return 'brave' in navigator ? 'push-brave' : 'push-unavailable';
+	}
 	return 'unexpected';
 }
 
@@ -190,7 +195,9 @@ export class App {
 		// First, so a card's code leaves the address bar even in a browser that can't use it.
 		const { card, token } = takeFragment();
 		this.setupToken = token;
+		// Android's install panel shows the browser's prompt when asked; elsewhere the browser keeps its own.
 		addEventListener('beforeinstallprompt', (event) => {
+			if (this.install !== 'android') return;
 			event.preventDefault();
 			this.installPrompt = event as InstallPrompt;
 		});

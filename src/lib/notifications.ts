@@ -8,6 +8,14 @@ import { isLocale, messages, type Locale } from '$lib/i18n';
 
 export type NotificationState = 'unsupported' | 'blocked' | 'off' | 'on';
 
+/** The browser's push service refused to subscribe, as in Brave until Google's push messaging is allowed. */
+export class PushUnavailableError extends Error {
+	constructor(options?: ErrorOptions) {
+		super('Push service unavailable', options);
+		this.name = 'PushUnavailableError';
+	}
+}
+
 function settings<T>(
 	mode: IDBTransactionMode,
 	use: (store: IDBObjectStore) => IDBRequest<T> | void
@@ -76,10 +84,11 @@ export async function turnOn(locale: Locale): Promise<NotificationState> {
 		await subscription.unsubscribe();
 		subscription = null;
 	}
-	subscription ??= await registration.pushManager.subscribe({
-		userVisibleOnly: true,
-		applicationServerKey
-	});
+	subscription ??= await registration.pushManager
+		.subscribe({ userVisibleOnly: true, applicationServerKey })
+		.catch((cause) => {
+			throw new PushUnavailableError({ cause });
+		});
 	await settings('readwrite', (store) => void store.put(locale, 'locale'));
 	await request('PUT', '/api/push', { endpoint: subscription.endpoint });
 	await registration.showNotification('BubbleBoard', {

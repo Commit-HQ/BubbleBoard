@@ -501,6 +501,10 @@ export const hr = {
 				'Netko je upravo promijenio iste podatke. Sada vidite najnovije, pa pokušajte ponovno.',
 			'not-found': 'Ovo više ne postoji.',
 			forbidden: 'Nemate pristup ovome.',
+			'push-unavailable':
+				'Ovaj preglednik nije mogao uključiti obavijesti jer mu se usluga za obavijesti nije javila. Pokušajte kasnije ili u drugom pregledniku.',
+			'push-brave':
+				'Brave treba jednu postavku da bi primao obavijesti s web-stranica. U adresnu traku upišite brave://settings/privacy, uključite „Use Google services for push messaging” (Googleove usluge za push poruke), ponovno pokrenite Brave pa pokušajte opet.',
 			unexpected: 'Nešto nije u redu. Pokušajte ponovno.'
 		}
 	}
