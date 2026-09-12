@@ -2,7 +2,7 @@
 
 ## Outcome
 
-A teacher posts a notice to one or more classrooms: formatted text with emoji on a paper colour, kept for the number of days they choose. Families in those classrooms and their teachers get a generic notification and open the notice, decrypted on their device. The author or an admin can edit or delete it at any time. On iPhone and iPad, parents add BubbleBoard to the Home Screen first; on Android and computers, notifications also work in the browser.
+A teacher posts a notice to one or more classrooms: formatted text with emoji on a paper colour, kept for the number of days they choose. Families in those classrooms and their teachers get a generic notification and open the notice, decrypted on their device. The author or an admin can edit or delete it at any time. On phones and tablets, parents install BubbleBoard before using it; on computers, it also works in the browser.
 
 The kindergarten access slice, recorded at the end, is implemented; its checks on a real installation come first. Photos follow this slice.
 
@@ -16,8 +16,8 @@ BubbleBoard replaces the corkboard in the kindergarten hallway, so putting up a 
 - **Keeping and changing:** when posting, the teacher chooses how long the notice stays: 1, 3, 7, 14, 30, 60, or 90 days, with 30 preselected, counted from when it was first posted. The author and admins can change everything about a notice, its classrooms and days included, and choose whether the change notifies everyone again; a changed notice says it was edited, and one that notifies again moves to the top. They can also delete it at once. A removed teacher's notices stay until they expire or an admin deletes them. Expired and deleted notices leave every board at its next load, and the server deletes them (spec §52).
 - **Encryption:** every save makes a new random Notice Key. The notice's text, colour, and author name are encrypted once with it, and the key is wrapped with the Group Key of each chosen classroom: a notice for twenty classrooms is one envelope and twenty small keys, and a classroom taken off a notice can't open its later versions. Staff open Group Keys with the Staff Key, families with their Family Key. The server stores the notice's ID, the author's teacher ID, its classrooms and times, and the envelopes. The new purposes go into docs/access-format.md with the implementation.
 - **Who is notified:** devices that turned on notifications, for a family in one of the notice's classrooms or a teacher assigned to one, except the device that posted. Admins aren't notified for classrooms they aren't assigned to. The notification says only "New notice from your kindergarten" or "Nova obavijest iz vrtića", in the language notifications were turned on in.
-- **Turning notifications on:** a connected device's home shows a card, "Get a notification when there's a new notice", with Turn on and Not now. Turn on asks for permission from that tap, then sends a test notification. Not now hides the card on that device; This device always has the switch. If permission was refused, the card explains how to allow it in the device's settings, because the browser won't ask again. Where push can't work, such as Safari on iPhone outside the Home Screen app, the card isn't shown.
-- **iPhone and iPad:** push works only in the Home Screen app, a card link from the camera always opens in Safari, and the installed app doesn't share Safari's storage. So on iPhone and iPad, a card link opened outside the Home Screen app shows short Add to Home Screen steps instead of connecting, with a quiet "Continue in Safari without notifications". Inside the installed app, the parent connects with Scan card or the code. Android and computers connect right away; installing there is optional, and Chrome's installed app shares the browser's connection.
+- **Turning notifications on:** a connected device's home shows a card, "Get a notification when there's a new notice", with Turn on and Not now. Turn on asks for permission from that tap, then sends a test notification. Not now hides the card on that device; This device always has the switch. If permission was refused, the card explains how to allow it in the device's settings, because the browser won't ask again. Where push can't work, the card isn't shown.
+- **Installing on phones and tablets is required.** Notifications are why parents use BubbleBoard, and on iPhone and iPad they work only in the Home Screen app, so on phones and tablets BubbleBoard works only once installed. That holds for every card, because a card link doesn't say whose card it is. On iPhone and iPad, a card link from the camera opens Safari, whose storage the Home Screen app doesn't share, so Safari connects nothing and shows short Add to Home Screen steps; the parent then connects inside the installed app with Scan card or the code. On Android, the browser connects first, because Chrome's installed app shares its connection, then asks to install, with the browser's install prompt where it has one and short steps otherwise, so the parent scans only once. An in-app browser that can't install, such as a chat app's, asks to open the link in Safari or Chrome. Computers work in the browser, where installing is optional.
 - **Words:** notice and notification in English. Croatian keeps "obavijest" for both, as the landing page does.
 - **Delivery:** pushes carry no content. The service worker always shows the fixed text, so the server needs no payload encryption, and every push shows a notification, as Safari requires. Publishing puts the devices to notify on a Cloudflare Queue in groups of 40, below the Free plan's 50 outgoing requests per invocation. The same Worker sends each group with the installation's VAPID key, retries 429 and 5xx responses later, and deletes subscriptions the push service reports gone (404 and 410). SvelteKit's Cloudflare adapter builds only a `fetch` handler, so a small Worker entry file adds the queue consumer and a daily cleanup of expired notices.
 - **Subscriptions** belong to the session that created them (spec §39): signing out, a replaced card, a removed teacher or family, or an expired session deletes them. The app sends its subscription whenever it opens, which keeps it current and moves it to a new session. The VAPID key pair is one Worker secret per installation, created when missing by `npm run deploy` and by local setup, like the setup token, and never rotated: a new key silently ends every subscription.
@@ -25,7 +25,12 @@ BubbleBoard replaces the corkboard in the kindergarten hallway, so putting up a 
 
 ### Editor
 
-Decided after comparing editors for Svelte on phones, output that renders without HTML, and the CSP.
+Tiptap 3 (MIT), chosen by the owner on 2026-09-12. It doesn't depend on a framework, so the notice form creates and destroys the editor itself, without a wrapper package, and the editor loads only on the page where notices are written.
+
+- **Tools:** bold, italic, bullet and numbered lists, links, a few text colours, and emoji. Markdown typed as you go, such as `- ` for a list or `**bold**`, formats the text. StarterKit's headings, code, quotes, strikethrough, underline, and rules are turned off, so a notice stays simple.
+- **Storage:** a notice keeps Tiptap's JSON document inside its encrypted envelope. Boards check it against the allowed nodes, marks, and colours and render it with the app's own components, never as HTML. Links open only `https:` and `mailto:` addresses.
+- **CSP:** the editor's injected stylesheet is off (`injectCSS: false`), with its few rules in `app.css`. Tiptap's Color extension writes inline `style` attributes, which the CSP blocks, so text colour is a small mark of our own that renders a class from the fixed palette.
+- **Emoji:** phone keyboards have them; on computers, a small picker offers a few classroom emoji without bundling an emoji data set.
 
 ## Deferred
 
@@ -45,27 +50,24 @@ Decided after comparing editors for Svelte on phones, output that renders withou
 
 ## Review and acceptance evidence
 
-Return this slice in reviewable checkpoints. The owner reviews and commits each checkpoint; agents do not commit automatically. Use synthetic people and content until the access boundary is reviewed; this is a review gate for real data, not a new approval flow for routine development.
+Build this slice in reviewable checkpoints. At the owner's request (2026-09-12), Claude commits each checkpoint on the `notices` branch once `npm run validate` passes, and the owner reviews the commits. Use synthetic people and content until the access boundary is reviewed; this is a review gate for real data, not a new approval flow for routine development.
 
 Before calling the slice complete, demonstrate:
 
 1. A notice to two classrooms reaching a family with children in both once, a family in one of them, and their teachers, but not an unassigned admin, with notifications on a real iPhone Home Screen app, an Android phone, and a desktop browser.
-2. Installing first on iPhone and iPad, Continue in Safari included, and connecting in the installed app with the camera, a photo, and the code.
+2. Installing on iPhone, iPad, and Android before BubbleBoard opens, from a card link and from an in-app browser, and connecting in the installed iPhone app with Scan card and with the code.
 3. Changing a notice with and without notifying again, deleting one, and expiry, each removing the old notice from every board and from D1.
 4. Notifications stopping after signing out, a replaced card, a removed teacher or family, and an expired session, and gone subscriptions being deleted.
 5. Automated tests for Notice Key wrapping and wrong-key, tampering, and context failures; authorization for posting, changing, deleting, and reading across classrooms; and delivery groups, retries, and cleanup.
 6. The production build with its CSP, manifest, and service worker, and Croatian and English phone and desktop walkthroughs.
 7. A D1 export and captured requests showing no notice text, colours, or names in plaintext, and pushes without content.
 
-## First: check kindergarten access on a real installation
+## First: finish checking kindergarten access on the real installation
 
-The access slice is implemented and passes `npm run validate`. Deploy the first installation, then:
+The access slice is deployed and passes `npm run validate`. Card links from the iPhone and Android camera apps, and Scan card in the app, connect families there, so the landing page links to the app. Still to check:
 
-- print a sheet of cards, then try their links with each phone's camera app, Scan card with the camera and with a photo, typed codes, and browser storage on a real iPhone and Android phone;
-- inspect a D1 export and captured requests: no names, content, or card secrets, only tokens, hashes, and ciphertext;
-- walk through setup, a family card, and a second device in Croatian and English, on a phone and a desktop.
-
-Once a family can connect there, the landing page links to the app instead of saying it's coming.
+- a D1 export and captured requests, once the first notice checkpoints exist: no names, content, or card secrets, only tokens, hashes, and ciphertext;
+- setup, a family card, and a second device in Croatian and English, on a phone and a desktop.
 
 ## Earlier decisions: kindergarten access — 2026-09-12
 

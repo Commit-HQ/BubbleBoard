@@ -6,7 +6,7 @@
 	import IconTile from '$lib/components/IconTile.svelte';
 	import Photo from '$lib/components/Photo.svelte';
 	import { defaultLocale, locales, messages } from '$lib/i18n';
-	import { homePath } from '$lib/paths';
+	import { appPath, homePath } from '$lib/paths';
 	import { absoluteUrl, contactEmail, repositoryUrl } from '$lib/project';
 	import type { PageProps } from './$types';
 
@@ -91,12 +91,15 @@
 				<span class="block text-sunrise">{t.hero.headingAccent}</span>
 			</h1>
 			<p class="max-w-lg text-lg text-muted">{t.description}</p>
-			<!-- The app isn't out yet: its status is plain text, and the action leads to getting in touch. -->
+			<!-- Families open the app with their card; kindergartens without BubbleBoard find the contact section. -->
 			<div class="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
-				{@render action('#kindergartens', t.hero.cta, 'arrowDown')}
-				<p class="flex items-center gap-2 font-semibold text-muted">
-					<Icon name="clock" class="size-4 shrink-0" />{t.hero.status}
-				</p>
+				{@render action(appPath(data.locale), t.hero.open, 'arrowRight')}
+				<a
+					class="flex items-center gap-2 font-semibold text-muted hover:text-ink"
+					href="#kindergartens"
+				>
+					{t.hero.cta}<Icon name="arrowDown" class="size-4 shrink-0" />
+				</a>
 			</div>
 			<p class="mt-5 text-sm text-muted">{t.hero.quiet}</p>
 		</div>

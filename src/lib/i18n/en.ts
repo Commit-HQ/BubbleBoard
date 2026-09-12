@@ -22,7 +22,7 @@ export const en = {
 		heading: 'A little closer',
 		headingAccent: 'to their day.',
 		cta: 'For your kindergarten',
-		status: 'App coming soon',
+		open: 'Open the app',
 		quiet: 'Made for families. Inspired by the Bubbles.',
 		photoAlt: 'Children laughing and blowing soap bubbles in a sunny park',
 		// Lock-screen notifications, newest first. They stay this generic; the details wait in the app.

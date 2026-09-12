@@ -151,8 +151,8 @@ See the [architecture notes](docs/architecture.md), the [access format](docs/acc
 
 ## Next slices
 
-1. Kindergarten setup, classrooms, teachers, children with family cards, and connecting devices. Implemented; still to check on real iPhone and Android devices.
-2. Encrypted notices for chosen classrooms, with a rich editor, notifications, and installing on iPhone and iPad, tried on real iOS and Android devices ([plan](docs/next-step-plan.md)).
+1. Kindergarten setup, classrooms, teachers, children with family cards, and connecting devices. Implemented and deployed; card links work on real iPhone and Android phones, and a few checks remain.
+2. Encrypted notices for chosen classrooms, with a rich editor, notifications, and installing on phones and tablets, tried on real iOS and Android devices ([plan](docs/next-step-plan.md)).
 3. Manual photo regions, consent lookup, private reveals, and exact audience previews.
 4. Private messages and attachments.
 

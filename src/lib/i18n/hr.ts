@@ -24,7 +24,7 @@ export const hr = {
 		heading: 'Malo bliže',
 		headingAccent: 'njihovom danu.',
 		cta: 'Za vaš vrtić',
-		status: 'Aplikacija stiže uskoro',
+		open: 'Otvori aplikaciju',
 		quiet: 'Za obitelji. Nadahnuto skupinom Bubbles.',
 		photoAlt: 'Djeca se smiju i puhaju balone od sapunice u sunčanom parku',
 		notifications: [
