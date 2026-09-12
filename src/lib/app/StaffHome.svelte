@@ -5,8 +5,10 @@
 	import { messages, teacherName, type Locale } from '$lib/i18n';
 	import { cardKind } from '$lib/kindergarten';
 	import { appPath } from '$lib/paths';
+	import Board from './Board.svelte';
 	import FieldForm from './FieldForm.svelte';
 	import { getApp } from './state.svelte';
+	import { button } from './ui';
 
 	let { locale }: { locale: Locale } = $props();
 	const app = getApp();
@@ -22,6 +24,10 @@
 	// The recovery card is listed with the teachers, but it isn't one.
 	const teacherCount = $derived(app.catalog.teachers.filter((teacher) => !teacher.recovery).length);
 	const kind = $derived(cardKind({ admin: app.admin, recovery: app.me?.recovery === true }));
+	/** Teachers post to their own classrooms, admins to any. */
+	const canPost = $derived(
+		app.admin ? app.catalog.classrooms.length > 0 : (app.me?.classrooms.length ?? 0) > 0
+	);
 
 	async function addClassroom(name: string) {
 		await app.addClassroom(name);
@@ -57,6 +63,11 @@
 			{t.home.greeting(app.me ? teacherName(locale, app.me) : '')}
 		</h1>
 		<p class="mt-2 text-lg text-muted">{app.admin ? t.home.admin : t.home.teacher}</p>
+		{#if canPost}
+			<a class="{button.primary} mt-6" href={appPath(locale, 'notice/new')}>
+				<Icon name="plus" class="size-4" />{t.notices.new}
+			</a>
+		{/if}
 	</div>
 
 	<ul class="grid grid-cols-2 gap-3 sm:gap-4">
@@ -111,4 +122,9 @@
 	{#if !app.catalog.classrooms.length}
 		<p class="text-muted">{app.admin ? t.home.emptyAdmin : t.home.emptyTeacher}</p>
 	{/if}
+
+	<section class="grid gap-4" aria-labelledby="notices-title">
+		<h2 id="notices-title" class="text-3xl">{t.notices.title}</h2>
+		<Board {locale} empty={t.notices.emptyStaff} />
+	</section>
 </section>

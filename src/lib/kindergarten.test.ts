@@ -143,7 +143,8 @@ describe('kindergarten records', () => {
 		) => {
 			const access = familyAccess(family.id, credential, memberships, classrooms);
 			const { unlockKey } = await deriveCredential(secret);
-			return openFamily(access, await openFamilyKey(access, unlockKey));
+			const opened = await openFamily(access, await openFamilyKey(access, unlockKey));
+			return opened.map(({ name }) => name);
 		};
 		expect(await open(created.secret, family.credential)).toEqual(['Bubbles', 'Ladybirds']);
 

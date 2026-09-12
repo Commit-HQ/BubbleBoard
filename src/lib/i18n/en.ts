@@ -378,12 +378,43 @@ export const en = {
 			signOutTitle: 'Sign out of this device?',
 			signOutCopy: 'To use BubbleBoard here again, you’ll need your card.'
 		},
-		family: {
-			joined: (classrooms: string[]) =>
-				classrooms.length ? `You’ve joined ${list(classrooms)}` : 'You’re connected',
-			copy: 'Notices and photos from your kindergarten will appear here. To come back, scan your card again or bookmark this page.'
+		notices: {
+			title: 'Notices',
+			new: 'New notice',
+			empty: 'No notices yet. When your kindergarten puts one up, it appears here.',
+			emptyStaff: 'No notices yet.',
+			unreadable: 'Some notices didn’t open on this device.',
+			byline: (author: string, time: string) => `${author} · ${time}`,
+			edited: 'edited',
+			edit: 'Edit',
+			delete: 'Delete',
+			deleteTitle: 'Delete this notice?',
+			deleteCopy: 'It comes off every board right away.',
+			newTitle: 'New notice',
+			editTitle: 'Edit notice',
+			text: 'Notice',
+			classrooms: 'Classrooms',
+			paper: 'Paper',
+			papers: {
+				white: 'White',
+				yellow: 'Yellow',
+				peach: 'Peach',
+				pink: 'Pink',
+				lilac: 'Lilac',
+				blue: 'Blue',
+				green: 'Green'
+			},
+			days: 'Keep it up for',
+			dayCount: (count: number) => (count === 1 ? '1 day' : `${count} days`),
+			announce: 'Put it back on top',
+			announceHint: 'For a change everyone should see.',
+			post: 'Post notice',
+			save: 'Save changes',
+			noClassrooms: 'You can post notices once an admin adds you to a classroom.'
 		},
 		errors: {
+			'empty-notice': 'Write the notice first.',
+			'no-classrooms': 'Choose at least one classroom.',
 			offline: 'BubbleBoard can’t be reached. Check your internet connection and try again.',
 			'signed-out': 'This device was signed out. Scan your card again to continue.',
 			'unreadable-records':

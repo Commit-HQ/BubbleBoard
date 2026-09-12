@@ -9,7 +9,7 @@ One SvelteKit application, deployed as one Cloudflare Worker with static assets.
 - D1: opaque identifiers, hashes of card and session tokens, and encrypted records, with the schema in `migrations/`. `npm run deploy` publishes before migrating, because the first deploy creates the database, so keep each migration compatible with the code already running.
 - Private R2: future encrypted media, fetched through authorized Worker routes.
 
-The app sets up a kindergarten and manages classrooms, teachers, children, and family cards; there are no uploads yet. Do not accept real classroom information until the access boundary has been reviewed and tried on real phones, and do not add public upload endpoints. Records are encrypted from the first one persisted; there is no plaintext version to migrate later.
+The app sets up a kindergarten, manages classrooms, teachers, children, and family cards, and puts notices on the board; there are no uploads yet. Do not accept real classroom information until the access boundary has been reviewed and tried on real phones, and do not add public upload endpoints. Records are encrypted from the first one persisted; there is no plaintext version to migrate later.
 
 ## Pages and languages
 

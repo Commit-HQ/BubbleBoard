@@ -1,6 +1,6 @@
 import { replaceState } from '$app/navigation';
 import { page } from '$app/state';
-import { ApiError, request, type Access, type Kindergarten } from '$lib/api';
+import { ApiError, request, type Access, type Kindergarten, type NoticeRecord } from '$lib/api';
 import { readCard, type CardReading } from '$lib/card';
 import { createId, deriveCredential, hashAuthToken, UnreadableError } from '$lib/crypto';
 import { forgetCard, loadCard, saveCard, type DeviceCard } from '$lib/device';
@@ -25,9 +25,18 @@ import {
 	type Child,
 	type CreatedFamily,
 	type Family,
+	type FamilyClassroom,
 	type StaffKeys,
 	type Teacher
 } from '$lib/kindergarten';
+import {
+	openBoard,
+	sealNotice,
+	type Notice,
+	type NoticeContent,
+	type NoticeDocument,
+	type Paper
+} from '$lib/notices';
 import { createContext } from 'svelte';
 
 // The app's state in the browser: the card this device holds, and the decrypted records it may see. The
@@ -40,6 +49,14 @@ export type TeacherValues = { name: string; admin: boolean; classrooms: string[]
 export type ChildValues = { name: string; classroom: string } & (
 	{ cardName: string } | { sibling: string }
 );
+/** A notice as its form fills it in. `announce` puts a changed notice back on top of the board. */
+export type NoticeValues = {
+	classrooms: string[];
+	paper: Paper;
+	days: number;
+	body: NoticeDocument;
+	announce: boolean;
+};
 
 const emptyCatalog: Catalog = {
 	revision: 0,
@@ -103,8 +120,12 @@ export class App {
 	notice = $state<string>();
 	catalog = $state.raw(emptyCatalog);
 	me = $state.raw<Teacher>();
-	/** The names of the classrooms a family device has joined. */
-	joined = $state.raw<string[]>([]);
+	/** The classrooms a family device has joined. */
+	familyClassrooms = $state.raw<FamilyClassroom[]>([]);
+	/** The notices this device sees, the most recently announced first. */
+	board = $state.raw<Notice[]>([]);
+	/** How many notices didn't open on this device. */
+	unreadableNotices = $state(0);
 	connecting = $state(false);
 	cardError = $state<string>();
 	/** A card from a link, waiting for confirmation before it takes the place of this device's card. */
@@ -181,12 +202,14 @@ export class App {
 		if (access.kind === 'staff' && card.kind === 'staff') {
 			this.#keys = await openStaffKeys(access, card.unlockKey);
 			await this.#load(access.kindergarten, access.teacher);
+			await this.#openBoard(access.notices, this.catalog.classrooms);
 		} else if (
 			access.kind === 'family' &&
 			card.kind === 'family' &&
 			access.family === card.family
 		) {
-			this.joined = await readRecords(openFamily(access, card.familyKey));
+			this.familyClassrooms = await readRecords(openFamily(access, card.familyKey));
+			await this.#openBoard(access.notices, this.familyClassrooms);
 		} else {
 			throw new UnreadableError();
 		}
@@ -200,13 +223,26 @@ export class App {
 		this.me = catalog.teachers.find((candidate) => candidate.id === teacher);
 	}
 
+	/** Opens notices with the Group Keys of the classrooms this device sees. */
+	async #openBoard(records: NoticeRecord[], classrooms: { id: string; groupKey: CryptoKey }[]) {
+		const groupKeys = new Map(classrooms.map(({ id, groupKey }) => [id, groupKey]));
+		const { notices, unreadable } = await openBoard(records, groupKeys);
+		this.board = notices;
+		this.unreadableNotices = unreadable;
+	}
+
 	/**
-	 * Sends an admin's change and opens the records that come back. When it fails, a device whose session
-	 * ended disconnects, and records that moved on or lost the one changed load again to show with the error.
+	 * Sends a change and opens what comes back. When it fails, a device whose session ended disconnects,
+	 * and records that moved on or lost what was changed load again to show with the error.
 	 */
-	async #change(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown) {
+	async #send<T>(
+		method: 'POST' | 'PUT' | 'DELETE',
+		path: string,
+		body: unknown,
+		open: (response: T) => Promise<void>
+	) {
 		try {
-			await this.#load(await request<Kindergarten>(method, path, body));
+			await open(await request<T>(method, path, body));
 		} catch (cause) {
 			if (cause instanceof UnreadableRecords) this.status = 'unreadable';
 			else if (cause instanceof ApiError && cause.status === 401) {
@@ -218,13 +254,27 @@ export class App {
 		}
 	}
 
+	/** Sends an admin's change to the records, which come back as they are now. */
+	#change(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown) {
+		return this.#send<Kindergarten>(method, path, body, (records) => this.#load(records));
+	}
+
+	/** Sends a change to the board, which comes back as this staff member sees it now. */
+	#changeBoard(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown) {
+		return this.#send<NoticeRecord[]>(method, path, body, (records) =>
+			this.#openBoard(records, this.catalog.classrooms)
+		);
+	}
+
 	async #disconnect(notice?: string) {
 		await forgetCard().catch(() => {});
 		this.#card = undefined;
 		this.#keys = undefined;
 		this.me = undefined;
 		this.catalog = emptyCatalog;
-		this.joined = [];
+		this.familyClassrooms = [];
+		this.board = [];
+		this.unreadableNotices = 0;
 		this.notice = notice;
 		this.status = 'disconnected';
 	}
@@ -415,6 +465,39 @@ export class App {
 			cards: cards.map(({ credential }, index) => ({ family: families[index].id, credential }))
 		});
 		return cards.map(({ secret }) => secret);
+	}
+
+	/** The names of the classrooms with these IDs that this device sees. */
+	classroomNames(ids: string[]) {
+		const classrooms = this.status === 'family' ? this.familyClassrooms : this.catalog.classrooms;
+		return classrooms.filter(({ id }) => ids.includes(id)).map(({ name }) => name);
+	}
+
+	/** Whether this device may change a notice: its author's own, or any for an admin. */
+	canChange(notice: Notice) {
+		return this.status === 'staff' && (this.admin || notice.teacher === this.me?.id);
+	}
+
+	/**
+	 * Posts a notice, or changes `notice`, sealed under a new Notice Key for its classrooms. A change keeps
+	 * the name of whoever posted the notice; the recovery card posts without one.
+	 */
+	async saveNotice(values: NoticeValues, notice?: Notice) {
+		const id = notice?.id ?? createId();
+		const author = notice ? notice.author : this.me?.recovery ? undefined : this.me?.name;
+		const content: NoticeContent = { paper: values.paper, body: values.body };
+		if (author) content.author = author;
+		const classrooms = values.classrooms.map((classroom) =>
+			byId(this.catalog.classrooms, classroom)
+		);
+		const sealed = await sealNotice(id, content, classrooms);
+		const { days, announce } = values;
+		if (notice) await this.#changeBoard('PUT', `/api/notices/${id}`, { ...sealed, days, announce });
+		else await this.#changeBoard('POST', '/api/notices', { ...sealed, id, days });
+	}
+
+	deleteNotice(notice: Notice) {
+		return this.#changeBoard('DELETE', `/api/notices/${notice.id}`);
 	}
 }
 

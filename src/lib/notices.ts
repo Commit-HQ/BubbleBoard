@@ -25,7 +25,8 @@ export const textColours = ['red', 'orange', 'green', 'blue', 'purple'] as const
 export type TextColour = (typeof textColours)[number];
 
 export type NoticeMark =
-	| { type: 'bold' | 'italic' }
+	| { type: 'bold' }
+	| { type: 'italic' }
 	| { type: 'link'; attrs: { href: string } }
 	| { type: 'colour'; attrs: { colour: TextColour } };
 export type NoticeInline =

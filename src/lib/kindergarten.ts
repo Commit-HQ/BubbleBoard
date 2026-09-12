@@ -133,18 +133,23 @@ export function openFamilyKey(access: FamilyAccess, unlockKey: CryptoKey) {
 	return unwrapKey(access.wrappedKey, wrapping.familyKeyForCard(unlockKey, access.credential));
 }
 
-/** The names of the classrooms a family's card opens, sorted. */
-export async function openFamily(access: FamilyAccess, familyKey: CryptoKey) {
-	const names = await Promise.all(
+export type FamilyClassroom = { id: string; name: string; groupKey: CryptoKey };
+
+/** The classrooms a family's card opens, with their Group Keys, sorted by name. */
+export async function openFamily(
+	access: FamilyAccess,
+	familyKey: CryptoKey
+): Promise<FamilyClassroom[]> {
+	const classrooms = await Promise.all(
 		access.classrooms.map(async ({ id, profile, groupKeyForFamily }) => {
 			const groupKey = await unwrapKey(
 				groupKeyForFamily,
 				wrapping.groupKeyForFamily(familyKey, id, access.family)
 			);
-			return openClassroomName(groupKey, id, profile);
+			return { id, name: await openClassroomName(groupKey, id, profile), groupKey };
 		})
 	);
-	return names.sort(collator.compare);
+	return byName(classrooms);
 }
 
 /**

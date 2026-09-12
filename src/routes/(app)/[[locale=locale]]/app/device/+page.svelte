@@ -34,7 +34,12 @@
 			{#if kind !== 'recovery'}<p class="mt-1 text-muted">{t.card.kinds[kind]}</p>{/if}
 		{:else}
 			<p class="mt-5 font-display text-3xl">{t.device.family}</p>
-			<p class="mt-1 text-muted">{listNames(data.locale, app.joined)}</p>
+			<p class="mt-1 text-muted">
+				{listNames(
+					data.locale,
+					app.familyClassrooms.map(({ name }) => name)
+				)}
+			</p>
 		{/if}
 		<button class="{button.secondary} mt-7" type="button" onclick={() => (confirming = true)}>
 			<Icon name="logOut" class="size-4" />{t.device.signOut}

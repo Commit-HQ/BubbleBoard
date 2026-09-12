@@ -380,16 +380,43 @@ export const hr = {
 			signOutTitle: 'Odjaviti ovaj uređaj?',
 			signOutCopy: 'Za ponovno korištenje BubbleBoarda ovdje trebat će vam kartica.'
 		},
-		family: {
-			joined: (classrooms: string[]) =>
-				classrooms.length === 1
-					? `Pridružili ste se skupini ${classrooms[0]}`
-					: classrooms.length
-						? `Pridružili ste se skupinama ${list(classrooms)}`
-						: 'Povezani ste',
-			copy: 'Ovdje će se pojavljivati obavijesti i fotografije iz vrtića. Za povratak ponovno skenirajte karticu ili spremite ovu stranicu u oznake.'
+		notices: {
+			title: 'Obavijesti',
+			new: 'Nova obavijest',
+			empty: 'Još nema obavijesti. Kad vrtić objavi obavijest, pojavit će se ovdje.',
+			emptyStaff: 'Još nema obavijesti.',
+			unreadable: 'Neke se obavijesti nisu otvorile na ovom uređaju.',
+			byline: (author: string, time: string) => `${author} · ${time}`,
+			edited: 'uređeno',
+			edit: 'Uredi',
+			delete: 'Obriši',
+			deleteTitle: 'Obrisati ovu obavijest?',
+			deleteCopy: 'Odmah nestaje sa svih ploča.',
+			newTitle: 'Nova obavijest',
+			editTitle: 'Uredi obavijest',
+			text: 'Obavijest',
+			classrooms: 'Skupine',
+			paper: 'Papir',
+			papers: {
+				white: 'Bijeli',
+				yellow: 'Žuti',
+				peach: 'Narančasti',
+				pink: 'Ružičasti',
+				lilac: 'Ljubičasti',
+				blue: 'Plavi',
+				green: 'Zeleni'
+			},
+			days: 'Neka ostane',
+			dayCount: (value: number) => count(value, 'dan', 'dana', 'dana'),
+			announce: 'Vrati je na vrh',
+			announceHint: 'Za promjenu koju svi trebaju vidjeti.',
+			post: 'Objavi obavijest',
+			save: 'Spremi promjene',
+			noClassrooms: 'Obavijesti možete objavljivati kad vas administrator doda u skupinu.'
 		},
 		errors: {
+			'empty-notice': 'Najprije napišite obavijest.',
+			'no-classrooms': 'Odaberite barem jednu skupinu.',
 			offline:
 				'BubbleBoard trenutno nije dostupan. Provjerite internetsku vezu i pokušajte ponovno.',
 			'signed-out': 'Ovaj je uređaj odjavljen. Za nastavak ponovno skenirajte karticu.',

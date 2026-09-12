@@ -1,5 +1,6 @@
 import { browser } from '$app/environment';
 import { page } from '$app/state';
+import type { Paper, TextColour } from '$lib/notices';
 
 // Class names and small helpers shared by the app's screens, in the landing page's style: an ink pill for
 // the main action, soft white pills for the rest.
@@ -42,3 +43,23 @@ export function formText(form: FormData, name: string) {
 export function queryParam(name: string) {
 	return browser ? page.url.searchParams.get(name) : null;
 }
+
+/** The background of each notice paper (src/lib/notices.ts), from the theme in app.css. */
+export const paperClass: Record<Paper, string> = {
+	white: 'bg-white',
+	yellow: 'bg-paper-yellow',
+	peach: 'bg-paper-peach',
+	pink: 'bg-paper-pink',
+	lilac: 'bg-paper-lilac',
+	blue: 'bg-paper-blue',
+	green: 'bg-paper-green'
+};
+
+/** The colour of each notice text colour: at least 4.5:1 on every paper. */
+export const textColourClass: Record<TextColour, string> = {
+	red: 'text-red-700',
+	orange: 'text-orange-800',
+	green: 'text-green-800',
+	blue: 'text-blue-700',
+	purple: 'text-purple-700'
+};
