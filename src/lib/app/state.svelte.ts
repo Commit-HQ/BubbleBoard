@@ -4,6 +4,7 @@ import { ApiError, request, type Access, type Kindergarten, type NoticeRecord } 
 import { readCard, type CardReading } from '$lib/card';
 import { createId, deriveCredential, hashAuthToken, UnreadableError } from '$lib/crypto';
 import { forgetCard, loadCard, saveCard, type DeviceCard } from '$lib/device';
+import { installStep, type InstallPlatform, type InstallPrompt } from '$lib/install';
 import {
 	byId,
 	childProfile,
@@ -44,7 +45,14 @@ import { createContext } from 'svelte';
 // app layout creates one for every page, so it survives moving between pages and languages.
 
 type Status =
-	'loading' | 'unsupported' | 'offline' | 'unreadable' | 'disconnected' | 'staff' | 'family';
+	| 'loading'
+	| 'unsupported'
+	| 'install'
+	| 'offline'
+	| 'unreadable'
+	| 'disconnected'
+	| 'staff'
+	| 'family';
 export type NewKindergarten = Awaited<ReturnType<typeof createKindergarten>>;
 export type TeacherValues = { name: string; admin: boolean; classrooms: string[] };
 export type ChildValues = { name: string; classroom: string } & (
@@ -120,6 +128,10 @@ export class App {
 	status = $state<Status>('loading');
 	/** Why this device was disconnected, when it wasn't signed out on purpose. */
 	notice = $state<string>();
+	/** The steps installing BubbleBoard takes on this device, when it's a phone or tablet outside the app. */
+	install = $state<InstallPlatform>();
+	/** The browser's own install prompt, when it offers one. */
+	installPrompt = $state.raw<InstallPrompt>();
 	catalog = $state.raw(emptyCatalog);
 	me = $state.raw<Teacher>();
 	/** The classrooms a family device has joined. */
@@ -146,6 +158,14 @@ export class App {
 		return this.status === 'staff' || this.status === 'family';
 	}
 
+	/**
+	 * Whether pages ask to install BubbleBoard instead of showing themselves: on iPhone and iPad before
+	 * anything, and on Android once the browser has connected, since the installed app shares its storage.
+	 */
+	get mustInstall() {
+		return this.status === 'install' || (this.install === 'android' && this.connected);
+	}
+
 	get #staff() {
 		if (!this.#keys) throw new Error('This device isn’t connected with a staff card');
 		return this.#keys;
@@ -155,10 +175,21 @@ export class App {
 		// First, so a card's code leaves the address bar even in a browser that can't use it.
 		const { card, token } = takeFragment();
 		this.setupToken = token;
+		addEventListener('beforeinstallprompt', (event) => {
+			event.preventDefault();
+			this.installPrompt = event as InstallPrompt;
+		});
 		// Keys are made with Web Crypto and kept in IndexedDB; browsers offer Web Crypto only on https
 		// and localhost.
 		if (!isSecureContext || !('indexedDB' in window)) {
 			this.status = 'unsupported';
+			return;
+		}
+		// Safari and the browsers inside other apps don't share their storage with the installed app, so
+		// nothing connects there: installing comes first.
+		this.install = installStep();
+		if (this.install === 'ios' || this.install === 'in-app') {
+			this.status = 'install';
 			return;
 		}
 		try {
@@ -175,8 +206,8 @@ export class App {
 	async openLink() {
 		const { card, token } = takeFragment();
 		if (token) this.setupToken = token;
-		if (card && this.status !== 'loading' && this.status !== 'unsupported')
-			await this.useCard(card);
+		const ready = !['loading', 'unsupported', 'install'].includes(this.status);
+		if (card && ready) await this.useCard(card);
 	}
 
 	async retry() {

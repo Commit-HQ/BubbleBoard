@@ -35,7 +35,9 @@
 	</div>
 {/snippet}
 
-{#if app.status === 'family' && need !== 'anyone'}
+{#if app.mustInstall}
+	<StatusView {locale} />
+{:else if app.status === 'family' && need !== 'anyone'}
 	<Panel icon="smile" title={t.staffOnly.title} copy={t.staffOnly.copy} children={home} />
 {:else if app.status === 'staff' && need === 'admin' && !app.admin}
 	<Panel icon="lock" title={t.adminOnly.title} copy={t.adminOnly.copy} children={home} />

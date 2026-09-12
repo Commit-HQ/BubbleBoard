@@ -26,6 +26,9 @@
 	<title>BubbleBoard</title>
 	<!-- Search results should lead to the landing page, not to pages that need a card. -->
 	<meta name="robots" content="noindex" />
+	<!-- Installing: the app's manifest in this page's language, and the Home Screen icon on iPhone and iPad. -->
+	<link rel="manifest" href="{appPath(data.locale)}/manifest.webmanifest" />
+	<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
 </svelte:head>
 
 <div class="mx-auto flex min-h-dvh max-w-2xl flex-col px-4 sm:px-8 print:max-w-none print:px-0">

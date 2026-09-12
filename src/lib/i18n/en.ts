@@ -412,6 +412,24 @@ export const en = {
 			save: 'Save changes',
 			noClassrooms: 'You can post notices once an admin adds you to a classroom.'
 		},
+		install: {
+			iosTitle: 'Add BubbleBoard to your Home Screen',
+			iosCopy:
+				'On iPhone and iPad, notifications from your kindergarten reach only the BubbleBoard on your Home Screen.',
+			iosShare: 'Tap Share. In Safari, it can be in the ··· menu.',
+			iosAdd: 'Choose Add to Home Screen, then Add.',
+			iosOpen: 'Open BubbleBoard from your Home Screen and scan your card there.',
+			androidTitle: 'Install BubbleBoard',
+			androidCopy: 'As an app on your phone, BubbleBoard can tell you when there’s something new.',
+			androidMenu: 'Open your browser’s menu.',
+			androidAdd: 'Choose Install app, or Add to Home screen.',
+			androidOpen: 'Open BubbleBoard from your home screen.',
+			install: 'Install',
+			installed: 'BubbleBoard is installed. Open it from your home screen.',
+			inAppTitle: 'Open BubbleBoard in your browser',
+			inAppCopy:
+				'The browser inside this app can’t install BubbleBoard. Open the page in Safari or Chrome, usually from the ··· menu, then scan your card again.'
+		},
 		editor: {
 			toolbar: 'Formatting',
 			loading: 'Opening the editor…',

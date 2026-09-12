@@ -414,6 +414,24 @@ export const hr = {
 			save: 'Spremi promjene',
 			noClassrooms: 'Obavijesti možete objavljivati kad vas administrator doda u skupinu.'
 		},
+		install: {
+			iosTitle: 'Dodajte BubbleBoard na početni zaslon',
+			iosCopy:
+				'Na iPhoneu i iPadu obavijesti iz vrtića stižu samo u BubbleBoard na početnom zaslonu.',
+			iosShare: 'Dodirnite Dijeli. U Safariju je možda u izborniku ···.',
+			iosAdd: 'Odaberite Dodaj na početni zaslon, zatim Dodaj.',
+			iosOpen: 'Otvorite BubbleBoard s početnog zaslona i ondje skenirajte karticu.',
+			androidTitle: 'Instalirajte BubbleBoard',
+			androidCopy: 'Kao aplikacija na mobitelu, BubbleBoard vam može javiti kad stigne nešto novo.',
+			androidMenu: 'Otvorite izbornik preglednika.',
+			androidAdd: 'Odaberite Instaliraj aplikaciju ili Dodaj na početni zaslon.',
+			androidOpen: 'Otvorite BubbleBoard s početnog zaslona.',
+			install: 'Instaliraj',
+			installed: 'BubbleBoard je instaliran. Otvorite ga s početnog zaslona.',
+			inAppTitle: 'Otvorite BubbleBoard u pregledniku',
+			inAppCopy:
+				'Preglednik unutar ove aplikacije ne može instalirati BubbleBoard. Otvorite stranicu u Safariju ili Chromeu, obično iz izbornika ···, pa ponovno skenirajte karticu.'
+		},
 		editor: {
 			toolbar: 'Oblikovanje',
 			loading: 'Otvaramo uređivač…',

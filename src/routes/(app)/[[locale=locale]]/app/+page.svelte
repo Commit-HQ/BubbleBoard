@@ -23,7 +23,9 @@
 	<p class="{alert} mb-6" role="alert">{errorMessage(data.locale, app.cardError)}</p>
 {/if}
 
-{#if app.status === 'disconnected'}
+{#if app.mustInstall}
+	<StatusView locale={data.locale} />
+{:else if app.status === 'disconnected'}
 	<Connect locale={data.locale} />
 {:else if app.status === 'staff'}
 	<StaffHome locale={data.locale} />

@@ -39,6 +39,8 @@
 
 {#if cards}
 	<CardSheet locale={data.locale} {cards} confirm ondone={() => goto(appPath(data.locale))} />
+{:else if app.mustInstall}
+	<StatusView locale={data.locale} />
 {:else if app.connected}
 	<Panel icon="check" title={t.setup.connectedTitle} copy={t.setup.connectedCopy}>
 		<div class={buttonRow}>

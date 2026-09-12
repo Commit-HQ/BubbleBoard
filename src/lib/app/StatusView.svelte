@@ -2,6 +2,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import { messages, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
+	import InstallPanel from './InstallPanel.svelte';
 	import Panel from './Panel.svelte';
 	import { getApp } from './state.svelte';
 	import { button, buttonRow } from './ui';
@@ -23,6 +24,8 @@
 		</p>
 		<noscript><p class="max-w-md text-muted">{t.noscript}</p></noscript>
 	</div>
+{:else if app.mustInstall}
+	<InstallPanel {locale} />
 {:else if app.status === 'unsupported'}
 	<Panel icon="alert" title={t.unsupported.title} copy={t.unsupported.copy} alert />
 {:else if app.status === 'offline' || app.status === 'unreadable'}
