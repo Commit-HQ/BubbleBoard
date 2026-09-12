@@ -128,6 +128,12 @@ async function currentIdentity(event: RequestEvent) {
 	return identity(row);
 }
 
+/** This request's session as the database stores it: the hash of its token. */
+export async function sessionHash(event: RequestEvent) {
+	const token = cookieToken(event);
+	return token && hashToken(token);
+}
+
 export async function endSession(event: RequestEvent) {
 	const token = cookieToken(event);
 	if (token) {

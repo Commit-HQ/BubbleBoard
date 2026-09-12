@@ -3,7 +3,8 @@
 	"name": "bubbleboard",
 	"compatibility_date": "2026-09-11",
 	"compatibility_flags": ["nodejs_als"],
-	"main": ".svelte-kit/cloudflare/_worker.js",
+	// SvelteKit's fetch handler, with the queue and scheduled handlers it doesn't build (worker/index.js).
+	"main": "worker/index.js",
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"
@@ -24,6 +25,14 @@
 			"simple": { "limit": 10, "period": 60 }
 		}
 	],
+	// Notifications for new notices, in groups the queue handler sends one message at a time, so an
+	// invocation stays within the Free plan's outgoing requests (src/lib/server/push.ts).
+	"queues": {
+		"producers": [{ "binding": "NOTIFICATIONS", "queue": "bubbleboard-notifications" }],
+		"consumers": [{ "queue": "bubbleboard-notifications", "max_batch_size": 1, "max_retries": 3 }]
+	},
+	// The daily cleanup of expired notices and sessions.
+	"triggers": { "crons": ["23 3 * * *"] },
 	// No invocation logs (product-spec.md §45).
 	"observability": { "enabled": false },
 	"workers_dev": true,

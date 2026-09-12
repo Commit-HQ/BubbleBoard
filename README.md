@@ -66,7 +66,7 @@ Add interface copy to both `src/lib/i18n/en.ts` and `hr.ts`. When bundling a new
 3. Choose a unique Worker `name` in `wrangler.jsonc`.
 4. Set `PUBLIC_SITE_URL` in `.env` to the origin the site will be served from, such as `https://bubbleboard.example.com`. It is read when you build.
 5. Run `npm run validate` and `npx wrangler deploy --dry-run`.
-6. Run `npm run deploy`. The first deploy creates the database, applies its migrations, stores a new `SETUP_TOKEN` secret, and prints a setup link. Later deploys apply new migrations and leave the token alone.
+6. Run `npm run deploy`. The first deploy creates the database and the notifications queue, applies the migrations, stores a new `SETUP_TOKEN` secret and the `VAPID_KEY` secret that signs notifications, and prints a setup link. Later deploys apply new migrations and leave both secrets alone: a new `VAPID_KEY` would silently end every device's notifications.
 7. To use your own domain, add it to the Worker in the Cloudflare dashboard (**Workers & Pages → your Worker → Settings → Domains & Routes**) before opening the setup link, which points at `PUBLIC_SITE_URL`. The domain must first be active in the same Cloudflare account: for a domain registered elsewhere, add it under **Domains**, turn off DNSSEC at the registrar if it's on, and replace the registrar's nameservers with the two Cloudflare shows. Turn on **Always Use HTTPS** for the domain (**SSL/TLS → Edge Certificates**): the app needs `https://`, and the domain otherwise also answers plain `http://`. Domains are kept out of `wrangler.jsonc` so the configuration works for every installation. Printed cards use the address setup was opened on, so set up on the final domain.
 8. Open the setup link on the first admin's device, enter their name, and print or save both cards before continuing. Keep the recovery card somewhere safe: it can do everything an admin can.
 
@@ -101,7 +101,7 @@ The Worker keeps its records in a D1 database bound as `DB`, with the schema in 
 | Storage       | D1 for records; private R2 for encrypted media later                  |
 | QR codes      | `qr`, drawn for printed cards and read with the camera or from photos |
 | Notice editor | Tiptap, loaded only on the page where notices are written             |
-| Notifications | Web Push, planned                                                     |
+| Notifications | Web Push without content, sent through a Cloudflare Queue             |
 
 No component UI library, ORM, remote font service, analytics SDK, or separate backend. npm’s lockfile is committed for reproducible installs. The official tooling still has transitive dependencies; review additions and updates rather than assuming a small manifest means zero supply-chain risk.
 
@@ -131,8 +131,9 @@ src/
   app.html              Document shell
   hooks.server.ts       Document language, font preloads, security headers, cross-site check
 migrations/             D1 schema
-scripts/                Setup links and starting over
-static/                 Public static files, including third-party notices
+scripts/                Setup links, the notifications key, and starting over
+static/                 Public static files: app icons and third-party notices
+worker/                 The Worker's entry: SvelteKit, sending notifications, daily cleanup
 docs/                   Architecture notes, access format, product specification
 _headers                Security headers for prerendered pages and assets
 .env.example            Build-time settings to copy into .env

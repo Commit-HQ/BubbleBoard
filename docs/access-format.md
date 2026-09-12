@@ -109,7 +109,7 @@ Other keys are unwrapped into memory from envelopes fetched with the device's se
 
 ## What the server stores
 
-Opaque IDs, timestamps, hashes of auth and session tokens, envelopes, and a count of changes to teachers, children, and family cards, which keeps two devices from undoing each other's changes. To authorize requests and address notifications, it also knows which classroom each child is in, which classrooms each teacher and family belongs to, which staff are admins, and which classrooms each notice is for, who posted it, and when it was posted, changed, and taken down. It never receives a card code or secret, an unlock key, a raw key, any classroom, teacher, child, family, or card name, or which families a child belongs to.
+Opaque IDs, timestamps, hashes of auth and session tokens, envelopes, and a count of changes to teachers, children, and family cards, which keeps two devices from undoing each other's changes. To authorize requests and address notifications, it also knows which classroom each child is in, which classrooms each teacher and family belongs to, which staff are admins, and which classrooms each notice is for, who posted it, and when it was posted, changed, and taken down. For notifications, it keeps the push service address of each device that turned them on, tied to that device's session; pushes carry no content. It never receives a card code or secret, an unlock key, a raw key, any classroom, teacher, child, family, or card name, or which families a child belongs to.
 
 ## Limits
 

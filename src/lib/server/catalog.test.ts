@@ -20,11 +20,14 @@ import {
 	setUp
 } from './catalog';
 import { board, changeNotice, deleteNotice, postNotice } from './notices';
+import { cleanUp, deliver, recipients, type PushEnv, type PushMessage } from './push';
 import {
+	endSession,
 	identityForCard,
 	requireAdmin,
 	requireIdentity,
 	requireStaff,
+	sessionHash,
 	startSession,
 	type Admin
 } from './session';
@@ -570,5 +573,109 @@ describe('notices', () => {
 		await deleteClassroom(db, admin, owls);
 		expect(await board(db, admin)).toMatchObject([{ id: shared.id, classrooms: keys([bubbles]) }]);
 		expect(await count(db)).toBe(1);
+	});
+});
+
+describe('notifications', () => {
+	const endpoint = (name: string | number) => `https://fcm.googleapis.com/fcm/send/${name}`;
+	const subscribe = async (db: D1Database, device: RequestEvent, name: string | number) =>
+		db
+			.prepare('INSERT INTO push_subscriptions (endpoint, session_hash) VALUES (?, ?)')
+			.bind(endpoint(name), (await sessionHash(device))!)
+			.run();
+	const subscribed = async (db: D1Database) => {
+		const { results } = await db
+			.prepare('SELECT endpoint FROM push_subscriptions ORDER BY endpoint')
+			.all<{ endpoint: string }>();
+		return results.map((row) => row.endpoint);
+	};
+
+	it('reach the families and teachers of a notice’s classrooms, except the device that posted it', async () => {
+		const db = localDatabase();
+		const { teachers, admin } = await setUpKindergarten(db);
+		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
+		const [inBubbles, inOwls] = [newFamily(), newFamily()];
+		await addChildTo(db, admin, bubbles, inBubbles);
+		await addChildTo(db, admin, owls, inOwls);
+		const teacher = await addTeacherTo(db, admin, [bubbles]);
+		const poster = await deviceWith(db, teacher.credential);
+		for (const [name, device] of [
+			['family', await deviceWith(db, inBubbles.credential.id)],
+			['other-family', await deviceWith(db, inOwls.credential.id)],
+			['teacher', await deviceWith(db, teacher.credential)],
+			['poster', poster],
+			['unassigned-admin', await deviceWith(db, teachers[0].credential.id)]
+		] as const) {
+			await subscribe(db, device, name);
+		}
+
+		const reached = await recipients(db, [bubbles], await sessionHash(poster));
+		expect(reached.sort()).toEqual([endpoint('family'), endpoint('teacher')]);
+	});
+
+	it('end with their session: signing out, a replaced card, or a session that ran out', async () => {
+		const db = localDatabase();
+		const { teachers, admin } = await setUpKindergarten(db);
+		const bubbles = await addClassroomTo(db, admin);
+		const family = newFamily();
+		await addChildTo(db, admin, bubbles, family);
+		const [familyDevice, adminDevice, laterDevice] = [
+			await deviceWith(db, family.credential.id),
+			await deviceWith(db, teachers[0].credential.id),
+			await deviceWith(db, teachers[1].credential.id)
+		];
+		await subscribe(db, familyDevice, 'family');
+		await subscribe(db, adminDevice, 'admin');
+		await subscribe(db, laterDevice, 'later');
+
+		await replaceFamilyCards(db, admin, [{ family: family.id, credential: credential() }]);
+		await endSession(adminDevice);
+		expect(await subscribed(db)).toEqual([endpoint('later')]);
+		await db.prepare('UPDATE sessions SET expires_at = 0').run();
+		await cleanUp(db);
+		expect(await subscribed(db)).toEqual([]);
+	});
+
+	it('send a group once, forget devices that are gone, and try busy push services again later', async () => {
+		const db = localDatabase();
+		const { teachers } = await setUpKindergarten(db);
+		const device = await deviceWith(db, teachers[0].credential.id);
+		const statuses = [201, 400, 404, 410, 429, 503];
+		for (const status of statuses) await subscribe(db, device, status);
+		const { privateKey } = await crypto.subtle.generateKey(
+			{ name: 'ECDSA', namedCurve: 'P-256' },
+			true,
+			['sign', 'verify']
+		);
+		const { x, y, d } = await crypto.subtle.exportKey('jwk', privateKey);
+		const requests: { url: string; headers: HeadersInit | undefined }[] = [];
+		const queued: unknown[] = [];
+		let acknowledged = false;
+		// Each fake push service answers with the status its endpoint ends in.
+		const fetcher = async (url: RequestInfo | URL, init?: RequestInit) => {
+			requests.push({ url: String(url), headers: init?.headers });
+			return new Response(null, { status: Number(String(url).split('/').pop()) });
+		};
+		const subject = 'https://bubbleboard.example.com';
+		const body: PushMessage = { endpoints: statuses.map(endpoint), subject, attempt: 0 };
+		const batch = { messages: [{ body, ack: () => (acknowledged = true) }] };
+		const env = {
+			DB: db,
+			VAPID_KEY: `${x}.${y}.${d}`,
+			NOTIFICATIONS: { send: async (...args: unknown[]) => void queued.push(args) }
+		};
+
+		await deliver(
+			batch as unknown as MessageBatch<PushMessage>,
+			env as unknown as PushEnv,
+			fetcher as typeof fetch
+		);
+		expect(requests.map(({ url }) => url)).toEqual(statuses.map(endpoint));
+		expect(requests[0].headers).toMatchObject({ TTL: '86400', Topic: 'notice' });
+		expect(await subscribed(db)).toEqual([201, 400, 429, 503].map(endpoint));
+		expect(queued).toEqual([
+			[{ endpoints: [endpoint(429), endpoint(503)], subject, attempt: 1 }, { delaySeconds: 60 }]
+		]);
+		expect(acknowledged).toBe(true);
 	});
 });

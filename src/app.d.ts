@@ -6,9 +6,11 @@ declare global {
 		}
 	}
 
-	// The setup token is a Worker secret, so generated types only list it when .dev.vars sets it.
+	// The setup token and the key that signs notifications are Worker secrets, so generated types only list
+	// them when .dev.vars sets them.
 	interface Env {
 		SETUP_TOKEN: string;
+		VAPID_KEY: string;
 	}
 }
 
