@@ -66,6 +66,30 @@ export async function notificationState(): Promise<NotificationState> {
 	return (await currentSubscription()) ? 'on' : 'off';
 }
 
+/** The installation's public key, which devices subscribe with. */
+async function installationKey() {
+	const { key } = await request<{ key: string }>('GET', '/api/push');
+	return fromBase64Url(key)!;
+}
+
+type InstallationKey = Awaited<ReturnType<typeof installationKey>>;
+
+/** Whether a subscription was made with the installation's key, or undefined where the browser doesn't say. */
+function madeWith(subscription: PushSubscription, key: InstallationKey) {
+	const used = subscription.options.applicationServerKey;
+	if (!used) return undefined;
+	const bytes = new Uint8Array(used);
+	return bytes.length === key.length && bytes.every((byte, index) => byte === key[index]);
+}
+
+function subscribe(registration: ServiceWorkerRegistration, applicationServerKey: InstallationKey) {
+	return registration.pushManager
+		.subscribe({ userVisibleOnly: true, applicationServerKey })
+		.catch((cause) => {
+			throw new PushUnavailableError({ cause });
+		});
+}
+
 /**
  * Turns notifications on from a tap. The permission request comes first, straight from the tap, or Safari
  * refuses it. Then this device subscribes with the installation's key, tells the server, and shows a test.
@@ -73,26 +97,14 @@ export async function notificationState(): Promise<NotificationState> {
 export async function turnOn(locale: Locale): Promise<NotificationState> {
 	const permission = await Notification.requestPermission();
 	if (permission !== 'granted') return permission === 'denied' ? 'blocked' : 'off';
-	const [{ key }, registration] = await Promise.all([
-		request<{ key: string }>('GET', '/api/push'),
-		navigator.serviceWorker.ready
-	]);
-	const applicationServerKey = fromBase64Url(key)!;
+	const [key, registration] = await Promise.all([installationKey(), navigator.serviceWorker.ready]);
 	let subscription = await registration.pushManager.getSubscription();
 	// A subscription made with another key would never get this installation's pushes.
-	const subscribedWith = subscription?.options.applicationServerKey;
-	const sameKey =
-		subscribedWith &&
-		new Uint8Array(subscribedWith).every((byte, index) => byte === applicationServerKey[index]);
-	if (subscription && !sameKey) {
+	if (subscription && madeWith(subscription, key) !== true) {
 		await subscription.unsubscribe();
 		subscription = null;
 	}
-	subscription ??= await registration.pushManager
-		.subscribe({ userVisibleOnly: true, applicationServerKey })
-		.catch((cause) => {
-			throw new PushUnavailableError({ cause });
-		});
+	subscription ??= await subscribe(registration, key);
 	await settings('readwrite', (store) => void store.put(locale, 'locale'));
 	await request('PUT', '/api/push', { endpoint: subscription.endpoint });
 	await notify(registration, messages[locale].app.notifications.test, 'test');
@@ -109,8 +121,25 @@ export async function turnOff() {
 	await request('DELETE', '/api/push');
 }
 
-/** Sends this device's subscription again, which keeps it with the current session. */
-export async function sendSubscription() {
-	const subscription = await currentSubscription();
-	if (subscription) await request('PUT', '/api/push', { endpoint: subscription.endpoint });
+/**
+ * Sends this device's subscription again, which keeps it with the current session, and says whether
+ * notifications are still on. A subscription made with an earlier key, as when the installation's key was
+ * replaced, would never get a push, so it's renewed with the current key first. A browser that won't subscribe
+ * without a tap ends it instead, and notifications show as off until they're turned on again.
+ */
+export async function sendSubscription(): Promise<NotificationState> {
+	const registration = await navigator.serviceWorker.getRegistration();
+	let subscription = await registration?.pushManager.getSubscription();
+	if (!registration || !subscription) return 'off';
+	const key = await installationKey();
+	if (madeWith(subscription, key) === false) {
+		await subscription.unsubscribe();
+		subscription = await subscribe(registration, key).catch(() => null);
+		if (!subscription) {
+			await request('DELETE', '/api/push');
+			return 'off';
+		}
+	}
+	await request('PUT', '/api/push', { endpoint: subscription.endpoint });
+	return 'on';
 }

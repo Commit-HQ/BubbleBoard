@@ -383,7 +383,7 @@ export class App {
 
 	/**
 	 * Reads whether notifications are on and whether their card on home was put away. With `resend`, it also
-	 * sends the subscription, which keeps it with the current session.
+	 * sends the subscription, which keeps it with the current session and renews one made with an earlier key.
 	 */
 	async #keepNotifications(resend: boolean) {
 		const [state, hidden] = await Promise.all([
@@ -392,7 +392,11 @@ export class App {
 		]);
 		this.notifications = state;
 		this.notificationCardHidden = hidden;
-		if (resend && state === 'on') await sendSubscription().catch(() => {});
+		if (resend && state === 'on') {
+			const sent = await sendSubscription().catch(() => state);
+			// Unless notifications were turned on or off in the meantime.
+			if (this.notifications === state) this.notifications = sent;
+		}
 	}
 
 	async #load(records: Kindergarten, teacher = this.me?.id) {
