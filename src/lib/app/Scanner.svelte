@@ -1,30 +1,32 @@
 <script lang="ts">
-	import Icon from '$lib/components/Icon.svelte';
-	import { messages, type Locale } from '$lib/i18n';
+	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import { onMount } from 'svelte';
-	import { button } from './ui';
+	import { alert, button } from './ui';
 
-	// The rear camera, reading QR codes until one is a card; the camera part of the decoder loads when a
-	// scan starts. A photo of the card works here too, for devices without a camera or where it isn't
-	// allowed. Closing the scanner releases the camera.
+	// The rear camera in a dialog in the middle of the screen, reading QR codes until one is a card; the camera
+	// part of the decoder loads when it opens. It opens when mounted, as ConfirmDialog is, and `onclose` runs
+	// when it closes, by Escape or Cancel. Closing or removing it releases the camera.
 	let {
 		locale,
-		disabled,
+		error,
 		onread,
-		onphoto
+		onclose
 	}: {
 		locale: Locale;
-		disabled: boolean;
+		/** Why the last code the camera read isn't a card, shown while scanning goes on. */
+		error?: string;
 		/** Receives each code the camera reads, and returns whether scanning is done. */
 		onread: (text: string) => boolean;
-		onphoto: (photo: File) => void;
+		onclose: () => void;
 	} = $props();
 
-	const t = $derived(messages[locale].app.connect);
+	const t = $derived(messages[locale].app);
+	let dialog = $state<HTMLDialogElement>();
 	let video = $state<HTMLVideoElement>();
 	let camera = $state<'starting' | 'on' | 'blocked' | 'missing'>('starting');
 
 	onMount(() => {
+		dialog?.showModal();
 		let stop: (() => void) | undefined;
 		let closed = false;
 		(async () => {
@@ -65,32 +67,34 @@
 			stop?.();
 		};
 	});
-
-	function choose(event: Event & { currentTarget: EventTarget & HTMLInputElement }) {
-		const input = event.currentTarget;
-		const [photo] = input.files ?? [];
-		input.value = '';
-		if (photo) onphoto(photo);
-	}
 </script>
 
-<div class="mt-6 grid justify-items-start gap-4">
+<dialog
+	bind:this={dialog}
+	class="m-auto w-[calc(100%-2rem)] max-w-md rounded-4xl bg-white p-6 text-ink shadow-2xl shadow-indigo-950/25 backdrop:bg-ink/30 sm:p-7"
+	aria-label={t.connect.scan}
+	{onclose}
+>
 	{#if camera === 'blocked' || camera === 'missing'}
-		<p class="font-semibold text-muted">{camera === 'blocked' ? t.cameraBlocked : t.noCamera}</p>
+		<p class="font-semibold text-muted">
+			{camera === 'blocked' ? t.connect.cameraBlocked : t.connect.noCamera}
+		</p>
 	{:else}
 		<video
 			bind:this={video}
-			class="aspect-square w-full max-w-sm rounded-3xl bg-ink object-cover"
+			class="aspect-square w-full rounded-3xl bg-ink object-cover"
 			muted
 			playsinline
 			aria-hidden="true"
 		></video>
-		<p class="text-muted">{camera === 'starting' ? t.cameraStarting : t.camera}</p>
+		<p class="mt-4 text-center text-muted">
+			{camera === 'starting' ? t.connect.cameraStarting : t.connect.camera}
+		</p>
 	{/if}
-	<label
-		class="{button.secondary} cursor-pointer has-focus-visible:outline-3 has-focus-visible:outline-offset-4 has-focus-visible:outline-accent"
-	>
-		<Icon name="image" class="size-4" />{t.photo}
-		<input class="sr-only" type="file" accept="image/*" {disabled} onchange={choose} />
-	</label>
-</div>
+	{#if error}<p class="{alert} mt-4" role="alert">{errorMessage(locale, error)}</p>{/if}
+	<div class="mt-6 flex justify-end">
+		<button class={button.secondary} type="button" onclick={() => dialog?.close()}>
+			{t.actions.cancel}
+		</button>
+	</div>
+</dialog>

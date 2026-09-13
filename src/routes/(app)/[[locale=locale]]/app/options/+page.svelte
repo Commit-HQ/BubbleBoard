@@ -5,18 +5,17 @@
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp } from '$lib/app/state.svelte';
 	import { button, surface } from '$lib/app/ui';
-	import BuildLabel from '$lib/components/BuildLabel.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import IconTile from '$lib/components/IconTile.svelte';
 	import LanguageSwitch from '$lib/components/LanguageSwitch.svelte';
 	import { listNames, messages, teacherName } from '$lib/i18n';
 	import { cardKind } from '$lib/kindergarten';
-	import { appPath, homePath } from '$lib/paths';
+	import { appPath } from '$lib/paths';
 	import type { PageProps } from './$types';
 
-	// Settings, from the header of every app page. They open on any device, connected or not, because the
-	// language is chosen here. A connected device also has its notifications, above the language, and its card
-	// with signing out, at the bottom.
+	// Settings, from the header of a connected device's pages: its notifications, then the language, and its
+	// card with signing out at the bottom. They open on any device, because the header also has them while the
+	// app starts; a device that turns out not to be connected sees only the language.
 	let { data }: PageProps = $props();
 	const app = getApp();
 	const m = $derived(messages[data.locale]);
@@ -71,14 +70,6 @@
 			</button>
 		</section>
 	{/if}
-
-	<div class="flex flex-wrap justify-between gap-x-6 gap-y-2 px-2 text-sm text-muted">
-		<!-- In a window of its own: the installed app has no way back from the landing page. -->
-		<a class="hover:text-ink" href={homePath(data.locale)} target="_blank" rel="noopener noreferrer"
-			>{t.options.about}</a
-		>
-		<BuildLabel locale={data.locale} />
-	</div>
 
 	{#if confirming}
 		<ConfirmDialog

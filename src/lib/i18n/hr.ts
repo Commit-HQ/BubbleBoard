@@ -12,6 +12,7 @@ export const hr = {
 	skip: 'Preskoči na sadržaj',
 	home: 'BubbleBoard početna',
 	language: 'Jezik',
+	soon: 'Uskoro',
 	nav: {
 		label: 'Glavna',
 		sections: {
@@ -98,7 +99,7 @@ export const hr = {
 		},
 		server: {
 			title: 'Nečitljivo i ako procuri',
-			copy: 'Poslužitelj pohranjuje sadržaj bez ključeva potrebnih za njegovo čitanje. Curenje pohranjenog sadržaja, bez ključeva s vaših uređaja, ne otkriva fotografije, imena ni poruke.'
+			copy: 'Poslužitelj nema ključeve za čitanje sadržaja, pa curenje ne otkriva fotografije, imena ni poruke.'
 		},
 		host: {
 			title: 'Ključevi ostaju u vašem vrtiću',
@@ -218,7 +219,7 @@ export const hr = {
 		},
 		connect: {
 			title: 'Povežite ovaj uređaj',
-			copy: 'Skenirajte QR kod koji ste dobili u vrtiću. Možete i usmjeriti kameru mobitela prema njemu.',
+			copy: 'Skenirajte QR kod koji ste dobili u vrtiću. Umjesto skeniranja možete upisati kod otisnut ispod njega ili odabrati njegovu fotografiju iz galerije.',
 			scan: 'Skeniraj QR kod',
 			enter: 'Upiši kod',
 			camera: 'Usmjerite kameru prema QR kodu.',
@@ -285,7 +286,7 @@ export const hr = {
 		},
 		home: {
 			title: 'Početna',
-			greeting: (hour: number, name?: string) => {
+			greeting: (hour: number, name: string) => {
 				const words =
 					hour < 5
 						? 'Dobra večer'
@@ -294,7 +295,7 @@ export const hr = {
 							: hour < 18
 								? 'Dobar dan'
 								: 'Dobra večer';
-				return name ? `${words}, ${name}` : words;
+				return `${words}, ${name}`;
 			}
 		},
 		manage: {
@@ -408,9 +409,9 @@ export const hr = {
 			family: 'Povezani ste obiteljskim QR kodom',
 			signOut: 'Odjavi ovaj uređaj',
 			signOutTitle: 'Odjaviti ovaj uređaj?',
-			signOutCopy: 'Za ponovno korištenje BubbleBoarda ovdje trebat će vam QR kod.',
-			about: 'O BubbleBoardu'
+			signOutCopy: 'Za ponovno korištenje BubbleBoarda ovdje trebat će vam QR kod.'
 		},
+		about: 'O BubbleBoardu',
 		notices: {
 			title: 'Obavijesti',
 			new: 'Dodaj obavijest',

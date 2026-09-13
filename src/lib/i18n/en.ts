@@ -10,6 +10,8 @@ export const en = {
 	skip: 'Skip to content',
 	home: 'BubbleBoard home',
 	language: 'Language',
+	// The tag after the title of something on the landing page that BubbleBoard can't do yet.
+	soon: 'Coming soon',
 	nav: {
 		label: 'Main',
 		sections: {
@@ -100,7 +102,7 @@ export const en = {
 		},
 		server: {
 			title: 'Unreadable if it leaks',
-			copy: 'The server stores content without the keys needed to read it. A leak of stored content, without the keys on your devices, reveals no photos, names, or messages.'
+			copy: 'The server has no keys to read what it stores, so a leak reveals no photos, names, or messages.'
 		},
 		host: {
 			title: 'Keys stay in your kindergarten',
@@ -225,7 +227,7 @@ export const en = {
 		},
 		connect: {
 			title: 'Connect this device',
-			copy: 'Scan the QR code from your kindergarten. You can also point your phone’s camera at it.',
+			copy: 'Scan the QR code from your kindergarten. Instead of scanning, you can type the code printed under it, or choose a photo of it.',
 			scan: 'Scan QR code',
 			enter: 'Enter code',
 			camera: 'Point the camera at the QR code.',
@@ -291,8 +293,8 @@ export const en = {
 		},
 		home: {
 			title: 'Home',
-			// Home's first line, for the hour on the device's clock. Families are greeted without a name.
-			greeting: (hour: number, name?: string) => {
+			// Home's first line for staff, by name, for the hour on the device's clock.
+			greeting: (hour: number, name: string) => {
 				const words =
 					hour < 5
 						? 'Good evening'
@@ -301,7 +303,7 @@ export const en = {
 							: hour < 18
 								? 'Good afternoon'
 								: 'Good evening';
-				return name ? `${words}, ${name}` : words;
+				return `${words}, ${name}`;
 			}
 		},
 		manage: {
@@ -414,9 +416,10 @@ export const en = {
 			family: 'Connected with a family QR code',
 			signOut: 'Sign out of this device',
 			signOutTitle: 'Sign out of this device?',
-			signOutCopy: 'To use BubbleBoard here again, you’ll need your QR code.',
-			about: 'About BubbleBoard'
+			signOutCopy: 'To use BubbleBoard here again, you’ll need your QR code.'
 		},
+		// The link to the landing page in the footer of every app page.
+		about: 'About BubbleBoard',
 		notices: {
 			title: 'Notices',
 			new: 'Add notice',
