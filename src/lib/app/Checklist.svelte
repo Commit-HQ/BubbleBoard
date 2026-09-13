@@ -4,16 +4,19 @@
 	import { choice, labelFocus } from './ui';
 
 	// Checkboxes drawn as cards under a label, such as a notice's classrooms, with Select all beside the
-	// label when there are several to choose from.
+	// label when there are several to choose from. A `disabled` list shows a choice that can't change, such
+	// as the only classroom a notice can go to.
 	let {
 		locale,
 		label,
 		options,
+		disabled = false,
 		chosen = $bindable()
 	}: {
 		locale: Locale;
 		label: string;
 		options: { value: string; label: string; detail?: string }[];
+		disabled?: boolean;
 		chosen: string[];
 	} = $props();
 
@@ -27,12 +30,13 @@
 		<span id="{id}-label" class="font-semibold">{label}</span>
 		{#if options.length > 1}
 			<label
-				class="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full font-semibold text-muted transition-colors hover:text-ink {labelFocus}"
+				class="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full font-semibold text-muted transition-colors hover:text-ink has-disabled:pointer-events-none {labelFocus}"
 			>
 				<input
 					class="sr-only"
 					type="checkbox"
 					checked={allChosen}
+					{disabled}
 					onchange={(event) =>
 						(chosen = event.currentTarget.checked ? options.map((option) => option.value) : [])}
 				/>
@@ -44,7 +48,13 @@
 	<div class="grid gap-2 sm:grid-cols-2">
 		{#each options as option (option.value)}
 			<label class={choice.card}>
-				<input class="sr-only" type="checkbox" value={option.value} bind:group={chosen} />
+				<input
+					class="sr-only"
+					type="checkbox"
+					value={option.value}
+					{disabled}
+					bind:group={chosen}
+				/>
 				<span class={choice.box}><Icon name="check" class={choice.check} /></span>
 				<span class="min-w-0">
 					<span class="block font-semibold">{option.label}</span>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
 	import { isPicture } from '$lib/files';
-	import { errorMessage, formatDate, listNames, messages, type Locale } from '$lib/i18n';
+	import { errorMessage, formatDateTime, listNames, messages, type Locale } from '$lib/i18n';
 	import { namesOf } from '$lib/kindergarten';
 	import type { Notice } from '$lib/notices';
 	import { appPath } from '$lib/paths';
@@ -24,9 +24,13 @@
 	const documents = $derived(notice.files?.filter((file) => !isPicture(file)) ?? []);
 	const task = new Task();
 	const fileTask = new Task();
-	/** Who put the notice up and on which day, and whether it was edited since. */
+	/** Who put the notice up and when, and whether it was edited since. */
 	const details = $derived(
-		[notice.author, formatDate(locale, notice.announcedAt), notice.editedAt ? t.edited : undefined]
+		[
+			notice.author,
+			formatDateTime(locale, notice.announcedAt),
+			notice.editedAt ? t.edited : undefined
+		]
 			.filter(Boolean)
 			.join(' · ')
 	);

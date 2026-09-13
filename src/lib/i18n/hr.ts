@@ -194,6 +194,7 @@ export const hr = {
 		},
 		actions: {
 			add: 'Dodaj',
+			back: 'Natrag',
 			cancel: 'Odustani',
 			save: 'Spremi',
 			saved: 'Spremljeno',
@@ -275,7 +276,7 @@ export const hr = {
 			about: 'Obavijesti i fotografije iz vrtića.',
 			private: 'Ne dijelite ovaj QR kod. Ako ga izgubite, vrtić će vam dati novi.',
 			recovery:
-				'Upotrijebite ga samo ako se izgube svi administratorski QR kodovi. Čuvajte ga pod ključem, odvojeno od svojeg QR koda.',
+				'Rezervni QR kod za slučaj da se izgube svi administratorski QR kodovi: tada se samo njime mogu zamijeniti izgubljeni QR kodovi i dodavati djeca, odgojitelji i skupine. Tko ga ima, može sve što i administrator, zato ga čuvajte pod ključem u vrtiću, odvojeno od svakodnevnih QR kodova.',
 			qr: (name: string) => `QR kod: ${name}`,
 			replace: 'Zamijeni QR kod',
 			replaceTitle: (name: string) => `Zamijeniti QR kod „${name}”?`,
@@ -283,7 +284,18 @@ export const hr = {
 				'Stari QR kod prestaje raditi, a svi uređaji koji su ga koristili bit će odjavljeni.'
 		},
 		home: {
-			title: 'Početna'
+			title: 'Početna',
+			greeting: (hour: number, name?: string) => {
+				const words =
+					hour < 5
+						? 'Dobra večer'
+						: hour < 10
+							? 'Dobro jutro'
+							: hour < 18
+								? 'Dobar dan'
+								: 'Dobra večer';
+				return name ? `${words}, ${name}` : words;
+			}
 		},
 		manage: {
 			title: 'Administracija',
@@ -325,7 +337,7 @@ export const hr = {
 			newCardHint: 'Ispisat ćete ga za obitelj.',
 			cardName: 'Tko dobiva QR kod?',
 			cardNameHint:
-				'Na primjer „Ivana (mama)”. Roditelji koji ne žive zajedno kasnije mogu dobiti zasebne QR kodove.',
+				'Na primjer „Obitelj Horvat”. Roditelji koji ne žive zajedno kasnije mogu dobiti zasebne QR kodove.',
 			sibling: 'QR kod brata ili sestre',
 			siblingHint: 'Obitelj koristi QR kod koji već ima.',
 			siblingName: 'Brat ili sestra',
@@ -388,7 +400,7 @@ export const hr = {
 				`${name} više neće moći otvoriti BubbleBoard, a uređaji s tim QR kodom bit će odjavljeni.`,
 			self: 'Ovo ste vi. Ukloniti vas može drugi administrator.',
 			recovery:
-				'QR kod za oporavak može sve što i administrator. Čuvajte ga pod ključem i zamijenite ga ako ga je netko drugi možda vidio.'
+				'Rezervni QR kod za slučaj da se izgube svi administratorski QR kodovi. Tada se samo njime mogu zamijeniti izgubljeni QR kodovi, a bez njega nitko ne bi mogao dodavati djecu, odgojitelje ni skupine. Budući da može sve što i administrator, čuvajte ga pod ključem u vrtiću, odvojeno od svakodnevnih QR kodova, i zamijenite ga ako ga je netko drugi možda vidio.'
 		},
 		options: {
 			title: 'Opcije',
@@ -434,7 +446,8 @@ export const hr = {
 		},
 		polls: {
 			add: 'Dodaj anketu',
-			addHint: 'Tko je što odabrao vide samo odgojitelji.',
+			addHint:
+				'Pitanje i opis ankete napišite u tekstu obavijesti, a ovdje dodajte odgovore. Tko je što odabrao vide samo odgojitelji.',
 			answers: 'Odgovori',
 			answer: (number: number) => `${number}. odgovor`,
 			removeAnswer: (number: number) => `Ukloni ${number}. odgovor`,
@@ -456,8 +469,8 @@ export const hr = {
 		},
 		photos: {
 			new: 'Objavi ploču',
-			title: 'Fotografije ploče',
-			newTitle: 'Fotografija ploče',
+			title: 'Fotografije oglasne ploče',
+			photo: 'Fotografija oglasne ploče',
 			newCopy:
 				'Fotografirajte oglasnu ploču skupine, bez djece na fotografiji. Obitelji je vide na početnoj stranici dok ne stavite novu.',
 			classroom: 'Skupina',
@@ -469,7 +482,7 @@ export const hr = {
 			preview: 'Fotografija kakvu će vidjeti obitelji',
 			putUp: 'Stavi na ploču',
 			replaces: 'Zamijenit će fotografiju koja je sada na ploči.',
-			open: (classroom: string) => `Otvori fotografiju ploče skupine ${classroom}`,
+			open: (classroom: string) => `Otvori fotografiju oglasne ploče skupine ${classroom}`,
 			loading: 'Otvaramo fotografiju…',
 			replace: 'Stavi novu fotografiju',
 			remove: 'Skini',
@@ -512,7 +525,6 @@ export const hr = {
 			toolbar: 'Oblikovanje',
 			loading: 'Otvaramo uređivač…',
 			bold: 'Podebljano',
-			italic: 'Kurziv',
 			bulletList: 'Popis s oznakama',
 			orderedList: 'Numerirani popis',
 			link: 'Poveznica',

@@ -227,7 +227,7 @@ describe('notice text', () => {
 	const hat = (...marks: unknown[]) => item(paragraph(text('Hat', ...marks)));
 	const water = item(paragraph(text('Water')));
 
-	it('keeps lists and links, and drops attributes the app doesn’t use and the text colours notices had', () => {
+	it('keeps lists and links, and drops attributes the app doesn’t use and the text colours and italics notices had', () => {
 		const written = doc(
 			paragraph(
 				text('Picnic', { type: 'bold' }, { type: 'italic' }),
@@ -244,7 +244,7 @@ describe('notice text', () => {
 		expect(readDocument(written)).toEqual(
 			doc(
 				paragraph(
-					text('Picnic', { type: 'bold' }, { type: 'italic' }),
+					text('Picnic', { type: 'bold' }),
 					{ type: 'hardBreak' },
 					text('map', { type: 'link', attrs: { href: 'https://example.com/map' } })
 				),

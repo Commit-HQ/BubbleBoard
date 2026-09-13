@@ -33,7 +33,7 @@
 		locale={data.locale}
 		title={t.teacher.newTitle}
 		need="admin"
-		back={{ href: appPath(data.locale, 'teachers'), label: t.teachers.title }}
+		back={appPath(data.locale, 'teachers')}
 	>
 		<TeacherForm locale={data.locale} submitLabel={t.teacher.create} onsubmit={create} />
 	</Screen>

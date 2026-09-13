@@ -88,10 +88,7 @@
 		locale={data.locale}
 		title={classroom ? t.newChild.title : t.notFound.title}
 		need="admin"
-		back={classroom && {
-			href: appPath(data.locale, 'classroom', { id: classroom.id }),
-			label: classroom.name
-		}}
+		back={classroom && appPath(data.locale, 'classroom', { id: classroom.id })}
 	>
 		{#if classroom}
 			<form class="{surface} grid gap-7" onsubmit={submit}>

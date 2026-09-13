@@ -33,7 +33,7 @@ it('renders a notice as text in the app’s own elements, never as markup', () =
 									{
 										type: 'text',
 										text: 'Hat',
-										marks: [{ type: 'italic' }]
+										marks: [{ type: 'bold' }]
 									}
 								]
 							}
@@ -52,5 +52,5 @@ it('renders a notice as text in the app’s own elements, never as markup', () =
 	expect(body).toContain('&lt;img src=x onerror=alert(1)>');
 	expect(body).toContain('href="https://example.com/&quot;onmouseover=&quot;alert(1)"');
 	expect(body).toContain('rel="noopener noreferrer"');
-	expect(body).toMatch(/<ul[^>]*>.*<li[^>]*>.*<em>Hat<\/em>.*<\/li>.*<\/ul>/s);
+	expect(body).toMatch(/<ul[^>]*>.*<li[^>]*>.*<strong>Hat<\/strong>.*<\/li>.*<\/ul>/s);
 });

@@ -52,12 +52,11 @@
 		return {
 			paper: notice?.paper ?? 'white',
 			days: notice ? Math.round((notice.expiresAt - notice.postedAt) / day) : defaultNoticeDays,
-			// Someone with a single classroom posts to it.
-			chosen: notice
-				? notice.classrooms.filter((classroom) => own.includes(classroom))
-				: own.length === 1
+			// Someone with a single classroom posts to it, and the form keeps it ticked.
+			chosen:
+				own.length === 1
 					? own
-					: [],
+					: (notice?.classrooms.filter((classroom) => own.includes(classroom)) ?? []),
 			polling: notice?.poll !== undefined,
 			counting: notice?.poll?.key !== undefined,
 			answered: (notice?.votes.length ?? 0) > 0,
@@ -251,6 +250,7 @@
 			{locale}
 			label={t.notices.classrooms}
 			options={classrooms.map((classroom) => ({ value: classroom.id, label: classroom.name }))}
+			disabled={classrooms.length === 1}
 			bind:chosen
 		/>
 

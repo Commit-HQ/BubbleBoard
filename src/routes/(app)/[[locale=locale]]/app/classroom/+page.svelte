@@ -32,7 +32,7 @@
 
 	async function remove(classroom: string) {
 		await app.deleteClassroom(classroom);
-		await goto(appPath(data.locale));
+		await goto(appPath(data.locale, 'manage'));
 	}
 
 	/** The family's children in this classroom, which tell cards with similar names apart. */
@@ -65,6 +65,7 @@
 	<Screen
 		locale={data.locale}
 		title={classroom?.name ?? t.notFound.title}
+		back={appPath(data.locale, 'manage')}
 		subtitle={classroom && t.counts.children(children.length)}
 		rename={classroom && app.admin
 			? {

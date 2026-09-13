@@ -9,9 +9,9 @@
 
 	// The notice editor: Tiptap 3, imported when this component mounts, so only the page where notices are
 	// written downloads it (next-step-plan.md, Editor). Its schema holds what boards render: paragraphs,
-	// lists, bold, italic, and links. Its toolbar also chooses the notice's paper, the background the text is
-	// written on. Tiptap's injected stylesheet is off for the CSP, with its rules in app.css. Emoji come from
-	// the keyboard.
+	// lists, bold, and links. Its toolbar also chooses the notice's paper, the background the text is written
+	// on. Tiptap's injected stylesheet is off for the CSP, with its rules in app.css. Emoji come from the
+	// keyboard.
 	let {
 		locale,
 		content,
@@ -34,7 +34,6 @@
 	/** The formatting at the selection, for the toolbar. */
 	let active = $state.raw({
 		bold: false,
-		italic: false,
 		bulletList: false,
 		orderedList: false,
 		link: false
@@ -62,6 +61,7 @@
 						codeBlock: false,
 						heading: false,
 						horizontalRule: false,
+						italic: false,
 						strike: false,
 						underline: false,
 						link: {
@@ -97,7 +97,6 @@
 	function show(current: Editor) {
 		active = {
 			bold: current.isActive('bold'),
-			italic: current.isActive('italic'),
 			bulletList: current.isActive('bulletList'),
 			orderedList: current.isActive('orderedList'),
 			link: current.isActive('link')
@@ -184,7 +183,6 @@
 		aria-label={t.toolbar}
 	>
 		{@render tool('bold', t.bold, active.bold, () => run((chain) => chain.toggleBold()))}
-		{@render tool('italic', t.italic, active.italic, () => run((chain) => chain.toggleItalic()))}
 		{@render tool('list', t.bulletList, active.bulletList, () =>
 			run((chain) => chain.toggleBulletList())
 		)}

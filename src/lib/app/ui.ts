@@ -32,10 +32,10 @@ export const filePicker = `cursor-pointer has-disabled:pointer-events-none has-d
  * with `aria-pressed` looks the same, for a choice that's sent as soon as it's made, such as a poll's answer.
  * A `card` is a row, and a `tile` a block with an icon. Put a check icon with `choice.check` in a
  * `choice.box`, or in a round `choice.circle` for a radio: the icon marks the state where forced colours
- * remove fills. `choice.option` is a radio that fills with ink when chosen; forced colours drop the fill,
- * so mark the chosen one another way there.
+ * remove fills. A disabled input keeps its card's look, which then can't be changed. `choice.option` is a
+ * radio that fills with ink when chosen; forced colours drop the fill, so mark the chosen one another way there.
  */
-const choosable = `group cursor-pointer border border-ink/10 bg-white/60 text-left transition hover:bg-white has-checked:border-accent has-checked:bg-white aria-pressed:border-accent aria-pressed:bg-white ${labelFocus}`;
+const choosable = `group cursor-pointer border border-ink/10 bg-white/60 text-left transition hover:bg-white has-checked:border-accent has-checked:bg-white has-disabled:pointer-events-none aria-pressed:border-accent aria-pressed:bg-white ${labelFocus}`;
 const mark =
 	'grid size-6 shrink-0 place-items-center border-2 border-ink/20 bg-white text-white transition group-has-checked:border-accent group-has-checked:bg-accent group-aria-pressed:border-accent group-aria-pressed:bg-accent';
 

@@ -15,7 +15,8 @@
 	import type { PageProps } from './$types';
 
 	// Settings, from the header of every app page. They open on any device, connected or not, because the
-	// language is chosen here; a connected device also has its card and notifications.
+	// language is chosen here. A connected device also has its notifications, above the language, and its card
+	// with signing out, at the bottom.
 	let { data }: PageProps = $props();
 	const app = getApp();
 	const m = $derived(messages[data.locale]);
@@ -29,6 +30,23 @@
 </script>
 
 <Screen locale={data.locale} title={t.options.title} need="nothing">
+	{#if app.connected}
+		<section class={surface} aria-labelledby="notifications-title">
+			<IconTile icon="bell" tone="ink" />
+			<h2 id="notifications-title" class="mt-5 text-3xl">{t.notifications.title}</h2>
+			<p class="mt-1 text-muted">{t.notifications[app.notifications]}</p>
+			<NotificationSwitch locale={data.locale} />
+		</section>
+	{/if}
+
+	<section class={surface} aria-labelledby="language-title">
+		<IconTile icon="globe" tone="ink" />
+		<h2 id="language-title" class="mt-5 text-3xl">{m.language}</h2>
+		<div class="mt-6 max-w-sm">
+			<LanguageSwitch locale={data.locale} names />
+		</div>
+	</section>
+
 	{#if app.connected}
 		<section class={surface}>
 			<IconTile icon="phone" tone="ink" />
@@ -52,22 +70,7 @@
 				<Icon name="logOut" class="size-4" />{t.options.signOut}
 			</button>
 		</section>
-
-		<section class={surface} aria-labelledby="notifications-title">
-			<IconTile icon="bell" tone="ink" />
-			<h2 id="notifications-title" class="mt-5 text-3xl">{t.notifications.title}</h2>
-			<p class="mt-1 text-muted">{t.notifications[app.notifications]}</p>
-			<NotificationSwitch locale={data.locale} />
-		</section>
 	{/if}
-
-	<section class={surface} aria-labelledby="language-title">
-		<IconTile icon="globe" tone="ink" />
-		<h2 id="language-title" class="mt-5 text-3xl">{m.language}</h2>
-		<div class="mt-6 max-w-sm">
-			<LanguageSwitch locale={data.locale} names />
-		</div>
-	</section>
 
 	<div class="flex flex-wrap justify-between gap-x-6 gap-y-2 px-2 text-sm text-muted">
 		<!-- In a window of its own: the installed app has no way back from the landing page. -->

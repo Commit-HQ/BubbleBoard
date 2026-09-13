@@ -17,7 +17,7 @@ export function isLocale(value: unknown): value is Locale {
 
 const nameLists: Partial<Record<Locale, Intl.ListFormat>> = {};
 
-/** Names on a detail line, such as “Ivana (mum), Marko (dad)”. */
+/** Names on a detail line, such as “Horvat family, Kovač family”. */
 export function listNames(locale: Locale, names: string[]) {
 	// A formatter is slow to make, so each language's is made once.
 	nameLists[locale] ??= new Intl.ListFormat(locale, { type: 'unit', style: 'short' });
@@ -35,13 +35,14 @@ export function errorMessage(locale: Locale, code: string) {
 	return errors[code] ?? errors.unexpected;
 }
 
-/** A day as notices and board photos show it: “23.01.2026”, or “23/01/2026” in English. */
-export function formatDate(locale: Locale, time: number) {
+/** When a notice or board photo went up: “23.01.2026 u 8:30”, or “23/01/2026 at 8:30” in English. */
+export function formatDateTime(locale: Locale, time: number) {
 	const date = new Date(time);
-	const [day, month] = [date.getDate(), date.getMonth() + 1].map((part) =>
-		String(part).padStart(2, '0')
+	const [day, month, minutes] = [date.getDate(), date.getMonth() + 1, date.getMinutes()].map(
+		(part) => String(part).padStart(2, '0')
 	);
-	return [day, month, date.getFullYear()].join(locale === 'hr' ? '.' : '/');
+	const [separator, at] = locale === 'hr' ? ['.', 'u'] : ['/', 'at'];
+	return `${[day, month, date.getFullYear()].join(separator)} ${at} ${date.getHours()}:${minutes}`;
 }
 
 /** A file's size, such as “240 kB” or “3.4 MB”. */

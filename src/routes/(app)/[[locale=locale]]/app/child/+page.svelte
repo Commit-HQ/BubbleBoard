@@ -112,10 +112,7 @@
 	<Screen
 		locale={data.locale}
 		title={child?.name ?? t.notFound.title}
-		back={classroom && {
-			href: appPath(data.locale, 'classroom', { id: classroom.id }),
-			label: classroom.name
-		}}
+		back={classroom && appPath(data.locale, 'classroom', { id: classroom.id })}
 		rename={child && app.admin
 			? { label: t.newChild.name, save: (name) => close(app.renameChild(child, name)) }
 			: undefined}

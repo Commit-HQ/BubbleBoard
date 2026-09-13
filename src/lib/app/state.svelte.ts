@@ -315,8 +315,8 @@ export class App {
 
 	/**
 	 * Loads the records and board again, quietly: when the app comes back into view, but not more often than
-	 * `refreshAfter`, or `now`, when a notification says there's something new. Each load waits for the one
-	 * before, so the records that stay are the latest.
+	 * `refreshAfter`, or `now`, when a notification says there's something new or home is pulled down. Each
+	 * load waits for the one before, so the records that stay are the latest.
 	 */
 	refresh({ now = false } = {}) {
 		if (!this.connected || (!now && Date.now() - this.#loadedAt < refreshAfter)) return;
@@ -333,6 +333,9 @@ export class App {
 			await this.#open(await request<Access>('GET', '/api/session'), card, { resend: false });
 		} catch (cause) {
 			if (isDisconnection(cause)) await this.#disconnect('signed-out');
+			// A load that failed, such as while a phone's connection wakes up, is tried again the next time the
+			// app comes into view, without waiting out `refreshAfter`.
+			else this.#loadedAt = 0;
 		}
 	}
 

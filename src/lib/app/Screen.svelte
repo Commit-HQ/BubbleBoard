@@ -10,8 +10,9 @@
 	import { button, buttonRow, surface } from './ui';
 
 	// The frame of an app page below home: a way back, a title, and the page once this device may see it.
-	// `need` is what the device must be: staff, an admin, or nothing, for settings. With `rename`, a pencil
-	// beside the title opens a field that renames what the title names.
+	// The way back leads home, or to `back` for a page inside another. `need` is what the device must be:
+	// staff, an admin, or nothing, for settings. With `rename`, a pencil beside the title opens a field that
+	// renames what the title names.
 	let {
 		locale,
 		title,
@@ -24,7 +25,7 @@
 		locale: Locale;
 		title: string;
 		subtitle?: string;
-		back?: { href: string; label: string };
+		back?: string;
 		need?: 'nothing' | 'staff' | 'admin';
 		rename?: { label: string; save: (name: string) => Promise<unknown> };
 		children: Snippet;
@@ -50,8 +51,8 @@
 {#snippet content()}
 	<div class="grid gap-6">
 		<header class="print:hidden">
-			<a class="{button.quiet} -ml-3" href={back?.href ?? appPath(locale)}>
-				<Icon name="chevronLeft" class="size-4" />{back?.label ?? t.home.title}
+			<a class="{button.quiet} -ml-3" href={back ?? appPath(locale)}>
+				<Icon name="chevronLeft" class="size-4" />{t.actions.back}
 			</a>
 			{#if rename && renaming}
 				<h1 class="sr-only">{title}</h1>

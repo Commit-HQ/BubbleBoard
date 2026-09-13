@@ -56,7 +56,7 @@
 	}
 </script>
 
-<Screen locale={data.locale} title={t.photos.newTitle} subtitle={t.photos.newCopy}>
+<Screen locale={data.locale} title={t.photos.photo} subtitle={t.photos.newCopy}>
 	{#if classrooms.length}
 		<div class="{surface} grid gap-7">
 			{#if classrooms.length > 1}

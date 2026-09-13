@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
 	import { errorCode } from '$lib/errors';
-	import { errorMessage, formatDate, messages, type Locale } from '$lib/i18n';
+	import { errorMessage, formatDateTime, messages, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
 	import type { Photo } from '$lib/photos';
 	import ConfirmDialog from './ConfirmDialog.svelte';
@@ -9,15 +9,15 @@
 	import { getApp } from './state.svelte';
 	import { button } from './ui';
 
-	// The photo of a classroom's corkboard, as it looks now, with who put it up and on which day, as a notice
-	// says it. A tap opens it on the whole screen, to zoom in on what's pinned up or save it; the classroom's
-	// teachers put a new one up or take it down.
+	// The photo of a classroom's corkboard, as it looks now, captioned as the notice board's photo, with its
+	// classroom and who put it up and when, as a notice says it. A tap opens it on the whole screen, to zoom in
+	// on what's pinned up or save it; the classroom's teachers put a new one up or take it down.
 	let { locale, photo }: { locale: Locale; photo: Photo } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.photos);
 	const classroom = $derived(app.myClassrooms.find(({ id }) => id === photo.classroom)?.name ?? '');
 	const details = $derived(
-		[photo.author, formatDate(locale, photo.postedAt)].filter(Boolean).join(' · ')
+		[classroom, photo.author, formatDateTime(locale, photo.postedAt)].filter(Boolean).join(' · ')
 	);
 	const picture = $derived(app.photoPicture(photo));
 	let viewing = $state(false);
@@ -50,9 +50,9 @@
 		</p>
 	{/await}
 	<figcaption class="flex items-center justify-between gap-3 py-1.5 pr-1.5 pl-5 text-sm">
-		<span class="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1 py-2">
-			<span class="font-semibold">{classroom}</span>
-			<span class="text-muted">{details}</span>
+		<span class="min-w-0 py-2">
+			<span class="block font-semibold">{t.photo}</span>
+			<span class="block text-muted">{details}</span>
 		</span>
 		{#if app.status === 'staff'}
 			<span class="flex shrink-0">

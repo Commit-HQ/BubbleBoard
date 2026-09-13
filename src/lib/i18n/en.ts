@@ -197,6 +197,8 @@ export const en = {
 		},
 		actions: {
 			add: 'Add',
+			// The way back from a page, in its top corner.
+			back: 'Back',
 			cancel: 'Cancel',
 			save: 'Save',
 			saved: 'Saved',
@@ -278,14 +280,26 @@ export const en = {
 			about: 'Notices and photos from your kindergarten.',
 			private: 'Don’t share this QR code. If it’s lost, your kindergarten can give you a new one.',
 			recovery:
-				'Use it only if every admin QR code is lost. Keep it locked away, apart from your own.',
+				'A spare for when every admin QR code is lost: then only it can replace the lost QR codes and add children, teachers, and classrooms. Whoever has it can do everything an admin can, so keep it locked away at the kindergarten, apart from everyday QR codes.',
 			qr: (name: string) => `QR code for ${name}`,
 			replace: 'Replace QR code',
 			replaceTitle: (name: string) => `Replace the QR code for ${name}?`,
 			replaceCopy: 'The old QR code stops working, and every device that used it is signed out.'
 		},
 		home: {
-			title: 'Home'
+			title: 'Home',
+			// Home's first line, for the hour on the device's clock. Families are greeted without a name.
+			greeting: (hour: number, name?: string) => {
+				const words =
+					hour < 5
+						? 'Good evening'
+						: hour < 12
+							? 'Good morning'
+							: hour < 18
+								? 'Good afternoon'
+								: 'Good evening';
+				return name ? `${words}, ${name}` : words;
+			}
 		},
 		manage: {
 			title: 'Manage',
@@ -327,7 +341,7 @@ export const en = {
 			newCardHint: 'You’ll print it for the family.',
 			cardName: 'Who gets the QR code?',
 			cardNameHint:
-				'For example “Ivana (mum)”. Parents who live apart can each get their own QR code later.',
+				'For example “Horvat family”. Parents who live apart can each get their own QR code later.',
 			sibling: 'Brother’s or sister’s QR code',
 			siblingHint: 'The family uses the QR code it already has.',
 			siblingName: 'Brother or sister',
@@ -389,7 +403,7 @@ export const en = {
 				`${name} won’t be able to open BubbleBoard anymore, and devices using their QR code will be signed out.`,
 			self: 'This is you. Another admin can remove you.',
 			recovery:
-				'The recovery QR code can do everything an admin can. Keep it locked away, and replace it if someone else may have seen it.'
+				'A spare for when every admin QR code is lost. Then only it can replace the lost QR codes, and without it no one could add children, teachers, or classrooms. Because it can do everything an admin can, keep it locked away at the kindergarten, apart from everyday QR codes, and replace it if someone else may have seen it.'
 		},
 		options: {
 			title: 'Settings',
@@ -438,7 +452,8 @@ export const en = {
 		},
 		polls: {
 			add: 'Add a poll',
-			addHint: 'Only teachers see who chose what.',
+			addHint:
+				'Ask the question, and say what the poll is about, in the notice’s text, then add the answers here. Only teachers see who chose what.',
 			answers: 'Answers',
 			answer: (number: number) => `Answer ${number}`,
 			removeAnswer: (number: number) => `Remove answer ${number}`,
@@ -460,8 +475,9 @@ export const en = {
 		},
 		photos: {
 			new: 'Post the board',
-			title: 'Photos of the board',
-			newTitle: 'Photo of the board',
+			title: 'Photos of the notice board',
+			// A board photo's caption on home, and the title of the page that puts one up.
+			photo: 'Photo of the notice board',
 			newCopy:
 				'Take a photo of the classroom’s board, with no children in it. Its families see it on their home until you put up a new one.',
 			classroom: 'Classroom',
@@ -473,7 +489,7 @@ export const en = {
 			preview: 'The photo, as families will see it',
 			putUp: 'Put it up',
 			replaces: 'It takes the place of the photo that’s up now.',
-			open: (classroom: string) => `Open the photo of the ${classroom} board`,
+			open: (classroom: string) => `Open the photo of the ${classroom} notice board`,
 			loading: 'Opening the photo…',
 			replace: 'Put up a new photo',
 			remove: 'Take down',
@@ -516,7 +532,6 @@ export const en = {
 			toolbar: 'Formatting',
 			loading: 'Opening the editor…',
 			bold: 'Bold',
-			italic: 'Italic',
 			bulletList: 'Bulleted list',
 			orderedList: 'Numbered list',
 			link: 'Link',

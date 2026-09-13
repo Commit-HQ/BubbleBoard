@@ -28,7 +28,7 @@
 	}
 </script>
 
-<Screen locale={data.locale} title={t.title} need="admin">
+<Screen locale={data.locale} title={t.title} need="admin" back={appPath(data.locale, 'manage')}>
 	<a class="{button.primary} justify-self-start" href={appPath(data.locale, 'teacher/new')}>
 		<Icon name="plus" class="size-4" />{t.add}
 	</a>

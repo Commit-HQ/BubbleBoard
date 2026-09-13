@@ -69,7 +69,7 @@
 		locale={data.locale}
 		title={teacher ? teacherName(data.locale, teacher) : t.notFound.title}
 		need="admin"
-		back={{ href: teachersPage, label: t.teachers.title }}
+		back={teachersPage}
 	>
 		{#if teacher}
 			{#if teacher.recovery}
