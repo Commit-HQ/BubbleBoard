@@ -1,6 +1,6 @@
 import { browser } from '$app/environment';
 import { page } from '$app/state';
-import type { Paper, TextColour } from '$lib/notices';
+import type { Paper } from '$lib/notices';
 
 // Class names and small helpers shared by the app's screens, in the landing page's style: an ink pill for
 // the main action, soft white pills for the rest.
@@ -91,13 +91,4 @@ export const paperClass: Record<Paper, string> = {
 	lilac: 'bg-paper-lilac',
 	blue: 'bg-paper-blue',
 	green: 'bg-paper-green'
-};
-
-/** The colour of each notice text colour: at least 4.5:1 on every paper. */
-export const textColourClass: Record<TextColour, string> = {
-	red: 'text-red-700',
-	orange: 'text-orange-800',
-	green: 'text-green-800',
-	blue: 'text-blue-700',
-	purple: 'text-purple-700'
 };

@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import type { NoticeRecord } from './api';
 import { createId, UnreadableError } from './crypto';
-import { isFileName, maxFileBytes, maxNoticeFiles, openFile, prepareFile, sealFile } from './files';
+import {
+	isFileName,
+	isPicture,
+	maxFileBytes,
+	maxNoticeFiles,
+	openFile,
+	openPicture,
+	prepareFile,
+	sealFile
+} from './files';
 import { openNotice, sealNotice, type NoticeContent } from './notices';
 
 // Files attached to notices, sealed as a staff device attaches them and opened as devices get them back.
@@ -33,7 +42,7 @@ describe('notice files', () => {
 		for (const name of [
 			'page.html',
 			'drawing.svg',
-			'photo.png',
+			'photo.gif',
 			'no-extension',
 			'../menu.pdf',
 			'back\\slash.pdf',
@@ -41,6 +50,25 @@ describe('notice files', () => {
 		]) {
 			expect(isFileName(name), name).toBe(false);
 		}
+	});
+
+	it('show on the board as pictures only when named as one and holding a JPEG, PNG, or WebP image', async () => {
+		// A see-through picture, attached from Safari, which can't write WebP.
+		const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
+		const logo = await sealFile(createId(), 'logo.png', png);
+		expect(isFileName(logo.name)).toBe(true);
+		expect(isPicture(logo)).toBe(true);
+		expect(isPicture({ name: 'menu.pdf' })).toBe(false);
+		const opened = await openPicture(logo.sealed, logo);
+		expect(opened.type).toBe('image/png');
+		expect(await text(opened)).toEqual(png);
+		// Anyone holding a classroom's key could name something else a picture.
+		const page = await sealFile(
+			createId(),
+			'trip.webp',
+			encoder.encode('<svg onload="alert(1)"/>')
+		);
+		await expect(openPicture(page.sealed, page)).rejects.toThrow(UnreadableError);
 	});
 
 	it('take documents of the kinds notices carry, up to the size the server keeps, sealed as they’re attached', async () => {

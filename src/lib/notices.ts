@@ -27,19 +27,12 @@ export const defaultNoticeDays = 30;
 /** A day in milliseconds, as a notice's days are counted. */
 export const day = 24 * 60 * 60 * 1000;
 
-/** A notice's background. Every text colour stays readable on each. */
+/** A notice's background, which the editor's toolbar chooses. Ink and muted text stay readable on each. */
 export const papers = ['white', 'yellow', 'peach', 'pink', 'lilac', 'blue', 'green'] as const;
 export type Paper = (typeof papers)[number];
 
-/** The colours text can take besides ink. */
-export const textColours = ['red', 'orange', 'green', 'blue', 'purple'] as const;
-export type TextColour = (typeof textColours)[number];
-
 export type NoticeMark =
-	| { type: 'bold' }
-	| { type: 'italic' }
-	| { type: 'link'; attrs: { href: string } }
-	| { type: 'colour'; attrs: { colour: TextColour } };
+	{ type: 'bold' } | { type: 'italic' } | { type: 'link'; attrs: { href: string } };
 export type NoticeInline =
 	{ type: 'text'; text: string; marks?: NoticeMark[] } | { type: 'hardBreak' };
 export type NoticeBlock =
@@ -106,27 +99,27 @@ function list<T>(value: unknown, read: (item: unknown) => T) {
 }
 
 /**
- * A notice's text as a device may show it: only the nodes and marks above, links only to `https:` and
- * `mailto:` addresses, and colours only from the palette. Anyone holding a classroom's Group Key could have
- * written it, so boards read it through here and render the result with the app's own components.
+ * A notice's text as a device may show it: only the nodes and marks above, and links only to `https:` and
+ * `mailto:` addresses. Anyone holding a classroom's Group Key could have written it, so boards read it through
+ * here and render the result with the app's own components. Text colours, which the editor offered until
+ * 2026-09-13, are left out: a notice's colour is its paper.
  */
 export function readDocument(value: unknown): NoticeDocument {
 	let nodes = 0;
 	const node = (item: unknown) => (++nodes > maxNodes ? fail() : fields(item));
-	const mark = (item: unknown): NoticeMark => {
+	const mark = (item: unknown): NoticeMark | undefined => {
 		const { type, attrs } = fields(item);
 		if (type === 'bold' || type === 'italic') return { type };
 		if (type === 'link') return { type, attrs: { href: readHref(fields(attrs).href) } };
-		const colour = type === 'colour' ? fields(attrs).colour : undefined;
-		return textColours.includes(colour as TextColour)
-			? { type: 'colour', attrs: { colour: colour as TextColour } }
-			: fail();
+		return type === 'colour' ? undefined : fail();
 	};
 	const inline = (item: unknown): NoticeInline => {
 		const { type, text, marks } = node(item);
 		if (type === 'hardBreak') return { type };
 		if (type !== 'text' || typeof text !== 'string' || !text) fail();
-		return marks === undefined ? { type, text } : { type, text, marks: list(marks, mark) };
+		const kept =
+			marks === undefined ? [] : list(marks, mark).filter((known) => known !== undefined);
+		return kept.length ? { type, text, marks: kept } : { type, text };
 	};
 	const block = (item: unknown, depth: number): NoticeBlock => {
 		const { type, attrs, content } = node(item);

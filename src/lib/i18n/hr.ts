@@ -401,7 +401,7 @@ export const hr = {
 		},
 		notices: {
 			title: 'Obavijesti',
-			new: 'Nova obavijest',
+			new: 'Dodaj obavijest',
 			empty: 'Još nema obavijesti. Kad vrtić objavi obavijest, pojavit će se ovdje.',
 			emptyStaff: 'Još nema obavijesti.',
 			emptyClassroom: 'Za ovu skupinu još nema obavijesti.',
@@ -422,16 +422,6 @@ export const hr = {
 			editTitle: 'Uredi obavijest',
 			text: 'Obavijest',
 			classrooms: 'Skupine',
-			paper: 'Papir',
-			papers: {
-				white: 'Bijeli',
-				yellow: 'Žuti',
-				peach: 'Narančasti',
-				pink: 'Ružičasti',
-				lilac: 'Ljubičasti',
-				blue: 'Plavi',
-				green: 'Zeleni'
-			},
 			days: 'Neka ostane',
 			dayCount: (value: number) => count(value, 'dan', 'dana', 'dana'),
 			dayUnit: (value: number) => form(value, 'dan', 'dana', 'dana'),
@@ -465,7 +455,7 @@ export const hr = {
 			noAnswer: (names: string[]) => `Još bez odgovora: ${list(names)}`
 		},
 		photos: {
-			new: 'Fotografija ploče',
+			new: 'Objavi ploču',
 			title: 'Fotografije ploče',
 			newTitle: 'Fotografija ploče',
 			newCopy:
@@ -481,9 +471,6 @@ export const hr = {
 			replaces: 'Zamijenit će fotografiju koja je sada na ploči.',
 			open: (classroom: string) => `Otvori fotografiju ploče skupine ${classroom}`,
 			loading: 'Otvaramo fotografiju…',
-			zoom: 'Povećaj',
-			fit: 'Prilagodi zaslonu',
-			close: 'Zatvori',
 			replace: 'Stavi novu fotografiju',
 			remove: 'Skini',
 			removeTitle: 'Skinuti ovu fotografiju?',
@@ -533,14 +520,15 @@ export const hr = {
 			addLink: 'Dodaj poveznicu',
 			removeLink: 'Ukloni poveznicu',
 			invalidLink: 'Upišite web-adresu koja počinje s https:// ili e-adresu.',
-			colour: 'Boja teksta',
-			colours: {
-				ink: 'Crna',
-				red: 'Crvena',
-				orange: 'Narančasta',
-				green: 'Zelena',
+			paper: 'Boja pozadine',
+			papers: {
+				white: 'Bijela',
+				yellow: 'Žuta',
+				peach: 'Narančasta',
+				pink: 'Ružičasta',
+				lilac: 'Ljubičasta',
 				blue: 'Plava',
-				purple: 'Ljubičasta'
+				green: 'Zelena'
 			}
 		},
 		files: {
@@ -549,7 +537,15 @@ export const hr = {
 			hint: 'PDF-ovi, dokumenti i slike, najviše 10 MB po datoteci.',
 			preparing: 'Pripremamo datoteke…',
 			remove: (name: string) => `Ukloni ${name}`,
-			save: (name: string) => `Spremi ${name}`
+			save: (name: string) => `Spremi ${name}`,
+			pictures: 'Slike',
+			open: (name: string) => `Otvori ${name}`
+		},
+		viewer: {
+			zoom: 'Povećaj',
+			fit: 'Prilagodi zaslonu',
+			close: 'Zatvori',
+			save: 'Spremi'
 		},
 		errors: {
 			'empty-notice': 'Najprije napišite obavijest.',

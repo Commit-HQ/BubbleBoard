@@ -2,34 +2,29 @@
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
 	import { UnreadableError } from '$lib/crypto';
 	import { messages, type Locale } from '$lib/i18n';
-	import {
-		allowedLink,
-		readDocument,
-		textColours,
-		type NoticeDocument,
-		type TextColour
-	} from '$lib/notices';
+	import { allowedLink, papers, readDocument, type NoticeDocument, type Paper } from '$lib/notices';
 	import type { ChainedCommands, Editor } from '@tiptap/core';
 	import { onMount } from 'svelte';
-	import { button, field, noticeText, textColourClass } from './ui';
+	import { button, field, noticeText, paperClass } from './ui';
 
 	// The notice editor: Tiptap 3, imported when this component mounts, so only the page where notices are
 	// written downloads it (next-step-plan.md, Editor). Its schema holds what boards render: paragraphs,
-	// lists, bold, italic, links, and palette colours. Tiptap's injected stylesheet is off for the CSP, with
-	// its rules in app.css, and a colour is a mark that renders a class. Emoji come from the keyboard.
+	// lists, bold, italic, and links. Its toolbar also chooses the notice's paper, the background the text is
+	// written on. Tiptap's injected stylesheet is off for the CSP, with its rules in app.css. Emoji come from
+	// the keyboard.
 	let {
 		locale,
 		content,
 		labelledby,
-		paper,
+		paper = $bindable(),
 		ready = $bindable(false)
 	}: {
 		locale: Locale;
 		content?: NoticeDocument;
 		/** The ID of the text that names the editor. */
 		labelledby: string;
-		/** The background class of the notice's paper. */
-		paper: string;
+		/** The notice's background. */
+		paper: Paper;
 		ready?: boolean;
 	} = $props();
 
@@ -42,10 +37,9 @@
 		italic: false,
 		bulletList: false,
 		orderedList: false,
-		link: false,
-		colour: undefined as TextColour | undefined
+		link: false
 	});
-	let panel = $state<'link' | 'colour'>();
+	let panel = $state<'link' | 'paper'>();
 	let linkInput = $state<HTMLInputElement>();
 	let linkRefused = $state(false);
 
@@ -53,34 +47,11 @@
 		let closed = false;
 		let instance: Editor | undefined;
 		(async () => {
-			const [{ Editor, Mark }, { default: StarterKit }] = await Promise.all([
+			const [{ Editor }, { default: StarterKit }] = await Promise.all([
 				import('@tiptap/core'),
 				import('@tiptap/starter-kit')
 			]);
 			if (closed || !element) return;
-			const Colour = Mark.create({
-				name: 'colour',
-				addAttributes() {
-					return {
-						colour: {
-							default: null,
-							parseHTML: (node) => node.dataset.colour,
-							renderHTML: ({ colour }) => ({
-								'data-colour': colour,
-								class: textColourClass[colour as TextColour]
-							})
-						}
-					};
-				},
-				parseHTML() {
-					const known = (node: HTMLElement) =>
-						textColours.includes(node.dataset.colour as TextColour);
-					return [{ tag: 'span[data-colour]', getAttrs: (node) => (known(node) ? null : false) }];
-				},
-				renderHTML({ HTMLAttributes }) {
-					return ['span', HTMLAttributes, 0];
-				}
-			});
 			instance = new Editor({
 				element,
 				injectCSS: false,
@@ -99,8 +70,7 @@
 							defaultProtocol: 'https',
 							isAllowedUri: (url) => allowedLink(url)
 						}
-					}),
-					Colour
+					})
 				],
 				content: content ?? '',
 				editorProps: {
@@ -130,8 +100,7 @@
 			italic: current.isActive('italic'),
 			bulletList: current.isActive('bulletList'),
 			orderedList: current.isActive('orderedList'),
-			link: current.isActive('link'),
-			colour: textColours.find((colour) => current.isActive('colour', { colour }))
+			link: current.isActive('link')
 		};
 	}
 
@@ -154,7 +123,7 @@
 		if (editor) command(editor.chain().focus()).run();
 	}
 
-	function toggle(choice: 'link' | 'colour') {
+	function toggle(choice: 'link' | 'paper') {
 		panel = panel === choice ? undefined : choice;
 		linkRefused = false;
 	}
@@ -205,7 +174,9 @@
 {/snippet}
 
 <div
-	class="overflow-hidden rounded-3xl ring-1 ring-ink/15 transition focus-within:ring-2 focus-within:ring-accent {paper}"
+	class="overflow-hidden rounded-3xl ring-1 ring-ink/15 transition focus-within:ring-2 focus-within:ring-accent {paperClass[
+		paper
+	]}"
 >
 	<div
 		class="flex flex-wrap gap-1 border-b border-ink/10 bg-white/50 p-1.5"
@@ -221,7 +192,7 @@
 			run((chain) => chain.toggleOrderedList())
 		)}
 		{@render tool('link', t.link, undefined, () => toggle('link'))}
-		{@render tool('palette', t.colour, undefined, () => toggle('colour'))}
+		{@render tool('palette', t.paper, undefined, () => toggle('paper'))}
 	</div>
 
 	{#if panel === 'link'}
@@ -257,27 +228,29 @@
 				{/if}
 			</div>
 		</div>
-	{:else if panel === 'colour'}
+	{:else if panel === 'paper'}
 		<div
 			class="flex flex-wrap gap-2 border-b border-ink/10 bg-white/50 p-3"
 			role="group"
-			aria-label={t.colour}
+			aria-label={t.paper}
 		>
-			{#each [undefined, ...textColours] as colour (colour ?? 'ink')}
+			{#each papers as option (option)}
+				<!-- A check marks the chosen paper, which forced colours would otherwise hide with the ring. -->
 				<button
-					class="grid size-11 place-items-center rounded-full ring-1 ring-ink/10 hover:bg-ink/5 aria-pressed:ring-3 aria-pressed:ring-accent"
+					class="group grid size-11 place-items-center rounded-full ring-1 ring-ink/10 hover:bg-ink/5 aria-pressed:ring-3 aria-pressed:ring-accent"
 					type="button"
-					aria-label={t.colours[colour ?? 'ink']}
-					title={t.colours[colour ?? 'ink']}
-					aria-pressed={active.colour === colour}
-					onclick={() =>
-						run((chain) =>
-							colour ? chain.setMark('colour', { colour }) : chain.unsetMark('colour')
-						)}
+					aria-label={t.papers[option]}
+					title={t.papers[option]}
+					aria-pressed={paper === option}
+					onclick={() => (paper = option)}
 				>
 					<span
-						class="size-6 rounded-full bg-current {colour ? textColourClass[colour] : 'text-ink'}"
-					></span>
+						class="grid size-7 place-items-center rounded-full text-ink ring-1 ring-ink/15 {paperClass[
+							option
+						]}"
+					>
+						<Icon name="check" class="size-4 opacity-0 group-aria-pressed:opacity-100" />
+					</span>
 				</button>
 			{/each}
 		</div>

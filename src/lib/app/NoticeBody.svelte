@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { NoticeBlock, NoticeInline, NoticeListItem, NoticeMark } from '$lib/notices';
-	import { noticeText, textColourClass } from './ui';
+	import { noticeText } from './ui';
 
 	// A notice's text, rendered from its checked document (src/lib/notices.ts) with the app's own elements,
 	// never as HTML (product-spec.md §36), and looking as it did in the editor. Links open outside the app.
@@ -16,8 +16,6 @@
 			<strong>{@render marked(text, rest)}</strong>
 		{:else if mark.type === 'italic'}
 			<em>{@render marked(text, rest)}</em>
-		{:else if mark.type === 'colour'}
-			<span class={textColourClass[mark.attrs.colour]}>{@render marked(text, rest)}</span>
 		{:else}
 			<a href={mark.attrs.href} target="_blank" rel="noopener noreferrer"
 				>{@render marked(text, rest)}</a

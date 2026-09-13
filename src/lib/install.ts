@@ -11,11 +11,14 @@ export type InstallPrompt = Event & {
 	userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 };
 
+/** Whether a device is an iPhone, iPad, or iPod touch. iPadOS reports itself as a Mac, which has no touch screen. */
+export function isAppleTouch(userAgent: string, touchPoints: number) {
+	return /iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && touchPoints > 1);
+}
+
 /** Which install steps a device needs, from its user agent and how many touch points its screen takes. */
 export function installPlatform(userAgent: string, touchPoints: number): InstallPlatform {
-	// iPadOS reports itself as a Mac, and a Mac has no touch screen.
-	const ios =
-		/iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && touchPoints > 1);
+	const ios = isAppleTouch(userAgent, touchPoints);
 	if (!ios && !/Android/.test(userAgent)) return undefined;
 	// Browsers inside other apps, and Android's web views, can't install web apps.
 	if (

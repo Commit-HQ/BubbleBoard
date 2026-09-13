@@ -4,14 +4,14 @@
 	import { errorMessage, formatDate, messages, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
 	import type { Photo } from '$lib/photos';
-	import { tick } from 'svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
+	import PictureViewer from './PictureViewer.svelte';
 	import { getApp } from './state.svelte';
 	import { button } from './ui';
 
 	// The photo of a classroom's corkboard, as it looks now, with who put it up and on which day, as a notice
-	// says it. A tap opens it on the whole screen, where a tap zooms in to read what's pinned up; the
-	// classroom's teachers put a new one up or take it down.
+	// says it. A tap opens it on the whole screen, to zoom in on what's pinned up or save it; the classroom's
+	// teachers put a new one up or take it down.
 	let { locale, photo }: { locale: Locale; photo: Photo } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.photos);
@@ -19,44 +19,27 @@
 	const details = $derived(
 		[photo.author, formatDate(locale, photo.postedAt)].filter(Boolean).join(' · ')
 	);
-	const image = $derived(app.photoUrl(photo));
-	let viewer = $state<HTMLDialogElement>();
-	let frame = $state<HTMLDivElement>();
-	let zoomed = $state(false);
+	const picture = $derived(app.photoPicture(photo));
+	let viewing = $state(false);
 	let removing = $state(false);
-
-	/** Shows the photo at its full size around the point tapped, or fits it to the screen again. */
-	async function zoom(event: MouseEvent & { currentTarget: EventTarget & HTMLButtonElement }) {
-		const shown = event.currentTarget.querySelector('img');
-		if (!shown || !frame) return;
-		const { left, top, width, height } = shown.getBoundingClientRect();
-		const [x, y] = [(event.clientX - left) / width, (event.clientY - top) / height];
-		zoomed = !zoomed;
-		if (!zoomed) return;
-		await tick();
-		frame.scrollTo(
-			x * shown.naturalWidth - frame.clientWidth / 2,
-			y * shown.naturalHeight - frame.clientHeight / 2
-		);
-	}
 </script>
 
 <figure class="overflow-hidden rounded-3xl glass">
-	{#await image}
+	{#await picture}
 		<p
 			class="grid aspect-4/3 place-items-center bg-ink/5 text-sm font-semibold text-muted"
 			role="status"
 		>
 			{t.loading}
 		</p>
-	{:then src}
+	{:then { url }}
 		<button
 			class="block w-full cursor-zoom-in"
 			type="button"
 			aria-label={t.open(classroom)}
-			onclick={() => viewer?.showModal()}
+			onclick={() => (viewing = true)}
 		>
-			<img {src} alt="" class="aspect-4/3 w-full object-cover" />
+			<img src={url} alt="" class="aspect-4/3 w-full object-cover" />
 		</button>
 	{:catch cause}
 		<p
@@ -95,35 +78,17 @@
 	</figcaption>
 </figure>
 
-<dialog
-	bind:this={viewer}
-	class="m-0 size-full max-h-none max-w-none bg-ink p-0 backdrop:bg-ink"
-	aria-label={t.open(classroom)}
-	onclose={() => (zoomed = false)}
->
-	{#await image then src}
-		<div bind:this={frame} class="size-full overflow-auto">
-			<button
-				class="grid min-h-full min-w-full place-items-center {zoomed
-					? 'cursor-zoom-out'
-					: 'cursor-zoom-in'}"
-				type="button"
-				aria-label={zoomed ? t.fit : t.zoom}
-				onclick={zoom}
-			>
-				<img {src} alt="" class={zoomed ? 'max-w-none' : 'max-h-dvh max-w-full object-contain'} />
-			</button>
-		</div>
+{#if viewing}
+	{#await picture then shown}
+		<PictureViewer
+			{locale}
+			label={t.open(classroom)}
+			picture={shown}
+			name="{classroom}.jpg"
+			onclose={() => (viewing = false)}
+		/>
 	{/await}
-	<button
-		class="fixed top-4 right-4 grid size-11 place-items-center rounded-full frosted text-ink"
-		type="button"
-		aria-label={t.close}
-		onclick={() => viewer?.close()}
-	>
-		<Icon name="x" />
-	</button>
-</dialog>
+{/if}
 
 {#if removing}
 	<ConfirmDialog

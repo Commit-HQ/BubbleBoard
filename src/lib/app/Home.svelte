@@ -30,10 +30,10 @@
 		{#if staff && classrooms.length}
 			<div class="mt-6 flex flex-wrap gap-2">
 				<a class={button.primary} href={appPath(locale, 'notice/new')}>
-					<Icon name="plus" class="size-4" />{t.notices.new}
+					<Icon name="stickyNote" class="size-4" />{t.notices.new}
 				</a>
 				<a class={button.secondary} href={appPath(locale, 'photo')}>
-					<Icon name="camera" class="size-4" />{t.photos.new}
+					<Icon name="presentation" class="size-4" />{t.photos.new}
 				</a>
 			</div>
 		{/if}

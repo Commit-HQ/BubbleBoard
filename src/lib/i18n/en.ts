@@ -402,7 +402,7 @@ export const en = {
 		},
 		notices: {
 			title: 'Notices',
-			new: 'New notice',
+			new: 'Add notice',
 			empty: 'No notices yet. When your kindergarten puts one up, it appears here.',
 			emptyStaff: 'No notices yet.',
 			emptyClassroom: 'No notices for this classroom yet.',
@@ -424,16 +424,6 @@ export const en = {
 			editTitle: 'Edit notice',
 			text: 'Notice',
 			classrooms: 'Classrooms',
-			paper: 'Paper',
-			papers: {
-				white: 'White',
-				yellow: 'Yellow',
-				peach: 'Peach',
-				pink: 'Pink',
-				lilac: 'Lilac',
-				blue: 'Blue',
-				green: 'Green'
-			},
 			days: 'Keep it up for',
 			dayCount: (count: number) => (count === 1 ? '1 day' : `${count} days`),
 			// Under the number on each choice of days.
@@ -469,7 +459,7 @@ export const en = {
 			noAnswer: (names: string[]) => `No answer yet: ${list(names)}`
 		},
 		photos: {
-			new: 'Board photo',
+			new: 'Post the board',
 			title: 'Photos of the board',
 			newTitle: 'Photo of the board',
 			newCopy:
@@ -485,9 +475,6 @@ export const en = {
 			replaces: 'It takes the place of the photo that’s up now.',
 			open: (classroom: string) => `Open the photo of the ${classroom} board`,
 			loading: 'Opening the photo…',
-			zoom: 'Zoom in',
-			fit: 'Fit to the screen',
-			close: 'Close',
 			replace: 'Put up a new photo',
 			remove: 'Take down',
 			removeTitle: 'Take down this photo?',
@@ -537,14 +524,15 @@ export const en = {
 			addLink: 'Add link',
 			removeLink: 'Remove link',
 			invalidLink: 'Use a web address that starts with https://, or an email address.',
-			colour: 'Text colour',
-			colours: {
-				ink: 'Black',
-				red: 'Red',
-				orange: 'Orange',
-				green: 'Green',
+			paper: 'Background colour',
+			papers: {
+				white: 'White',
+				yellow: 'Yellow',
+				peach: 'Peach',
+				pink: 'Pink',
+				lilac: 'Lilac',
 				blue: 'Blue',
-				purple: 'Purple'
+				green: 'Green'
 			}
 		},
 		files: {
@@ -553,7 +541,16 @@ export const en = {
 			hint: 'PDFs, documents, and pictures, up to 10 MB each.',
 			preparing: 'Getting the files ready…',
 			remove: (name: string) => `Remove ${name}`,
-			save: (name: string) => `Save ${name}`
+			save: (name: string) => `Save ${name}`,
+			pictures: 'Pictures',
+			open: (name: string) => `Open ${name}`
+		},
+		// A board photo or a notice's picture on the whole screen.
+		viewer: {
+			zoom: 'Zoom in',
+			fit: 'Fit to the screen',
+			close: 'Close',
+			save: 'Save'
 		},
 		errors: {
 			'empty-notice': 'Write the notice first.',

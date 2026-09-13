@@ -1,12 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { createId, encryptData, SEALED_BYTES_OVERHEAD, UnreadableError } from './crypto';
-import { imageType, openPhoto, openPhotoDetails, sealPhoto, sealPhotoDetails } from './photos';
+import {
+	imageType,
+	openPhoto,
+	openPhotoDetails,
+	pictureToSave,
+	sealPhoto,
+	sealPhotoDetails
+} from './photos';
 
 // Photos of the board, sealed as a staff device puts one up and opened as the classroom's devices show it.
 // A few bytes that start the way each format does stand in for a photo.
 
 const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 16, 74, 70, 73, 70]);
 const webp = new TextEncoder().encode('RIFF\x00\x00\x00\x00WEBPVP8 ');
+const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13]);
 
 /** A classroom's Group Key, as a device holds one once it has opened it. */
 function groupKey() {
@@ -46,14 +54,26 @@ describe('board photos', () => {
 		}
 	});
 
-	it('show only JPEG and WebP images', async () => {
+	it('show only JPEG, PNG, and WebP images', async () => {
 		expect(imageType(jpeg)).toBe('image/jpeg');
+		expect(imageType(png)).toBe('image/png');
 		expect(imageType(webp)).toBe('image/webp');
 		const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>');
 		expect(imageType(svg)).toBeUndefined();
 		const [classroom, id, key] = [createId(), createId(), await groupKey()];
 		const sealed = await sealPhoto(svg, key, classroom, id);
 		await expect(openPhoto(sealed, key, classroom, id)).rejects.toThrow(UnreadableError);
+	});
+
+	it('save JPEG and PNG pictures as they are, without encoding them again', async () => {
+		// Encoding WebP again as PNG takes a canvas, which tests don't have.
+		for (const [bytes, type] of [
+			[jpeg, 'image/jpeg'],
+			[png, 'image/png']
+		] as const) {
+			const picture = new Blob([bytes], { type });
+			expect(await pictureToSave(picture)).toBe(picture);
+		}
 	});
 
 	it('say who put them up, in details that open only with their classroom’s key, for their own photo', async () => {

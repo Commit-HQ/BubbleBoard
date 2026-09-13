@@ -27,9 +27,9 @@ BubbleBoard replaces the corkboard in the kindergarten hallway, so putting up a 
 
 Tiptap 3 (MIT), chosen by the owner on 2026-09-12. It doesn't depend on a framework, so the notice form creates and destroys the editor itself, without a wrapper package, and the editor loads only on the page where notices are written.
 
-- **Tools:** bold, italic, bullet and numbered lists, links, a few text colours, and emoji. Markdown typed as you go, such as `- ` for a list or `**bold**`, formats the text. StarterKit's headings, code, quotes, strikethrough, underline, and rules are turned off, so a notice stays simple.
-- **Storage:** a notice keeps Tiptap's JSON document inside its encrypted envelope. Boards check it against the allowed nodes, marks, and colours and render it with the app's own components, never as HTML. Links open only `https:` and `mailto:` addresses.
-- **CSP:** the editor's injected stylesheet is off (`injectCSS: false`), with its few rules in `app.css`. Tiptap's Color extension writes inline `style` attributes, which the CSP blocks, so text colour is a small mark of our own that renders a class from the fixed palette.
+- **Tools:** bold, italic, bullet and numbered lists, links, and the notice's background colour, which replaced a few text colours in the toolbar after the first parents' feedback (2026-09-13). Markdown typed as you go, such as `- ` for a list or `**bold**`, formats the text. StarterKit's headings, code, quotes, strikethrough, underline, and rules are turned off, so a notice stays simple.
+- **Storage:** a notice keeps Tiptap's JSON document inside its encrypted envelope. Boards check it against the allowed nodes and marks and render it with the app's own components, never as HTML. Links open only `https:` and `mailto:` addresses.
+- **CSP:** the editor's injected stylesheet is off (`injectCSS: false`), with its few rules in `app.css`, and the background colour is a class from the fixed set of papers. Tiptap's Color extension writes inline `style` attributes, which the CSP blocks, so the text colours were a small mark of our own that rendered a class, until they were removed.
 - **Emoji:** phone keyboards have them, and a small picker in the toolbar offered a few classroom emoji on every device, without bundling an emoji data set, until the first parents' feedback removed it (2026-09-13).
 
 ## Decisions from the board session — 2026-09-13
@@ -53,7 +53,11 @@ The first parents using the installation, and the owner, asked for these changes
 - **Answering polls:** a family ticks an answer and confirms it with Confirm answer. Its answer then takes the choices' place, as "Your answer: …", with Change answer to bring them back, so it's clear whether the poll was answered. Only staff see who chose what, as before.
 - **Poll counts:** a teacher decides, with the poll, whether families see how many families chose each answer. Such a poll holds a Poll Key inside its notice's envelope, and families encrypt their answers with it instead of their Family Key, so every family that opens the notice counts them, beside each answer with a bar, never seeing who. The server knows which polls show counts and sends their answers, with families' random IDs, to the notice's families. Changing the setting on a poll with answers removes them, because they were encrypted for the other way; the form says so before saving. Encrypting each answer twice would keep them, but the simplest safe option won (docs/access-format.md).
 - **Who and when:** notices and board photos both say who put them up and on which day, as "Ana Horvat · 23.01.2026" (23/01/2026 in English), without the time. A board photo's details, who put it up, are encrypted with the classroom's Group Key beside the photo; photos put up earlier show only their day.
-- **Editor:** the emoji picker is gone from the toolbar; keyboards have emoji.
+- **Editor:** the emoji picker is gone from the toolbar; keyboards have emoji. Background colour, the notice's paper, takes text colour's place in the toolbar, with the soft colours the form offered as Paper under the editor, so the notice is written on the colour it will have. Text colours are gone: a notice that had them shows that text in ink, and saving it again leaves them out.
+- **Home for staff:** Add notice, with a paper icon, and Post the board, with a board icon, take the place of New notice and Board photo.
+- **Pictures on notices** show under the notice as small squares, and a tap opens one on the whole screen, as the board photo opens, where a tap zooms in. Documents keep their rows, which save them. A notice's pictures are fetched once it comes near the screen, so a long board doesn't fetch pictures no one scrolls to, and they open only when their bytes are a JPEG, PNG, or WebP image, as board photos do.
+- **Saving pictures:** the whole-screen view of a board photo or a notice's picture has Save. Pictures are kept as WebP where the teacher's browser writes it, which not every iPhone opens once saved, so a device saves WebP as PNG, and JPEG and PNG as they are. The owner chose PNG, which keeps see-through pixels, over JPEG, which takes a fraction of the space for a photo. On iPhone and iPad, Save opens the share sheet, whose Save Image puts the picture in Photos, where people look for it; elsewhere, or where the share sheet can't open, it's a download.
+- **See-through pictures:** WebP keeps see-through pixels, but where the browser can't write WebP, such as Safari on iPhone, board photos and pictures were attached as JPEG, which fills them with black. There a picture with see-through pixels is now attached as PNG, which boards show; a picture attached that way before has to be attached again.
 - **Long names:** a file's name wraps onto at most two lines, and a notice's text breaks long links and words anywhere, so neither widens the page.
 - **Links out of the app,** About BubbleBoard and the build's commit, open outside the app's window, as links in notices already did, so the installed app keeps its place. Which browser opens them is up to the device.
 
@@ -63,12 +67,12 @@ The first parents using the installation, and the owner, asked for these changes
 - Declarative Web Push (iOS 18.4 and later), which needs an encrypted payload.
 - Scheduled, pinned, or recurring notices; reactions and comments.
 - Marking notices as seen when they're opened rather than with a tap, which would tell the server who read what.
-- Showing pictures attached to notices on the board instead of saving them, and a documents area of its own (spec §53–54).
+- A documents area of its own (spec §53–54).
 
 ## Scope and constraints
 
 - Croatian and English throughout, including install steps and notification text.
-- The editor loads only on the page where notices are written. Boards render a notice's stored structure with the app's own components, never as HTML (spec §36). Colours and backgrounds are classes from a fixed set, because the CSP allows no inline styles.
+- The editor loads only on the page where notices are written. Boards render a notice's stored structure with the app's own components, never as HTML (spec §36). Backgrounds are classes from a fixed set, because the CSP allows no inline styles.
 - The server authorizes every request: teachers post, change, and delete in their assigned classrooms, admins everywhere, and families read their children's classrooms. Every staff card opens the same Staff Key, so check each new query against that trade-off (docs/access-format.md).
 - The Free plan keeps working: queue operations and D1 writes per notice stay small, and nothing polls.
 - No offline content, background sync, or notice content in notifications.

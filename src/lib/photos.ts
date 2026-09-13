@@ -27,16 +27,18 @@ const sizes = [
 ];
 
 /**
- * A photo made ready for the board: smaller, and encoded again as WebP, or as JPEG where the browser can't
- * write WebP. Encoding it again also leaves out what the camera recorded with it, such as where it was taken.
- * A file that isn't an image this browser can read can't be used.
+ * A photo or picture made ready for the board: smaller, and encoded again as WebP, which keeps see-through
+ * pixels. Where the browser can't write WebP, such as Safari, it's JPEG, or PNG when it has see-through pixels,
+ * which JPEG would fill with black. Encoding it again also leaves out what the camera recorded with it, such as
+ * where it was taken. A file that isn't an image this browser can read can't be used.
  */
 export async function preparePhoto(photo: Blob) {
 	const image = await createImageBitmap(photo).catch((cause) => {
 		throw new CodedError('unusable-photo', { cause });
 	});
 	try {
-		const type = await encodedType();
+		const webp = await writesWebp();
+		let type: string | undefined;
 		for (const { side, quality } of sizes) {
 			const scale = Math.min(1, side / Math.max(image.width, image.height));
 			const canvas = new OffscreenCanvas(
@@ -46,6 +48,7 @@ export async function preparePhoto(photo: Blob) {
 			const context = canvas.getContext('2d');
 			if (!context) break;
 			context.drawImage(image, 0, 0, canvas.width, canvas.height);
+			type ??= webp ? 'image/webp' : seeThrough(context) ? 'image/png' : 'image/jpeg';
 			const encoded = await canvas.convertToBlob({ type, quality });
 			if (encoded.size <= maxPhotoBytes) return encoded;
 		}
@@ -56,14 +59,41 @@ export async function preparePhoto(photo: Blob) {
 }
 
 /**
- * The type photos are encoded as: WebP, or JPEG where the browser can't write WebP, such as Safari, which
- * writes PNG instead. A single pixel tells, so no photo is encoded twice.
+ * Whether the browser writes WebP. Safari writes PNG when asked for it, so a single pixel tells, and no photo
+ * is encoded twice.
  */
-async function encodedType() {
+async function writesWebp() {
 	const canvas = new OffscreenCanvas(1, 1);
 	canvas.getContext('2d');
 	const { type } = await canvas.convertToBlob({ type: 'image/webp' });
-	return type === 'image/webp' ? type : 'image/jpeg';
+	return type === 'image/webp';
+}
+
+/** Whether any pixel drawn on a canvas is see-through. */
+function seeThrough(context: OffscreenCanvasRenderingContext2D) {
+	const { data } = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
+	for (let alpha = 3; alpha < data.length; alpha += 4) {
+		if (data[alpha] < 255) return true;
+	}
+	return false;
+}
+
+/**
+ * A picture as a device saves it: JPEG and PNG as they are, and WebP, which not every iPhone opens once saved,
+ * encoded again as PNG, which keeps its see-through pixels.
+ */
+export async function pictureToSave(picture: Blob) {
+	if (picture.type !== 'image/webp') return picture;
+	const image = await createImageBitmap(picture);
+	try {
+		const canvas = new OffscreenCanvas(image.width, image.height);
+		const context = canvas.getContext('2d');
+		if (!context) throw new Error('This browser can’t draw pictures');
+		context.drawImage(image, 0, 0);
+		return await canvas.convertToBlob({ type: 'image/png' });
+	} finally {
+		image.close();
+	}
 }
 
 /** Encrypts a photo made ready for a classroom's board, with the classroom's Group Key. */
@@ -78,7 +108,7 @@ export function sealPhoto(
 
 /**
  * A board photo, decrypted, as an image a page can show. Anyone holding the classroom's Group Key could have
- * written it, so only JPEG and WebP images open.
+ * written it, so only JPEG, PNG, and WebP images open.
  */
 export async function openPhoto(
 	sealed: Uint8Array<ArrayBuffer>,
@@ -96,10 +126,11 @@ export async function openPhoto(
 	return new Blob([photo], { type });
 }
 
-/** The type of a JPEG or WebP image, from the bytes it starts with. */
+/** The type of a JPEG, PNG, or WebP image, from the bytes it starts with. */
 export function imageType(photo: Uint8Array) {
 	const text = (start: number, end: number) => String.fromCharCode(...photo.subarray(start, end));
 	if (photo[0] === 0xff && photo[1] === 0xd8 && photo[2] === 0xff) return 'image/jpeg';
+	if (text(0, 8) === '\x89PNG\r\n\x1a\n') return 'image/png';
 	if (text(0, 4) === 'RIFF' && text(8, 12) === 'WEBP') return 'image/webp';
 	return undefined;
 }

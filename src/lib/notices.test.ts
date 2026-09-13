@@ -224,10 +224,10 @@ describe('notice text', () => {
 	const text = (value: string, ...marks: unknown[]) =>
 		marks.length ? { type: 'text', text: value, marks } : { type: 'text', text: value };
 	const item = (...content: unknown[]) => ({ type: 'listItem', content });
-	const hat = item(paragraph(text('Hat', { type: 'colour', attrs: { colour: 'blue' } })));
+	const hat = (...marks: unknown[]) => item(paragraph(text('Hat', ...marks)));
 	const water = item(paragraph(text('Water')));
 
-	it('keeps lists, links, and palette colours, and drops attributes the app doesn’t use', () => {
+	it('keeps lists and links, and drops attributes the app doesn’t use and the text colours notices had', () => {
 		const written = doc(
 			paragraph(
 				text('Picnic', { type: 'bold' }, { type: 'italic' }),
@@ -237,7 +237,7 @@ describe('notice text', () => {
 					attrs: { href: 'https://example.com/map', target: '_blank', class: 'x' }
 				})
 			),
-			{ type: 'bulletList', content: [hat] },
+			{ type: 'bulletList', content: [hat({ type: 'colour', attrs: { colour: 'blue' } })] },
 			{ type: 'orderedList', attrs: { start: 3, type: null }, content: [water] },
 			{ type: 'paragraph' }
 		);
@@ -248,7 +248,7 @@ describe('notice text', () => {
 					{ type: 'hardBreak' },
 					text('map', { type: 'link', attrs: { href: 'https://example.com/map' } })
 				),
-				{ type: 'bulletList', content: [hat] },
+				{ type: 'bulletList', content: [hat()] },
 				{ type: 'orderedList', attrs: { start: 3 }, content: [water] },
 				{ type: 'paragraph' }
 			)
@@ -263,7 +263,6 @@ describe('notice text', () => {
 			doc({ type: 'image', attrs: { src: 'https://example.com/photo.png' } }),
 			doc(paragraph(text('x', { type: 'link', attrs: { href: 'javascript:alert(1)' } }))),
 			doc(paragraph(text('x', { type: 'link', attrs: { href: 'http://example.com' } }))),
-			doc(paragraph(text('x', { type: 'colour', attrs: { colour: '#ff0000' } }))),
 			doc(paragraph(text('x', { type: 'textStyle', attrs: { color: 'red' } }))),
 			doc(paragraph({ type: 'text', text: '' })),
 			doc({ type: 'bulletList', content: [] }),

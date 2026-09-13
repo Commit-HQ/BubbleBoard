@@ -16,7 +16,6 @@
 		maxPollOptions,
 		minPollOptions,
 		noticeDays,
-		papers,
 		type Notice,
 		type Paper,
 		type PollOption
@@ -27,10 +26,10 @@
 	import FileLabel from './FileLabel.svelte';
 	import NoticeEditor from './NoticeEditor.svelte';
 	import { getApp, Task } from './state.svelte';
-	import { alert, button, choice, field, filePicker, paperClass, surface } from './ui';
+	import { alert, button, choice, field, filePicker, surface } from './ui';
 
-	// A notice's text, poll, files, classrooms, paper, and days, to post or change. Teachers post to their own
-	// classrooms and admins to any. The editor shows the text on the paper chosen for it.
+	// A notice's text on its paper, poll, files, classrooms, and days, to post or change. Teachers post to their
+	// own classrooms and admins to any. The editor's toolbar chooses the paper, which it shows the text on.
 	let { locale, notice, onsaved }: { locale: Locale; notice?: Notice; onsaved: () => void } =
 		$props();
 
@@ -155,7 +154,7 @@
 				{locale}
 				content={notice?.body}
 				labelledby="{id}-text"
-				paper={paperClass[paper]}
+				bind:paper
 			/>
 		</div>
 
@@ -247,23 +246,6 @@
 				<p class={alert} role="alert">{errorMessage(locale, fileTask.error)}</p>
 			{/if}
 		</div>
-
-		<fieldset>
-			<legend class="mb-3 font-semibold">{t.notices.paper}</legend>
-			<div class="flex flex-wrap gap-3">
-				{#each papers as option (option)}
-					<label
-						class="size-12 cursor-pointer rounded-2xl ring-1 ring-ink/15 has-checked:ring-3 has-checked:ring-accent has-focus-visible:outline-3 has-focus-visible:outline-offset-4 has-focus-visible:outline-accent {paperClass[
-							option
-						]}"
-						title={t.notices.papers[option]}
-					>
-						<input class="sr-only" type="radio" value={option} bind:group={paper} />
-						<span class="sr-only">{t.notices.papers[option]}</span>
-					</label>
-				{/each}
-			</div>
-		</fieldset>
 
 		<Checklist
 			{locale}

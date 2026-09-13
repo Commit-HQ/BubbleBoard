@@ -3,15 +3,18 @@ import {
 	createId,
 	decryptBytes,
 	encryptBytes,
-	openContentKey
+	openContentKey,
+	UnreadableError
 } from '$lib/crypto';
 import { CodedError } from '$lib/errors';
-import { preparePhoto } from '$lib/photos';
+import { isAppleTouch } from '$lib/install';
+import { imageType, pictureToSave, preparePhoto } from '$lib/photos';
 
 // Files attached to notices (docs/access-format.md): documents and pictures a teacher adds to a notice. The
 // browser encrypts each with a key of its own, which goes inside the notice's content with the file's name,
 // so whoever opens the notice opens its files. The server keeps their encrypted bytes in private R2, can't
-// open them, and deletes them with the notice.
+// open them, and deletes them with the notice. Boards show pictures, which devices save as JPEG or PNG, and
+// devices save documents as they are.
 
 /** The most a file may take, which the server also holds it to. */
 export const maxFileBytes = 10 * 1024 * 1024;
@@ -36,10 +39,12 @@ const documentTypes = new Map([
 	['odp', 'application/vnd.oasis.opendocument.presentation'],
 	['txt', 'text/plain']
 ]);
-/** Pictures a teacher may pick, which are attached as JPEG or WebP once made ready. */
+/** Pictures a teacher may pick, which are attached as WebP, JPEG, or PNG once made ready. */
 const pictureExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif', 'avif'];
+/** The types pictures are attached and saved as, by extension. */
 const pictureTypes = new Map([
 	['jpg', 'image/jpeg'],
+	['png', 'image/png'],
 	['webp', 'image/webp']
 ]);
 
@@ -71,6 +76,16 @@ function extensionOf(name: string) {
 function typeOf(name: string) {
 	const extension = extensionOf(name);
 	return documentTypes.get(extension) ?? pictureTypes.get(extension);
+}
+
+/** Whether a notice's file is a picture, which boards show, rather than a document to save. */
+export function isPicture(file: Pick<NoticeFile, 'name'>) {
+	return pictureTypes.has(extensionOf(file.name));
+}
+
+/** The extension a picture is named with, from the type it's encoded as. */
+function pictureExtension(type: string) {
+	return [...pictureTypes].find(([, known]) => known === type)?.[0] ?? 'jpg';
 }
 
 /** Whether a notice's content may name a file so: a short name of a kind notices carry, without paths. */
@@ -112,7 +127,7 @@ export async function prepareFile(file: File) {
 	const extension = extensionOf(file.name);
 	if (pictureExtensions.includes(extension)) {
 		const picture = await preparePhoto(file);
-		const name = nameWith(file.name, picture.type === 'image/webp' ? 'webp' : 'jpg');
+		const name = nameWith(file.name, pictureExtension(picture.type));
 		return sealFile(createId(), name, new Uint8Array(await picture.arrayBuffer()));
 	}
 	if (!documentTypes.has(extension)) throw new CodedError('file-type');
@@ -121,16 +136,28 @@ export async function prepareFile(file: File) {
 	return sealFile(createId(), nameWith(file.name, extension), data);
 }
 
+/** A notice's file's bytes, decrypted with the key its notice holds. */
+async function decryptFile(sealed: Uint8Array<ArrayBuffer>, { id, key }: NoticeFile) {
+	return decryptBytes(sealed, await openContentKey(key), { purpose: 'notice-file', file: id });
+}
+
 /**
  * A notice's file, decrypted, as the kind of file its name says. Its type follows its name, never its bytes,
  * so whatever it holds, it's saved as a document or picture and never opens as a page.
  */
-export async function openFile(sealed: Uint8Array<ArrayBuffer>, { id, name, key }: NoticeFile) {
-	const data = await decryptBytes(sealed, await openContentKey(key), {
-		purpose: 'notice-file',
-		file: id
-	});
-	return new Blob([data], { type: typeOf(name) });
+export async function openFile(sealed: Uint8Array<ArrayBuffer>, file: NoticeFile) {
+	return new Blob([await decryptFile(sealed, file)], { type: typeOf(file.name) });
+}
+
+/**
+ * One of a notice's pictures, decrypted, as an image a page can show. Anyone holding a classroom's Group Key
+ * could have written it, so only JPEG, PNG, and WebP images open, as board photos do.
+ */
+export async function openPicture(sealed: Uint8Array<ArrayBuffer>, file: NoticeFile) {
+	const data = await decryptFile(sealed, file);
+	const type = imageType(data);
+	if (!type) throw new UnreadableError();
+	return new Blob([data], { type });
 }
 
 /** Saves a file on this device under its name, as a download. */
@@ -140,4 +167,28 @@ export function saveFile(file: Blob, name: string) {
 	link.click();
 	// Some browsers read the file a moment after the download starts.
 	setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+}
+
+/**
+ * Saves a board photo or a notice's picture on this device under its name, as JPEG or PNG (`pictureToSave`).
+ * On iPhone and iPad it goes to the share sheet, whose Save Image puts it in Photos, where people look for
+ * pictures. Elsewhere, or where the share sheet can't open, it's a download.
+ */
+export async function savePicture(picture: Blob, name: string) {
+	const saved = await pictureToSave(picture);
+	const file = new File([saved], nameWith(name, pictureExtension(saved.type)), {
+		type: saved.type
+	});
+	if (
+		isAppleTouch(navigator.userAgent, navigator.maxTouchPoints) &&
+		navigator.canShare?.({ files: [file] })
+	) {
+		try {
+			return await navigator.share({ files: [file] });
+		} catch (cause) {
+			// Closing the share sheet saves nothing, as it should.
+			if (cause instanceof DOMException && cause.name === 'AbortError') return;
+		}
+	}
+	saveFile(file, file.name);
 }

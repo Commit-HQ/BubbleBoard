@@ -27,7 +27,7 @@ import {
 	type DeviceCard
 } from '$lib/device';
 import { CodedError, errorCode } from '$lib/errors';
-import { openFile, saveFile, type NewFile, type NoticeFile } from '$lib/files';
+import { openFile, openPicture, saveFile, type NewFile, type NoticeFile } from '$lib/files';
 import type { Locale } from '$lib/i18n';
 import {
 	installStep,
@@ -121,6 +121,9 @@ export type NoticeValues = {
 	files: (NoticeFile | NewFile)[];
 };
 
+/** A board photo or a notice's picture that this device opened, with the address its image shows at. */
+export type Picture = { blob: Blob; url: string };
+
 const emptyCatalog: Catalog = {
 	revision: 0,
 	classrooms: [],
@@ -148,6 +151,16 @@ async function readable<T>(reading: Promise<T>, code: string) {
 /** The session ended, or the card no longer opens its keys: only the card can connect the device again. */
 function isDisconnection(cause: unknown) {
 	return (cause instanceof ApiError && cause.status === 401) || cause instanceof UnreadableError;
+}
+
+/** Where a board photo's encrypted bytes are kept. */
+function photoPath({ classroom, id }: Pick<PhotoRecord, 'classroom' | 'id'>) {
+	return `/api/classrooms/${classroom}/photo/${id}`;
+}
+
+/** Where the encrypted bytes of a notice's file are kept. */
+function filePath(notice: string, file: string) {
+	return `/api/notices/${notice}/files/${file}`;
 }
 
 /**
@@ -199,8 +212,8 @@ export class App {
 	#loadedAt = 0;
 	/** The last load of the records and board, which the next one waits for. */
 	#reloading = Promise.resolve();
-	/** Board photos this device has opened, as addresses for their images, while they're up. */
-	#photoUrls = new Map<string, Promise<string>>();
+	/** The board photos and notices' pictures this device has opened, by where they're kept, while they're up. */
+	#pictures = new Map<string, Promise<Picture>>();
 	/** The Family Keys a staff device has opened, by the envelope each came from, until it disconnects. */
 	#familyKeys = new Map<string, Promise<CryptoKey>>();
 
@@ -410,6 +423,7 @@ export class App {
 		const { notices, unreadable } = await openBoard(records, groupKeys, familyKeys);
 		this.board = notices;
 		this.unreadableNotices = unreadable;
+		this.#keepPictures();
 	}
 
 	/** Runs a request made on purpose. A device whose session ended disconnects: only its card connects it again. */
@@ -765,7 +779,7 @@ export class App {
 
 	/** Uploads a file attached in a notice's form. One an earlier try stored is there already, as sealed. */
 	async #uploadFile(notice: string, file: NewFile) {
-		const path = `/api/notices/${notice}/files/${file.id}`;
+		const path = filePath(notice, file.id);
 		await this.#signedIn(() => request('PUT', path, file.sealed)).catch((cause) => {
 			if (!(cause instanceof ApiError && cause.code === 'stored')) throw cause;
 		});
@@ -775,36 +789,64 @@ export class App {
 		return this.#changeBoard('DELETE', `/api/notices/${notice.id}`);
 	}
 
-	/** Fetches and decrypts one of a notice's files, and saves it on this device under its name. */
+	/** Fetches and decrypts one of a notice's documents, and saves it on this device under its name. */
 	async saveNoticeFile(notice: Notice, file: NoticeFile) {
-		const sealed = await this.#signedIn(() =>
-			requestBytes(`/api/notices/${notice.id}/files/${file.id}`)
-		);
+		const sealed = await this.#signedIn(() => requestBytes(filePath(notice.id, file.id)));
 		saveFile(await readable(openFile(sealed, file), 'unreadable-file'), file.name);
 	}
 
+	/** A board photo, opened with its classroom's Group Key (`#picture`). */
+	photoPicture(photo: PhotoRecord) {
+		return this.#picture(photoPath(photo), (sealed) => {
+			const { groupKey } = byId(this.myClassrooms, photo.classroom);
+			const opening = openPhoto(sealed, groupKey, photo.classroom, photo.id);
+			return readable(opening, 'unreadable-photo');
+		});
+	}
+
+	/** One of a notice's pictures, opened with the key its notice holds (`#picture`). */
+	noticePicture(notice: Notice, file: NoticeFile) {
+		return this.#picture(filePath(notice.id, file.id), (sealed) =>
+			readable(openPicture(sealed, file), 'unreadable-file')
+		);
+	}
+
 	/**
-	 * A board photo's image, fetched and decrypted the first time it's shown, and kept while the photo is up.
-	 * A photo that didn't open is tried again the next time it's shown.
+	 * A picture, fetched from where it's kept and opened the first time it's shown, and kept while it's up. One
+	 * that didn't open is tried again the next time it's shown.
 	 */
-	photoUrl(photo: PhotoRecord) {
-		let url = this.#photoUrls.get(photo.id);
-		if (!url) {
-			url = this.#signedIn(async () => {
-				const { groupKey } = byId(this.myClassrooms, photo.classroom);
-				const sealed = await requestBytes(`/api/classrooms/${photo.classroom}/photo/${photo.id}`);
-				const opening = openPhoto(sealed, groupKey, photo.classroom, photo.id);
-				return URL.createObjectURL(await readable(opening, 'unreadable-photo'));
+	#picture(path: string, open: (sealed: Uint8Array<ArrayBuffer>) => Promise<Blob>) {
+		let picture = this.#pictures.get(path);
+		if (!picture) {
+			picture = this.#signedIn(async () => {
+				const blob = await open(await requestBytes(path));
+				return { blob, url: URL.createObjectURL(blob) };
 			});
-			this.#photoUrls.set(photo.id, url);
-			url.catch(() => this.#photoUrls.delete(photo.id));
+			this.#pictures.set(path, picture);
+			picture.catch(() => this.#pictures.delete(path));
 		}
-		return url;
+		return picture;
+	}
+
+	/** Lets go of the pictures of board photos and notices' files that aren't up anymore. */
+	#keepPictures() {
+		const up = new Set([
+			...this.photos.map(photoPath),
+			...this.board.flatMap(({ id, files = [] }) => files.map((file) => filePath(id, file.id)))
+		]);
+		for (const [path, picture] of this.#pictures) {
+			if (up.has(path)) continue;
+			this.#pictures.delete(path);
+			picture.then(
+				({ url }) => URL.revokeObjectURL(url),
+				() => {}
+			);
+		}
 	}
 
 	/**
 	 * Keeps the board photos the server sent, with who put each up, from details opened with the Group Key of
-	 * its classroom, and lets go of the images of photos that aren't up anymore. Details that don't open leave
+	 * its classroom, and lets go of the pictures of photos that aren't up anymore. Details that don't open leave
 	 * the name out.
 	 */
 	async #showPhotos(
@@ -819,15 +861,8 @@ export class App {
 				return { ...record, ...(await opening.catch(() => ({}))) };
 			})
 		);
-		for (const [id, url] of this.#photoUrls) {
-			if (photos.some((photo) => photo.id === id)) continue;
-			this.#photoUrls.delete(id);
-			url.then(
-				(address) => URL.revokeObjectURL(address),
-				() => {}
-			);
-		}
 		this.photos = photos;
+		this.#keepPictures();
 	}
 
 	/**
@@ -843,16 +878,16 @@ export class App {
 			sealPhoto(bytes, groupKey, classroom, id),
 			sealPhotoDetails(author ? { author } : {}, groupKey, classroom, id)
 		]);
-		const path = `/api/classrooms/${classroom}/photo/${id}`;
+		const path = photoPath({ classroom, id });
 		const open = async (photos: PhotoRecord[]) => {
-			this.#photoUrls.set(id, Promise.resolve(URL.createObjectURL(photo)));
+			this.#pictures.set(path, Promise.resolve({ blob: photo, url: URL.createObjectURL(photo) }));
 			await this.#showPhotos(photos);
 		};
 		await this.#send('PUT', path, sealed, open, { 'bubbleboard-photo-details': details });
 	}
 
 	takeDownPhoto(photo: PhotoRecord) {
-		const path = `/api/classrooms/${photo.classroom}/photo/${photo.id}`;
+		const path = photoPath(photo);
 		return this.#send<PhotoRecord[]>('DELETE', path, undefined, (photos) =>
 			this.#showPhotos(photos)
 		);

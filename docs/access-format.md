@@ -94,13 +94,13 @@ Photos and files are too big to carry as text, so they use the envelope's binary
 | `notice-content`            | the notice's text, paper colour, author name, poll with any Poll Key, and files' names and keys | Notice Key                         | `null`       | notice ID     |
 | `poll-vote`                 | a family's answer to a notice's poll                                                            | the family's Family Key            | `null`       | notice ID     |
 | `counted-poll-vote`         | a family's answer to a poll whose counts families see                                           | the poll's Poll Key                | `null`       | notice ID     |
-| `board-photo`               | the photo of a classroom's board, as JPEG or WebP                                               | Group Key                          | classroom ID | photo ID      |
+| `board-photo`               | the photo of a classroom's board, as JPEG, WebP, or PNG                                         | Group Key                          | classroom ID | photo ID      |
 | `board-photo-details`       | who put a board photo up                                                                        | Group Key                          | classroom ID | photo ID      |
-| `notice-file`               | a file on a notice: a document, or a picture as JPEG or WebP                                    | its File Key                       | `null`       | file ID       |
+| `notice-file`               | a file on a notice: a document, or a picture as JPEG, WebP, or PNG                              | its File Key                       | `null`       | file ID       |
 
 A poll's answer names the option chosen by the ID the poll gives it. Its subject ties it to its notice, and the Family Key it's encrypted with ties it to its family: moved to another family's record, it doesn't open with that family's key. An answer encrypted with its poll's Poll Key opens for everyone who opens the notice, and nothing but the server ties it to its family.
 
-A file's name, from a fixed list of document and picture kinds, decides the type a device saves it as; its bytes never do, so a file can't open as a page with the app's origin, whoever wrote it.
+A file's name, from a fixed list of document and picture kinds, decides the type a device saves it as; its bytes never do, so a file can't open as a page with the app's origin, whoever wrote it. A picture shows on the board only when its bytes are a JPEG, PNG, or WebP image, as a board photo does, and a device saves WebP as PNG.
 
 A wrapped key is its 32 raw bytes, encrypted like data; data records hold JSON. Record IDs are 128 random bits in base64url (22 characters) and encode nothing. The browser generates them, because it binds them into envelopes before the server stores anything. Names, such as "Ivana (mum)" on a family card, and which families a child belongs to live only inside these records.
 
