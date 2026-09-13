@@ -6,7 +6,7 @@ A small, open-source communication app for kindergarten communities. Inspired by
 
 Teachers share a moment. Parents get a notification. The hosting server stores encrypted content without the keys needed to read it.
 
-> **Status: early development.** This repository contains a prerendered Croatian and English landing page and the first part of the app: setting up a kindergarten, classrooms, teachers and admins, children with their family cards, printing cards, and connecting devices with a card's link, the camera, a photo of it, or its code. Everything is encrypted in the browser ([access format](docs/access-format.md)). Teachers post notices, written with a rich text editor and sometimes with a poll or attached files, to the board on everyone's home, and families mark them as seen, answer the polls for their teachers, open the pictures on the whole screen, and save pictures and documents. Teachers also put up a photo of each classroom's corkboard, which its families see until a new one replaces it. Phones and tablets install the app before using it, and devices can turn on notifications for new notices and board photos, which carry no content; messages and classroom photos are not implemented yet. Do not use it with real family data yet. The landing page deliberately describes the finished product; this README tracks what exists.
+> **Status: early development.** This repository contains prerendered Croatian and English landing and privacy pages and the first part of the app: setting up a kindergarten, classrooms, teachers and admins, children with their family cards, printing cards, and connecting devices with a card's link, the camera, a photo of it, or its code. Everything is encrypted in the browser ([access format](docs/access-format.md)). Teachers post notices, written with a rich text editor and sometimes with a poll or attached files, to the board on everyone's home, and families mark them as seen, answer the polls for their teachers, open the pictures on the whole screen, and save pictures and documents. Teachers also put up a photo of each classroom's corkboard, which its families see until a new one replaces it. Phones and tablets install the app before using it, and devices can turn on notifications for new notices and board photos, which carry no content; messages and classroom photos are not implemented yet. Do not use it with real family data yet. The landing page deliberately describes the finished product; this README tracks what exists.
 
 ## What we’re building
 
@@ -137,7 +137,7 @@ src/
     project.ts          Project links and the validated site address
   params/               Route matchers (language prefix, record IDs)
   routes/
-    (marketing)/        Landing pages: static HTML without JavaScript
+    (marketing)/        Landing and privacy pages: static HTML without JavaScript
     (app)/              App pages: prerendered shells that run in the browser
     api/                JSON endpoints for the app
   app.d.ts              Worker bindings for TypeScript
@@ -162,6 +162,8 @@ Croatian is served at `/` and English at `/en`, both as static HTML without clie
 The intended design encrypts sensitive content on users’ devices and does not give the server the keys needed to read stored content. It does **not** promise that every possible leak is harmless. A compromised device, shared QR card, saved photo, or malicious application update remains a risk. A host controls the JavaScript delivered to browsers; public source and deployment verification improve accountability, not mathematical isolation from that host.
 
 Admins manage classrooms, teachers, and family cards. Every staff card opens the same Staff Key, so the server, not encryption, keeps each teacher to their own classrooms; families are kept apart by encryption. Removing access cannot recall saved copies or erase keys already held by a device. Kindergarten approval and consent remain part of operating the service.
+
+Every installation serves a short privacy policy at `/privacy` and `/en/privacy`: what it stores, where, and for how long, with the project's contact address. It describes the current code, so keep it in step with changes (`privacyPolicy` in `src/lib/i18n/`).
 
 See the [architecture notes](docs/architecture.md), the [access format](docs/access-format.md), and the [product specification](docs/product-spec.md). The specification describes the target system, and its opening note lists the decisions that have since replaced parts of it; it is not an implementation or a security audit.
 

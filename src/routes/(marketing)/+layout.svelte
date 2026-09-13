@@ -5,7 +5,7 @@
 	import LanguageSwitch from '$lib/components/LanguageSwitch.svelte';
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
 	import { messages } from '$lib/i18n';
-	import { homePath } from '$lib/paths';
+	import { homePath, privacyPath } from '$lib/paths';
 	import { contactEmail, organizationUrl, repositoryUrl } from '$lib/project';
 	import type { LayoutProps } from './$types';
 
@@ -99,7 +99,10 @@ room. `clip`, unlike `hidden`, keeps the header sticky. -->
 					<a class="font-semibold text-ink hover:underline" href={organizationUrl}>Commit</a>
 				</span>
 			</p>
-			<BuildLabel locale={data.locale} />
+			<div class="flex flex-wrap gap-x-6 gap-y-2">
+				<a class="hover:text-ink" href={privacyPath(data.locale)}>{t.footer.privacy}</a>
+				<BuildLabel locale={data.locale} />
+			</div>
 		</div>
 	</footer>
 </div>

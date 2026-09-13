@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { appPath, homePath, localizedPath, pathLocale } from './paths';
+import { appPath, homePath, localizedPath, pathLocale, privacyPath } from './paths';
 
 it('leaves the default language unprefixed', () => {
 	expect([homePath('hr'), homePath('en'), appPath('hr'), appPath('en')]).toEqual([
@@ -8,6 +8,9 @@ it('leaves the default language unprefixed', () => {
 		'/app',
 		'/en/app'
 	]);
+	expect([privacyPath('hr'), privacyPath('en')]).toEqual(['/privacy', '/en/privacy']);
+	expect(localizedPath('/privacy', 'en')).toBe('/en/privacy');
+	expect(localizedPath('/en/privacy', 'hr')).toBe('/privacy');
 });
 
 it('puts record IDs in the query of app pages', () => {

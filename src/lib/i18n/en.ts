@@ -155,7 +155,43 @@ export const en = {
 		// Followed by a link to Commit.
 		madeBy: 'Made with love by the people at',
 		license: 'License (AGPL-3.0)',
-		credits: 'Credits and licenses'
+		credits: 'Credits and licenses',
+		// In the footers of the landing pages and the app.
+		privacy: 'Privacy policy'
+	},
+	// The privacy policy (/privacy), in short points. It describes what the code does, so change it with anything
+	// that changes what BubbleBoard stores, where it goes, or for how long.
+	privacyPolicy: {
+		title: 'Privacy policy',
+		description: 'What BubbleBoard stores about families and children, where, and for how long.',
+		updated: 'Updated on 13 September 2026',
+		// Followed by the project's contact address, which the last point calls the address below.
+		points: [
+			{
+				title: 'What’s stored',
+				copy: 'Names, notices, polls, photos, and files are encrypted on the device before they’re sent. The server can’t read them, and keeps only what it needs to work, without names, such as when a notice was posted.'
+			},
+			{
+				title: 'Where',
+				copy: 'BubbleBoard runs on Cloudflare, a US company, so data may also be handled outside the EU, under the safeguards EU law requires.'
+			},
+			{
+				title: 'How long',
+				copy: 'Notices stay up for the 1 to 90 days a teacher chooses, a notice board photo until it’s replaced, names until an admin removes them, and a device’s login until it goes unused for 90 days. Deleted records stay in the database’s backup history for up to 30 days.'
+			},
+			{
+				title: 'Notifications',
+				copy: 'If you turn them on, your browser’s push service, such as Apple’s or Google’s, gets only an address for your device, never what’s new.'
+			},
+			{
+				title: 'Cookies',
+				copy: 'Just one, which keeps your device logged in. BubbleBoard can’t work without it, so it doesn’t ask for consent. No ads, analytics, or tracking.'
+			},
+			{
+				title: 'Your rights',
+				copy: 'You can ask for a copy of your and your child’s data, and for it to be corrected or deleted. Write to the address below, or ask your child’s teachers. You can also complain to the Croatian Personal Data Protection Agency (AZOP).'
+			}
+		]
 	},
 	build: {
 		label: 'Build',

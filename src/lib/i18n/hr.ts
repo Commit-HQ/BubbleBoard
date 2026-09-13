@@ -151,7 +151,39 @@ export const hr = {
 		github: 'GitHub',
 		madeBy: 'S ljubavlju izradio tim',
 		license: 'Licenca (AGPL-3.0)',
-		credits: 'Izvori i licence'
+		credits: 'Izvori i licence',
+		privacy: 'Politika privatnosti'
+	},
+	privacyPolicy: {
+		title: 'Politika privatnosti',
+		description: 'Što BubbleBoard čuva o obiteljima i djeci, gdje i koliko dugo.',
+		updated: 'Ažurirano 13. rujna 2026.',
+		points: [
+			{
+				title: 'Što se čuva',
+				copy: 'Imena, obavijesti, ankete, fotografije i datoteke šifriraju se na uređaju prije slanja. Poslužitelj ih ne može pročitati, a čuva samo ono što mu treba za rad, bez imena, na primjer kad je obavijest objavljena.'
+			},
+			{
+				title: 'Gdje',
+				copy: 'BubbleBoard radi na Cloudflareu, američkoj tvrtki, pa se podaci mogu obrađivati i izvan EU-a, uz zaštitne mjere koje propisuje pravo EU-a.'
+			},
+			{
+				title: 'Koliko dugo',
+				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojitelj, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, imena dok ih administrator ne ukloni, a prijava uređaja do 90 dana bez korištenja. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
+			},
+			{
+				title: 'Obavijesti na uređaju',
+				copy: 'Ako ih uključite, usluga za obavijesti vašeg preglednika, na primjer Appleova ili Googleova, dobiva samo adresu vašeg uređaja, nikad sadržaj.'
+			},
+			{
+				title: 'Kolačići',
+				copy: 'Samo jedan, koji vaš uređaj drži prijavljenim. Bez njega BubbleBoard ne radi, pa ne traži pristanak. Nema oglasa, analitike ni praćenja.'
+			},
+			{
+				title: 'Vaša prava',
+				copy: 'Možete zatražiti kopiju svojih podataka i podataka svojeg djeteta te njihov ispravak ili brisanje. Pišite na adresu ispod ili pitajte odgojitelje svojeg djeteta. Pritužbu možete podnijeti i Agenciji za zaštitu osobnih podataka (AZOP).'
+			}
+		]
 	},
 	build: {
 		label: 'Verzija',

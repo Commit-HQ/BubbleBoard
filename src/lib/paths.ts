@@ -9,6 +9,10 @@ export function homePath(locale: Locale) {
 	return prefix(locale) || '/';
 }
 
+export function privacyPath(locale: Locale) {
+	return `${prefix(locale)}/privacy`;
+}
+
 /** App pages. Pages are prerendered once, so record IDs go in the query; they aren't secret. */
 type AppPage =
 	| 'setup'
