@@ -1,8 +1,7 @@
 <script lang="ts">
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
 	import Connect from '$lib/app/Connect.svelte';
-	import FamilyHome from '$lib/app/FamilyHome.svelte';
-	import StaffHome from '$lib/app/StaffHome.svelte';
+	import Home from '$lib/app/Home.svelte';
 	import { getApp } from '$lib/app/state.svelte';
 	import StatusView from '$lib/app/StatusView.svelte';
 	import { alert } from '$lib/app/ui';
@@ -27,10 +26,8 @@
 	<StatusView locale={data.locale} />
 {:else if app.status === 'disconnected'}
 	<Connect locale={data.locale} />
-{:else if app.status === 'staff'}
-	<StaffHome locale={data.locale} />
-{:else if app.status === 'family'}
-	<FamilyHome locale={data.locale} />
+{:else if app.connected}
+	<Home locale={data.locale} />
 {:else}
 	<StatusView locale={data.locale} />
 {/if}

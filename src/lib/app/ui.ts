@@ -13,7 +13,19 @@ export const button = {
 	secondary: `${pill} bg-white/70 text-ink ring-1 ring-ink/10 hover:bg-white`,
 	quiet: `${pill} px-3 text-muted hover:bg-ink/5 hover:text-ink`,
 	danger: `${pill} px-3 text-red-700 hover:bg-red-50`,
-	dangerSolid: `${pill} bg-red-700 text-white hover:bg-red-800`
+	dangerSolid: `${pill} bg-red-700 text-white hover:bg-red-800`,
+	/** A small icon beside what it changes, such as a pencil beside a name. Give it an `aria-label`. */
+	icon: 'grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-ink/5 hover:text-ink'
+};
+
+/**
+ * A checkbox drawn as a card: the input sits hidden in its label, whose look follows it. Put a check icon
+ * with `choice.check` in a `choice.box`: the icon marks the state where forced colours remove fills.
+ */
+export const choice = {
+	card: 'group flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border border-ink/10 bg-white/60 px-4 py-3 transition hover:bg-white has-checked:border-accent has-checked:bg-white has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent',
+	box: 'grid size-6 shrink-0 place-items-center rounded-lg border-2 border-ink/20 bg-white text-white transition group-has-checked:border-accent group-has-checked:bg-accent',
+	check: 'size-4 opacity-0 group-has-checked:opacity-100'
 };
 
 export const field = {

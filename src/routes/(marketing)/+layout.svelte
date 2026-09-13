@@ -2,6 +2,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import BuildLabel from '$lib/components/BuildLabel.svelte';
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
+	import LanguageSwitch from '$lib/components/LanguageSwitch.svelte';
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
 	import { messages } from '$lib/i18n';
 	import { homePath } from '$lib/paths';
@@ -30,7 +31,7 @@
 <!-- Decorative bubbles are clipped rather than scrolling the page sideways when enlarged text leaves no
 room. `clip`, unlike `hidden`, keeps the header sticky. -->
 <div class="mx-auto max-w-7xl overflow-x-clip px-4 sm:px-8 lg:px-10">
-	<SiteHeader locale={data.locale} href={home} label={t.home}>
+	<SiteHeader href={home} label={t.home}>
 		<nav class="hidden xl:block" aria-label={t.nav.label}>
 			<ul class="flex">
 				{#each sections as { href, label } (href)}
@@ -43,6 +44,7 @@ room. `clip`, unlike `hidden`, keeps the header sticky. -->
 				{/each}
 			</ul>
 		</nav>
+		<LanguageSwitch locale={data.locale} />
 	</SiteHeader>
 
 	<main id="main">

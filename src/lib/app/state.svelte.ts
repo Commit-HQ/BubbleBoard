@@ -178,6 +178,15 @@ export class App {
 		return this.status === 'staff' || this.status === 'family';
 	}
 
+	/** The classrooms this device belongs to: a family's children's, a teacher's own, or all for an admin. */
+	get myClassrooms(): { id: string; name: string }[] {
+		if (this.status === 'family') return this.familyClassrooms;
+		const { classrooms } = this.catalog;
+		return this.admin
+			? classrooms
+			: classrooms.filter(({ id }) => this.me?.classrooms.includes(id));
+	}
+
 	/**
 	 * Whether pages ask to install BubbleBoard instead of showing themselves: on iPhone and iPad before
 	 * anything, and on Android once the browser has connected, since the installed app shares its storage.

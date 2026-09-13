@@ -72,7 +72,7 @@ Add interface copy to both `src/lib/i18n/en.ts` and `hr.ts`. When bundling a new
 
 The setup token only allows the first setup. If the link is lost before then, `npm run setup-link` replaces the token and prints a new link.
 
-If setup finished but its cards were neither printed nor saved, the device that ran setup is still connected as the admin. Open BubbleBoard there, go to **Teachers**, and use **Replace card** on your own name and on the recovery card, then print or save the new cards. The old ones stop working.
+If setup finished but its cards were neither printed nor saved, the device that ran setup is still connected as the admin. Open BubbleBoard there, go to **Manage** and then **Teachers**, and use **Replace card** on your own name and on the recovery card, then print or save the new cards. The old ones stop working.
 
 Start over only when no device or card can open BubbleBoard, for example when the setup page closed before it showed the cards. This deletes every record:
 

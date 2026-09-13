@@ -156,8 +156,16 @@ export const en = {
 		// Built without Git, for example from a source ZIP.
 		unknown: 'Unknown build'
 	},
+	// A page that doesn't exist, or an error no page handles, shown with a popped bubble.
+	error: {
+		missingTitle: 'Oops! This bubble popped.',
+		missingCopy: 'There’s nothing at this address. It may have moved, or the link was mistyped.',
+		title: 'Oops! Something popped.',
+		copy: 'Something went wrong on our side. Try again in a moment.',
+		home: 'Go to the home page',
+		app: 'Open BubbleBoard'
+	},
 	app: {
-		about: 'About BubbleBoard',
 		loading: 'Opening BubbleBoard…',
 		noscript:
 			'BubbleBoard needs JavaScript to open your classroom. Turn it on in your browser settings, or open BubbleBoard in another browser.',
@@ -270,15 +278,16 @@ export const en = {
 			replaceCopy: 'The old card stops working, and every device that used it is signed out.'
 		},
 		home: {
-			title: 'Home',
-			greeting: (name: string) => `Hello, ${name}`,
+			title: 'Home'
+		},
+		manage: {
+			title: 'Manage',
 			admin: 'Here’s your kindergarten.',
 			teacher: 'Here are your classrooms.',
 			addClassroom: 'Add classroom',
 			classroomName: 'Classroom name',
 			classroomExample: 'For example, Bubbles',
 			teachers: 'Teachers',
-			device: 'This device',
 			emptyAdmin: 'Start by adding your first classroom.',
 			emptyTeacher: 'You haven’t been added to a classroom yet. An admin can add you.'
 		},
@@ -338,7 +347,6 @@ export const en = {
 			addCardHint: 'For parents who live apart: each card gets its own private messages.',
 			move: 'Move to another classroom',
 			moveSubmit: 'Move',
-			rename: 'Rename child',
 			remove: 'Remove child',
 			removeTitle: (name: string) => `Remove ${name}?`,
 			removeCopy: (cards: string[]) =>
@@ -351,7 +359,9 @@ export const en = {
 			add: 'Add teacher',
 			admin: 'Admin',
 			you: 'you',
-			noClassrooms: 'No classrooms'
+			noClassrooms: 'No classrooms',
+			recoveryTitle: 'For emergencies',
+			recoveryDetail: 'Opens everything if every admin card is lost.'
 		},
 		teacher: {
 			newTitle: 'Add teacher',
@@ -370,19 +380,23 @@ export const en = {
 			recovery:
 				'The recovery card can do everything an admin can. Keep it locked away, and replace it if someone else may have seen it.'
 		},
-		device: {
-			title: 'This device',
+		options: {
+			title: 'Settings',
 			staff: (name: string) => `Connected as ${name}`,
 			family: 'Connected with a family card',
 			signOut: 'Sign out of this device',
 			signOutTitle: 'Sign out of this device?',
-			signOutCopy: 'To use BubbleBoard here again, you’ll need your card.'
+			signOutCopy: 'To use BubbleBoard here again, you’ll need your card.',
+			about: 'About BubbleBoard'
 		},
 		notices: {
 			title: 'Notices',
 			new: 'New notice',
 			empty: 'No notices yet. When your kindergarten puts one up, it appears here.',
 			emptyStaff: 'No notices yet.',
+			emptyClassroom: 'No notices for this classroom yet.',
+			show: 'Show notices for',
+			all: 'All classrooms',
 			unreadable: 'Some notices didn’t open on this device.',
 			byline: (author: string, time: string) => `${author} · ${time}`,
 			edited: 'edited',
@@ -394,6 +408,7 @@ export const en = {
 			editTitle: 'Edit notice',
 			text: 'Notice',
 			classrooms: 'Classrooms',
+			selectAll: 'Select all',
 			paper: 'Paper',
 			papers: {
 				white: 'White',
@@ -406,6 +421,9 @@ export const en = {
 			},
 			days: 'Keep it up for',
 			dayCount: (count: number) => (count === 1 ? '1 day' : `${count} days`),
+			// Under the number on each choice of days.
+			dayUnit: (count: number): string => (count === 1 ? 'day' : 'days'),
+			until: (date: string) => `It stays up until ${date}.`,
 			announce: 'Notify everyone again',
 			announceHint:
 				'For a change everyone should see. The notice goes back to the top of the board.',

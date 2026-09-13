@@ -195,7 +195,7 @@
 				</section>
 			{/if}
 		{:else}
-			<p class="text-muted">{t.home.emptyAdmin}</p>
+			<p class="text-muted">{t.manage.emptyAdmin}</p>
 		{/if}
 	</Screen>
 {/if}

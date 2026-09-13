@@ -1,5 +1,5 @@
 import { json, type Handle, type RequestEvent } from '@sveltejs/kit';
-import { defaultLocale, isLocale } from '$lib/i18n';
+import { pathLocale } from '$lib/paths';
 
 // Headers for Worker-rendered responses. Prerendered pages and static assets are served without the
 // Worker and get the same list from `_headers`; keep the two in sync. The Content-Security-Policy
@@ -13,7 +13,8 @@ const securityHeaders = {
 };
 
 export const handle: Handle = async ({ event, resolve }) => {
-	const locale = isLocale(event.params.locale) ? event.params.locale : defaultLocale;
+	// From the path, so a page that doesn't exist is in the language its address asks for.
+	const locale = pathLocale(event.url.pathname);
 	const app = event.route.id?.startsWith('/(app)') ?? false;
 	const response = isCrossSite(event)
 		? json({ message: 'cross-site' }, { status: 403 })

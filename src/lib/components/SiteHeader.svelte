@@ -1,18 +1,14 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
-	import type { Locale } from '$lib/i18n';
 	import type { Snippet } from 'svelte';
-	import LanguageSwitch from './LanguageSwitch.svelte';
 
-	// The sticky header of every page: the logo leading home, anything between, and the language switch.
+	// The sticky header of every page: the logo leading home, then the page's links and controls.
 	let {
-		locale,
 		href,
 		label,
 		class: className = '',
 		children
 	}: {
-		locale: Locale;
 		href: string;
 		label?: string;
 		class?: string;
@@ -21,7 +17,7 @@
 </script>
 
 <header
-	class="sticky top-3 z-10 my-3 flex items-center justify-between gap-4 rounded-full frosted py-1.5 pr-1.5 pl-3 {className}"
+	class="sticky top-3 z-10 my-3 flex min-h-14 items-center justify-between gap-4 rounded-full frosted py-1.5 pr-1.5 pl-3 {className}"
 >
 	<a
 		class="inline-flex items-center gap-2.5 text-xl font-bold tracking-tight"
@@ -33,5 +29,4 @@
 		<span class="max-[20rem]:sr-only">BubbleBoard</span>
 	</a>
 	{@render children?.()}
-	<LanguageSwitch {locale} />
 </header>

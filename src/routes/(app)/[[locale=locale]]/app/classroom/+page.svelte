@@ -2,7 +2,6 @@
 	import { goto } from '$app/navigation';
 	import CardSheet, { type PrintableCard } from '$lib/app/CardSheet.svelte';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
-	import FieldForm from '$lib/app/FieldForm.svelte';
 	import ListLink from '$lib/app/ListLink.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp } from '$lib/app/state.svelte';
@@ -25,15 +24,10 @@
 	const teachers = $derived(
 		app.catalog.teachers.filter((teacher) => classroom && teacher.classrooms.includes(classroom.id))
 	);
-	let open = $state<'rename' | 'delete' | 'replace' | 'confirmReplace'>();
+	let open = $state<'delete' | 'replace' | 'confirmReplace'>();
 	/** The families whose cards are chosen to be replaced. */
 	let chosen = $state<string[]>([]);
 	let printed = $state.raw<PrintableCard[]>();
-
-	async function rename(classroom: string, name: string) {
-		await app.renameClassroom(classroom, name);
-		open = undefined;
-	}
 
 	async function remove(classroom: string) {
 		await app.deleteClassroom(classroom);
@@ -71,6 +65,12 @@
 		locale={data.locale}
 		title={classroom?.name ?? t.notFound.title}
 		subtitle={classroom && t.counts.children(children.length)}
+		rename={classroom && app.admin
+			? {
+					label: t.manage.classroomName,
+					save: (name) => app.renameClassroom(classroom.id, name)
+				}
+			: undefined}
 	>
 		{#if classroom}
 			{#if app.admin}
@@ -100,30 +100,14 @@
 							<Icon name="refresh" class="size-4" />{t.classroom.replaceCards}
 						</button>
 					{/if}
-					{#if app.admin}
-						<button class={button.secondary} type="button" onclick={() => (open = 'rename')}>
-							<Icon name="pencil" class="size-4" />{t.actions.rename}
+					{#if app.admin && !children.length}
+						<button class={button.danger} type="button" onclick={() => (open = 'delete')}>
+							<Icon name="trash" class="size-4" />{t.classroom.delete}
 						</button>
-						{#if !children.length}
-							<button class={button.danger} type="button" onclick={() => (open = 'delete')}>
-								<Icon name="trash" class="size-4" />{t.classroom.delete}
-							</button>
-						{/if}
 					{/if}
 				</div>
 			{/if}
-			{#if open === 'rename'}
-				<div class={surface}>
-					<FieldForm
-						locale={data.locale}
-						label={t.home.classroomName}
-						value={classroom.name}
-						submitLabel={t.actions.save}
-						onsubmit={(name) => rename(classroom.id, name)}
-						oncancel={() => (open = undefined)}
-					/>
-				</div>
-			{:else if open === 'replace' || open === 'confirmReplace'}
+			{#if open === 'replace' || open === 'confirmReplace'}
 				<form
 					class="{surface} grid gap-5"
 					onsubmit={(event) => {

@@ -13,7 +13,7 @@
 	import { appPath } from '$lib/paths';
 	import type { PageProps } from './$types';
 
-	type Editing = 'addCard' | 'rename' | 'move' | { renameCard: string };
+	type Editing = 'addCard' | 'move' | { renameCard: string };
 	type Confirming =
 		{ action: 'replaceCard' | 'removeCard'; family: Family } | { action: 'removeChild' };
 
@@ -116,6 +116,9 @@
 			href: appPath(data.locale, 'classroom', { id: classroom.id }),
 			label: classroom.name
 		}}
+		rename={child && app.admin
+			? { label: t.newChild.name, save: (name) => close(app.renameChild(child, name)) }
+			: undefined}
 	>
 		{#if child}
 			<section class="grid gap-3" aria-labelledby="cards-title">
@@ -123,11 +126,25 @@
 				<ul class="grid gap-3">
 					{#each families as family (family.id)}
 						{@const others = siblings(family)}
+						{@const renaming = typeof editing === 'object' && editing.renameCard === family.id}
 						<li class="rounded-3xl glass p-5">
 							<div class="flex items-start gap-3">
 								<IconTile icon="heart" />
 								<div class="min-w-0">
-									<p id="card-{family.id}" class="font-bold">{family.name}</p>
+									<div class="flex items-start gap-1">
+										<p id="card-{family.id}" class="min-w-0 font-bold">{family.name}</p>
+										{#if app.admin && !renaming}
+											<button
+												class="{button.icon} -my-2.5"
+												type="button"
+												aria-label={t.actions.rename}
+												aria-describedby="card-{family.id}"
+												onclick={() => (editing = { renameCard: family.id })}
+											>
+												<Icon name="pencil" class="size-4" />
+											</button>
+										{/if}
+									</div>
 									{#if others.length}
 										<p class="text-sm text-muted">
 											{t.child.also(
@@ -140,7 +157,7 @@
 									{/if}
 								</div>
 							</div>
-							{#if typeof editing === 'object' && editing.renameCard === family.id}
+							{#if renaming}
 								<div class="mt-4">
 									<FieldForm
 										locale={data.locale}
@@ -162,14 +179,6 @@
 										<Icon name="refresh" class="size-4" />{t.card.replace}
 									</button>
 									{#if app.admin}
-										<button
-											class={button.quiet}
-											type="button"
-											aria-describedby="card-{family.id}"
-											onclick={() => (editing = { renameCard: family.id })}
-										>
-											<Icon name="pencil" class="size-4" />{t.actions.rename}
-										</button>
 										<button
 											class={button.danger}
 											type="button"
@@ -220,9 +229,6 @@
 								{t.child.move}
 							</button>
 						{/if}
-						<button class={button.quiet} type="button" onclick={() => (editing = 'rename')}>
-							<Icon name="pencil" class="size-4" />{t.child.rename}
-						</button>
 						<button
 							class={button.danger}
 							type="button"
@@ -231,18 +237,7 @@
 							<Icon name="trash" class="size-4" />{t.child.remove}
 						</button>
 					</div>
-					{#if editing === 'rename'}
-						<div class={surface}>
-							<FieldForm
-								locale={data.locale}
-								label={t.newChild.name}
-								value={child.name}
-								submitLabel={t.actions.save}
-								onsubmit={(name) => close(app.renameChild(child, name))}
-								oncancel={() => (editing = undefined)}
-							/>
-						</div>
-					{:else if editing === 'move'}
+					{#if editing === 'move'}
 						<div class={surface}>
 							<FieldForm
 								locale={data.locale}

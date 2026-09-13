@@ -6,7 +6,7 @@
 	import { alert, button, surface } from './ui';
 
 	// The card on home that turns notifications on (next-step-plan.md). Not now hides it on this device, and
-	// This device keeps the switch. Where notifications can't work, it isn't shown.
+	// Settings keep the switch. Where notifications can't work, it isn't shown.
 	let { locale }: { locale: Locale } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.notifications);

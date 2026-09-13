@@ -154,8 +154,16 @@ export const hr = {
 		modified: 'izmijenjena',
 		unknown: 'Nepoznata verzija'
 	},
+	error: {
+		missingTitle: 'Ups! Ovaj je baloncić puknuo.',
+		missingCopy:
+			'Na ovoj adresi nema ničega. Možda je premještena ili je poveznica pogrešno upisana.',
+		title: 'Ups! Nešto je puklo.',
+		copy: 'Nešto nije u redu kod nas. Pokušajte ponovno za trenutak.',
+		home: 'Na početnu stranicu',
+		app: 'Otvori BubbleBoard'
+	},
 	app: {
-		about: 'O BubbleBoardu',
 		loading: 'Otvaramo BubbleBoard…',
 		noscript:
 			'BubbleBoardu treba JavaScript da bi otvorio vašu skupinu. Uključite ga u postavkama preglednika ili otvorite BubbleBoard u drugom pregledniku.',
@@ -270,15 +278,16 @@ export const hr = {
 				'Stara kartica prestaje raditi, a svi uređaji koji su je koristili bit će odjavljeni.'
 		},
 		home: {
-			title: 'Početna',
-			greeting: (name: string) => `Bok, ${name}`,
+			title: 'Početna'
+		},
+		manage: {
+			title: 'Administracija',
 			admin: 'Evo vašeg vrtića.',
 			teacher: 'Evo vaših skupina.',
 			addClassroom: 'Dodaj skupinu',
 			classroomName: 'Naziv skupine',
 			classroomExample: 'Na primjer Bubamare',
 			teachers: 'Odgojitelji',
-			device: 'Ovaj uređaj',
 			emptyAdmin: 'Započnite dodavanjem prve skupine.',
 			emptyTeacher: 'Još niste dodani ni u jednu skupinu. Može vas dodati administrator.'
 		},
@@ -340,7 +349,6 @@ export const hr = {
 			addCardHint: 'Za roditelje koji ne žive zajedno: svaka kartica ima svoje privatne poruke.',
 			move: 'Premjesti u drugu skupinu',
 			moveSubmit: 'Premjesti',
-			rename: 'Preimenuj dijete',
 			remove: 'Ukloni dijete',
 			removeTitle: (name: string) => `Ukloniti dijete „${name}”?`,
 			removeCopy: (cards: string[]) =>
@@ -353,7 +361,9 @@ export const hr = {
 			add: 'Dodaj odgojitelja',
 			admin: 'Administrator',
 			you: 'vi',
-			noClassrooms: 'Bez skupine'
+			noClassrooms: 'Bez skupine',
+			recoveryTitle: 'Za hitne slučajeve',
+			recoveryDetail: 'Otvara sve ako se izgube sve administratorske kartice.'
 		},
 		teacher: {
 			newTitle: 'Dodaj odgojitelja',
@@ -372,19 +382,23 @@ export const hr = {
 			recovery:
 				'Kartica za oporavak može sve što i administrator. Čuvajte je pod ključem i zamijenite je ako ju je netko drugi možda vidio.'
 		},
-		device: {
-			title: 'Ovaj uređaj',
+		options: {
+			title: 'Opcije',
 			staff: (name: string) => `Povezani ste kao ${name}`,
 			family: 'Povezani ste obiteljskom karticom',
 			signOut: 'Odjavi ovaj uređaj',
 			signOutTitle: 'Odjaviti ovaj uređaj?',
-			signOutCopy: 'Za ponovno korištenje BubbleBoarda ovdje trebat će vam kartica.'
+			signOutCopy: 'Za ponovno korištenje BubbleBoarda ovdje trebat će vam kartica.',
+			about: 'O BubbleBoardu'
 		},
 		notices: {
 			title: 'Obavijesti',
 			new: 'Nova obavijest',
 			empty: 'Još nema obavijesti. Kad vrtić objavi obavijest, pojavit će se ovdje.',
 			emptyStaff: 'Još nema obavijesti.',
+			emptyClassroom: 'Za ovu skupinu još nema obavijesti.',
+			show: 'Prikaži obavijesti za',
+			all: 'Sve skupine',
 			unreadable: 'Neke se obavijesti nisu otvorile na ovom uređaju.',
 			byline: (author: string, time: string) => `${author} · ${time}`,
 			edited: 'uređeno',
@@ -396,6 +410,7 @@ export const hr = {
 			editTitle: 'Uredi obavijest',
 			text: 'Obavijest',
 			classrooms: 'Skupine',
+			selectAll: 'Označi sve',
 			paper: 'Papir',
 			papers: {
 				white: 'Bijeli',
@@ -408,6 +423,8 @@ export const hr = {
 			},
 			days: 'Neka ostane',
 			dayCount: (value: number) => count(value, 'dan', 'dana', 'dana'),
+			dayUnit: (value: number) => form(value, 'dan', 'dana', 'dana'),
+			until: (date: string) => `Ostaje na ploči do ${date}.`,
 			announce: 'Ponovno obavijesti sve',
 			announceHint: 'Za promjenu koju svi trebaju vidjeti. Obavijest se vraća na vrh ploče.',
 			post: 'Objavi obavijest',
@@ -512,10 +529,15 @@ export const hr = {
 
 const pluralRules = new Intl.PluralRules('hr');
 
+/** The Croatian form of a word for a number: dijete, djeteta, or djece. */
+function form(value: number, one: string, few: string, other: string) {
+	const forms: Partial<Record<Intl.LDMLPluralRule, string>> = { one, few };
+	return forms[pluralRules.select(value)] ?? other;
+}
+
 /** A number with its Croatian form: 1 dijete, 2 djeteta, 5 djece. */
 function count(value: number, one: string, few: string, other: string) {
-	const forms: Partial<Record<Intl.LDMLPluralRule, string>> = { one, few };
-	return `${value} ${forms[pluralRules.select(value)] ?? other}`;
+	return `${value} ${form(value, one, few, other)}`;
 }
 
 /** Names in a sentence, such as „Bubamare i Leptirići”. */

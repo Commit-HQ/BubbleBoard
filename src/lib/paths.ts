@@ -12,7 +12,8 @@ export function homePath(locale: Locale) {
 /** App pages. Pages are prerendered once, so record IDs go in the query; they aren't secret. */
 type AppPage =
 	| 'setup'
-	| 'device'
+	| 'options'
+	| 'manage'
 	| 'classroom'
 	| 'child'
 	| 'child/new'
@@ -25,6 +26,12 @@ type AppPage =
 export function appPath(locale: Locale, page?: AppPage, query?: Record<string, string>) {
 	const path = `${prefix(locale)}/app${page ? `/${page}` : ''}`;
 	return query ? `${path}?${new URLSearchParams(query)}` : path;
+}
+
+/** The language of a path, from its prefix. Any other path, even one no page has, is in the default language. */
+export function pathLocale(pathname: string): Locale {
+	const [, first] = pathname.split('/');
+	return first !== defaultLocale && isLocale(first) ? first : defaultLocale;
 }
 
 /** The current page in another language, without the query or fragment: a fragment can hold a card. */

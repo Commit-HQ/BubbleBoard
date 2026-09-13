@@ -1,19 +1,18 @@
 <script lang="ts">
-	import Bubble from '$lib/components/Bubble.svelte';
+	import FieldForm from '$lib/app/FieldForm.svelte';
+	import Screen from '$lib/app/Screen.svelte';
+	import { getApp } from '$lib/app/state.svelte';
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
 	import IconTile from '$lib/components/IconTile.svelte';
-	import { messages, teacherName, type Locale } from '$lib/i18n';
-	import { cardKind } from '$lib/kindergarten';
+	import { messages } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
-	import Board from './Board.svelte';
-	import FieldForm from './FieldForm.svelte';
-	import NotificationCard from './NotificationCard.svelte';
-	import { getApp } from './state.svelte';
-	import { button } from './ui';
+	import type { PageProps } from './$types';
 
-	let { locale }: { locale: Locale } = $props();
+	// Where staff manage the kindergarten, from the header: a tile for each of their classrooms, or every
+	// classroom for admins, who also add classrooms and manage teachers here.
+	let { data }: PageProps = $props();
 	const app = getApp();
-	const t = $derived(messages[locale].app);
+	const t = $derived(messages[data.locale].app);
 	let adding = $state(false);
 
 	const childCounts = $derived(
@@ -24,11 +23,6 @@
 	);
 	// The recovery card is listed with the teachers, but it isn't one.
 	const teacherCount = $derived(app.catalog.teachers.filter((teacher) => !teacher.recovery).length);
-	const kind = $derived(cardKind({ admin: app.admin, recovery: app.me?.recovery === true }));
-	/** Teachers post to their own classrooms, admins to any. */
-	const canPost = $derived(
-		app.admin ? app.catalog.classrooms.length > 0 : (app.me?.classrooms.length ?? 0) > 0
-	);
 
 	async function addClassroom(name: string) {
 		await app.addClassroom(name);
@@ -55,28 +49,15 @@
 	</li>
 {/snippet}
 
-<section class="grid gap-8">
-	<div class="relative isolate">
-		<!-- The logo's big and small bubbles, drifting beside the greeting. -->
-		<Bubble class="-top-6 right-0 -z-10 size-20 sm:size-24" />
-		<Bubble class="top-14 right-20 -z-10 size-9 sm:right-28" />
-		<h1 class="pr-24 text-4xl sm:text-5xl">
-			{t.home.greeting(app.me ? teacherName(locale, app.me) : '')}
-		</h1>
-		<p class="mt-2 text-lg text-muted">{app.admin ? t.home.admin : t.home.teacher}</p>
-		{#if canPost}
-			<a class="{button.primary} mt-6" href={appPath(locale, 'notice/new')}>
-				<Icon name="plus" class="size-4" />{t.notices.new}
-			</a>
-		{/if}
-	</div>
-
-	<NotificationCard {locale} />
-
+<Screen
+	locale={data.locale}
+	title={t.manage.title}
+	subtitle={app.admin ? t.manage.admin : t.manage.teacher}
+>
 	<ul class="grid grid-cols-2 gap-3 sm:gap-4">
 		{#each app.catalog.classrooms as classroom (classroom.id)}
 			{@render tile(
-				appPath(locale, 'classroom', { id: classroom.id }),
+				appPath(data.locale, 'classroom', { id: classroom.id }),
 				'shapes',
 				classroom.name,
 				t.counts.children(childCounts.get(classroom.id) ?? 0),
@@ -88,10 +69,10 @@
 				{#if adding}
 					<div class="rounded-3xl glass p-5">
 						<FieldForm
-							{locale}
-							label={t.home.classroomName}
-							placeholder={t.home.classroomExample}
-							submitLabel={t.home.addClassroom}
+							locale={data.locale}
+							label={t.manage.classroomName}
+							placeholder={t.manage.classroomExample}
+							submitLabel={t.manage.addClassroom}
 							onsubmit={addClassroom}
 							oncancel={() => (adding = false)}
 						/>
@@ -107,27 +88,21 @@
 						>
 							<Icon name="plus" />
 						</span>
-						<span class="mt-auto pt-4 text-lg leading-snug font-bold">{t.home.addClassroom}</span>
+						<span class="mt-auto pt-4 text-lg leading-snug font-bold">{t.manage.addClassroom}</span>
 					</button>
 				{/if}
 			</li>
 			{@render tile(
-				appPath(locale, 'teachers'),
+				appPath(data.locale, 'teachers'),
 				'users',
-				t.home.teachers,
+				t.manage.teachers,
 				t.counts.teachers(teacherCount),
 				'ink'
 			)}
 		{/if}
-		{@render tile(appPath(locale, 'device'), 'phone', t.home.device, t.card.kinds[kind], 'ink')}
 	</ul>
 
 	{#if !app.catalog.classrooms.length}
-		<p class="text-muted">{app.admin ? t.home.emptyAdmin : t.home.emptyTeacher}</p>
+		<p class="text-muted">{app.admin ? t.manage.emptyAdmin : t.manage.emptyTeacher}</p>
 	{/if}
-
-	<section class="grid gap-4" aria-labelledby="notices-title">
-		<h2 id="notices-title" class="text-3xl">{t.notices.title}</h2>
-		<Board {locale} empty={t.notices.emptyStaff} />
-	</section>
-</section>
+</Screen>
