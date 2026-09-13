@@ -16,8 +16,8 @@ export const en = {
 			features: 'Features',
 			how: 'How it works',
 			privacy: 'Privacy',
-			security: 'Security',
 			teachers: 'For teachers',
+			security: 'Security',
 			kindergartens: 'For kindergartens'
 		}
 	},
@@ -65,17 +65,20 @@ export const en = {
 	how: {
 		title: 'One QR code. Your classroom.',
 		copy: 'Parents and teachers join the same way. Your kindergarten hands out QR codes: one for all your family’s devices, and one for each teacher. That’s all you need.',
-		photoAlt: 'A kindergarten teacher sitting on the floor talking with a group of children',
+		photoAlt:
+			'Children lying in a circle on a kindergarten rug, laughing, some with their legs in the air',
+		// In the order a family goes through them: the QR code's link opens BubbleBoard, which then asks to be
+		// installed, and the installed app asks to turn on notifications.
 		steps: [
 			{
-				title: 'Add it to your home screen',
-				copy: 'BubbleBoard installs from your browser. No app store needed.'
-			},
-			{ title: 'Turn on notifications', copy: 'Hear when there’s something new to see.' },
-			{
 				title: 'Scan your QR code',
-				copy: 'Open the app and scan the QR code from your kindergarten. No username or password to remember.'
-			}
+				copy: 'Point your phone’s camera at the QR code from your kindergarten. No username or password to remember.'
+			},
+			{
+				title: 'Install the app',
+				copy: 'BubbleBoard shows you how to add it to your home screen, right from your browser. No app store needed.'
+			},
+			{ title: 'Turn on notifications', copy: 'Hear when there’s something new to see.' }
 		]
 	},
 	privacy: {

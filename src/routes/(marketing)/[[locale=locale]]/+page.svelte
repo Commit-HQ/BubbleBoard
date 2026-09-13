@@ -194,18 +194,6 @@
 		</div>
 	</section>
 
-	<section id="security" aria-labelledby="security-title">
-		{@render intro('security', t.security.title, t.security.copy)}
-		<ul
-			class="mt-10 grid divide-y divide-ink/10 rounded-4xl glass md:grid-cols-3 md:divide-x md:divide-y-0"
-		>
-			{@render safeguard('lock', t.security.device)}
-			{@render safeguard('database', t.security.server)}
-			{@render safeguard('eyeOff', t.security.host)}
-		</ul>
-		<p class="mt-5 text-sm text-muted">{t.security.note}</p>
-	</section>
-
 	<section
 		id="teachers"
 		class="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16"
@@ -220,6 +208,18 @@
 			{@render feature('clock', t.teachers.retention)}
 			{@render feature('key', t.teachers.access)}
 		</ul>
+	</section>
+
+	<section id="security" aria-labelledby="security-title">
+		{@render intro('security', t.security.title, t.security.copy)}
+		<ul
+			class="mt-10 grid divide-y divide-ink/10 rounded-4xl glass md:grid-cols-3 md:divide-x md:divide-y-0"
+		>
+			{@render safeguard('lock', t.security.device)}
+			{@render safeguard('database', t.security.server)}
+			{@render safeguard('eyeOff', t.security.host)}
+		</ul>
+		<p class="mt-5 text-sm text-muted">{t.security.note}</p>
 	</section>
 
 	<section

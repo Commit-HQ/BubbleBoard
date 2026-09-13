@@ -18,8 +18,8 @@ export const hr = {
 			features: 'Mogućnosti',
 			how: 'Kako radi',
 			privacy: 'Privatnost',
-			security: 'Sigurnost',
 			teachers: 'Za odgojitelje',
+			security: 'Sigurnost',
 			kindergartens: 'Za vrtiće'
 		}
 	},
@@ -66,17 +66,17 @@ export const hr = {
 	how: {
 		title: 'Jedan QR kod. Vaša skupina.',
 		copy: 'Roditelji i odgojitelji pridružuju se na isti način. Vrtić dijeli QR kodove: jedan za sve uređaje vaše obitelji i po jedan za svakog odgojitelja. To je sve što trebate.',
-		photoAlt: 'Odgojiteljica sjedi na podu i razgovara sa skupinom djece',
+		photoAlt: 'Djeca leže u krugu na tepihu u vrtiću i smiju se, a neka drže noge u zraku',
 		steps: [
 			{
-				title: 'Dodajte ga na početni zaslon',
-				copy: 'BubbleBoard se instalira iz preglednika, bez trgovine aplikacija.'
-			},
-			{ title: 'Uključite obavijesti', copy: 'Saznajte kada vas čeka nešto novo.' },
-			{
 				title: 'Skenirajte svoj QR kod',
-				copy: 'Otvorite aplikaciju i skenirajte QR kod koji ste dobili u vrtiću. Bez pamćenja korisničkog imena i lozinke.'
-			}
+				copy: 'Usmjerite kameru mobitela prema QR kodu koji ste dobili u vrtiću. Bez pamćenja korisničkog imena i lozinke.'
+			},
+			{
+				title: 'Instalirajte aplikaciju',
+				copy: 'BubbleBoard će vam pokazati kako ga dodati na početni zaslon, izravno iz preglednika i bez trgovine aplikacija.'
+			},
+			{ title: 'Uključite obavijesti', copy: 'Saznajte kada vas čeka nešto novo.' }
 		]
 	},
 	privacy: {
