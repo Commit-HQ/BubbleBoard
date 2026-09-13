@@ -89,8 +89,6 @@
 
 {#if need === 'nothing'}
 	{@render content()}
-{:else if app.mustInstall}
-	<StatusView {locale} />
 {:else if app.status === 'family'}
 	<Panel icon="smile" title={t.staffOnly.title} copy={t.staffOnly.copy} children={home} />
 {:else if app.status === 'staff' && need === 'admin' && !app.admin}

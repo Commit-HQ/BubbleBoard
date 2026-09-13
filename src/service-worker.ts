@@ -3,8 +3,8 @@
 /// <reference lib="webworker" />
 /// <reference types="@sveltejs/kit" />
 
-import { defaultLocale, messages } from '$lib/i18n';
-import { notificationLocale } from '$lib/notifications';
+import { defaultLocale, notificationTexts } from '$lib/i18n';
+import { notificationLocale, notify } from '$lib/notifications';
 import { appPath } from '$lib/paths';
 
 // BubbleBoard's service worker handles notifications only: no caching and no offline copies
@@ -18,12 +18,7 @@ worker.addEventListener('push', (event) => {
 		notificationLocale()
 			.catch(() => undefined)
 			.then((locale = defaultLocale) =>
-				worker.registration.showNotification('BubbleBoard', {
-					body: messages[locale].app.notifications.push,
-					icon: '/icons/icon-192.png',
-					tag: 'notice',
-					data: { path: appPath(locale) }
-				})
+				notify(worker.registration, notificationTexts[locale], 'notice', { path: appPath(locale) })
 			)
 	);
 });

@@ -26,4 +26,4 @@ jobs:
       - run: npm ci
       - run: npm run gen
       - run: npm run validate
-      - run: npx wrangler deploy worker/index.js --dry-run
+      - run: npx wrangler deploy --dry-run

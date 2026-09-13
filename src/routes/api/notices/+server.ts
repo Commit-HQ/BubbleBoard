@@ -10,10 +10,7 @@ import type { RequestHandler } from './$types';
 export const POST: RequestHandler = async (event) => {
 	const staff = await requireStaff(event);
 	const notice = newNotice(await readJson(event.request));
-	const db = database(event);
-	const board = await postNotice(db, staff, notice);
-	const classrooms = notice.classrooms.map(({ classroom }) => classroom);
-	const queue = event.platform?.env.NOTIFICATIONS;
-	await announce(db, queue, classrooms, await sessionHash(event), event.url.origin);
+	const board = await postNotice(database(event), staff, notice);
+	await announce(event, notice.classrooms, await sessionHash(event));
 	return json(board);
 };

@@ -1,18 +1,27 @@
-import { en } from './en';
-import { hr } from './hr';
+import { en, notificationText as enNotification, type Messages } from './en';
+import { hr, notificationText as hrNotification } from './hr';
 
-export const messages = { hr, en };
-export type Locale = keyof typeof messages;
-export const locales = Object.keys(messages) as Locale[];
+// The languages and their messages. The languages are plain values, so code that only checks a language,
+// such as the service worker's, doesn't bundle every message.
+
+export const locales = ['hr', 'en'] as const;
+export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = 'hr';
+export const messages: Record<Locale, Messages> = { hr, en };
+/** What every notification says, apart from `messages` so the service worker takes only these words. */
+export const notificationTexts: Record<Locale, string> = { hr: hrNotification, en: enNotification };
 
 export function isLocale(value: unknown): value is Locale {
-	return typeof value === 'string' && Object.hasOwn(messages, value);
+	return locales.includes(value as Locale);
 }
+
+const nameLists: Partial<Record<Locale, Intl.ListFormat>> = {};
 
 /** Names on a detail line, such as “Ivana (mum), Marko (dad)”. */
 export function listNames(locale: Locale, names: string[]) {
-	return new Intl.ListFormat(locale, { type: 'unit', style: 'short' }).format(names);
+	// A formatter is slow to make, so each language's is made once.
+	nameLists[locale] ??= new Intl.ListFormat(locale, { type: 'unit', style: 'short' });
+	return nameLists[locale].format(names);
 }
 
 /** A teacher's name as the app shows it. The recovery card has no name, so it gets its label. */

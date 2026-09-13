@@ -46,6 +46,6 @@
 			{/if}
 		</div>
 	{:else}
-		<Board {locale} {classrooms} empty={staff ? t.notices.emptyStaff : t.notices.empty} />
+		<Board {locale} />
 	{/if}
 </section>

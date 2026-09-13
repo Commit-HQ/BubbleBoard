@@ -27,7 +27,9 @@ export default defineConfig({
 				runes: ({ filename }) =>
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
-			adapter: adapter(),
+			// The adapter writes its fetch handler where wrangler.build.jsonc says, and worker/index.js, the
+			// Worker's entry in wrangler.jsonc, adds the queue and scheduled handlers to it.
+			adapter: adapter({ config: 'wrangler.build.jsonc' }),
 			version: { name: commit() },
 			csp: {
 				mode: 'hash',

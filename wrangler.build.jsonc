@@ -1,0 +1,11 @@
+{
+	// What SvelteKit's Cloudflare adapter reads when building (vite.config.ts): where to write its fetch
+	// handler, which worker/index.js imports, and the static assets. The Worker itself is configured in
+	// wrangler.jsonc, whose `assets` must match these.
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".svelte-kit/cloudflare"
+	}
+}

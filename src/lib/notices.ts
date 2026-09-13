@@ -3,9 +3,10 @@ import {
 	createKey,
 	decryptData,
 	encryptData,
+	envelopeSize,
 	UnreadableError,
 	unwrapKey,
-	type Wrapping
+	wrapping
 } from '$lib/crypto';
 
 // Notices on the board, as devices write and read them (docs/access-format.md). Every save seals a notice
@@ -15,6 +16,8 @@ import {
 /** How long a notice stays up, in days from when it was first posted. The server accepts only these. */
 export const noticeDays = [1, 3, 7, 14, 30, 60, 90] as const;
 export const defaultNoticeDays = 30;
+/** A day in milliseconds, as a notice's days are counted. */
+export const day = 24 * 60 * 60 * 1000;
 
 /** A notice's background. Every text colour stays readable on each. */
 export const papers = ['white', 'yellow', 'peach', 'pink', 'lilac', 'blue', 'green'] as const;
@@ -129,15 +132,13 @@ function readContent(value: unknown): NoticeContent {
 	return author === undefined ? content : { author: author as string, ...content };
 }
 
-function noticeKeyFor(groupKey: CryptoKey, classroom: string, notice: string): Wrapping {
-	return { key: groupKey, context: { purpose: 'notice-key-for-classroom', classroom, notice } };
-}
-
 /** The most a notice's content may take, in bytes of JSON, which the server also holds it to. */
 export const maxNoticeBytes = 32 * 1024;
 
 /** A notice too long to store. A long notice with formatting stays well below the limit. */
 export class NoticeTooLongError extends Error {
+	readonly code = 'notice-too-long';
+
 	constructor() {
 		super('Notice too long');
 		this.name = 'NoticeTooLongError';
@@ -150,14 +151,16 @@ export async function sealNotice(
 	content: NoticeContent,
 	classrooms: { id: string; groupKey: CryptoKey }[]
 ) {
-	if (new TextEncoder().encode(JSON.stringify(content)).length > maxNoticeBytes) {
-		throw new NoticeTooLongError();
-	}
 	const { key, envelopes } = await createKey(
-		classrooms.map((classroom) => noticeKeyFor(classroom.groupKey, classroom.id, id))
+		classrooms.map((classroom) =>
+			wrapping.noticeKeyForClassroom(classroom.groupKey, classroom.id, id)
+		)
 	);
+	const sealed = await encryptData(content, key, { purpose: 'notice-content', notice: id });
+	// Measured as the server measures it.
+	if (envelopeSize(sealed)! > maxNoticeBytes) throw new NoticeTooLongError();
 	return {
-		content: await encryptData(content, key, { purpose: 'notice-content', notice: id }),
+		content: sealed,
 		classrooms: classrooms.map((classroom, index) => ({
 			classroom: classroom.id,
 			noticeKey: envelopes[index]
@@ -176,7 +179,7 @@ export async function openNotice(
 	if (!first) fail();
 	const key = await unwrapKey(
 		first.noticeKey,
-		noticeKeyFor(groupKeys.get(first.classroom)!, first.classroom, record.id)
+		wrapping.noticeKeyForClassroom(groupKeys.get(first.classroom)!, first.classroom, record.id)
 	);
 	const data = await decryptData(content, key, { purpose: 'notice-content', notice: record.id });
 	return {

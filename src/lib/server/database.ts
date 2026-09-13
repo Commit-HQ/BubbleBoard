@@ -17,3 +17,17 @@ export async function transaction(db: D1Database, statements: D1PreparedStatemen
 		throw cause;
 	}
 }
+
+/** Whether a subquery's results include every one of these IDs, which must each come once. */
+export async function includesAll(
+	db: D1Database,
+	ids: string[],
+	subquery: string,
+	params: string[] = []
+) {
+	const row = await db
+		.prepare(`SELECT COUNT(*) AS count FROM json_each(?) WHERE value IN (${subquery})`)
+		.bind(JSON.stringify(ids), ...params)
+		.first<{ count: number }>();
+	return row?.count === ids.length;
+}

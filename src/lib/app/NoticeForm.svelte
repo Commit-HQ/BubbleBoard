@@ -1,10 +1,17 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
-	import { defaultNoticeDays, noticeDays, papers, type Notice, type Paper } from '$lib/notices';
+	import {
+		day,
+		defaultNoticeDays,
+		noticeDays,
+		papers,
+		type Notice,
+		type Paper
+	} from '$lib/notices';
 	import NoticeEditor from './NoticeEditor.svelte';
 	import { getApp, Task } from './state.svelte';
-	import { alert, button, choice, field, paperClass, surface } from './ui';
+	import { alert, button, choice, field, labelFocus, paperClass, surface } from './ui';
 
 	// A notice's text, classrooms, paper, and days, to post or change. Teachers post to their own classrooms
 	// and admins to any. The editor shows the text on the paper chosen for it.
@@ -15,12 +22,14 @@
 	const t = $derived(messages[locale].app);
 	const id = $props.id();
 	const task = new Task();
-	const day = 24 * 60 * 60 * 1000;
 	const classrooms = $derived(app.myClassrooms);
 
-	/** What the form starts with: the notice as it is, or a new notice's defaults. The edit page mounts a new form for each notice. */
+	/**
+	 * What the form starts with: the notice as it is, or a new notice's defaults. The edit page mounts a new
+	 * form for each notice, and reading the notice in here, once, tells Svelte that's intended.
+	 */
 	function starting() {
-		const own = app.myClassrooms.map((classroom) => classroom.id);
+		const own = classrooms.map((classroom) => classroom.id);
 		return {
 			paper: notice?.paper ?? 'white',
 			days: notice ? Math.round((notice.expiresAt - notice.postedAt) / day) : defaultNoticeDays,
@@ -100,7 +109,7 @@
 				<span id="{id}-classrooms" class="font-semibold">{t.notices.classrooms}</span>
 				{#if classrooms.length > 1}
 					<label
-						class="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full font-semibold text-muted transition-colors hover:text-ink has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
+						class="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full font-semibold text-muted transition-colors hover:text-ink {labelFocus}"
 					>
 						<input
 							class="sr-only"
@@ -112,7 +121,7 @@
 									: [])}
 						/>
 						<span class={choice.box}><Icon name="check" class={choice.check} /></span>
-						{t.notices.selectAll}
+						{t.actions.selectAll}
 					</label>
 				{/if}
 			</div>
@@ -133,7 +142,7 @@
 				{#each noticeDays as count (count)}
 					<!-- Forced colours drop the dark fill, so the chosen number is underlined there instead. -->
 					<label
-						class="group grid cursor-pointer justify-items-center gap-1 rounded-2xl border border-ink/10 bg-white/60 px-1 py-3 transition hover:bg-white has-checked:border-ink has-checked:bg-ink has-checked:text-white has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
+						class="{choice.option} group grid justify-items-center gap-1 rounded-2xl px-1 py-3"
 					>
 						<input class="sr-only" type="radio" name="{id}-days" value={count} bind:group={days} />
 						<span class="sr-only">{t.notices.dayCount(count)}</span>

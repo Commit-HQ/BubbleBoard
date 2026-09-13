@@ -52,7 +52,7 @@
 		<!-- Staff manage the kindergarten from here. Settings, which hold the language, are here on every
 		page, even before a device connects. On phones, Manage shows only its icon. -->
 		<nav class="flex items-center gap-1.5" aria-label={t.nav.label}>
-			{#if app.status === 'staff' && !app.mustInstall}
+			{#if app.status === 'staff'}
 				<a class="{headerLink} px-3 sm:px-4" href={manage} aria-current={current(manage)}>
 					<Icon name="dashboard" />
 					<span class="max-sm:sr-only">{t.app.manage.title}</span>

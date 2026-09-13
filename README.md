@@ -65,8 +65,8 @@ Add interface copy to both `src/lib/i18n/en.ts` and `hr.ts`. When bundling a new
 2. Run `npx wrangler login` to authenticate to your Cloudflare account.
 3. Choose a unique Worker `name` in `wrangler.jsonc`.
 4. Set `PUBLIC_SITE_URL` in `.env` to the origin the site will be served from, such as `https://bubbleboard.example.com`. It is read when you build.
-5. Run `npm run validate` and `npx wrangler deploy worker/index.js --dry-run`.
-6. Run `npm run deploy`. The first deploy creates the database and the notifications queue, applies the migrations, stores a new `SETUP_TOKEN` secret and the `VAPID_KEY` secret that signs notifications, and prints a setup link. Later deploys apply new migrations and leave both secrets alone: a new `VAPID_KEY` would silently end every device's notifications. When a deploy creates a resource, Wrangler also writes it into `wrangler.jsonc`: discard that change with `git restore wrangler.jsonc`, which keeps the file the same for every installation, since later deploys find the resources by name.
+5. Run `npm run validate` and `npx wrangler deploy --dry-run`.
+6. Run `npm run deploy`. The first deploy creates the database and the notifications queue, applies the migrations, stores a new `SETUP_TOKEN` secret and the `VAPID_KEY` secret that signs notifications, and prints a setup link. Later deploys apply new migrations and leave both secrets alone: a new `VAPID_KEY` would silently end every device's notifications. When a deploy creates a resource, Wrangler also writes it into `wrangler.jsonc`; the deploy puts the file back as it was, so it stays the same for every installation, since later deploys find the resources by name.
 7. To use your own domain, add it to the Worker in the Cloudflare dashboard (**Workers & Pages → your Worker → Settings → Domains & Routes**) before opening the setup link, which points at `PUBLIC_SITE_URL`. The domain must first be active in the same Cloudflare account: for a domain registered elsewhere, add it under **Domains**, turn off DNSSEC at the registrar if it's on, and replace the registrar's nameservers with the two Cloudflare shows. Turn on **Always Use HTTPS** for the domain (**SSL/TLS → Edge Certificates**): the app needs `https://`, and the domain otherwise also answers plain `http://`. Domains are kept out of `wrangler.jsonc` so the configuration works for every installation. Printed cards use the address setup was opened on, so set up on the final domain.
 8. Open the setup link on the first admin's device, enter their name, and print or save both cards before continuing. Keep the recovery card somewhere safe: it can do everything an admin can.
 
@@ -131,7 +131,7 @@ src/
   app.html              Document shell
   hooks.server.ts       Document language, font preloads, security headers, cross-site check
 migrations/             D1 schema
-scripts/                Setup links, the notifications key, and starting over
+scripts/                Deploying, setup links, the notifications key, and starting over
 static/                 Public static files: app icons and third-party notices
 worker/                 The Worker's entry: SvelteKit, sending notifications, daily cleanup
 docs/                   Architecture notes, access format, product specification
@@ -139,6 +139,7 @@ _headers                Security headers for prerendered pages and assets
 .env.example            Build-time settings to copy into .env
 .github/workflows/      Validation pipeline (never deploys)
 wrangler.jsonc          Worker, database, queue, schedule, and rate limit configuration
+wrangler.build.jsonc    Where SvelteKit's adapter writes the build the Worker's entry imports
 ```
 
 Croatian is served at `/` and English at `/en`, both as static HTML without client-side JavaScript. The app is at `/app` and `/en/app`. Language, design, font, and security conventions are in the [architecture notes](docs/architecture.md).

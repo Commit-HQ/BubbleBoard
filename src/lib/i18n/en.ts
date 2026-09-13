@@ -1,3 +1,6 @@
+/** What every notification says. The service worker shows it without the rest of the messages. */
+export const notificationText = 'New notice from your kindergarten';
+
 export const en = {
 	languageName: 'English',
 	ogLocale: 'en_US',
@@ -198,6 +201,7 @@ export const en = {
 			done: 'Done',
 			rename: 'Rename',
 			remove: 'Remove',
+			selectAll: 'Select all',
 			working: 'Just a moment…'
 		},
 		counts: {
@@ -304,7 +308,6 @@ export const en = {
 			replaceCards: 'Replace cards',
 			replaceTitle: 'Replace family cards',
 			replaceCopy: 'Choose the cards to replace, then print the new ones together.',
-			selectAll: 'Select all',
 			replaceSubmit: (count: number) => (count === 1 ? 'Replace 1 card' : `Replace ${count} cards`),
 			replaceConfirm: (count: number) =>
 				count === 1 ? 'Replace 1 card?' : `Replace ${count} cards?`,
@@ -398,7 +401,6 @@ export const en = {
 			show: 'Show notices for',
 			all: 'All classrooms',
 			unreadable: 'Some notices didn’t open on this device.',
-			byline: (author: string, time: string) => `${author} · ${time}`,
 			edited: 'edited',
 			edit: 'Edit',
 			delete: 'Delete',
@@ -408,7 +410,6 @@ export const en = {
 			editTitle: 'Edit notice',
 			text: 'Notice',
 			classrooms: 'Classrooms',
-			selectAll: 'Select all',
 			paper: 'Paper',
 			papers: {
 				white: 'White',
@@ -432,7 +433,6 @@ export const en = {
 			noClassrooms: 'You can post notices once an admin adds you to a classroom.'
 		},
 		notifications: {
-			push: 'New notice from your kindergarten',
 			test: 'Notifications are on. You’ll get one like this when there’s a new notice.',
 			cardTitle: 'Get a notification when there’s a new notice',
 			cardCopy: 'It says only that there’s something new. The notice itself stays in the app.',

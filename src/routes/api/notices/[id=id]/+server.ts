@@ -10,13 +10,8 @@ import type { RequestHandler } from './$types';
 export const PUT: RequestHandler = async (event) => {
 	const staff = await requireStaff(event);
 	const change = noticeChange(await readJson(event.request));
-	const db = database(event);
-	const board = await changeNotice(db, staff, event.params.id, change);
-	if (change.announce) {
-		const classrooms = change.classrooms.map(({ classroom }) => classroom);
-		const queue = event.platform?.env.NOTIFICATIONS;
-		await announce(db, queue, classrooms, await sessionHash(event), event.url.origin);
-	}
+	const board = await changeNotice(database(event), staff, event.params.id, change);
+	if (change.announce) await announce(event, change.classrooms, await sessionHash(event));
 	return json(board);
 };
 

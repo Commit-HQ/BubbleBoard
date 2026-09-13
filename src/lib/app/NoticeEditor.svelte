@@ -11,7 +11,7 @@
 	} from '$lib/notices';
 	import type { ChainedCommands, Editor } from '@tiptap/core';
 	import { onMount } from 'svelte';
-	import { button, field, textColourClass } from './ui';
+	import { button, field, noticeText, textColourClass } from './ui';
 
 	// The notice editor: Tiptap 3, imported when this component mounts, so only the page where notices are
 	// written downloads it (next-step-plan.md, Editor). Its schema holds what boards render: paragraphs,
@@ -139,8 +139,7 @@
 				content: content ?? '',
 				editorProps: {
 					attributes: {
-						class:
-							'min-h-48 px-5 py-4 text-lg leading-relaxed focus:outline-none [&_a]:font-semibold [&_a]:underline [&_a]:underline-offset-4 [&_li]:pl-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&>*+*]:mt-3',
+						class: `min-h-48 px-5 py-4 focus:outline-none ${noticeText}`,
 						role: 'textbox',
 						'aria-multiline': 'true',
 						'aria-labelledby': labelledby

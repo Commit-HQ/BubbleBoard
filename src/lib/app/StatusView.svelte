@@ -24,7 +24,7 @@
 		</p>
 		<noscript><p class="max-w-md text-muted">{t.noscript}</p></noscript>
 	</div>
-{:else if app.mustInstall}
+{:else if app.status === 'install'}
 	<InstallPanel {locale} />
 {:else if app.status === 'unsupported'}
 	<Panel icon="alert" title={t.unsupported.title} copy={t.unsupported.copy} alert />

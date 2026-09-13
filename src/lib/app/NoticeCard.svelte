@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
 	import { listNames, messages, type Locale } from '$lib/i18n';
+	import { namesOf } from '$lib/kindergarten';
 	import type { Notice } from '$lib/notices';
 	import { appPath } from '$lib/paths';
 	import NoticeBody from './NoticeBody.svelte';
@@ -12,13 +13,20 @@
 		$props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.notices);
-	const time = $derived(
+	// Made once for the card, not again whenever the board loads.
+	const timeFormat = $derived(
 		new Intl.DateTimeFormat(locale, {
 			day: 'numeric',
 			month: 'short',
 			hour: 'numeric',
 			minute: '2-digit'
-		}).format(notice.announcedAt)
+		})
+	);
+	/** Who put the notice up and when, and whether it was edited since. */
+	const details = $derived(
+		[notice.author, timeFormat.format(notice.announcedAt), notice.editedAt ? t.edited : undefined]
+			.filter(Boolean)
+			.join(' · ')
 	);
 </script>
 
@@ -28,14 +36,10 @@
 	]}"
 >
 	<header class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm">
-		<p class="font-semibold">{listNames(locale, app.classroomNames(notice.classrooms))}</p>
-		<p class="text-muted">
-			{notice.author ? t.byline(notice.author, time) : time}{notice.editedAt
-				? ` · ${t.edited}`
-				: ''}
-		</p>
+		<p class="font-semibold">{listNames(locale, namesOf(app.myClassrooms, notice.classrooms))}</p>
+		<p class="text-muted">{details}</p>
 	</header>
-	<div class="mt-3 text-lg leading-relaxed">
+	<div class="mt-3">
 		<NoticeBody blocks={notice.body.content} />
 	</div>
 	{#if app.canChange(notice)}

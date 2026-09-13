@@ -4,7 +4,6 @@
 	import { getApp } from '$lib/app/state.svelte';
 	import { button } from '$lib/app/ui';
 	import Icon from '$lib/components/Icon.svelte';
-	import IconTile from '$lib/components/IconTile.svelte';
 	import { listNames, messages, teacherName } from '$lib/i18n';
 	import { namesOf, type Teacher } from '$lib/kindergarten';
 	import { appPath } from '$lib/paths';
@@ -46,17 +45,14 @@
 	{#if recovery}
 		<section class="grid gap-3 border-t border-ink/10 pt-6" aria-labelledby="recovery-title">
 			<h2 id="recovery-title" class="text-2xl">{t.recoveryTitle}</h2>
-			<a
-				class="flex items-center gap-4 rounded-3xl glass p-5 transition hover:bg-white/75"
-				href={appPath(data.locale, 'teacher', { id: recovery.id })}
-			>
-				<IconTile icon="key" tone="ink" />
-				<span class="min-w-0 grow">
-					<span class="block font-bold">{title(recovery)}</span>
-					<span class="block text-sm text-muted">{t.recoveryDetail}</span>
-				</span>
-				<Icon name="chevronRight" class="size-5 shrink-0 text-muted" />
-			</a>
+			<ul class="grid gap-2">
+				<ListLink
+					href={appPath(data.locale, 'teacher', { id: recovery.id })}
+					title={title(recovery)}
+					detail={t.recoveryDetail}
+					icon="key"
+				/>
+			</ul>
 		</section>
 	{/if}
 </Screen>

@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
+	import NotificationSwitch from '$lib/app/NotificationSwitch.svelte';
 	import Screen from '$lib/app/Screen.svelte';
-	import { getApp, Task } from '$lib/app/state.svelte';
-	import { alert, button, surface } from '$lib/app/ui';
+	import { getApp } from '$lib/app/state.svelte';
+	import { button, surface } from '$lib/app/ui';
 	import BuildLabel from '$lib/components/BuildLabel.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import IconTile from '$lib/components/IconTile.svelte';
 	import LanguageSwitch from '$lib/components/LanguageSwitch.svelte';
-	import { errorMessage, listNames, messages, teacherName } from '$lib/i18n';
+	import { listNames, messages, teacherName } from '$lib/i18n';
 	import { cardKind } from '$lib/kindergarten';
 	import { appPath, homePath } from '$lib/paths';
 	import type { PageProps } from './$types';
@@ -19,7 +20,6 @@
 	const app = getApp();
 	const m = $derived(messages[data.locale]);
 	const t = $derived(m.app);
-	const switching = new Task();
 	let confirming = $state(false);
 
 	async function signOut() {
@@ -29,7 +29,7 @@
 </script>
 
 <Screen locale={data.locale} title={t.options.title} need="nothing">
-	{#if app.connected && !app.mustInstall}
+	{#if app.connected}
 		<section class={surface}>
 			<IconTile icon="phone" tone="ink" />
 			{#if app.status === 'staff' && app.me}
@@ -56,38 +56,8 @@
 		<section class={surface} aria-labelledby="notifications-title">
 			<IconTile icon="bell" tone="ink" />
 			<h2 id="notifications-title" class="mt-5 text-3xl">{t.notifications.title}</h2>
-			<p class="mt-1 text-muted">
-				{app.notifications === 'on'
-					? t.notifications.on
-					: app.notifications === 'off'
-						? t.notifications.off
-						: app.notifications === 'blocked'
-							? t.notifications.blocked
-							: t.notifications.unsupported}
-			</p>
-			{#if switching.error}
-				<p class="{alert} mt-4" role="alert">{errorMessage(data.locale, switching.error)}</p>
-			{/if}
-			{#if app.notifications === 'off'}
-				<!-- The permission request must come straight from this tap. -->
-				<button
-					class="{button.primary} mt-7"
-					type="button"
-					disabled={switching.busy}
-					onclick={() => switching.run(() => app.turnOnNotifications(data.locale))}
-				>
-					{t.notifications.turnOn}
-				</button>
-			{:else if app.notifications === 'on'}
-				<button
-					class="{button.secondary} mt-7"
-					type="button"
-					disabled={switching.busy}
-					onclick={() => switching.run(() => app.turnOffNotifications())}
-				>
-					{t.notifications.turnOff}
-				</button>
-			{/if}
+			<p class="mt-1 text-muted">{t.notifications[app.notifications]}</p>
+			<NotificationSwitch locale={data.locale} />
 		</section>
 	{/if}
 

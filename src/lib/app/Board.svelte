@@ -4,17 +4,15 @@
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import NoticeCard from './NoticeCard.svelte';
 	import { getApp } from './state.svelte';
+	import { choice } from './ui';
 
 	// Home's notices, newest on top, as on the kindergarten's corkboard. With several classrooms, a filter
 	// shows one classroom's notices; it starts on all of them.
-	let {
-		locale,
-		classrooms,
-		empty
-	}: { locale: Locale; classrooms: { id: string; name: string }[]; empty: string } = $props();
+	let { locale }: { locale: Locale } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.notices);
 	const id = $props.id();
+	const classrooms = $derived(app.myClassrooms);
 	/** The classroom chosen in the filter, or '' for all of them. */
 	let chosen = $state('');
 	// A classroom the device no longer belongs to leaves the filter on all.
@@ -38,7 +36,7 @@
 				{#each [{ id: '', name: t.all }, ...classrooms] as option (option.id)}
 					<!-- Forced colours drop the dark fill, so the chosen classroom is underlined there instead. -->
 					<label
-						class="inline-flex min-h-11 cursor-pointer items-center rounded-full border border-ink/10 bg-white/60 px-4 font-semibold transition hover:bg-white has-checked:border-ink has-checked:bg-ink has-checked:text-white has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent forced-colors:has-checked:underline"
+						class="{choice.option} inline-flex min-h-11 items-center rounded-full px-4 font-semibold forced-colors:has-checked:underline"
 					>
 						<input
 							class="sr-only"
@@ -64,7 +62,9 @@
 			{/each}
 		</ul>
 	{:else}
-		<p class="text-muted">{shown ? t.emptyClassroom : empty}</p>
+		<p class="text-muted">
+			{shown ? t.emptyClassroom : app.status === 'staff' ? t.emptyStaff : t.empty}
+		</p>
 	{/if}
 </div>
 

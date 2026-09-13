@@ -40,9 +40,12 @@
 				camera = 'on';
 				const canvas = new QRCanvas();
 				let reading = false;
-				const cancel = frameLoop(async () => {
-					if (reading) return;
+				let readAt = -Infinity;
+				// Reading a frame holds up the page, so the camera is read a few times a second, not every frame.
+				const cancel = frameLoop(async (time) => {
+					if (reading || time - readAt < 200) return;
 					reading = true;
+					readAt = time;
 					// A frame without a readable code is a miss; the next frame tries again.
 					const text = await stream.readFrame(canvas, true).catch(() => undefined);
 					reading = false;

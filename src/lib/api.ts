@@ -60,7 +60,7 @@ export type Kindergarten = {
 	/** Moves on with every change a `TeacherChange` or `FamilyLinks` makes. */
 	revision: number;
 	classrooms: { id: string; profile: string; groupKeyForStaff: string }[];
-	teachers: { id: string; admin: boolean; profile: string; classrooms: string[] }[];
+	teachers: (TeacherRecord & { id: string })[];
 	children: { id: string; classroom: string; profile: string }[];
 	families: { id: string; profile: string; familyKeyForStaff: string; classrooms: string[] }[];
 };

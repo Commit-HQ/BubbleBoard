@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
+	import IconTile from '$lib/components/IconTile.svelte';
 	import { messages, type Locale } from '$lib/i18n';
 	import Panel from './Panel.svelte';
 	import { getApp } from './state.svelte';
@@ -27,11 +28,7 @@
 	<ol class="mt-8 grid gap-4">
 		{#each list as [icon, step] (step)}
 			<li class="flex items-center gap-4">
-				<span
-					class="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/80 text-ink ring-1 ring-ink/10"
-				>
-					<Icon name={icon} />
-				</span>
+				<IconTile {icon} tone="white" />
 				<span class="font-semibold">{step}</span>
 			</li>
 		{/each}

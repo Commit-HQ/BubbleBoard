@@ -39,15 +39,13 @@
 
 {#if cards}
 	<CardSheet locale={data.locale} {cards} confirm ondone={() => goto(appPath(data.locale))} />
-{:else if app.mustInstall}
-	<StatusView locale={data.locale} />
 {:else if app.connected}
 	<Panel icon="check" title={t.setup.connectedTitle} copy={t.setup.connectedCopy}>
 		<div class={buttonRow}>
 			<a class={button.primary} href={appPath(data.locale)}>{t.setup.open}</a>
 		</div>
 	</Panel>
-{:else if app.status === 'loading' || app.status === 'unsupported'}
+{:else if ['loading', 'unsupported', 'install'].includes(app.status)}
 	<StatusView locale={data.locale} />
 {:else}
 	<Panel icon="key" title={t.setup.title} copy={t.setup.copy}>

@@ -1,13 +1,13 @@
 import { error } from '@sveltejs/kit';
 import type { Identity, NewNotice, NoticeChange, NoticeKey, NoticeRecord, Staff } from '$lib/api';
-import { transaction } from './database';
+import { day } from '$lib/notices';
+import { includesAll, transaction } from './database';
 
 // The board: notices as envelopes, with the classrooms they're for (docs/access-format.md). The server
 // can't read a notice, so it decides who sees and changes which. Teachers post to their own classrooms and
 // admins to any; the author and admins change and delete a notice; everyone reads the notices of their
-// classrooms, and admins those of every classroom.
-
-const day = 24 * 60 * 60 * 1000;
+// classrooms, and admins those of every classroom. Reads leave out notices past their days, which the daily
+// cleanup deletes (push.ts).
 
 /** The classrooms whose notices someone sees, as a subquery and its parameters. */
 function visibleClassrooms(viewer: Identity): [string, string[]] {
@@ -22,9 +22,9 @@ function visibleClassrooms(viewer: Identity): [string, string[]] {
  * The notices someone sees that are still up, the most recently announced first. Each comes once, with its
  * key for every one of its classrooms the viewer sees.
  */
-export async function board(db: D1Database, viewer: Identity): Promise<NoticeRecord[]> {
+function boardQuery(db: D1Database, viewer: Identity) {
 	const [classrooms, params] = visibleClassrooms(viewer);
-	const { results } = await db
+	return db
 		.prepare(
 			`SELECT n.id, n.teacher_id AS teacher, n.content, n.posted_at AS postedAt,
 			n.announced_at AS announcedAt, n.edited_at AS editedAt, n.expires_at AS expiresAt,
@@ -33,9 +33,26 @@ export async function board(db: D1Database, viewer: Identity): Promise<NoticeRec
 			WHERE n.expires_at > ? AND nc.classroom_id IN (${classrooms})
 			GROUP BY n.id ORDER BY n.announced_at DESC, n.id`
 		)
-		.bind(Date.now(), ...params)
-		.all<Omit<NoticeRecord, 'classrooms'> & { classrooms: string }>();
-	return results.map((row) => ({ ...row, classrooms: JSON.parse(row.classrooms) as NoticeKey[] }));
+		.bind(Date.now(), ...params);
+}
+
+/** The board's rows as notices. SQLite has no arrays, so each notice's keys come as JSON. */
+function readBoard({ results }: D1Result): NoticeRecord[] {
+	type Row = Omit<NoticeRecord, 'classrooms'> & { classrooms: string };
+	return (results as Row[]).map((row) => ({
+		...row,
+		classrooms: JSON.parse(row.classrooms) as NoticeKey[]
+	}));
+}
+
+export async function board(db: D1Database, viewer: Identity) {
+	return readBoard(await boardQuery(db, viewer).all());
+}
+
+/** Changes the board and reads it back as the staff member sees it now, in one transaction. */
+async function changeBoard(db: D1Database, staff: Staff, statements: D1PreparedStatement[]) {
+	const results = await transaction(db, [...statements, boardQuery(db, staff)]);
+	return readBoard(results[statements.length]);
 }
 
 /**
@@ -44,20 +61,8 @@ export async function board(db: D1Database, viewer: Identity): Promise<NoticeRec
  * deleted or its teacher moved, so it's told to load them again.
  */
 async function checkClassrooms(db: D1Database, staff: Staff, keys: NoticeKey[]) {
-	const classrooms = JSON.stringify(keys.map(({ classroom }) => classroom));
-	const reachable = staff.admin
-		? db
-				.prepare(
-					'SELECT COUNT(*) AS count FROM classrooms WHERE id IN (SELECT value FROM json_each(?))'
-				)
-				.bind(classrooms)
-		: db
-				.prepare(
-					`SELECT COUNT(*) AS count FROM teacher_classrooms
-					WHERE teacher_id = ? AND classroom_id IN (SELECT value FROM json_each(?))`
-				)
-				.bind(staff.teacher, classrooms);
-	if ((await reachable.first<{ count: number }>())?.count !== keys.length) error(409, 'stale');
+	const classrooms = keys.map(({ classroom }) => classroom);
+	if (!(await includesAll(db, classrooms, ...visibleClassrooms(staff)))) error(409, 'stale');
 }
 
 function insertKeys(db: D1Database, notice: string, keys: NoticeKey[]) {
@@ -70,16 +75,10 @@ function insertKeys(db: D1Database, notice: string, keys: NoticeKey[]) {
 	);
 }
 
-/** Notices past their days leave the database whenever the board changes. */
-function removeExpired(db: D1Database, now: number) {
-	return db.prepare('DELETE FROM notices WHERE expires_at <= ?').bind(now);
-}
-
 export async function postNotice(db: D1Database, staff: Staff, notice: NewNotice) {
 	await checkClassrooms(db, staff, notice.classrooms);
 	const now = Date.now();
-	await transaction(db, [
-		removeExpired(db, now),
+	return changeBoard(db, staff, [
 		db
 			.prepare(
 				'INSERT INTO notices (id, teacher_id, content, posted_at, announced_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)'
@@ -87,7 +86,6 @@ export async function postNotice(db: D1Database, staff: Staff, notice: NewNotice
 			.bind(notice.id, staff.teacher, notice.content, now, now, now + notice.days * day),
 		...insertKeys(db, notice.id, notice.classrooms)
 	]);
-	return board(db, staff);
 }
 
 /** A notice that's still up and the staff member may change: their own, or any for an admin. */
@@ -107,7 +105,7 @@ export async function changeNotice(db: D1Database, staff: Staff, id: string, cha
 	const { postedAt } = await changeable(db, staff, id);
 	await checkClassrooms(db, staff, change.classrooms);
 	const now = Date.now();
-	await transaction(db, [
+	return changeBoard(db, staff, [
 		db
 			.prepare(
 				`UPDATE notices SET content = ?, edited_at = ?, expires_at = ?,
@@ -116,14 +114,11 @@ export async function changeNotice(db: D1Database, staff: Staff, id: string, cha
 			.bind(change.content, now, postedAt + change.days * day, Number(change.announce), now, id),
 		// Every save seals the notice under a new key, so its old keys all go.
 		db.prepare('DELETE FROM notice_classrooms WHERE notice_id = ?').bind(id),
-		...insertKeys(db, id, change.classrooms),
-		removeExpired(db, now)
+		...insertKeys(db, id, change.classrooms)
 	]);
-	return board(db, staff);
 }
 
 export async function deleteNotice(db: D1Database, staff: Staff, id: string) {
 	await changeable(db, staff, id);
-	await db.prepare('DELETE FROM notices WHERE id = ?').bind(id).run();
-	return board(db, staff);
+	return changeBoard(db, staff, [db.prepare('DELETE FROM notices WHERE id = ?').bind(id)]);
 }

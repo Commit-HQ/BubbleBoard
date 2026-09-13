@@ -1,3 +1,5 @@
+import type { RequestEvent } from '@sveltejs/kit';
+import type { NoticeKey } from '../api';
 import { fromBase64Url, toBase64Url } from '../base64url';
 
 // Notifications for new notices: Web Push without content (RFC 8030), signed with the installation's VAPID
@@ -32,12 +34,51 @@ export function isPushEndpoint(value: unknown): value is string {
 	);
 }
 
-/** The installation's VAPID key, from its secret: the key's x, y, and d in base64url, joined by dots. */
-export async function vapidKey(secret: string): Promise<VapidKey> {
-	const [x = '', y = '', d = ''] = secret.split('.');
+/** Keeps a device's subscription with the session that sent it, moving it from an earlier session. */
+export async function subscribe(db: D1Database, endpoint: string, session: string) {
+	// A subscription that's already with this session isn't written again.
+	await db
+		.prepare(
+			`INSERT INTO push_subscriptions (endpoint, session_hash) VALUES (?1, ?2)
+			ON CONFLICT (endpoint) DO UPDATE SET session_hash = ?2 WHERE session_hash <> ?2`
+		)
+		.bind(endpoint, session)
+		.run();
+}
+
+/** Forgets the subscription of a session's device, which turns its notifications off. */
+export async function unsubscribe(db: D1Database, session: string) {
+	await db.prepare('DELETE FROM push_subscriptions WHERE session_hash = ?').bind(session).run();
+}
+
+/** A new secret for the installation's VAPID key, in the form `vapidKey` reads, as scripts/push-key.js makes. */
+export async function createVapidSecret() {
+	const { privateKey } = await crypto.subtle.generateKey(
+		{ name: 'ECDSA', namedCurve: 'P-256' },
+		true,
+		['sign', 'verify']
+	);
+	const { x, y, d } = await crypto.subtle.exportKey('jwk', privateKey);
+	return `${x}.${y}.${d}`;
+}
+
+/** The public key devices subscribe with, from the installation's secret: its x and y as an uncompressed point. */
+export function vapidPublicKey(secret: string) {
+	const [x = '', y = ''] = secret.split('.');
 	const [xBytes, yBytes] = [fromBase64Url(x), fromBase64Url(y)];
 	if (xBytes?.length !== 32 || yBytes?.length !== 32)
 		throw new Error('VAPID_KEY is not a P-256 key');
+	const point = new Uint8Array(65);
+	point.set([4]);
+	point.set(xBytes, 1);
+	point.set(yBytes, 33);
+	return toBase64Url(point);
+}
+
+/** The installation's VAPID key, from its secret: the key's x, y, and d in base64url, joined by dots. */
+export async function vapidKey(secret: string): Promise<VapidKey> {
+	const publicKey = vapidPublicKey(secret);
+	const [x, y, d] = secret.split('.');
 	const privateKey = await crypto.subtle.importKey(
 		'jwk',
 		{ kty: 'EC', crv: 'P-256', x, y, d },
@@ -45,12 +86,7 @@ export async function vapidKey(secret: string): Promise<VapidKey> {
 		false,
 		['sign']
 	);
-	// The public key as devices subscribe with it: an uncompressed point.
-	const point = new Uint8Array(65);
-	point.set([4]);
-	point.set(xBytes, 1);
-	point.set(yBytes, 33);
-	return { privateKey, publicKey: toBase64Url(point) };
+	return { privateKey, publicKey };
 }
 
 /** A push service's Authorization header, signed for its origin and good for twelve hours (RFC 8292 §2). */
@@ -103,17 +139,14 @@ export async function recipients(
 
 /**
  * Notifies a notice's families and teachers, except the device that posted it, by putting them on the queue
- * in groups. Without a queue, as in `vite dev`, nothing is sent.
+ * in groups, signed for this installation's address. Without a queue, as in `vite dev`, nothing is sent.
  */
-export async function announce(
-	db: D1Database,
-	queue: Queue | undefined,
-	classrooms: string[],
-	poster: string | undefined,
-	subject: string
-) {
-	if (!queue) return;
-	const endpoints = await recipients(db, classrooms, poster);
+export async function announce(event: RequestEvent, keys: NoticeKey[], poster: string | undefined) {
+	const env = event.platform?.env;
+	if (!env?.NOTIFICATIONS) return;
+	const classrooms = keys.map(({ classroom }) => classroom);
+	const endpoints = await recipients(env.DB, classrooms, poster);
+	const subject = event.url.origin;
 	const messages: { body: PushMessage }[] = [];
 	for (let start = 0; start < endpoints.length; start += groupSize) {
 		messages.push({
@@ -122,7 +155,7 @@ export async function announce(
 	}
 	// A batch takes at most 100 messages.
 	for (let start = 0; start < messages.length; start += 100) {
-		await queue.sendBatch(messages.slice(start, start + 100));
+		await env.NOTIFICATIONS.sendBatch(messages.slice(start, start + 100));
 	}
 }
 

@@ -16,7 +16,7 @@ import type {
 	TeacherChange
 } from '$lib/api';
 import { hashAuthToken } from '$lib/crypto';
-import { transaction } from './database';
+import { includesAll, transaction } from './database';
 import { board } from './notices';
 import type { Admin } from './session';
 
@@ -39,8 +39,9 @@ async function found(query: D1PreparedStatement) {
 	if (!(await query.first())) error(404, 'not-found');
 }
 
-async function changesOne(db: D1Database, statement: D1PreparedStatement) {
-	const [{ meta }] = await transaction(db, [statement]);
+/** Runs a change as one transaction, answering not found when its first statement changed nothing. */
+async function changesOne(db: D1Database, ...statements: D1PreparedStatement[]) {
+	const [{ meta }] = await transaction(db, statements);
 	if (!meta.changes) error(404, 'not-found');
 }
 
@@ -100,17 +101,20 @@ export async function setUp(db: D1Database, teachers: Setup['teachers']) {
  * the notices of the classrooms it sees.
  */
 export async function accessFor(db: D1Database, current: Identity): Promise<Access> {
-	const notices = await board(db, current);
 	if (current.kind === 'staff') {
-		return { ...current, kindergarten: await kindergarten(db, current), notices };
+		const [records, notices] = await Promise.all([kindergarten(db, current), board(db, current)]);
+		return { ...current, kindergarten: records, notices };
 	}
-	const { results } = await db
-		.prepare(
-			`SELECT c.id, c.profile, fc.group_key_for_family AS groupKeyForFamily FROM family_classrooms fc
-			JOIN classrooms c ON c.id = fc.classroom_id WHERE fc.family_id = ?`
-		)
-		.bind(current.family)
-		.all<{ id: string; profile: string; groupKeyForFamily: string }>();
+	const [{ results }, notices] = await Promise.all([
+		db
+			.prepare(
+				`SELECT c.id, c.profile, fc.group_key_for_family AS groupKeyForFamily FROM family_classrooms fc
+				JOIN classrooms c ON c.id = fc.classroom_id WHERE fc.family_id = ?`
+			)
+			.bind(current.family)
+			.all<{ id: string; profile: string; groupKeyForFamily: string }>(),
+		board(db, current)
+	]);
 	return { ...current, classrooms: results, notices };
 }
 
@@ -178,12 +182,12 @@ export async function deleteClassroom(db: D1Database, admin: Admin, id: string) 
 	if (await db.prepare('SELECT 1 FROM children WHERE classroom_id = ?').bind(id).first()) {
 		error(409, 'not-empty');
 	}
-	const [{ meta }] = await transaction(db, [
+	await changesOne(
+		db,
 		db.prepare('DELETE FROM classrooms WHERE id = ?').bind(id),
 		// Notices for this classroom alone go with it.
 		db.prepare('DELETE FROM notices WHERE id NOT IN (SELECT notice_id FROM notice_classrooms)')
-	]);
-	if (!meta.changes) error(404, 'not-found');
+	);
 	return kindergarten(db, admin);
 }
 
@@ -326,24 +330,16 @@ export async function renameFamily(db: D1Database, admin: Admin, id: string, pro
  * replace: admins can replace any family's card, and teachers those of families in their classrooms.
  */
 export async function replaceFamilyCards(db: D1Database, staff: Staff, cards: FamilyCard[]) {
-	// Each family comes once (validate.ts), so the count of those allowed says whether all are.
-	const families = JSON.stringify(cards.map(({ family }) => family));
-	const allowed = await (
-		staff.admin
-			? db
-					.prepare(
-						'SELECT COUNT(*) AS count FROM families WHERE id IN (SELECT value FROM json_each(?))'
-					)
-					.bind(families)
-			: db
-					.prepare(
-						`SELECT COUNT(DISTINCT fc.family_id) AS count FROM family_classrooms fc
-						JOIN teacher_classrooms tc ON tc.classroom_id = fc.classroom_id
-						WHERE tc.teacher_id = ? AND fc.family_id IN (SELECT value FROM json_each(?))`
-					)
-					.bind(staff.teacher, families)
-	).first<{ count: number }>();
-	if (allowed?.count !== cards.length) error(404, 'not-found');
+	const [reachable, params]: [string, string[]] = staff.admin
+		? ['SELECT id FROM families', []]
+		: [
+				`SELECT fc.family_id FROM family_classrooms fc
+				JOIN teacher_classrooms tc ON tc.classroom_id = fc.classroom_id WHERE tc.teacher_id = ?`,
+				[staff.teacher]
+			];
+	// Each family comes once (validate.ts).
+	const families = cards.map(({ family }) => family);
+	if (!(await includesAll(db, families, reachable, params))) error(404, 'not-found');
 	const replacements = await Promise.all(
 		cards.map(({ family, credential }) => replaceCard(db, { family }, credential))
 	);

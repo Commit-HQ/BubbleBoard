@@ -42,8 +42,38 @@ type DataContext =
 /** A key that wraps or opens another key, and the record the wrapped key belongs to. */
 export type Wrapping = { key: CryptoKey; context: KeyContext };
 
+/** How each kind of key is wrapped for whoever opens it (docs/access-format.md). */
+export const wrapping = {
+	staffKeyForCard: (key: CryptoKey, credential: string): Wrapping => ({
+		key,
+		context: { purpose: 'staff-key-for-credential', credential }
+	}),
+	familyKeyForCard: (key: CryptoKey, credential: string): Wrapping => ({
+		key,
+		context: { purpose: 'family-key-for-credential', credential }
+	}),
+	familyKeyForStaff: (key: CryptoKey, family: string): Wrapping => ({
+		key,
+		context: { purpose: 'family-key-for-staff', family }
+	}),
+	groupKeyForStaff: (key: CryptoKey, classroom: string): Wrapping => ({
+		key,
+		context: { purpose: 'group-key-for-staff', classroom }
+	}),
+	groupKeyForFamily: (key: CryptoKey, classroom: string, family: string): Wrapping => ({
+		key,
+		context: { purpose: 'group-key-for-family', classroom, family }
+	}),
+	noticeKeyForClassroom: (key: CryptoKey, classroom: string, notice: string): Wrapping => ({
+		key,
+		context: { purpose: 'notice-key-for-classroom', classroom, notice }
+	})
+};
+
 /** Anything that doesn't open: malformed, modified, or given the wrong key or record. */
 export class UnreadableError extends Error {
+	readonly code = 'unreadable';
+
 	constructor(options?: ErrorOptions) {
 		super('Unreadable card or envelope', options);
 		this.name = 'UnreadableError';

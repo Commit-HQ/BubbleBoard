@@ -19,7 +19,7 @@ import {
 	rewrapKey,
 	UnreadableError,
 	unwrapKey,
-	type Wrapping
+	wrapping
 } from '$lib/crypto';
 
 // The kindergarten as a device sees it once decrypted, and the encrypted records its changes send. Only
@@ -58,30 +58,6 @@ export type StaffKeys = {
 
 /** A card that was just made: the secret, printed once, and the credential for the server. */
 type NewCard = { secret: Uint8Array<ArrayBuffer>; credential: NewCredential };
-
-/** How each kind of key is wrapped for whoever opens it (docs/access-format.md). */
-const wrapping = {
-	staffKeyForCard: (key: CryptoKey, credential: string): Wrapping => ({
-		key,
-		context: { purpose: 'staff-key-for-credential', credential }
-	}),
-	familyKeyForCard: (key: CryptoKey, credential: string): Wrapping => ({
-		key,
-		context: { purpose: 'family-key-for-credential', credential }
-	}),
-	familyKeyForStaff: (key: CryptoKey, family: string): Wrapping => ({
-		key,
-		context: { purpose: 'family-key-for-staff', family }
-	}),
-	groupKeyForStaff: (key: CryptoKey, classroom: string): Wrapping => ({
-		key,
-		context: { purpose: 'group-key-for-staff', classroom }
-	}),
-	groupKeyForFamily: (key: CryptoKey, classroom: string, family: string): Wrapping => ({
-		key,
-		context: { purpose: 'group-key-for-family', classroom, family }
-	})
-};
 
 /** A new secret with its credential ID and derived values, before any key is wrapped for it. */
 async function blankCard() {
@@ -247,6 +223,8 @@ export async function newClassroom(staffKey: CryptoKey, name: string): Promise<N
 
 /** A name that is empty once trimmed. Readers refuse such a record, so it's never written. */
 export class EmptyNameError extends Error {
+	readonly code = 'empty-name';
+
 	constructor() {
 		super('Empty name');
 		this.name = 'EmptyNameError';

@@ -1,17 +1,11 @@
 import { expect, it } from 'vitest';
 import { fromBase64Url } from '$lib/base64url';
-import { isPushEndpoint, vapidAuthorization, vapidKey } from './push';
+import { createVapidSecret, isPushEndpoint, vapidAuthorization, vapidKey } from './push';
 
 // Signing pushes and choosing where they may go. Delivery against the database is in catalog.test.ts.
 
 it('signs a push service’s authorization for its origin, verifiable with the key devices subscribe with', async () => {
-	const { privateKey } = await crypto.subtle.generateKey(
-		{ name: 'ECDSA', namedCurve: 'P-256' },
-		true,
-		['sign', 'verify']
-	);
-	const { x, y, d } = await crypto.subtle.exportKey('jwk', privateKey);
-	const key = await vapidKey(`${x}.${y}.${d}`);
+	const key = await vapidKey(await createVapidSecret());
 	const now = Date.UTC(2026, 8, 13);
 	const header = await vapidAuthorization(
 		key,

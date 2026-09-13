@@ -7,17 +7,7 @@
 //
 // The secret is the private key's x, y, and d in base64url, joined by dots (src/lib/server/push.ts).
 
-import { execFileSync } from 'node:child_process';
-import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
-
-function wrangler(args, input) {
-	return execFileSync('npx', ['wrangler', ...args], {
-		input,
-		encoding: 'utf8',
-		stdio: [input === undefined ? 'inherit' : 'pipe', 'pipe', 'inherit'],
-		shell: process.platform === 'win32'
-	});
-}
+import { hasDevVar, hasSecret, setDevVar, wrangler } from './wrangler.js';
 
 async function newKey() {
 	const { privateKey } = await crypto.subtle.generateKey(
@@ -30,22 +20,8 @@ async function newKey() {
 }
 
 if (process.argv.includes('--local')) {
-	const lines = existsSync('.dev.vars')
-		? readFileSync('.dev.vars', 'utf8').split('\n').filter(Boolean)
-		: [];
-	if (!lines.some((line) => line.startsWith('VAPID_KEY='))) {
-		writeFileSync('.dev.vars', [...lines, `VAPID_KEY=${await newKey()}`, ''].join('\n'), {
-			mode: 0o600
-		});
-		chmodSync('.dev.vars', 0o600);
-		// Generated types list the variables in .dev.vars.
-		wrangler(['types']);
-	}
-} else {
-	const listed = wrangler(['secret', 'list', '--format', 'json']);
-	const secrets = JSON.parse(listed.slice(listed.indexOf('['), listed.lastIndexOf(']') + 1));
-	if (!secrets.some(({ name }) => name === 'VAPID_KEY')) {
-		wrangler(['secret', 'put', 'VAPID_KEY'], await newKey());
-		console.log('Created the key that signs notifications (VAPID_KEY).');
-	}
+	if (!hasDevVar('VAPID_KEY')) setDevVar('VAPID_KEY', await newKey());
+} else if (!hasSecret('VAPID_KEY')) {
+	wrangler(['secret', 'put', 'VAPID_KEY'], await newKey());
+	console.log('Created the key that signs notifications (VAPID_KEY).');
 }

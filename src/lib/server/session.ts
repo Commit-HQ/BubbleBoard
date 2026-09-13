@@ -93,10 +93,10 @@ export async function startSession(event: RequestEvent, credential: string) {
 	const previous = cookieToken(event);
 	const now = Date.now();
 	await db.batch([
-		// This browser's earlier session, and every session that has ended.
+		// This browser's earlier session. Sessions that ran out go in the daily cleanup (push.ts).
 		db
-			.prepare('DELETE FROM sessions WHERE token_hash = ? OR expires_at <= ?')
-			.bind(previous ? await hashToken(previous) : '', now),
+			.prepare('DELETE FROM sessions WHERE token_hash = ?')
+			.bind(previous ? await hashToken(previous) : ''),
 		db
 			.prepare('INSERT INTO sessions (token_hash, credential_id, expires_at) VALUES (?, ?, ?)')
 			.bind(await hashToken(token), credential, now + lifetime)

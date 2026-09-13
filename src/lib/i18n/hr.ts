@@ -1,5 +1,8 @@
 import type { Messages } from './en';
 
+/** What every notification says (en.ts). */
+export const notificationText = 'Nova obavijest iz vrtića';
+
 export const hr = {
 	languageName: 'Hrvatski',
 	ogLocale: 'hr_HR',
@@ -196,6 +199,7 @@ export const hr = {
 			done: 'Gotovo',
 			rename: 'Preimenuj',
 			remove: 'Ukloni',
+			selectAll: 'Odaberi sve',
 			working: 'Samo trenutak…'
 		},
 		counts: {
@@ -304,7 +308,6 @@ export const hr = {
 			replaceCards: 'Zamijeni kartice',
 			replaceTitle: 'Zamjena obiteljskih kartica',
 			replaceCopy: 'Odaberite kartice koje želite zamijeniti pa zajedno ispišite nove.',
-			selectAll: 'Odaberi sve',
 			replaceSubmit: (value: number) => `Zamijeni ${count(value, 'karticu', 'kartice', 'kartica')}`,
 			replaceConfirm: (value: number) =>
 				`Zamijeniti ${count(value, 'karticu', 'kartice', 'kartica')}?`,
@@ -400,7 +403,6 @@ export const hr = {
 			show: 'Prikaži obavijesti za',
 			all: 'Sve skupine',
 			unreadable: 'Neke se obavijesti nisu otvorile na ovom uređaju.',
-			byline: (author: string, time: string) => `${author} · ${time}`,
 			edited: 'uređeno',
 			edit: 'Uredi',
 			delete: 'Obriši',
@@ -410,7 +412,6 @@ export const hr = {
 			editTitle: 'Uredi obavijest',
 			text: 'Obavijest',
 			classrooms: 'Skupine',
-			selectAll: 'Označi sve',
 			paper: 'Papir',
 			papers: {
 				white: 'Bijeli',
@@ -432,7 +433,6 @@ export const hr = {
 			noClassrooms: 'Obavijesti možete objavljivati kad vas administrator doda u skupinu.'
 		},
 		notifications: {
-			push: 'Nova obavijest iz vrtića',
 			test: 'Obavijesti su uključene. Ovakvu ćete dobiti kad stigne nova obavijest.',
 			cardTitle: 'Saznajte kad stigne nova obavijest',
 			cardCopy: 'Na zaslonu piše samo da je stiglo nešto novo. Sama obavijest ostaje u aplikaciji.',

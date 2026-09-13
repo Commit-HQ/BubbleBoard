@@ -129,7 +129,7 @@
 								onchange={(event) =>
 									(chosen = event.currentTarget.checked ? families.map((family) => family.id) : [])}
 							/>
-							{t.classroom.selectAll}
+							{t.actions.selectAll}
 						</label>
 						{#each families as family (family.id)}
 							<label class="flex items-start gap-3">

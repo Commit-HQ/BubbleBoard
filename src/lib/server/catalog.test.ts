@@ -19,8 +19,17 @@ import {
 	replaceTeacherCard,
 	setUp
 } from './catalog';
+import { day } from '$lib/notices';
 import { board, changeNotice, deleteNotice, postNotice } from './notices';
-import { cleanUp, deliver, recipients, type PushEnv, type PushMessage } from './push';
+import {
+	cleanUp,
+	createVapidSecret,
+	deliver,
+	recipients,
+	subscribe,
+	type PushEnv,
+	type PushMessage
+} from './push';
 import {
 	endSession,
 	identityForCard,
@@ -36,8 +45,6 @@ import {
 // placeholders, because the server never opens them.
 
 type Statement = { sql: string; params: SQLInputValue[] };
-
-const day = 24 * 60 * 60 * 1000;
 
 /** The part of D1's API the server uses, over an in-memory SQLite database with the migrations applied. */
 function localDatabase() {
@@ -533,7 +540,6 @@ describe('notices', () => {
 		const { admin } = await setUpKindergarten(db);
 		const bubbles = await addClassroomTo(db, admin);
 		const [first, second] = [notice([bubbles]), notice([bubbles], 1)];
-		const day = 24 * 60 * 60 * 1000;
 		vi.useFakeTimers({ toFake: ['Date'] });
 		try {
 			vi.setSystemTime(1_000_000);
@@ -551,12 +557,12 @@ describe('notices', () => {
 				second.id
 			]);
 
-			// A day after it was posted, the second notice is off every board, and gone at the next change.
+			// A day after it was posted, the second notice is off every board, and the daily cleanup deletes it.
 			vi.setSystemTime(2_000_000 + day);
 			expect(ids(await board(db, admin))).toEqual([first.id]);
 			expect(await count(db)).toBe(2);
-			await postNotice(db, admin, notice([bubbles]));
-			expect(await count(db)).toBe(2);
+			await cleanUp(db);
+			expect(await count(db)).toBe(1);
 		} finally {
 			vi.useRealTimers();
 		}
@@ -578,11 +584,8 @@ describe('notices', () => {
 
 describe('notifications', () => {
 	const endpoint = (name: string | number) => `https://fcm.googleapis.com/fcm/send/${name}`;
-	const subscribe = async (db: D1Database, device: RequestEvent, name: string | number) =>
-		db
-			.prepare('INSERT INTO push_subscriptions (endpoint, session_hash) VALUES (?, ?)')
-			.bind(endpoint(name), (await sessionHash(device))!)
-			.run();
+	const turnOn = async (db: D1Database, device: RequestEvent, name: string | number) =>
+		subscribe(db, endpoint(name), (await sessionHash(device))!);
 	const subscribed = async (db: D1Database) => {
 		const { results } = await db
 			.prepare('SELECT endpoint FROM push_subscriptions ORDER BY endpoint')
@@ -606,7 +609,7 @@ describe('notifications', () => {
 			['poster', poster],
 			['unassigned-admin', await deviceWith(db, teachers[0].credential.id)]
 		] as const) {
-			await subscribe(db, device, name);
+			await turnOn(db, device, name);
 		}
 
 		const reached = await recipients(db, [bubbles], await sessionHash(poster));
@@ -624,9 +627,9 @@ describe('notifications', () => {
 			await deviceWith(db, teachers[0].credential.id),
 			await deviceWith(db, teachers[1].credential.id)
 		];
-		await subscribe(db, familyDevice, 'family');
-		await subscribe(db, adminDevice, 'admin');
-		await subscribe(db, laterDevice, 'later');
+		await turnOn(db, familyDevice, 'family');
+		await turnOn(db, adminDevice, 'admin');
+		await turnOn(db, laterDevice, 'later');
 
 		await replaceFamilyCards(db, admin, [{ family: family.id, credential: credential() }]);
 		await endSession(adminDevice);
@@ -641,13 +644,7 @@ describe('notifications', () => {
 		const { teachers } = await setUpKindergarten(db);
 		const device = await deviceWith(db, teachers[0].credential.id);
 		const statuses = [201, 400, 404, 410, 429, 503];
-		for (const status of statuses) await subscribe(db, device, status);
-		const { privateKey } = await crypto.subtle.generateKey(
-			{ name: 'ECDSA', namedCurve: 'P-256' },
-			true,
-			['sign', 'verify']
-		);
-		const { x, y, d } = await crypto.subtle.exportKey('jwk', privateKey);
+		for (const status of statuses) await turnOn(db, device, status);
 		const requests: { url: string; headers: HeadersInit | undefined }[] = [];
 		const queued: unknown[] = [];
 		let acknowledged = false;
@@ -661,7 +658,7 @@ describe('notifications', () => {
 		const batch = { messages: [{ body, ack: () => (acknowledged = true) }] };
 		const env = {
 			DB: db,
-			VAPID_KEY: `${x}.${y}.${d}`,
+			VAPID_KEY: await createVapidSecret(),
 			NOTIFICATIONS: { send: async (...args: unknown[]) => void queued.push(args) }
 		};
 

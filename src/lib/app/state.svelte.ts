@@ -11,7 +11,6 @@ import {
 	childProfile,
 	classroomProfile,
 	createKindergarten,
-	EmptyNameError,
 	familyCard,
 	familyLinks,
 	familyProfile,
@@ -33,15 +32,15 @@ import {
 } from '$lib/kindergarten';
 import {
 	forgetSubscription,
+	hideHomeCard,
+	homeCardHidden,
 	notificationState,
-	PushUnavailableError,
 	sendSubscription,
 	turnOff,
 	turnOn,
 	type NotificationState
 } from '$lib/notifications';
 import {
-	NoticeTooLongError,
 	openBoard,
 	sealNotice,
 	type Notice,
@@ -54,6 +53,11 @@ import { createContext } from 'svelte';
 // The app's state in the browser: the card this device holds, and the decrypted records it may see. The
 // app layout creates one for every page, so it survives moving between pages and languages.
 
+/**
+ * What the app is doing. `install` holds every page back until BubbleBoard is installed: on iPhone and iPad
+ * before anything connects, and on Android once the browser has connected, since the installed app shares
+ * its storage.
+ */
 type Status =
 	| 'loading'
 	| 'unsupported'
@@ -93,6 +97,8 @@ const refreshAfter = 60 * 1000;
  * working, that's no reason to forget the card: the device keeps its keys and shows an error.
  */
 class UnreadableRecords extends Error {
+	readonly code = 'unreadable-records';
+
 	constructor(options?: ErrorOptions) {
 		super('Unreadable records', options);
 		this.name = 'UnreadableRecords';
@@ -107,18 +113,10 @@ async function readRecords<T>(reading: Promise<T>) {
 	}
 }
 
-/** The code the app explains an error with (errors in src/lib/i18n). */
+/** The code the app explains an error with (errors in src/lib/i18n), which each of the app's errors carries. */
 function errorCode(cause: unknown) {
-	if (cause instanceof ApiError) return cause.code;
-	if (cause instanceof UnreadableRecords) return 'unreadable-records';
-	if (cause instanceof UnreadableError) return 'unreadable';
-	if (cause instanceof EmptyNameError) return 'empty-name';
-	if (cause instanceof NoticeTooLongError) return 'notice-too-long';
-	// Brave says it has a push service but refuses until its privacy settings allow Google's.
-	if (cause instanceof PushUnavailableError) {
-		return 'brave' in navigator ? 'push-brave' : 'push-unavailable';
-	}
-	return 'unexpected';
+	const code = (cause as { code?: unknown } | null | undefined)?.code;
+	return typeof code === 'string' ? code : 'unexpected';
 }
 
 /** The session ended, or the card no longer opens its keys: only the card can connect the device again. */
@@ -151,6 +149,8 @@ export class App {
 	installPrompt = $state.raw<InstallPrompt>();
 	/** Whether this device gets a notification for new notices. */
 	notifications = $state<NotificationState>('unsupported');
+	/** Whether Not now put away home's card that turns notifications on. */
+	notificationCardHidden = $state(true);
 	catalog = $state.raw(emptyCatalog);
 	me = $state.raw<Teacher>();
 	/** The classrooms a family device has joined. */
@@ -178,21 +178,12 @@ export class App {
 		return this.status === 'staff' || this.status === 'family';
 	}
 
-	/** The classrooms this device belongs to: a family's children's, a teacher's own, or all for an admin. */
-	get myClassrooms(): { id: string; name: string }[] {
-		if (this.status === 'family') return this.familyClassrooms;
-		const { classrooms } = this.catalog;
-		return this.admin
-			? classrooms
-			: classrooms.filter(({ id }) => this.me?.classrooms.includes(id));
-	}
-
 	/**
-	 * Whether pages ask to install BubbleBoard instead of showing themselves: on iPhone and iPad before
-	 * anything, and on Android once the browser has connected, since the installed app shares its storage.
+	 * The classrooms this device belongs to: a family's children's, or those the server sends staff, which
+	 * are a teacher's own, or all of them for an admin.
 	 */
-	get mustInstall() {
-		return this.status === 'install' || (this.install === 'android' && this.connected);
+	get myClassrooms(): { id: string; name: string }[] {
+		return this.status === 'family' ? this.familyClassrooms : this.catalog.classrooms;
 	}
 
 	get #staff() {
@@ -252,7 +243,8 @@ export class App {
 		if (!this.connected || !card || Date.now() - this.#loadedAt < refreshAfter) return;
 		this.#loadedAt = Date.now();
 		try {
-			await this.#open(await request<Access>('GET', '/api/session'), card);
+			// The session is the one the app opened with, so its subscription isn't sent again.
+			await this.#open(await request<Access>('GET', '/api/session'), card, { resend: false });
 		} catch (cause) {
 			if (isDisconnection(cause)) await this.#disconnect('signed-out');
 		}
@@ -272,7 +264,7 @@ export class App {
 		}
 	}
 
-	async #open(access: Access, card: DeviceCard) {
+	async #open(access: Access, card: DeviceCard, { resend = true } = {}) {
 		// A session or card that doesn't match the stored card means connecting again with a card.
 		if (access.credential !== card.credential) throw new UnreadableError();
 		if (access.kind === 'staff' && card.kind === 'staff') {
@@ -291,14 +283,22 @@ export class App {
 		}
 		this.#card = card;
 		this.#loadedAt = Date.now();
-		this.status = access.kind;
-		void this.#keepNotifications();
+		this.status = this.install === 'android' ? 'install' : access.kind;
+		void this.#keepNotifications(resend);
 	}
 
-	/** Reads whether notifications are on, and sends the subscription so it stays with this session. */
-	async #keepNotifications() {
-		this.notifications = await notificationState().catch(() => 'unsupported' as const);
-		if (this.notifications === 'on') await sendSubscription().catch(() => {});
+	/**
+	 * Reads whether notifications are on and whether their card on home was put away. With `resend`, it also
+	 * sends the subscription, which keeps it with the current session.
+	 */
+	async #keepNotifications(resend: boolean) {
+		const [state, hidden] = await Promise.all([
+			notificationState().catch(() => 'unsupported' as const),
+			homeCardHidden().catch(() => false)
+		]);
+		this.notifications = state;
+		this.notificationCardHidden = hidden;
+		if (resend && state === 'on') await sendSubscription().catch(() => {});
 	}
 
 	async #load(records: Kindergarten, teacher = this.me?.id) {
@@ -315,9 +315,19 @@ export class App {
 		this.unreadableNotices = unreadable;
 	}
 
+	/** Runs a request made on purpose. A device whose session ended disconnects: only its card connects it again. */
+	async #signedIn<T>(work: () => Promise<T>) {
+		try {
+			return await work();
+		} catch (cause) {
+			if (cause instanceof ApiError && cause.status === 401) await this.#disconnect('signed-out');
+			throw cause;
+		}
+	}
+
 	/**
-	 * Sends a change and opens what comes back. When it fails, a device whose session ended disconnects,
-	 * and records that moved on or lost what was changed load again to show with the error.
+	 * Sends a change and opens what comes back. When it fails, records that moved on or lost what was
+	 * changed load again to show with the error.
 	 */
 	async #send<T>(
 		method: 'POST' | 'PUT' | 'DELETE',
@@ -326,12 +336,10 @@ export class App {
 		open: (response: T) => Promise<void>
 	) {
 		try {
-			await open(await request<T>(method, path, body));
+			await this.#signedIn(async () => open(await request<T>(method, path, body)));
 		} catch (cause) {
 			if (cause instanceof UnreadableRecords) this.status = 'unreadable';
-			else if (cause instanceof ApiError && cause.status === 401) {
-				await this.#disconnect('signed-out');
-			} else if (cause instanceof ApiError && ['stale', 'not-found'].includes(cause.code)) {
+			else if (cause instanceof ApiError && ['stale', 'not-found'].includes(cause.code)) {
 				await this.#resume();
 			}
 			throw cause;
@@ -422,12 +430,19 @@ export class App {
 
 	/** Turns notifications on, from a tap: the permission request can't wait for anything before it. */
 	async turnOnNotifications(locale: Locale) {
-		this.notifications = await turnOn(locale);
+		this.notifications = await this.#signedIn(() => turnOn(locale));
 	}
 
 	async turnOffNotifications() {
-		await turnOff();
+		await this.#signedIn(turnOff);
 		this.notifications = 'off';
+	}
+
+	/** Puts away home's card that turns notifications on, on this device. Settings keep the switch. */
+	hideNotificationCard() {
+		this.notificationCardHidden = true;
+		// Without storage, the card comes back next time.
+		hideHomeCard().catch(() => {});
 	}
 
 	/** Stores the first setup and connects this device with the admin's card. */
@@ -484,7 +499,7 @@ export class App {
 		const path = `/api/teachers/${id}/card`;
 		if (id === this.me?.id) {
 			// Replacing this device's own card ends its session, so it connects again with the new one.
-			await request('POST', path, { credential: card.credential });
+			await this.#signedIn(() => request('POST', path, { credential: card.credential }));
 			await this.connect(card.secret);
 		} else {
 			await this.#change('POST', path, { credential: card.credential });
@@ -558,16 +573,12 @@ export class App {
 	async replaceFamilyCards(families: Family[]) {
 		const { staffKey } = this.#staff;
 		const cards = await Promise.all(families.map((family) => familyCard(staffKey, family)));
-		await request('POST', '/api/families/cards', {
-			cards: cards.map(({ credential }, index) => ({ family: families[index].id, credential }))
-		});
+		await this.#signedIn(() =>
+			request('POST', '/api/families/cards', {
+				cards: cards.map(({ credential }, index) => ({ family: families[index].id, credential }))
+			})
+		);
 		return cards.map(({ secret }) => secret);
-	}
-
-	/** The names of the classrooms with these IDs that this device sees. */
-	classroomNames(ids: string[]) {
-		const classrooms = this.status === 'family' ? this.familyClassrooms : this.catalog.classrooms;
-		return classrooms.filter(({ id }) => ids.includes(id)).map(({ name }) => name);
 	}
 
 	/** Whether this device may change a notice: its author's own, or any for an admin. */

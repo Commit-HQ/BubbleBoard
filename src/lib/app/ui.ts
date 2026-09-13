@@ -18,14 +18,21 @@ export const button = {
 	icon: 'grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-ink/5 hover:text-ink'
 };
 
+/** The focus ring of a label whose input is hidden inside it. */
+export const labelFocus =
+	'has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent';
+
 /**
- * A checkbox drawn as a card: the input sits hidden in its label, whose look follows it. Put a check icon
- * with `choice.check` in a `choice.box`: the icon marks the state where forced colours remove fills.
+ * Checkboxes and radios drawn as cards: the input sits hidden in its label, whose look follows it. Put a
+ * check icon with `choice.check` in a `choice.box`: the icon marks the state where forced colours remove
+ * fills. `choice.option` is a radio that fills with ink when chosen; forced colours drop the fill, so mark
+ * the chosen one another way there.
  */
 export const choice = {
-	card: 'group flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border border-ink/10 bg-white/60 px-4 py-3 transition hover:bg-white has-checked:border-accent has-checked:bg-white has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent',
+	card: `group flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border border-ink/10 bg-white/60 px-4 py-3 transition hover:bg-white has-checked:border-accent has-checked:bg-white ${labelFocus}`,
 	box: 'grid size-6 shrink-0 place-items-center rounded-lg border-2 border-ink/20 bg-white text-white transition group-has-checked:border-accent group-has-checked:bg-accent',
-	check: 'size-4 opacity-0 group-has-checked:opacity-100'
+	check: 'size-4 opacity-0 group-has-checked:opacity-100',
+	option: `cursor-pointer border border-ink/10 bg-white/60 transition hover:bg-white has-checked:border-ink has-checked:bg-ink has-checked:text-white ${labelFocus}`
 };
 
 export const field = {
@@ -55,6 +62,10 @@ export function formText(form: FormData, name: string) {
 export function queryParam(name: string) {
 	return browser ? page.url.searchParams.get(name) : null;
 }
+
+/** How a notice's text looks, the same on the board (NoticeBody.svelte) and in the editor that writes it. */
+export const noticeText =
+	'text-lg leading-relaxed wrap-break-word [&_a]:font-semibold [&_a]:underline [&_a]:underline-offset-4 [&_li]:pl-1 [&_li>*+*]:mt-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol>*+*]:mt-1 [&_ul]:list-disc [&_ul]:pl-6 [&_ul>*+*]:mt-1 [&>*+*]:mt-3';
 
 /** The background of each notice paper (src/lib/notices.ts), from the theme in app.css. */
 export const paperClass: Record<Paper, string> = {

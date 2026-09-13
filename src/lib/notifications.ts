@@ -1,49 +1,55 @@
 import { request } from '$lib/api';
 import { fromBase64Url } from '$lib/base64url';
 import { isLocale, messages, type Locale } from '$lib/i18n';
+import { objectStore } from '$lib/indexeddb';
 
 // Notifications on this device (next-step-plan.md). The server pushes nothing but a nudge, and the service
 // worker shows the same words for every one, in the language notifications were turned on in, which this
-// keeps in IndexedDB for it.
+// keeps in IndexedDB for it, along with whether Not now put away home's card that turns them on.
 
 export type NotificationState = 'unsupported' | 'blocked' | 'off' | 'on';
 
 /** The browser's push service refused to subscribe, as in Brave until Google's push messaging is allowed. */
 export class PushUnavailableError extends Error {
+	/** Brave says it has a push service, so its explanation names the setting that lets it work. */
+	readonly code = 'brave' in navigator ? 'push-brave' : 'push-unavailable';
+
 	constructor(options?: ErrorOptions) {
 		super('Push service unavailable', options);
 		this.name = 'PushUnavailableError';
 	}
 }
 
-function settings<T>(
-	mode: IDBTransactionMode,
-	use: (store: IDBObjectStore) => IDBRequest<T> | void
-): Promise<T | undefined> {
-	return new Promise((resolve, reject) => {
-		const opening = indexedDB.open('bubbleboard-notifications', 1);
-		opening.onupgradeneeded = () => opening.result.createObjectStore('settings');
-		opening.onerror = () => reject(opening.error);
-		opening.onsuccess = () => {
-			const db = opening.result;
-			const transaction = db.transaction('settings', mode);
-			const reading = use(transaction.objectStore('settings'));
-			transaction.oncomplete = () => {
-				db.close();
-				resolve(reading?.result);
-			};
-			transaction.onerror = () => {
-				db.close();
-				reject(transaction.error);
-			};
-		};
-	});
-}
+const settings = objectStore('bubbleboard-notifications', 'settings');
 
 /** The language notifications were turned on in, for the service worker. */
 export async function notificationLocale() {
 	const locale = await settings('readonly', (store) => store.get('locale'));
 	return isLocale(locale) ? locale : undefined;
+}
+
+/** Whether Not now put away home's card that turns notifications on, on this device. */
+export async function homeCardHidden() {
+	return (await settings('readonly', (store) => store.get('homeCardHidden'))) === true;
+}
+
+export async function hideHomeCard() {
+	await settings('readwrite', (store) => void store.put(true, 'homeCardHidden'));
+}
+
+/** Shows a notification from BubbleBoard with these words. */
+export function notify(
+	registration: ServiceWorkerRegistration,
+	body: string,
+	tag: string,
+	data?: unknown
+) {
+	return registration.showNotification('BubbleBoard', {
+		body,
+		icon: '/icons/icon-192.png',
+		tag,
+		data
+	});
 }
 
 function supported() {
@@ -91,11 +97,7 @@ export async function turnOn(locale: Locale): Promise<NotificationState> {
 		});
 	await settings('readwrite', (store) => void store.put(locale, 'locale'));
 	await request('PUT', '/api/push', { endpoint: subscription.endpoint });
-	await registration.showNotification('BubbleBoard', {
-		body: messages[locale].app.notifications.test,
-		icon: '/icons/icon-192.png',
-		tag: 'test'
-	});
+	await notify(registration, messages[locale].app.notifications.test, 'test');
 	return 'on';
 }
 
