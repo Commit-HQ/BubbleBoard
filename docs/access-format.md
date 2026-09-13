@@ -133,6 +133,6 @@ Opaque IDs, timestamps, hashes of auth and session tokens, envelopes, and a coun
 ## Limits
 
 - Anyone holding a key can write envelopes that open with it. Families hold the Group Key, so group content isn't cryptographically tied to a teacher; server authorization decides who may write. Staff hold every Family Key, so a poll's answer isn't tied to its family by encryption alone either: the server decides which family may answer. The answers to a poll whose counts families see are encrypted with a key everyone who opens the notice holds, so the counts families see are only as honest as the server that sends the answers.
-- Staff are kept to their classrooms and roles by server authorization only (see Keys).
+- Staff are kept to their classrooms and roles by server authorization only (see Keys). A teacher may replace the card of a family in their classrooms, and a device connected with the new card sees every classroom the family's children are in; the family's devices are signed out when that happens. This was accepted on 2026-09-13, because notices take the place of a hallway board every teacher can read, and should be closed before classroom photos of children.
 - Moving a child, removing a card, or removing a teacher stops server access, not the use of keys a device already opened. Group Keys don't change when a family leaves a classroom.
 - No signatures, no forward secrecy, and no key rotation short of resetting the installation (§12). Replacing a card changes the card, not the Family Key.
