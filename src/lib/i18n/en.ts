@@ -156,7 +156,7 @@ export const en = {
 		madeBy: 'Made with love by the people at',
 		license: 'License (AGPL-3.0)',
 		credits: 'Credits and licenses',
-		// In the footers of the landing pages and the app.
+		// In the footer of the landing pages.
 		privacy: 'Privacy policy'
 	},
 	// The privacy policy (/privacy), in short points. It describes what the code does, so change it with anything

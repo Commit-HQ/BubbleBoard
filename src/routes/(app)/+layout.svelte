@@ -7,7 +7,7 @@
 	import LanguageSwitch from '$lib/components/LanguageSwitch.svelte';
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
 	import { locales, messages } from '$lib/i18n';
-	import { appPath, homePath, localizedPath, privacyPath } from '$lib/paths';
+	import { appPath, homePath, localizedPath } from '$lib/paths';
 	import { onMount, tick } from 'svelte';
 	import type { LayoutProps } from './$types';
 
@@ -98,24 +98,16 @@
 	<footer
 		class="flex flex-wrap justify-between gap-x-6 gap-y-2 px-2 pb-6 text-sm text-muted print:hidden"
 	>
-		<!-- In windows of their own: the installed app has no way back from the landing pages. -->
-		<div class="flex flex-wrap gap-x-6 gap-y-2">
-			<a
-				class="hover:text-ink"
-				href={homePath(data.locale)}
-				target="_blank"
-				rel="noopener noreferrer"
-			>
-				<span aria-hidden="true">🫧</span>
-				{t.app.about}
-			</a>
-			<a
-				class="hover:text-ink"
-				href={privacyPath(data.locale)}
-				target="_blank"
-				rel="noopener noreferrer">{t.footer.privacy}</a
-			>
-		</div>
+		<!-- In a window of its own: the installed app has no way back from the landing pages. -->
+		<a
+			class="hover:text-ink"
+			href={homePath(data.locale)}
+			target="_blank"
+			rel="noopener noreferrer"
+		>
+			<span aria-hidden="true">🫧</span>
+			{t.app.about}
+		</a>
 		<BuildLabel locale={data.locale} />
 	</footer>
 </div>
