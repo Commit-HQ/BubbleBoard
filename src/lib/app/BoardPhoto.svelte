@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { PhotoRecord } from '$lib/api';
 	import Icon from '$lib/components/Icon.svelte';
-	import { messages, type Locale } from '$lib/i18n';
+	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
 	import { tick } from 'svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
@@ -22,6 +22,12 @@
 	let frame = $state<HTMLDivElement>();
 	let zoomed = $state(false);
 	let removing = $state(false);
+
+	/** Why the photo didn't open: the month's downloads ran out, or anything else. */
+	function failure(cause: unknown) {
+		const limited = (cause as { code?: unknown } | null)?.code === 'download-limit';
+		return limited ? errorMessage(locale, 'download-limit') : t.unreadable;
+	}
 
 	/** Shows the photo at its full size around the point tapped, or fits it to the screen again. */
 	async function zoom(event: MouseEvent & { currentTarget: EventTarget & HTMLButtonElement }) {
@@ -56,12 +62,12 @@
 		>
 			<img {src} alt="" class="aspect-4/3 w-full object-cover" />
 		</button>
-	{:catch}
+	{:catch cause}
 		<p
 			class="grid aspect-4/3 place-items-center bg-ink/5 px-6 text-center text-sm font-semibold text-muted"
 			role="alert"
 		>
-			{t.unreadable}
+			{failure(cause)}
 		</p>
 	{/await}
 	<figcaption class="flex items-center justify-between gap-3 py-1.5 pr-1.5 pl-5 text-sm">

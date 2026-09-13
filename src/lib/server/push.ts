@@ -227,11 +227,3 @@ export async function deliver(
 		message.ack();
 	}
 }
-
-/** The daily cleanup: notices past their days, and sessions that ran out, with their subscriptions. */
-export function cleanUp(db: D1Database, now = Date.now()) {
-	return db.batch([
-		db.prepare('DELETE FROM notices WHERE expires_at <= ?').bind(now),
-		db.prepare('DELETE FROM sessions WHERE expires_at <= ?').bind(now)
-	]);
-}

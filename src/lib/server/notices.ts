@@ -11,13 +11,15 @@ import type {
 } from '$lib/api';
 import { day } from '$lib/notices';
 import { includesAll, transaction, visibleClassrooms } from './database';
+import { deleteUnnamed, getObject, putObject, type ObjectStore } from './storage';
 
 // The board: notices as envelopes, with the classrooms they're for (docs/access-format.md). The server
 // can't read a notice, so it decides who sees and changes which. Teachers post to their own classrooms and
 // admins to any; the author and admins change and delete a notice; everyone reads the notices of their
 // classrooms, and admins those of every classroom. Families mark the notices they see as seen and answer
-// their polls, which their teachers see. Reads leave out notices past their days, which the daily cleanup
-// deletes (push.ts).
+// their polls, which their teachers see. A notice names the files it carries: their encrypted bytes are
+// uploaded before it's saved, and deleted once it no longer names them. Reads leave out notices past their
+// days, which the daily cleanup deletes with their files (cleanup.ts).
 
 /**
  * The families whose marks and answers on notices someone sees, as a subquery and its parameters: a family
@@ -100,6 +102,43 @@ function insertKeys(db: D1Database, notice: string, keys: NoticeKey[]) {
 	);
 }
 
+/** Where R2 keeps a notice's file, as named_objects names it (migrations/). */
+function fileKey(notice: string, file: string) {
+	return `notices/${notice}/${file}`;
+}
+
+/** The keys of the files a notice names now. */
+async function fileKeys(db: D1Database, notice: string) {
+	const { results } = await db
+		.prepare('SELECT id FROM notice_files WHERE notice_id = ?')
+		.bind(notice)
+		.all<{ id: string }>();
+	return results.map(({ id }) => fileKey(notice, id));
+}
+
+/** The keys of the files on a classroom's notices, those it shares with other classrooms included. */
+export async function classroomFileKeys(db: D1Database, classroom: string) {
+	const { results } = await db
+		.prepare(
+			`SELECT notice_id AS notice, id FROM notice_files WHERE notice_id IN
+			(SELECT notice_id FROM notice_classrooms WHERE classroom_id = ?)`
+		)
+		.bind(classroom)
+		.all<{ notice: string; id: string }>();
+	return results.map(({ notice, id }) => fileKey(notice, id));
+}
+
+/**
+ * Names a notice's files. The database refuses a file that wasn't uploaded for the notice or is on its way
+ * out (migrations/0008_notice_files.sql), and the device is told to load its records again. Each file comes
+ * once (validate.ts).
+ */
+function insertFiles(db: D1Database, notice: string, files: string[]) {
+	return files.map((file) =>
+		db.prepare('INSERT INTO notice_files (notice_id, id) VALUES (?, ?)').bind(notice, file)
+	);
+}
+
 export async function postNotice(db: D1Database, staff: Staff, notice: NewNotice) {
 	await checkClassrooms(db, staff, notice.classrooms);
 	const now = Date.now();
@@ -117,7 +156,8 @@ export async function postNotice(db: D1Database, staff: Staff, notice: NewNotice
 				now,
 				now + notice.days * day
 			),
-		...insertKeys(db, notice.id, notice.classrooms)
+		...insertKeys(db, notice.id, notice.classrooms),
+		...insertFiles(db, notice.id, notice.files)
 	]);
 }
 
@@ -134,11 +174,19 @@ async function changeable(db: D1Database, staff: Staff, id: string) {
 	return notice;
 }
 
-export async function changeNotice(db: D1Database, staff: Staff, id: string, change: NoticeChange) {
+/** Changes a notice, and deletes the files the change leaves out. */
+export async function changeNotice(
+	db: D1Database,
+	bucket: R2Bucket,
+	staff: Staff,
+	id: string,
+	change: NoticeChange
+) {
 	const { postedAt } = await changeable(db, staff, id);
 	await checkClassrooms(db, staff, change.classrooms);
+	const files = await fileKeys(db, id);
 	const now = Date.now();
-	return changeBoard(db, staff, [
+	const records = await changeBoard(db, staff, [
 		db
 			.prepare(
 				`UPDATE notices SET content = ?, poll = ?, edited_at = ?, expires_at = ?,
@@ -156,6 +204,8 @@ export async function changeNotice(db: D1Database, staff: Staff, id: string, cha
 		// Every save seals the notice under a new key, so its old keys all go.
 		db.prepare('DELETE FROM notice_classrooms WHERE notice_id = ?').bind(id),
 		...insertKeys(db, id, change.classrooms),
+		db.prepare('DELETE FROM notice_files WHERE notice_id = ?').bind(id),
+		...insertFiles(db, id, change.files),
 		// A change that notifies everyone again asks every family to see the notice again.
 		db
 			.prepare('DELETE FROM notice_seen WHERE ? AND notice_id = ?')
@@ -163,11 +213,38 @@ export async function changeNotice(db: D1Database, staff: Staff, id: string, cha
 		// A poll taken off the notice takes its answers with it.
 		db.prepare('DELETE FROM poll_votes WHERE NOT ? AND notice_id = ?').bind(Number(change.poll), id)
 	]);
+	await deleteUnnamed(db, bucket, files);
+	return records;
 }
 
-export async function deleteNotice(db: D1Database, staff: Staff, id: string) {
+/** Deletes a notice with its files. */
+export async function deleteNotice(db: D1Database, bucket: R2Bucket, staff: Staff, id: string) {
 	await changeable(db, staff, id);
-	return changeBoard(db, staff, [db.prepare('DELETE FROM notices WHERE id = ?').bind(id)]);
+	const files = await fileKeys(db, id);
+	const records = await changeBoard(db, staff, [
+		db.prepare('DELETE FROM notices WHERE id = ?').bind(id)
+	]);
+	await deleteUnnamed(db, bucket, files);
+	return records;
+}
+
+/**
+ * Stores a file's encrypted bytes for a notice about to be posted or changed, which names the file when it's
+ * saved. A notice that's up takes files only from those who may change it, and a file stored already is
+ * refused as `stored`. Files no notice names are deleted in the daily cleanup a day later.
+ */
+export async function uploadFile(
+	db: D1Database,
+	store: ObjectStore,
+	staff: Staff,
+	notice: string,
+	file: string,
+	bytes: Uint8Array<ArrayBuffer>
+) {
+	if (await db.prepare('SELECT 1 FROM notices WHERE id = ?').bind(notice).first()) {
+		await changeable(db, staff, notice);
+	}
+	await putObject(db, store, fileKey(notice, file), bytes);
 }
 
 /** A notice that's still up for one of the classrooms someone sees, and whether it has a poll. */
@@ -182,6 +259,24 @@ async function visibleNotice(db: D1Database, viewer: Identity, id: string) {
 		.first<{ poll: number }>();
 	if (!notice) error(404, 'not-found');
 	return { poll: notice.poll === 1 };
+}
+
+/** A notice file's encrypted bytes, while the notice is up and names it, for someone who sees the notice. */
+export async function fileBytes(
+	db: D1Database,
+	store: ObjectStore,
+	viewer: Identity,
+	notice: string,
+	file: string
+) {
+	await visibleNotice(db, viewer, notice);
+	const named = await db
+		.prepare('SELECT 1 FROM notice_files WHERE notice_id = ? AND id = ?')
+		.bind(notice, file)
+		.first();
+	const body = named && (await getObject(db, store, fileKey(notice, file)));
+	if (!body) error(404, 'not-found');
+	return body;
 }
 
 /** Marks a notice as seen by a family. Marking it again changes nothing. */

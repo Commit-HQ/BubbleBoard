@@ -537,12 +537,32 @@ export const hr = {
 			},
 			emoji: 'Emoji'
 		},
+		files: {
+			title: 'Datoteke',
+			attach: 'Priloži datoteke',
+			hint: 'PDF-ovi, dokumenti i slike, najviše 10 MB po datoteci.',
+			preparing: 'Pripremamo datoteke…',
+			remove: (name: string) => `Ukloni ${name}`,
+			save: (name: string) => `Spremi ${name}`
+		},
 		errors: {
 			'empty-notice': 'Najprije napišite obavijest.',
 			'notice-too-long': 'Obavijest je predugačka. Skratite je i pokušajte ponovno.',
 			'no-classrooms': 'Odaberite barem jednu skupinu.',
 			'poll-answers': 'Anketi dodajte barem dva odgovora.',
 			'unusable-photo': 'Ta se fotografija ne može upotrijebiti. Pokušajte s drugom.',
+			'file-type':
+				'Takvu datoteku BubbleBoard ne može priložiti. Priložite PDF, dokument ili sliku.',
+			'file-too-large': 'Ta je datoteka veća od 10 MB. Priložite manju.',
+			'too-many-files': 'Obavijest može imati najviše 10 datoteka.',
+			'unreadable-file':
+				'Datoteka se nije otvorila na ovom uređaju. Zamolite vrtić da je ponovno priloži.',
+			'storage-full':
+				'Spremište BubbleBoarda je puno. Obrišite obavijesti s datotekama ili skinite fotografije koje više ne trebate, ili se obratite osobi koja je instalirala BubbleBoard.',
+			'upload-limit':
+				'BubbleBoard je dosegnuo ovomjesečno ograničenje za prijenose. Pokušajte ponovno sljedeći mjesec ili se obratite osobi koja je instalirala BubbleBoard.',
+			'download-limit':
+				'BubbleBoard je dosegnuo ovomjesečno ograničenje za otvaranje fotografija i datoteka. Ponovno će se otvarati sljedeći mjesec, a osoba koja je instalirala BubbleBoard može povećati ograničenje.',
 			offline:
 				'BubbleBoard trenutno nije dostupan. Provjerite internetsku vezu i pokušajte ponovno.',
 			'signed-out': 'Ovaj je uređaj odjavljen. Za nastavak ponovno skenirajte karticu.',

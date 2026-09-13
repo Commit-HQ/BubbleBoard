@@ -27,10 +27,19 @@ import {
 	setUp
 } from './catalog';
 import { day } from '$lib/notices';
-import { board, changeNotice, deleteNotice, markSeen, postNotice, vote } from './notices';
-import { boardPhotos, deletePhotosOf, photoBytes, putUpPhoto, takeDownPhoto } from './photos';
+import { cleanUp } from './cleanup';
 import {
-	cleanUp,
+	board,
+	changeNotice,
+	deleteNotice,
+	fileBytes,
+	markSeen,
+	postNotice,
+	uploadFile,
+	vote
+} from './notices';
+import { boardPhotos, photoBytes, putUpPhoto, takeDownPhoto } from './photos';
+import {
 	createVapidSecret,
 	deliver,
 	recipients,
@@ -48,6 +57,13 @@ import {
 	startSession,
 	type Admin
 } from './session';
+import {
+	deleteUnnamed,
+	getObject,
+	putObject,
+	type ObjectStore,
+	type StorageLimits
+} from './storage';
 
 // The database boundary on the real migrations: who can read and change what. Profiles and keys are
 // placeholders, because the server never opens them.
@@ -93,8 +109,11 @@ function localDatabase() {
 	return { prepare: (sql: string) => statement(sql), batch } as unknown as D1Database;
 }
 
-/** The part of R2's API the server uses, in memory, with the objects it keeps. */
-function localBucket() {
+/**
+ * The part of R2's API the server uses, in memory, with the objects it keeps, and limits far above what
+ * tests store unless a test sets its own.
+ */
+function localStore(limits: Partial<StorageLimits> = {}) {
 	const objects = new Map<string, Uint8Array<ArrayBuffer>>();
 	const bucket = {
 		put: async (key: string, value: Uint8Array<ArrayBuffer>) => void objects.set(key, value),
@@ -104,12 +123,13 @@ function localBucket() {
 		},
 		delete: async (keys: string | string[]) => {
 			for (const key of [keys].flat()) objects.delete(key);
-		},
-		list: async ({ prefix = '' }: { prefix?: string } = {}) => ({
-			objects: [...objects.keys()].filter((key) => key.startsWith(prefix)).map((key) => ({ key }))
-		})
+		}
+	} as unknown as R2Bucket;
+	const store: ObjectStore = {
+		bucket,
+		limits: { bytes: 1e9, uploads: 1000, downloads: 1000, ...limits }
 	};
-	return { bucket: bucket as unknown as R2Bucket, objects };
+	return { store, bucket, objects };
 }
 
 /** A request to routes that use sessions, with a cookie jar kept across calls. */
@@ -209,7 +229,17 @@ async function addChildTo(
 	return id;
 }
 
+/** The bytes the database counts as stored in R2. */
+async function storedBytes(db: D1Database) {
+	const row = await db
+		.prepare('SELECT COALESCE(SUM(bytes), 0) AS bytes FROM stored_objects')
+		.first<{ bytes: number }>();
+	return row?.bytes;
+}
+
+const read = async (body: ReadableStream) => new Uint8Array(await new Response(body).arrayBuffer());
 const conflict = (message: string) => ({ status: 409, body: { message } });
+const refused = (message: string, status = 429) => ({ status, body: { message } });
 
 describe('setup', () => {
 	it('happens once, and repeating the same setup after a lost response is fine', async () => {
@@ -404,15 +434,20 @@ describe('the kindergarten', () => {
 
 	it('keeps classrooms with children, and removes a family with its last child', async () => {
 		const db = localDatabase();
+		const { bucket } = localStore();
 		const { admin } = await setUpKindergarten(db);
 		const bubbles = await addClassroomTo(db, admin);
 		const family = newFamily();
 		const child = await addChildTo(db, admin, bubbles, family);
-		await expect(deleteClassroom(db, admin, bubbles)).rejects.toMatchObject(conflict('not-empty'));
+		await expect(deleteClassroom(db, bucket, admin, bubbles)).rejects.toMatchObject(
+			conflict('not-empty')
+		);
 
 		await removeChild(db, admin, child, await links(db, { removeFamilies: [family.id] }));
 		expect(await identityForCard(db, family.credential.authToken)).toBeUndefined();
-		await expect(deleteClassroom(db, admin, bubbles)).resolves.toMatchObject({ classrooms: [] });
+		await expect(deleteClassroom(db, bucket, admin, bubbles)).resolves.toMatchObject({
+			classrooms: []
+		});
 	});
 
 	it('refuses a change made from records that another change has moved on from', async () => {
@@ -476,25 +511,29 @@ describe('the kindergarten', () => {
 describe('notices', () => {
 	const keys = (classrooms: string[]) =>
 		classrooms.map((classroom) => ({ classroom, noticeKey: 'wrapped key' }));
-	const notice = (classrooms: string[], days = 30) => ({
+	const notice = (classrooms: string[], days = 30, files: string[] = []) => ({
 		id: createId(),
 		content: 'content',
 		days,
 		poll: false,
-		classrooms: keys(classrooms)
+		classrooms: keys(classrooms),
+		files
 	});
-	const change = (classrooms: string[], announce = false) => ({
+	const change = (classrooms: string[], announce = false, files: string[] = []) => ({
 		content: 'changed',
 		days: 30,
 		announce,
 		poll: false,
-		classrooms: keys(classrooms)
+		classrooms: keys(classrooms),
+		files
 	});
 	const familyOf = async (db: D1Database, { credential }: NewFamily) =>
 		(await identityForCard(db, credential.authToken)) as FamilyIdentity;
 	const ids = (records: { id: string }[]) => records.map(({ id }) => id);
 	const count = async (db: D1Database) =>
 		(await db.prepare('SELECT COUNT(*) AS count FROM notices').first<{ count: number }>())?.count;
+	// Notices without files never reach R2.
+	const { bucket } = localStore();
 
 	it('go to a teacher’s own classrooms, or any for an admin', async () => {
 		const db = localDatabase();
@@ -551,18 +590,22 @@ describe('notices', () => {
 		const posted = notice([bubbles]);
 		await postNotice(db, author, posted);
 
-		await expect(changeNotice(db, colleague, posted.id, change([bubbles]))).rejects.toMatchObject({
+		await expect(
+			changeNotice(db, bucket, colleague, posted.id, change([bubbles]))
+		).rejects.toMatchObject({ status: 403 });
+		await expect(deleteNotice(db, bucket, colleague, posted.id)).rejects.toMatchObject({
 			status: 403
 		});
-		await expect(deleteNotice(db, colleague, posted.id)).rejects.toMatchObject({ status: 403 });
-		expect(await changeNotice(db, author, posted.id, change([bubbles]))).toMatchObject([
+		expect(await changeNotice(db, bucket, author, posted.id, change([bubbles]))).toMatchObject([
 			{ id: posted.id, content: 'changed', editedAt: expect.any(Number) }
 		]);
 
 		await removeTeacher(db, admin, author.teacher);
 		expect(await board(db, admin)).toMatchObject([{ id: posted.id, teacher: null }]);
-		await expect(deleteNotice(db, author, posted.id)).rejects.toMatchObject({ status: 403 });
-		expect(await deleteNotice(db, admin, posted.id)).toEqual([]);
+		await expect(deleteNotice(db, bucket, author, posted.id)).rejects.toMatchObject({
+			status: 403
+		});
+		expect(await deleteNotice(db, bucket, admin, posted.id)).toEqual([]);
 		expect(await count(db)).toBe(0);
 	});
 
@@ -578,21 +621,20 @@ describe('notices', () => {
 			vi.setSystemTime(2_000_000);
 			expect(ids(await postNotice(db, admin, second))).toEqual([second.id, first.id]);
 			vi.setSystemTime(3_000_000);
-			expect(ids(await changeNotice(db, admin, first.id, change([bubbles])))).toEqual([
+			expect(ids(await changeNotice(db, bucket, admin, first.id, change([bubbles])))).toEqual([
 				second.id,
 				first.id
 			]);
 			vi.setSystemTime(4_000_000);
-			expect(ids(await changeNotice(db, admin, first.id, change([bubbles], true)))).toEqual([
-				first.id,
-				second.id
-			]);
+			expect(ids(await changeNotice(db, bucket, admin, first.id, change([bubbles], true)))).toEqual(
+				[first.id, second.id]
+			);
 
 			// A day after it was posted, the second notice is off every board, and the daily cleanup deletes it.
 			vi.setSystemTime(2_000_000 + day);
 			expect(ids(await board(db, admin))).toEqual([first.id]);
 			expect(await count(db)).toBe(2);
-			await cleanUp(db);
+			await cleanUp({ DB: db, FILES: bucket });
 			expect(await count(db)).toBe(1);
 		} finally {
 			vi.useRealTimers();
@@ -607,7 +649,7 @@ describe('notices', () => {
 		await postNotice(db, admin, shared);
 		await postNotice(db, admin, notice([owls]));
 
-		await deleteClassroom(db, admin, owls);
+		await deleteClassroom(db, bucket, admin, owls);
 		expect(await board(db, admin)).toMatchObject([{ id: shared.id, classrooms: keys([bubbles]) }]);
 		expect(await count(db)).toBe(1);
 	});
@@ -642,9 +684,9 @@ describe('notices', () => {
 		expect(await seenBy(await familyOf(db, inOwls))).toEqual([inOwls.id]);
 
 		// A change keeps the marks, unless it notifies everyone again.
-		await changeNotice(db, admin, posted.id, change([bubbles, owls]));
+		await changeNotice(db, bucket, admin, posted.id, change([bubbles, owls]));
 		expect(await seenBy(admin)).toHaveLength(2);
-		await changeNotice(db, admin, posted.id, change([bubbles, owls], true));
+		await changeNotice(db, bucket, admin, posted.id, change([bubbles, owls], true));
 		expect(await seenBy(admin)).toEqual([]);
 	});
 
@@ -678,22 +720,136 @@ describe('notices', () => {
 		expect((await answered(family))?.votes).toHaveLength(1);
 
 		// A change that keeps the poll keeps its answers, and one that takes the poll off removes them.
-		await changeNotice(db, admin, withPoll.id, { ...change([bubbles]), poll: true });
+		await changeNotice(db, bucket, admin, withPoll.id, { ...change([bubbles]), poll: true });
 		expect((await answered(admin))?.votes).toHaveLength(1);
-		await changeNotice(db, admin, withPoll.id, change([bubbles]));
+		await changeNotice(db, bucket, admin, withPoll.id, change([bubbles]));
 		expect((await answered(admin))?.votes).toEqual([]);
 		await expect(vote(db, family, withPoll.id, 'answer')).rejects.toMatchObject(conflict('stale'));
+	});
+
+	it('carry the files uploaded for them, which go when a change leaves them out or the notice goes', async () => {
+		const db = localDatabase();
+		const { store, objects } = localStore();
+		const { admin } = await setUpKindergarten(db);
+		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
+		const [inBubbles, inOwls] = [newFamily(), newFamily()];
+		await addChildTo(db, admin, bubbles, inBubbles);
+		await addChildTo(db, admin, owls, inOwls);
+		const [author, colleague] = [
+			await addTeacherTo(db, admin, [bubbles]),
+			await addTeacherTo(db, admin, [bubbles])
+		];
+		const posted = notice([bubbles]);
+		const [menu, form, later] = [createId(), createId(), createId()];
+		const file = (value: number) => new Uint8Array(64).fill(value);
+		const key = (id: string) => `notices/${posted.id}/${id}`;
+
+		// A notice can't name a file that wasn't uploaded for it.
+		await expect(postNotice(db, author, { ...posted, files: [menu] })).rejects.toMatchObject(
+			conflict('stale')
+		);
+		await uploadFile(db, store, author, posted.id, menu, file(1));
+		await uploadFile(db, store, author, posted.id, form, file(2));
+		await postNotice(db, author, { ...posted, files: [menu, form] });
+
+		// Families who see the notice fetch its files; others don't.
+		const [family, other] = [await familyOf(db, inBubbles), await familyOf(db, inOwls)];
+		expect(await read(await fileBytes(db, store, family, posted.id, menu))).toEqual(file(1));
+		await expect(fileBytes(db, store, other, posted.id, menu)).rejects.toMatchObject({
+			status: 404
+		});
+
+		// Once the notice is up, only those who may change it upload files for it, and none twice.
+		await expect(uploadFile(db, store, colleague, posted.id, later, file(3))).rejects.toMatchObject(
+			{ status: 403 }
+		);
+		await expect(uploadFile(db, store, author, posted.id, menu, file(9))).rejects.toMatchObject(
+			refused('stored', 409)
+		);
+		expect(await read(await fileBytes(db, store, family, posted.id, menu))).toEqual(file(1));
+		await uploadFile(db, store, author, posted.id, later, file(3));
+		await changeNotice(
+			db,
+			store.bucket,
+			author,
+			posted.id,
+			change([bubbles], false, [form, later])
+		);
+		expect([...objects.keys()].sort()).toEqual([key(form), key(later)].sort());
+		await expect(fileBytes(db, store, family, posted.id, menu)).rejects.toMatchObject({
+			status: 404
+		});
+
+		await deleteNotice(db, store.bucket, author, posted.id);
+		expect(objects.size).toBe(0);
+		expect(await storedBytes(db)).toBe(0);
+	});
+
+	it('can’t name a file on its way out, which can’t be stored again until it’s gone', async () => {
+		const db = localDatabase();
+		const { store, objects } = localStore();
+		const { admin } = await setUpKindergarten(db);
+		const bubbles = await addClassroomTo(db, admin);
+		const posted = notice([bubbles]);
+		const file = createId();
+		await uploadFile(db, store, admin, posted.id, file, new Uint8Array(8));
+
+		// A deletion has marked the file, as another change's would just before it deletes its bytes.
+		await db.prepare('UPDATE stored_objects SET deleting = 1').run();
+		await expect(postNotice(db, admin, { ...posted, files: [file] })).rejects.toMatchObject(
+			conflict('stale')
+		);
+		await expect(
+			uploadFile(db, store, admin, posted.id, file, new Uint8Array(8))
+		).rejects.toMatchObject(refused('stored', 409));
+
+		// Once it's gone, the file can be uploaded again.
+		await deleteUnnamed(db, store.bucket, [`notices/${posted.id}/${file}`]);
+		expect(objects.size).toBe(0);
+		await uploadFile(db, store, admin, posted.id, file, new Uint8Array(8));
+		await postNotice(db, admin, { ...posted, files: [file] });
+		expect(objects.size).toBe(1);
+	});
+
+	it('lose their files with their classroom or their days, and files never posted a day later', async () => {
+		const db = localDatabase();
+		const { store, objects } = localStore();
+		const { admin } = await setUpKindergarten(db);
+		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
+		const notices = [notice([owls]), notice([bubbles], 1), notice([bubbles, owls])];
+		const files = notices.map(() => createId());
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			vi.setSystemTime(1_000_000);
+			for (const [index, posted] of notices.entries()) {
+				await uploadFile(db, store, admin, posted.id, files[index], new Uint8Array(8));
+				await postNotice(db, admin, { ...posted, files: [files[index]] });
+			}
+			// A file uploaded for a notice that was never posted.
+			await uploadFile(db, store, admin, createId(), createId(), new Uint8Array(8));
+			expect(objects.size).toBe(4);
+
+			// Deleting Owls deletes the notice for it alone, with its file; the shared notice keeps its own.
+			await deleteClassroom(db, store.bucket, admin, owls);
+			expect(objects.has(`notices/${notices[0].id}/${files[0]}`)).toBe(false);
+			expect(objects.size).toBe(3);
+
+			// A day on, the daily cleanup deletes the notice past its days, and the file no notice named.
+			vi.setSystemTime(1_000_000 + day + 1);
+			await cleanUp({ DB: db, FILES: store.bucket });
+			expect([...objects.keys()]).toEqual([`notices/${notices[2].id}/${files[2]}`]);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });
 
 describe('board photos', () => {
 	const photo = (value: number) => new Uint8Array(64).fill(value);
-	const read = async (body: ReadableStream) =>
-		new Uint8Array(await new Response(body).arrayBuffer());
 
 	it('go up in a teacher’s own classrooms in place of the photo there, for that classroom only', async () => {
 		const db = localDatabase();
-		const { bucket, objects } = localBucket();
+		const { store, objects } = localStore();
 		const { admin } = await setUpKindergarten(db);
 		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
 		const [inBubbles, inOwls] = [newFamily(), newFamily()];
@@ -702,31 +858,34 @@ describe('board photos', () => {
 		const teacher = await addTeacherTo(db, admin, [bubbles]);
 		const [first, second] = [createId(), createId()];
 
-		await expect(putUpPhoto(db, bucket, teacher, owls, first, photo(1))).rejects.toMatchObject(
+		await expect(putUpPhoto(db, store, teacher, owls, first, photo(1))).rejects.toMatchObject(
 			conflict('stale')
 		);
-		expect(await putUpPhoto(db, bucket, teacher, bubbles, first, photo(1))).toMatchObject([
+		expect(await putUpPhoto(db, store, teacher, bubbles, first, photo(1))).toMatchObject([
 			{ id: first, classroom: bubbles }
 		]);
-		// Putting the same photo up again, after a lost response, keeps it.
-		await putUpPhoto(db, bucket, teacher, bubbles, first, photo(1));
+		// A photo whose bytes are stored already isn't put up again, and stays up.
+		await expect(putUpPhoto(db, store, teacher, bubbles, first, photo(9))).rejects.toMatchObject(
+			refused('stored', 409)
+		);
 		expect([...objects.keys()]).toEqual([`board/${bubbles}/${first}`]);
 		// A new photo takes its place, in the database and in R2.
-		expect(await putUpPhoto(db, bucket, teacher, bubbles, second, photo(2))).toMatchObject([
+		expect(await putUpPhoto(db, store, teacher, bubbles, second, photo(2))).toMatchObject([
 			{ id: second, classroom: bubbles }
 		]);
 		expect([...objects.keys()]).toEqual([`board/${bubbles}/${second}`]);
+		expect(await storedBytes(db)).toBe(64);
 
 		const family = (await identityForCard(db, inBubbles.credential.authToken))!;
 		const other = (await identityForCard(db, inOwls.credential.authToken))!;
 		expect(await boardPhotos(db, family)).toMatchObject([{ id: second }]);
 		expect(await boardPhotos(db, other)).toEqual([]);
-		expect(await read(await photoBytes(db, bucket, family, bubbles, second))).toEqual(photo(2));
+		expect(await read(await photoBytes(db, store, family, bubbles, second))).toEqual(photo(2));
 		for (const [viewer, id] of [
 			[other, second],
 			[family, first]
 		] as const) {
-			await expect(photoBytes(db, bucket, viewer, bubbles, id)).rejects.toMatchObject({
+			await expect(photoBytes(db, store, viewer, bubbles, id)).rejects.toMatchObject({
 				status: 404
 			});
 		}
@@ -734,13 +893,13 @@ describe('board photos', () => {
 
 	it('come down for their classroom’s teachers and admins, and go with their classroom', async () => {
 		const db = localDatabase();
-		const { bucket, objects } = localBucket();
+		const { store, bucket, objects } = localStore();
 		const { admin } = await setUpKindergarten(db);
 		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
 		const teacher = await addTeacherTo(db, admin, [bubbles]);
 		const [inBubbles, inOwls] = [createId(), createId()];
-		await putUpPhoto(db, bucket, admin, bubbles, inBubbles, photo(1));
-		await putUpPhoto(db, bucket, admin, owls, inOwls, photo(2));
+		await putUpPhoto(db, store, admin, bubbles, inBubbles, photo(1));
+		await putUpPhoto(db, store, admin, owls, inOwls, photo(2));
 
 		await expect(takeDownPhoto(db, bucket, teacher, owls, inOwls)).rejects.toMatchObject(
 			conflict('stale')
@@ -749,10 +908,74 @@ describe('board photos', () => {
 		await expect(takeDownPhoto(db, bucket, admin, bubbles, inBubbles)).rejects.toMatchObject({
 			status: 404
 		});
-		await deleteClassroom(db, admin, owls);
-		await deletePhotosOf(bucket, owls);
+		await deleteClassroom(db, bucket, admin, owls);
 		expect(await boardPhotos(db, admin)).toEqual([]);
 		expect(objects.size).toBe(0);
+		expect(await storedBytes(db)).toBe(0);
+	});
+});
+
+describe('storage', () => {
+	const bytes = (size: number) => new Uint8Array(size);
+
+	it('keeps what it stores within the bytes allowed, and stores each key once', async () => {
+		const db = localDatabase();
+		const { store, objects } = localStore({ bytes: 100 });
+		await putObject(db, store, 'a', bytes(60));
+		await expect(putObject(db, store, 'b', bytes(50))).rejects.toMatchObject(
+			refused('storage-full', 507)
+		);
+		// A key stored already keeps its bytes.
+		await expect(putObject(db, store, 'a', bytes(10))).rejects.toMatchObject(
+			refused('stored', 409)
+		);
+		expect(await storedBytes(db)).toBe(60);
+		expect([...objects.keys()]).toEqual(['a']);
+	});
+
+	it('stops uploads and downloads for the rest of a month once each reaches its limit, or at 0', async () => {
+		const db = localDatabase();
+		const { store } = localStore({ uploads: 2, downloads: 1 });
+		const [september, october, november] = [8, 9, 10].map((month) => Date.UTC(2026, month, 15));
+		await putObject(db, store, 'a', bytes(1), september);
+		await putObject(db, store, 'b', bytes(1), september);
+		await expect(putObject(db, store, 'c', bytes(1), september)).rejects.toMatchObject(
+			refused('upload-limit')
+		);
+		await putObject(db, store, 'c', bytes(1), october);
+		expect(await getObject(db, store, 'a', september)).toBeDefined();
+		await expect(getObject(db, store, 'a', september)).rejects.toMatchObject(
+			refused('download-limit')
+		);
+		expect(await getObject(db, store, 'a', october)).toBeDefined();
+
+		const off = { ...store, limits: { bytes: 100, uploads: 0, downloads: 0 } };
+		await expect(putObject(db, off, 'd', bytes(1), november)).rejects.toMatchObject(
+			refused('upload-limit')
+		);
+		await expect(getObject(db, off, 'a', november)).rejects.toMatchObject(
+			refused('download-limit')
+		);
+	});
+
+	it('deletes only what no record names, leftovers once a day has passed, and deletions that didn’t finish', async () => {
+		const db = localDatabase();
+		const { store, bucket, objects } = localStore();
+		const { admin } = await setUpKindergarten(db);
+		const bubbles = await addClassroomTo(db, admin);
+		const photo = createId();
+		await putUpPhoto(db, store, admin, bubbles, photo, bytes(10), 1_000);
+		// Uploads whose records never came, or are still on their way, and a deletion that stopped midway.
+		await putObject(db, store, 'left/over', bytes(10), 1_000);
+		await putObject(db, store, 'on/its/way', bytes(10), 5_000);
+		await putObject(db, store, 'half/deleted', bytes(10), 5_000);
+		await db.prepare("UPDATE stored_objects SET deleting = 1 WHERE key = 'half/deleted'").run();
+
+		await deleteUnnamed(db, bucket, [`board/${bubbles}/${photo}`]);
+		expect(objects.size).toBe(4);
+		await cleanUp({ DB: db, FILES: bucket }, 2_000 + day);
+		expect([...objects.keys()].sort()).toEqual([`board/${bubbles}/${photo}`, 'on/its/way'].sort());
+		expect(await storedBytes(db)).toBe(20);
 	});
 });
 
@@ -809,7 +1032,7 @@ describe('notifications', () => {
 		await endSession(adminDevice);
 		expect(await subscribed(db)).toEqual([endpoint('later')]);
 		await db.prepare('UPDATE sessions SET expires_at = 0').run();
-		await cleanUp(db);
+		await cleanUp({ DB: db, FILES: localStore().bucket });
 		expect(await subscribed(db)).toEqual([]);
 	});
 

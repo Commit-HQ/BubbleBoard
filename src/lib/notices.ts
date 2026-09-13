@@ -1,20 +1,23 @@
 import type { NoticeRecord, VoteRecord } from '$lib/api';
+import { fromBase64Url } from '$lib/base64url';
 import {
 	createKey,
 	decryptData,
 	encryptData,
 	envelopeSize,
 	isId,
+	KEY_BYTES,
 	UnreadableError,
 	unwrapKey,
 	wrapping
 } from '$lib/crypto';
+import { isFileName, maxNoticeFiles, type NoticeFile } from '$lib/files';
 
 // Notices on the board, as devices write and read them (docs/access-format.md). Every save seals a notice
 // under a new Notice Key, wrapped with the Group Key of each of its classrooms, so a classroom taken off a
 // notice can't open its later versions. A notice can hold a poll, and each family's answer is encrypted with
-// its own Family Key, so only that family and staff read it. The server stores envelopes and decides who may
-// post, read, and answer.
+// its own Family Key, so only that family and staff read it. It can carry files, whose names and keys it
+// holds (src/lib/files.ts). The server stores envelopes and decides who may post, read, and answer.
 
 /** How long a notice stays up, in days from when it was first posted. The server accepts only these. */
 export const noticeDays = [1, 3, 7, 14, 30, 60, 90] as const;
@@ -55,7 +58,13 @@ export const maxPollOptions = 10;
 export const maxOptionLength = 100;
 
 /** What a notice holds inside its envelope. A notice posted with the recovery card has no author. */
-export type NoticeContent = { author?: string; paper: Paper; body: NoticeDocument; poll?: Poll };
+export type NoticeContent = {
+	author?: string;
+	paper: Paper;
+	body: NoticeDocument;
+	poll?: Poll;
+	files?: NoticeFile[];
+};
 
 /** A family's answer to a notice's poll, as a device that opened it shows it. */
 export type Vote = { family: string; option: string };
@@ -160,13 +169,31 @@ function readPoll(value: unknown): Poll {
 	return distinct && count ? { options } : fail();
 }
 
+/**
+ * A notice's files as a device may show them: up to ten, each once, with a name of a kind notices carry, a
+ * size, and a key. Anyone holding a classroom's Group Key could have written them.
+ */
+function readFiles(value: unknown): NoticeFile[] {
+	const files = list(value, (item) => {
+		const { id, name, bytes, key } = fields(item);
+		const sized = Number.isSafeInteger(bytes) && (bytes as number) >= 0;
+		const keyed = typeof key === 'string' && fromBase64Url(key)?.length === KEY_BYTES;
+		return isId(id) && isFileName(name) && sized && keyed
+			? { id, name, bytes: bytes as number, key: key as string }
+			: fail();
+	});
+	const distinct = new Set(files.map((file) => file.id)).size === files.length;
+	return distinct && files.length <= maxNoticeFiles ? files : fail();
+}
+
 function readContent(value: unknown): NoticeContent {
-	const { author, paper, body, poll } = fields(value);
+	const { author, paper, body, poll, files } = fields(value);
 	if (author !== undefined && (typeof author !== 'string' || !author)) fail();
 	if (!papers.includes(paper as Paper)) fail();
 	const content: NoticeContent = { paper: paper as Paper, body: readDocument(body) };
 	if (author !== undefined) content.author = author as string;
 	if (poll !== undefined) content.poll = readPoll(poll);
+	if (files !== undefined) content.files = readFiles(files);
 	return content;
 }
 

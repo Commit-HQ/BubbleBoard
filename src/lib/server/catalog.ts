@@ -17,9 +17,10 @@ import type {
 } from '$lib/api';
 import { hashAuthToken } from '$lib/crypto';
 import { includesAll, transaction } from './database';
-import { board } from './notices';
-import { boardPhotos } from './photos';
+import { board, classroomFileKeys } from './notices';
+import { boardPhotos, classroomPhotoKeys } from './photos';
 import type { Admin } from './session';
+import { deleteUnnamed } from './storage';
 
 // The kindergarten's records: plain SQL, and one batch, which D1 runs as a transaction, for each change.
 // Every name is inside an encrypted profile, so these checks are about access and structure. An admin's
@@ -180,16 +181,22 @@ export async function renameClassroom(db: D1Database, admin: Admin, id: string, 
 	return kindergarten(db, admin);
 }
 
-export async function deleteClassroom(db: D1Database, admin: Admin, id: string) {
+/**
+ * Deletes a classroom without children, with its board photo and the notices for it alone, and what R2 keeps
+ * for them. The files of notices it shared with other classrooms stay with those notices.
+ */
+export async function deleteClassroom(db: D1Database, bucket: R2Bucket, admin: Admin, id: string) {
 	if (await db.prepare('SELECT 1 FROM children WHERE classroom_id = ?').bind(id).first()) {
 		error(409, 'not-empty');
 	}
+	const kept = [...(await classroomPhotoKeys(db, id)), ...(await classroomFileKeys(db, id))];
 	await changesOne(
 		db,
 		db.prepare('DELETE FROM classrooms WHERE id = ?').bind(id),
 		// Notices for this classroom alone go with it.
 		db.prepare('DELETE FROM notices WHERE id NOT IN (SELECT notice_id FROM notice_classrooms)')
 	);
+	await deleteUnnamed(db, bucket, kept);
 	return kindergarten(db, admin);
 }
 

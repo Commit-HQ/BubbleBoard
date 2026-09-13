@@ -538,12 +538,32 @@ export const en = {
 			},
 			emoji: 'Emoji'
 		},
+		files: {
+			title: 'Files',
+			attach: 'Attach files',
+			hint: 'PDFs, documents, and pictures, up to 10 MB each.',
+			preparing: 'Getting the files ready…',
+			remove: (name: string) => `Remove ${name}`,
+			save: (name: string) => `Save ${name}`
+		},
 		errors: {
 			'empty-notice': 'Write the notice first.',
 			'notice-too-long': 'This notice is too long. Shorten it, then try again.',
 			'no-classrooms': 'Choose at least one classroom.',
 			'poll-answers': 'Give the poll at least two answers.',
 			'unusable-photo': 'That photo couldn’t be used. Try another one.',
+			'file-type':
+				'BubbleBoard can’t attach that kind of file. Attach a PDF, a document, or a picture.',
+			'file-too-large': 'That file is larger than 10 MB. Attach a smaller one.',
+			'too-many-files': 'A notice can carry up to 10 files.',
+			'unreadable-file':
+				'This file didn’t open on this device. Ask your kindergarten to attach it again.',
+			'storage-full':
+				'BubbleBoard’s storage is full. Delete notices with files or take down photos you no longer need, or ask whoever installed BubbleBoard.',
+			'upload-limit':
+				'BubbleBoard has reached this month’s limit for uploads. Try again next month, or ask whoever installed BubbleBoard.',
+			'download-limit':
+				'BubbleBoard has reached this month’s limit for opening photos and files. They open again next month, or whoever installed BubbleBoard can raise the limit.',
 			offline: 'BubbleBoard can’t be reached. Check your internet connection and try again.',
 			'signed-out': 'This device was signed out. Scan your card again to continue.',
 			'unreadable-records':

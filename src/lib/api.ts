@@ -103,6 +103,8 @@ export type NoticeChange = {
 	/** Whether its content holds a poll for families to answer. Taking the poll off removes the answers. */
 	poll: boolean;
 	classrooms: NoticeKey[];
+	/** The files its content holds, uploaded just before. The files a change leaves out are deleted. */
+	files: string[];
 };
 export type NewNotice = Omit<NoticeChange, 'announce'> & { id: string };
 

@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { toBase64Url } from '$lib/base64url';
 import { createId, SEALED_BYTES_OVERHEAD } from '$lib/crypto';
+import { maxFileBytes, maxNoticeFiles } from '$lib/files';
 import { maxPhotoBytes } from '$lib/photos';
 import {
 	familyCards,
@@ -8,6 +9,7 @@ import {
 	newChild,
 	newNotice,
 	noticeChange,
+	readFile,
 	readPhoto,
 	setup,
 	voteChoice
@@ -66,27 +68,34 @@ it('refuses new family cards that repeat a family or a card', () => {
 	expect(() => familyCards({ cards: [first, { ...second, credential: shared }] })).toThrow();
 });
 
-it('refuses notices without classrooms, with a classroom twice, too big, up for other days, or unclear about a poll', () => {
+it('refuses notices without classrooms, with a classroom twice, too big, up for other days, or unclear about a poll or files', () => {
 	const key = () => ({ classroom: createId(), noticeKey: envelope(48) });
+	const file = createId();
 	const notice = {
 		id: createId(),
 		content: envelope(200),
 		days: 30,
 		poll: true,
-		classrooms: [key(), key()]
+		classrooms: [key(), key()],
+		files: [file, file]
 	};
+	expect(newNotice(notice)).toMatchObject({ files: [file] });
 	expect(newNotice(notice).classrooms).toHaveLength(2);
 	expect(noticeChange({ ...notice, announce: false })).toMatchObject({
 		announce: false,
 		poll: true
 	});
 	for (const refused of [
+		// A device from before notices carried files, which would take them off a notice it changes.
+		{ ...notice, files: undefined },
 		{ ...notice, classrooms: [] },
 		{ ...notice, classrooms: [notice.classrooms[0], notice.classrooms[0]] },
 		{ ...notice, days: 2 },
 		{ ...notice, content: envelope(40 * 1024) },
 		{ ...notice, poll: 'yes' },
-		{ ...notice, poll: undefined }
+		{ ...notice, poll: undefined },
+		{ ...notice, files: ['menu.pdf'] },
+		{ ...notice, files: Array.from({ length: maxNoticeFiles + 1 }, createId) }
 	]) {
 		expect(() => newNotice(refused)).toThrow();
 	}
@@ -100,19 +109,25 @@ it('refuses a poll answer bigger than the option it names', () => {
 	}
 });
 
-it('reads a board photo’s encrypted bytes, holding something and no bigger than a photo is kept', async () => {
+it('reads a photo’s or a file’s encrypted bytes, holding something and no bigger than is kept', async () => {
 	const upload = (bytes: number, type = 'application/octet-stream') =>
 		new Request('https://bubbleboard.example.com/api', {
 			method: 'PUT',
 			headers: { 'content-type': type },
 			body: new Uint8Array(bytes)
 		});
-	expect(await readPhoto(upload(SEALED_BYTES_OVERHEAD + 1))).toHaveLength(
-		SEALED_BYTES_OVERHEAD + 1
-	);
-	await expect(readPhoto(upload(maxPhotoBytes + SEALED_BYTES_OVERHEAD + 1))).rejects.toMatchObject({
-		status: 413
-	});
-	await expect(readPhoto(upload(SEALED_BYTES_OVERHEAD))).rejects.toMatchObject({ status: 400 });
-	await expect(readPhoto(upload(100, 'application/json'))).rejects.toMatchObject({ status: 415 });
+	for (const [read, max] of [
+		[readPhoto, maxPhotoBytes],
+		[readFile, maxFileBytes]
+	] as const) {
+		expect(await read(upload(SEALED_BYTES_OVERHEAD + 1))).toHaveLength(SEALED_BYTES_OVERHEAD + 1);
+		expect(await read(upload(max + SEALED_BYTES_OVERHEAD))).toHaveLength(
+			max + SEALED_BYTES_OVERHEAD
+		);
+		await expect(read(upload(max + SEALED_BYTES_OVERHEAD + 1))).rejects.toMatchObject({
+			status: 413
+		});
+		await expect(read(upload(SEALED_BYTES_OVERHEAD))).rejects.toMatchObject({ status: 400 });
+		await expect(read(upload(100, 'application/json'))).rejects.toMatchObject({ status: 415 });
+	}
 });

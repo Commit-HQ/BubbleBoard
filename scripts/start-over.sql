@@ -1,7 +1,8 @@
 -- Empties every record so the first setup can run again (README, "Deploy your own installation").
--- Everything stored is lost, and every card stops working. Board photos stay in R2, where nothing can open them
--- without the old keys, until they're deleted there (README). The installation row goes first: once it's
--- gone, the database no longer insists on keeping an admin.
+-- Everything stored is lost, and every card stops working. Board photos and notice files stay in R2, where nothing
+-- can open them without the old keys, until the daily cleanup a day later deletes them, since no record names
+-- them anymore. The installation row goes first: once it's gone, the database no longer insists on keeping an
+-- admin.
 DELETE FROM installation;
 DELETE FROM notices;
 DELETE FROM sessions;

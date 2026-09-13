@@ -12,6 +12,7 @@ import {
 import { readCard, type CardReading } from '$lib/card';
 import { createId, deriveCredential, hashAuthToken, UnreadableError } from '$lib/crypto';
 import { forgetCard, loadCard, saveCard, type DeviceCard } from '$lib/device';
+import { openFile, saveFile, type NewFile, type NoticeFile } from '$lib/files';
 import type { Locale } from '$lib/i18n';
 import { installStep, type InstallPlatform, type InstallPrompt } from '$lib/install';
 import {
@@ -85,7 +86,10 @@ export type TeacherValues = { name: string; admin: boolean; classrooms: string[]
 export type ChildValues = { name: string; classroom: string } & (
 	{ cardName: string } | { sibling: string }
 );
-/** A notice as its form fills it in. `announce` puts a changed notice back on top and notifies again. */
+/**
+ * A notice as its form fills it in. `announce` puts a changed notice back on top and notifies again. Its
+ * files are those it carries already, and files attached in the form, sealed already.
+ */
 export type NoticeValues = {
 	classrooms: string[];
 	paper: Paper;
@@ -93,6 +97,7 @@ export type NoticeValues = {
 	body: NoticeDocument;
 	announce: boolean;
 	poll?: Poll;
+	files: (NoticeFile | NewFile)[];
 };
 
 const emptyCatalog: Catalog = {
@@ -116,6 +121,16 @@ class UnreadableRecords extends Error {
 	constructor(options?: ErrorOptions) {
 		super('Unreadable records', options);
 		this.name = 'UnreadableRecords';
+	}
+}
+
+/** A notice's file didn't open, although the notice did. */
+class UnreadableFile extends Error {
+	readonly code = 'unreadable-file';
+
+	constructor(options?: ErrorOptions) {
+		super('Unreadable file', options);
+		this.name = 'UnreadableFile';
 	}
 }
 
@@ -673,29 +688,60 @@ export class App {
 	/**
 	 * Posts a notice, or changes `notice`, sealed under a new Notice Key for its classrooms. A change keeps
 	 * the name of whoever posted the notice; the recovery card posts without one. A poll goes inside the
-	 * notice, and the server learns only that it has one.
+	 * notice, and the server learns only that it has one, as it learns nothing of its files' names and keys.
+	 * Files attached in the form were sealed then, and are uploaded one at a time once the notice fits.
 	 */
 	async saveNotice(values: NoticeValues, notice?: Notice) {
 		const id = notice?.id ?? createId();
 		const author = notice ? notice.author : this.me?.recovery ? undefined : this.me?.name;
+		const files: NoticeFile[] = values.files.map((file) => ({
+			id: file.id,
+			name: file.name,
+			bytes: file.bytes,
+			key: file.key
+		}));
 		const content: NoticeContent = { paper: values.paper, body: values.body };
 		if (author) content.author = author;
 		if (values.poll) content.poll = values.poll;
+		if (files.length) content.files = files;
 		const classrooms = values.classrooms.map((classroom) =>
 			byId(this.catalog.classrooms, classroom)
 		);
 		const sealed = await sealNotice(id, content, classrooms);
+		for (const file of values.files) {
+			if ('sealed' in file) await this.#uploadFile(id, file);
+		}
 		const { days, announce } = values;
 		const poll = values.poll !== undefined;
+		const body = { ...sealed, days, poll, files: files.map((file) => file.id) };
 		if (notice) {
-			await this.#changeBoard('PUT', `/api/notices/${id}`, { ...sealed, days, announce, poll });
+			await this.#changeBoard('PUT', `/api/notices/${id}`, { ...body, announce });
 		} else {
-			await this.#changeBoard('POST', '/api/notices', { ...sealed, id, days, poll });
+			await this.#changeBoard('POST', '/api/notices', { ...body, id });
 		}
+	}
+
+	/** Uploads a file attached in a notice's form. One an earlier try stored is there already, as sealed. */
+	async #uploadFile(notice: string, file: NewFile) {
+		const path = `/api/notices/${notice}/files/${file.id}`;
+		await this.#signedIn(() => request('PUT', path, file.sealed)).catch((cause) => {
+			if (!(cause instanceof ApiError && cause.code === 'stored')) throw cause;
+		});
 	}
 
 	deleteNotice(notice: Notice) {
 		return this.#changeBoard('DELETE', `/api/notices/${notice.id}`);
+	}
+
+	/** Fetches and decrypts one of a notice's files, and saves it on this device under its name. */
+	async saveNoticeFile(notice: Notice, file: NoticeFile) {
+		const sealed = await this.#signedIn(() =>
+			requestBytes(`/api/notices/${notice.id}/files/${file.id}`)
+		);
+		const opened = await openFile(sealed, file).catch((cause) => {
+			throw cause instanceof UnreadableError ? new UnreadableFile({ cause }) : cause;
+		});
+		saveFile(opened, file.name);
 	}
 
 	/**

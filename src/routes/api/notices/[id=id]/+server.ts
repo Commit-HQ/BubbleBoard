@@ -1,16 +1,20 @@
 import { json } from '@sveltejs/kit';
 import { changeNotice, deleteNotice } from '$lib/server/notices';
 import { announce } from '$lib/server/push';
-import { database, requireStaff, sessionHash } from '$lib/server/session';
+import { database, finish, objectStore, requireStaff, sessionHash } from '$lib/server/session';
 import { noticeChange, readJson } from '$lib/server/validate';
 import type { RequestHandler } from './$types';
 
 // The author and admins change or delete a notice, and each responds with the board as they see it. A
-// change that announces the notice again notifies its families and teachers, as posting does.
+// change that announces the notice again notifies its families and teachers, as posting does. The files a
+// change leaves out, or a deleted notice's, are deleted with it.
 export const PUT: RequestHandler = async (event) => {
 	const staff = await requireStaff(event);
 	const change = noticeChange(await readJson(event.request));
-	const board = await changeNotice(database(event), staff, event.params.id, change);
+	const { bucket } = objectStore(event);
+	const board = await finish(event, () =>
+		changeNotice(database(event), bucket, staff, event.params.id, change)
+	);
 	if (change.announce) {
 		const classrooms = change.classrooms.map(({ classroom }) => classroom);
 		await announce(event, classrooms, await sessionHash(event));
@@ -20,5 +24,8 @@ export const PUT: RequestHandler = async (event) => {
 
 export const DELETE: RequestHandler = async (event) => {
 	const staff = await requireStaff(event);
-	return json(await deleteNotice(database(event), staff, event.params.id));
+	const { bucket } = objectStore(event);
+	return json(
+		await finish(event, () => deleteNotice(database(event), bucket, staff, event.params.id))
+	);
 };

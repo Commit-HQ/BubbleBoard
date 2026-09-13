@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
-	import { errorMessage, listNames, messages, type Locale } from '$lib/i18n';
+	import { errorMessage, fileSize, listNames, messages, type Locale } from '$lib/i18n';
 	import { namesOf } from '$lib/kindergarten';
 	import type { Notice } from '$lib/notices';
 	import { appPath } from '$lib/paths';
@@ -9,13 +9,15 @@
 	import { getApp, Task } from './state.svelte';
 	import { alert, button, paperClass } from './ui';
 
-	// One notice on the board, on its paper, with its poll. A family marks it as seen, and until then it
-	// stands out; staff see which of its families did, and the actions its author or an admin may take.
+	// One notice on the board, on its paper, with its poll and files. A family marks it as seen, and until
+	// then it stands out; staff see which of its families did, and the actions its author or an admin may take.
 	let { locale, notice, ondelete }: { locale: Locale; notice: Notice; ondelete: () => void } =
 		$props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.notices);
+	const fileCopy = $derived(messages[locale].app.files);
 	const task = new Task();
+	const fileTask = new Task();
 	// Made once for the card, not again whenever the board loads.
 	const timeFormat = $derived(
 		new Intl.DateTimeFormat(locale, {
@@ -54,6 +56,32 @@
 		<div class="mt-5">
 			<NoticePoll {locale} {notice} poll={notice.poll} />
 		</div>
+	{/if}
+
+	{#if notice.files?.length}
+		<ul class="mt-5 grid gap-2" aria-label={fileCopy.title}>
+			{#each notice.files as file (file.id)}
+				<li>
+					<button
+						class="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-white/60 px-4 py-2 text-left ring-1 ring-ink/10 transition hover:bg-white disabled:opacity-50"
+						type="button"
+						aria-label={fileCopy.save(file.name)}
+						disabled={fileTask.busy}
+						onclick={() => fileTask.run(() => app.saveNoticeFile(notice, file))}
+					>
+						<Icon name="file" class="size-5 shrink-0 text-muted" />
+						<span class="min-w-0 flex-1">
+							<span class="block truncate font-semibold">{file.name}</span>
+							<span class="text-sm text-muted">{fileSize(locale, file.bytes)}</span>
+						</span>
+						<Icon name="arrowDown" class="size-4 shrink-0 text-muted" />
+					</button>
+				</li>
+			{/each}
+		</ul>
+		{#if fileTask.error}
+			<p class="{alert} mt-3" role="alert">{errorMessage(locale, fileTask.error)}</p>
+		{/if}
 	{/if}
 
 	{#if app.status === 'family'}

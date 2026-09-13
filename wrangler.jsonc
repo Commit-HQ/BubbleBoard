@@ -18,9 +18,9 @@
 			"migrations_dir": "migrations"
 		}
 	],
-	// Photos of each classroom's board, encrypted in the browser. The bucket stays private: only the Worker
-	// reads it, for devices that may see a photo (src/lib/server/photos.ts).
-	"r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "bubbleboard-photos" }],
+	// Board photos and notice files, encrypted in the browser. The bucket stays private: only the Worker reads
+	// it, for devices that may see a photo or file, within the limits in .env (src/lib/server/storage.ts).
+	"r2_buckets": [{ "binding": "FILES", "bucket_name": "bubbleboard-files" }],
 	// Attempts to set up the installation or connect a card, per client address.
 	"ratelimits": [
 		{
@@ -35,7 +35,8 @@
 		"producers": [{ "binding": "NOTIFICATIONS", "queue": "bubbleboard-notifications" }],
 		"consumers": [{ "queue": "bubbleboard-notifications", "max_batch_size": 1, "max_retries": 3 }]
 	},
-	// The daily cleanup of expired notices and sessions.
+	// The daily cleanup of expired notices and sessions, and of files no record names
+	// (src/lib/server/cleanup.ts).
 	"triggers": { "crons": ["23 3 * * *"] },
 	// No invocation logs (product-spec.md §45).
 	"observability": { "enabled": false },

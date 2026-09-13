@@ -2,6 +2,8 @@ import { error, type RequestEvent } from '@sveltejs/kit';
 import type { FamilyIdentity, Identity, Staff } from '$lib/api';
 import { fromBase64Url, toBase64Url } from '$lib/base64url';
 import { hashAuthToken, hashToken, randomBytes } from '$lib/crypto';
+import { storageLimits } from './limits';
+import type { ObjectStore } from './storage';
 
 // A device connects with a card once and then uses a session: a random token in an HttpOnly, SameSite
 // cookie, stored only as a hash. A session authorizes requests but opens nothing: keys stay on the device.
@@ -23,11 +25,22 @@ export function database(event: RequestEvent) {
 	return db;
 }
 
-/** The private R2 bucket that keeps board photos' encrypted bytes. */
-export function photoBucket(event: RequestEvent) {
-	const bucket = event.platform?.env.PHOTOS;
+/** The private R2 bucket that keeps encrypted photos and files, with the limits in .env it's held to. */
+export function objectStore(event: RequestEvent): ObjectStore {
+	const bucket = event.platform?.env.FILES;
 	if (!bucket) error(503, 'unavailable');
-	return bucket;
+	return { bucket, limits: storageLimits };
+}
+
+/**
+ * Runs a change to R2 and the database to its end even if the device disconnects midway, so R2 keeps
+ * nothing the database doesn't count, and deleted bytes don't stay. The request still gets the change's
+ * result or failure.
+ */
+export function finish<T>(event: RequestEvent, change: () => Promise<T>) {
+	const done = change();
+	event.platform?.ctx.waitUntil(done.catch(() => {}));
+	return done;
 }
 
 /** Compares hashes, so the time a comparison takes says nothing about the secret. */
@@ -100,7 +113,7 @@ export async function startSession(event: RequestEvent, credential: string) {
 	const previous = cookieToken(event);
 	const now = Date.now();
 	await db.batch([
-		// This browser's earlier session. Sessions that ran out go in the daily cleanup (push.ts).
+		// This browser's earlier session. Sessions that ran out go in the daily cleanup (cleanup.ts).
 		db
 			.prepare('DELETE FROM sessions WHERE token_hash = ?')
 			.bind(previous ? await hashToken(previous) : ''),

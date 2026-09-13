@@ -24,11 +24,12 @@ import {
 	KEY_BYTES,
 	SEALED_BYTES_OVERHEAD
 } from '$lib/crypto';
+import { maxFileBytes, maxNoticeFiles } from '$lib/files';
 import { maxNoticeBytes, noticeDays } from '$lib/notices';
 import { maxPhotoBytes } from '$lib/photos';
 
-// Request bodies, checked before anything reaches the database. The server can't open profiles, keys, or
-// photos, so it checks their form; the browsers that open them check the rest.
+// Request bodies, checked before anything reaches the database. The server can't open profiles, keys,
+// photos, or files, so it checks their form; the browsers that open them check the rest.
 
 type Fields = Record<string, unknown>;
 
@@ -71,14 +72,18 @@ export async function readJson(request: Request): Promise<Fields> {
 	}
 }
 
-/** Reads a board photo's encrypted bytes, which hold at least one byte of the photo. */
-export async function readPhoto(request: Request) {
-	const max = maxPhotoBytes + SEALED_BYTES_OVERHEAD;
-	const photo = new Uint8Array(
-		await (await readBody(request, 'application/octet-stream', max)).arrayBuffer()
-	);
-	return photo.length > SEALED_BYTES_OVERHEAD ? photo : invalid();
+/** Reads encrypted bytes that hold at least one byte, and at most `max` before they were encrypted. */
+async function readSealed(request: Request, max: number) {
+	const body = await readBody(request, 'application/octet-stream', max + SEALED_BYTES_OVERHEAD);
+	const sealed = new Uint8Array(await body.arrayBuffer());
+	return sealed.length > SEALED_BYTES_OVERHEAD ? sealed : invalid();
 }
+
+/** Reads a board photo's encrypted bytes. */
+export const readPhoto = (request: Request) => readSealed(request, maxPhotoBytes);
+
+/** Reads a notice file's encrypted bytes. */
+export const readFile = (request: Request) => readSealed(request, maxFileBytes);
 
 function fields(value: unknown): Fields {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -91,7 +96,7 @@ function list<T>(value: unknown, item: (value: unknown) => T, max = 200): T[] {
 }
 
 const id = (value: unknown) => (isId(value) ? value : invalid());
-const ids = (value: unknown) => [...new Set(list(value, id))];
+const ids = (value: unknown, max?: number) => [...new Set(list(value, id, max))];
 const flag = (value: unknown) => (typeof value === 'boolean' ? value : invalid());
 const revision = (value: unknown) =>
 	Number.isSafeInteger(value) && (value as number) >= 0 ? (value as number) : invalid();
@@ -232,12 +237,19 @@ function noticeKeys(value: unknown): NoticeKey[] {
 	return keys.length && classrooms.size === keys.length ? keys : invalid();
 }
 
+/**
+ * The files a notice's content holds, each once. Every device sends them, so one from before notices carried
+ * files is refused, rather than taking a notice's files off it when it changes the notice.
+ */
+const noticeFiles = (value: unknown) => ids(value, maxNoticeFiles);
+
 export const newNotice = (body: Fields): NewNotice => ({
 	id: id(body.id),
 	content: noticeContent(body.content),
 	days: days(body.days),
 	poll: flag(body.poll),
-	classrooms: noticeKeys(body.classrooms)
+	classrooms: noticeKeys(body.classrooms),
+	files: noticeFiles(body.files)
 });
 
 export const noticeChange = (body: Fields): NoticeChange => ({
@@ -245,7 +257,8 @@ export const noticeChange = (body: Fields): NoticeChange => ({
 	days: days(body.days),
 	announce: flag(body.announce),
 	poll: flag(body.poll),
-	classrooms: noticeKeys(body.classrooms)
+	classrooms: noticeKeys(body.classrooms),
+	files: noticeFiles(body.files)
 });
 
 /** A family's answer to a poll holds the ID of the option it chose. */

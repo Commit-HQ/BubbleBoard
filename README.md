@@ -6,7 +6,7 @@ A small, open-source communication app for kindergarten communities. Inspired by
 
 Teachers share a moment. Parents get a notification. The hosting server stores encrypted content without the keys needed to read it.
 
-> **Status: early development.** This repository contains a prerendered Croatian and English landing page and the first part of the app: setting up a kindergarten, classrooms, teachers and admins, children with their family cards, printing cards, and connecting devices with a card's link, the camera, a photo of it, or its code. Everything is encrypted in the browser ([access format](docs/access-format.md)). Teachers post notices, written with a rich text editor and sometimes with a poll, to the board on everyone's home, and families mark them as seen and answer the polls for their teachers. Teachers also put up a photo of each classroom's corkboard, which its families see until a new one replaces it. Phones and tablets install the app before using it, and devices can turn on notifications for new notices and board photos, which carry no content; messages and classroom photos are not implemented yet. Do not use it with real family data yet. The landing page deliberately describes the finished product; this README tracks what exists.
+> **Status: early development.** This repository contains a prerendered Croatian and English landing page and the first part of the app: setting up a kindergarten, classrooms, teachers and admins, children with their family cards, printing cards, and connecting devices with a card's link, the camera, a photo of it, or its code. Everything is encrypted in the browser ([access format](docs/access-format.md)). Teachers post notices, written with a rich text editor and sometimes with a poll or attached files, to the board on everyone's home, and families mark them as seen, answer the polls for their teachers, and save the files. Teachers also put up a photo of each classroom's corkboard, which its families see until a new one replaces it. Phones and tablets install the app before using it, and devices can turn on notifications for new notices and board photos, which carry no content; messages and classroom photos are not implemented yet. Do not use it with real family data yet. The landing page deliberately describes the finished product; this README tracks what exists.
 
 ## What we’re building
 
@@ -32,7 +32,7 @@ npm run dev
 
 `npm run setup-link:local` writes a setup token to the ignored `.dev.vars`, generates the ignored Cloudflare runtime types, and prints a setup link for `http://localhost:5173`. Open it once `npm run dev` is running (if Vite prints another port, use that port with the same `/app/setup#token=…`). Setup asks for your name and makes two cards to print: yours and a recovery card. `npm run dev` applies the database migrations to a local copy in `.wrangler/` before starting, and the first time adds a local key for signing notifications to `.dev.vars`. To start over locally, stop the server, delete `.wrangler/state`, and run `npm run setup-link:local` again.
 
-`.env` sets `PUBLIC_SITE_URL`, the public origin used for canonical links and link previews: `https://` and a hostname, with no path, query, or credentials (`http://localhost` also works). Pages are prerendered, so the address is written into the HTML at build time; a Worker variable set at runtime can't change pages that were already generated. The build stops with a message naming `PUBLIC_SITE_URL` when it's missing or invalid. Local Worker secrets, such as the setup token, belong in the ignored `.dev.vars`.
+`.env` sets `PUBLIC_SITE_URL`, the public origin used for canonical links and link previews: `https://` and a hostname, with no path, query, or credentials (`http://localhost` also works). Pages are prerendered, so the address is written into the HTML at build time; a Worker variable set at runtime can't change pages that were already generated. The build stops with a message naming `PUBLIC_SITE_URL` when it's missing or invalid. It also holds the storage limits (see [Storage](#storage)). Local Worker secrets, such as the setup token, belong in the ignored `.dev.vars`.
 
 | Command                    | Purpose                                                                           |
 | -------------------------- | --------------------------------------------------------------------------------- |
@@ -62,11 +62,11 @@ Add interface copy to both `src/lib/i18n/en.ts` and `hr.ts`. When bundling a new
 ## Deploy your own installation
 
 1. Clone this repository and follow the local setup above.
-2. Run `npx wrangler login` to authenticate to your Cloudflare account.
+2. Run `npx wrangler login` to authenticate to your Cloudflare account, and turn on R2 for that account in the Cloudflare dashboard (**Storage & databases → R2 → Overview**). Cloudflare asks for a payment method even within the free allowance, and until R2 is on, the deploy can't create the files bucket and stops with "R2 bucket 'bubbleboard-files' not found".
 3. Choose a unique Worker `name` in `wrangler.jsonc`.
-4. Set `PUBLIC_SITE_URL` in `.env` to the origin the site will be served from, such as `https://bubbleboard.example.com`. It is read when you build.
+4. Set `PUBLIC_SITE_URL` in `.env` to the origin the site will be served from, such as `https://bubbleboard.example.com`. It is read when you build, as are the storage limits next to it, whose defaults keep R2 within its free allowance ([Storage](#storage)).
 5. Run `npm run validate` and `npx wrangler deploy --dry-run`.
-6. Run `npm run deploy`. The first deploy creates the database, the notifications queue, and the photos bucket, applies the migrations, stores a new `SETUP_TOKEN` secret and the `VAPID_KEY` secret that signs notifications, and prints a setup link. Later deploys apply new migrations and leave both secrets alone: a new `VAPID_KEY` would silently end every device's notifications. When a deploy creates a resource, Wrangler also writes it into `wrangler.jsonc`; the deploy puts the file back as it was, so it stays the same for every installation, since later deploys find the resources by name.
+6. Run `npm run deploy`. The first deploy creates the database, the notifications queue, and the files bucket, applies the migrations, stores a new `SETUP_TOKEN` secret and the `VAPID_KEY` secret that signs notifications, and prints a setup link. Later deploys apply new migrations and leave both secrets alone: a new `VAPID_KEY` would silently end every device's notifications. When a deploy creates a resource, Wrangler also writes it into `wrangler.jsonc`; the deploy puts the file back as it was, so it stays the same for every installation, since later deploys find the resources by name.
 7. To use your own domain, add it to the Worker in the Cloudflare dashboard (**Workers & Pages → your Worker → Settings → Domains & Routes**) before opening the setup link, which points at `PUBLIC_SITE_URL`. The domain must first be active in the same Cloudflare account: for a domain registered elsewhere, add it under **Domains**, turn off DNSSEC at the registrar if it's on, and replace the registrar's nameservers with the two Cloudflare shows. Turn on **Always Use HTTPS** for the domain (**SSL/TLS → Edge Certificates**): the app needs `https://`, and the domain otherwise also answers plain `http://`. Domains are kept out of `wrangler.jsonc` so the configuration works for every installation. Printed cards use the address setup was opened on, so set up on the final domain.
 8. Open the setup link on the first admin's device, enter their name, and print or save both cards before continuing. Keep the recovery card somewhere safe: it can do everything an admin can.
 
@@ -81,29 +81,39 @@ npx wrangler d1 execute DB --remote --file scripts/start-over.sql
 npm run setup-link
 ```
 
-Board photos stay in the `bubbleboard-photos` R2 bucket, which nothing can open without the old keys; delete them in the Cloudflare dashboard (**R2 Object Storage → bubbleboard-photos**).
+Board photos and notice files stay in R2, where nothing can open them without the old keys, until a daily cleanup a day later deletes them, since no record names them anymore.
 
 This is an early version: don't use it with real family data yet. The landing page is the same on every installation: it names no kindergarten, and its contact details belong to the BubbleBoard project (`src/lib/project.ts`). No credentials belong in Git.
 
 ### Storage
 
-The Worker keeps its records in a D1 database bound as `DB`, with the schema in `migrations/`. `wrangler.jsonc` names the database without an ID, so the first deploy creates it in your account, and local development keeps its own copy in `.wrangler/`. Nothing in it is readable without a card: names live in encrypted profiles, and the server stores hashes of card and session tokens. Document backup and restore before real use. Board photos are encrypted in the browser and kept in a private R2 bucket bound as `PHOTOS`, which the first deploy creates as `bubbleboard-photos`; only the Worker reads it, for devices that may see a photo. Cloudflare’s free allowances may suit a small kindergarten, but usage limits and pricing still apply.
+The Worker keeps its records in a D1 database bound as `DB`, with the schema in `migrations/`. `wrangler.jsonc` names the database without an ID, so the first deploy creates it in your account, and local development keeps its own copy in `.wrangler/`. Nothing in it is readable without a card: names live in encrypted profiles, and the server stores hashes of card and session tokens. Document backup and restore before real use. Board photos and notice files are encrypted in the browser and kept in a private R2 bucket bound as `FILES`, which the first deploy creates as `bubbleboard-files`; only the Worker reads it, for devices that may see a photo or file.
+
+Cloudflare’s free allowances may suit a small kindergarten, but usage limits and pricing still apply. On the Free plan, the Worker and D1 stop at their daily limits rather than charging, while R2 charges once a month’s use passes its free allowance of 10 GB stored, a million uploads, and ten million downloads, and Cloudflare offers no way to cap that. So the database counts every byte BubbleBoard keeps in R2 and every upload and download, and refuses more once a limit set in `.env` is reached, whoever asks:
+
+| Setting                       | Default | Limits                                        |
+| ----------------------------- | ------- | --------------------------------------------- |
+| `STORAGE_LIMIT_GB`            | 9       | Photos and files kept in R2 at once           |
+| `STORAGE_UPLOADS_PER_MONTH`   | 900000  | Photos and files put up in a month, across R2 |
+| `STORAGE_DOWNLOADS_PER_MONTH` | 9000000 | Photos and files opened in a month, across R2 |
+
+The defaults stay a tenth below the free allowance; `0` stops uploads or downloads altogether. Months are counted in UTC. Teachers make room by taking down photos and deleting notices with files, which deletes their bytes right away; notices past their days leave with their files in the daily cleanup. Change a limit in `.env`, then run `npm run deploy`.
 
 ## Small by design
 
-| Layer         | Choice                                                                |
-| ------------- | --------------------------------------------------------------------- |
-| Application   | Svelte 5 + SvelteKit + strict TypeScript                              |
-| Build         | Vite                                                                  |
-| Hosting       | Cloudflare Workers + official SvelteKit adapter                       |
-| Styles        | Tailwind CSS v4, self-hosted fonts                                    |
-| Formatting    | Prettier + Svelte and Tailwind plugins                                |
-| Tests         | Vitest                                                                |
-| Encryption    | Browser Web Crypto API                                                |
-| Storage       | D1 for records; private R2 for encrypted photos                       |
-| QR codes      | `qr`, drawn for printed cards and read with the camera or from photos |
-| Notice editor | Tiptap, loaded only on the page where notices are written             |
-| Notifications | Web Push without content, sent through a Cloudflare Queue             |
+| Layer         | Choice                                                                       |
+| ------------- | ---------------------------------------------------------------------------- |
+| Application   | Svelte 5 + SvelteKit + strict TypeScript                                     |
+| Build         | Vite                                                                         |
+| Hosting       | Cloudflare Workers + official SvelteKit adapter                              |
+| Styles        | Tailwind CSS v4, self-hosted fonts                                           |
+| Formatting    | Prettier + Svelte and Tailwind plugins                                       |
+| Tests         | Vitest                                                                       |
+| Encryption    | Browser Web Crypto API                                                       |
+| Storage       | D1 for records; private R2 for encrypted photos and files, within set limits |
+| QR codes      | `qr`, drawn for printed cards and read with the camera or from photos        |
+| Notice editor | Tiptap, loaded only on the page where notices are written                    |
+| Notifications | Web Push without content, sent through a Cloudflare Queue                    |
 
 No component UI library, ORM, remote font service, analytics SDK, or separate backend. npm’s lockfile is committed for reproducible installs. The official tooling still has transitive dependencies; review additions and updates rather than assuming a small manifest means zero supply-chain risk.
 
@@ -114,13 +124,14 @@ src/
     assets/             Local brand assets and optimized photos
     components/         Reusable Svelte components
     i18n/               Croatian and English interface copy
-    server/             Worker only: sessions, request checks, database queries
+    server/             Worker only: sessions, request checks, database queries, storage limits
     styles/             Tailwind entry, fonts, theme tokens, base styles
     api.ts              Requests between the app and the Worker
     base64url.ts        Encoding for tokens, IDs, and envelopes
     card.ts             Card codes and QR card links
     crypto.ts           Browser keys, card derivation, and encrypted envelopes
     device.ts           The connected card's keys in IndexedDB
+    files.ts            Files on notices: kinds, sizes, and encryption
     kindergarten.ts     Records the browser decrypts and builds
     paths.ts            Site paths
     project.ts          Project links and the validated site address
@@ -140,7 +151,7 @@ docs/                   Architecture notes, access format, product specification
 _headers                Security headers for prerendered pages and assets
 .env.example            Build-time settings to copy into .env
 .github/workflows/      Validation pipeline (never deploys)
-wrangler.jsonc          Worker, database, queue, schedule, and rate limit configuration
+wrangler.jsonc          Worker, database, bucket, queue, schedule, and rate limit configuration
 wrangler.build.jsonc    Where SvelteKit's adapter writes the build the Worker's entry imports
 ```
 
@@ -157,9 +168,9 @@ See the [architecture notes](docs/architecture.md), the [access format](docs/acc
 ## Next slices
 
 1. Kindergarten setup, classrooms, teachers, children with family cards, and connecting devices. Implemented and deployed; card links work on real iPhone and Android phones, and a few checks remain.
-2. Encrypted notices for chosen classrooms, with a rich editor, notifications, and installing on phones and tablets, tried on real iOS and Android devices ([plan](docs/next-step-plan.md)).
+2. Encrypted notices for chosen classrooms, with a rich editor, polls, files, notifications, and installing on phones and tablets, tried on real iOS and Android devices ([plan](docs/next-step-plan.md)).
 3. Manual photo regions, consent lookup, private reveals, and exact audience previews.
-4. Private messages and attachments.
+4. Private messages.
 
 Retention, authorization, deletion, and recovery belong in the features they protect. Photo tooling should load only when needed. Start with online content; offline libraries and queues can wait.
 

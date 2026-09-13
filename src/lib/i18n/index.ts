@@ -34,3 +34,13 @@ export function errorMessage(locale: Locale, code: string) {
 	const errors: Record<string, string> = messages[locale].app.errors;
 	return errors[code] ?? errors.unexpected;
 }
+
+/** A file's size, such as “240 kB” or “3.4 MB”. */
+export function fileSize(locale: Locale, bytes: number) {
+	const megabytes = bytes >= 1e6;
+	return new Intl.NumberFormat(locale, {
+		style: 'unit',
+		unit: megabytes ? 'megabyte' : 'kilobyte',
+		maximumFractionDigits: megabytes ? 1 : 0
+	}).format(megabytes ? bytes / 1e6 : Math.max(1, Math.round(bytes / 1e3)));
+}

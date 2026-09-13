@@ -6,8 +6,9 @@ import { fromBase64Url, toBase64Url } from '$lib/base64url';
 // labels below for good, whatever happens to envelopes. A change to the bytes of either breaks cards or
 // records that already exist; src/lib/compatibility.test.ts holds values from September 2026 to catch it.
 //
-// Raw key bytes exist only inside createKey, rewrapKey, and unwrapKey. Every CryptoKey returned here is
-// non-extractable, which prevents accidental export, not use by a malicious script running in the app.
+// Raw key bytes exist only inside createKey, rewrapKey, and unwrapKey, apart from a notice file's key, which
+// travels inside its notice's content (createFileKey). Every CryptoKey returned here is non-extractable,
+// which prevents accidental export, not use by a malicious script running in the app.
 
 /** Card format 1: the secret's size, the auth token's, and the HKDF labels for its two values. Never change them. */
 export const SECRET_BYTES = 16;
@@ -42,7 +43,9 @@ type DataContext =
 	| { purpose: 'notice-content'; notice: string }
 	// Encrypted with the answering family's Family Key, which ties it to that family.
 	| { purpose: 'poll-vote'; notice: string }
-	| { purpose: 'board-photo'; classroom: string; photo: string };
+	| { purpose: 'board-photo'; classroom: string; photo: string }
+	// Encrypted with a key of its own, which its notice's content holds.
+	| { purpose: 'notice-file'; file: string };
 
 /** A key that wraps or opens another key, and the record the wrapped key belongs to. */
 export type Wrapping = { key: CryptoKey; context: KeyContext };
@@ -171,6 +174,30 @@ export async function unwrapKey(envelope: string, wrapping: Wrapping) {
 	}
 }
 
+/**
+ * A new key for one notice file, with its raw bytes in base64url for the notice's content to hold: whoever
+ * opens the notice opens the file, and the key opens nothing else (docs/access-format.md).
+ */
+export async function createFileKey() {
+	const raw = randomBytes(KEY_BYTES);
+	try {
+		return { key: await importKey(raw), raw: toBase64Url(raw) };
+	} finally {
+		raw.fill(0);
+	}
+}
+
+/** Opens a notice file's key from the raw bytes its notice's content holds. */
+export async function openFileKey(raw: string) {
+	const bytes = fromBase64Url(raw);
+	if (bytes?.length !== KEY_BYTES) throw new UnreadableError();
+	try {
+		return await importKey(bytes);
+	} finally {
+		bytes.fill(0);
+	}
+}
+
 export function encryptData(data: unknown, key: CryptoKey, context: DataContext) {
 	return seal(encoder.encode(JSON.stringify(data)), key, context);
 }
@@ -186,8 +213,9 @@ export async function decryptData(envelope: string, key: CryptoKey, context: Dat
 }
 
 /**
- * Encrypts bytes too big to carry as text, such as a photo, in envelope format 1's binary form: the format
- * in one byte, the IV, then the ciphertext ending in its tag, with the same additional data as text.
+ * Encrypts bytes too big to carry as text, such as a photo or a notice's file, in envelope format 1's binary
+ * form: the format in one byte, the IV, then the ciphertext ending in its tag, with the same additional data
+ * as text.
  */
 export async function encryptBytes(
 	bytes: Uint8Array<ArrayBuffer>,
@@ -298,8 +326,8 @@ async function open(envelope: string, key: CryptoKey, context: KeyContext | Data
 }
 
 // Binds an envelope to its record: format, purpose, the classroom of a classroom record, and the
-// credential, family, teacher, child, notice, or photo it belongs to. Moved to any other record, even one
-// encrypted with the same key, it doesn't open.
+// credential, family, teacher, child, notice, photo, or file it belongs to. Moved to any other record, even
+// one encrypted with the same key, it doesn't open.
 function additionalData(context: KeyContext | DataContext) {
 	const ids: {
 		classroom?: string;
@@ -309,9 +337,17 @@ function additionalData(context: KeyContext | DataContext) {
 		child?: string;
 		notice?: string;
 		photo?: string;
+		file?: string;
 	} = context;
 	const subject =
-		ids.credential ?? ids.family ?? ids.teacher ?? ids.child ?? ids.notice ?? ids.photo ?? null;
+		ids.credential ??
+		ids.family ??
+		ids.teacher ??
+		ids.child ??
+		ids.notice ??
+		ids.photo ??
+		ids.file ??
+		null;
 	return encoder.encode(
 		JSON.stringify([
 			'BubbleBoard',
