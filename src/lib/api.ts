@@ -86,7 +86,12 @@ export type NoticeRecord = {
 	 * the families in a teacher's classrooms, or every family for an admin.
 	 */
 	seen: string[];
+	/** The answers to its poll, from the same families as `seen`. */
+	votes: VoteRecord[];
 };
+
+/** A family's answer to a notice's poll, encrypted with its Family Key. */
+export type VoteRecord = { family: string; choice: string };
 
 /** A notice as a device changes it, sealed again under a new Notice Key. */
 export type NoticeChange = {
@@ -95,6 +100,8 @@ export type NoticeChange = {
 	days: number;
 	/** Puts the notice back at the top of the board. */
 	announce: boolean;
+	/** Whether its content holds a poll for families to answer. Taking the poll off removes the answers. */
+	poll: boolean;
 	classrooms: NoticeKey[];
 };
 export type NewNotice = Omit<NoticeChange, 'announce'> & { id: string };

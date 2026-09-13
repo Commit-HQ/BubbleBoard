@@ -342,6 +342,14 @@ export function planFamilyLinks(
 	return plan;
 }
 
+/** A family's Family Key on a staff device, opened from its copy for staff. */
+export function openFamilyKeyForStaff(
+	staffKey: CryptoKey,
+	family: Pick<Family, 'id' | 'familyKeyForStaff'>
+) {
+	return unwrapKey(family.familyKeyForStaff, wrapping.familyKeyForStaff(staffKey, family.id));
+}
+
 /**
  * The family links for a change, from the catalog's revision, with the Group Key wrapped for each family
  * that gains a classroom.
@@ -359,10 +367,7 @@ export async function familyLinks(
 		plan.addMemberships.map(async ({ family, classroom }) => {
 			const familyKey =
 				createdKeys.get(family) ??
-				(await unwrapKey(
-					byId(catalog.families, family).familyKeyForStaff,
-					wrapping.familyKeyForStaff(staffKey, family)
-				));
+				(await openFamilyKeyForStaff(staffKey, byId(catalog.families, family)));
 			const [groupKeyForFamily] = await rewrapKey(
 				byId(catalog.classrooms, classroom).groupKeyForStaff,
 				wrapping.groupKeyForStaff(staffKey, classroom),

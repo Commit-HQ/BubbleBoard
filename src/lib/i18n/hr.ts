@@ -441,6 +441,20 @@ export const hr = {
 			save: 'Spremi promjene',
 			noClassrooms: 'Obavijesti možete objavljivati kad vas administrator doda u skupinu.'
 		},
+		polls: {
+			add: 'Dodaj anketu',
+			addHint: 'Obitelji odgovaraju jednim dodirom. Tko je što odabrao vide samo odgojitelji.',
+			answers: 'Odgovori',
+			answer: (number: number) => `${number}. odgovor`,
+			removeAnswer: (number: number) => `Ukloni ${number}. odgovor`,
+			addAnswer: 'Dodaj odgovor',
+			removing: 'Spremanjem se anketa uklanja s obavijesti, zajedno s odgovorima.',
+			title: 'Anketa',
+			choose: 'Odaberite odgovor',
+			private: 'Vaš odgovor vide samo odgojitelji. Možete ga promijeniti.',
+			votes: (value: number) => count(value, 'glas', 'glasa', 'glasova'),
+			noAnswer: (names: string[]) => `Još bez odgovora: ${list(names)}`
+		},
 		notifications: {
 			test: 'Obavijesti su uključene. Ovakvu ćete dobiti kad stigne nova obavijest.',
 			cardTitle: 'Saznajte kad stigne nova obavijest',
@@ -500,6 +514,7 @@ export const hr = {
 			'empty-notice': 'Najprije napišite obavijest.',
 			'notice-too-long': 'Obavijest je predugačka. Skratite je i pokušajte ponovno.',
 			'no-classrooms': 'Odaberite barem jednu skupinu.',
+			'poll-answers': 'Anketi dodajte barem dva odgovora.',
 			offline:
 				'BubbleBoard trenutno nije dostupan. Provjerite internetsku vezu i pokušajte ponovno.',
 			'signed-out': 'Ovaj je uređaj odjavljen. Za nastavak ponovno skenirajte karticu.',

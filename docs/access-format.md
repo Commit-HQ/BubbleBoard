@@ -16,12 +16,12 @@ Cards and encrypted records are versioned separately, because they age different
 
 Every key is 256 random bits from `crypto.getRandomValues`, generated in the browser and used with AES-256-GCM.
 
-| Key        | One for each              | Opens                                                                                               |
-| ---------- | ------------------------- | --------------------------------------------------------------------------------------------------- |
-| Staff Key  | kindergarten              | every Group Key and Family Key, and the teacher, child, and family records                          |
-| Group Key  | classroom                 | the classroom profile (its name) and the Notice Key of each of its notices; later roster and photos |
-| Family Key | family                    | the Group Key of each classroom its children are in; later its private messages and photo reveals   |
-| Notice Key | notice, new at every save | the notice's text, paper colour, and author name                                                    |
+| Key        | One for each              | Opens                                                                                                                       |
+| ---------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Staff Key  | kindergarten              | every Group Key and Family Key, and the teacher, child, and family records                                                  |
+| Group Key  | classroom                 | the classroom profile (its name) and the Notice Key of each of its notices; later roster and photos                         |
+| Family Key | family                    | the Group Key of each classroom its children are in, and its answers to polls; later its private messages and photo reveals |
+| Notice Key | notice, new at every save | the notice's text, paper colour, author name, and poll                                                                      |
 
 Every staff card, admin or teacher, opens the same Staff Key. Which classrooms a teacher sees, and what an admin may change, is decided by server authorization, not encryption. A teacher who also holds a copy of the database, or a server bug that serves another classroom's records, could therefore decrypt that classroom, and a lost staff card together with a database copy exposes the whole kindergarten. Whoever runs the server still reads nothing, and families stay separated by encryption. Separating teachers by encryption too would take an Admin Key, a key for each teacher, and a teacher key for each classroom, re-wrapped in an admin's browser at every change of assignment.
 
@@ -71,19 +71,22 @@ Everything encrypted, wrapped keys and data alike, is stored as one string:
 
 The classroom is set for records that belong to one classroom, and the subject is the credential, family, teacher, child, or notice a record belongs to. An envelope opens only with the right key _in the record it was written for_: moved to another row, classroom, family, notice, or purpose, even under the same key, it fails to decrypt rather than yielding the wrong key.
 
-| Purpose                     | Holds                                            | Encrypted with                     | Classroom    | Subject       |
-| --------------------------- | ------------------------------------------------ | ---------------------------------- | ------------ | ------------- |
-| `staff-key-for-credential`  | Staff Key                                        | the staff credential's unlock key  | `null`       | credential ID |
-| `family-key-for-credential` | Family Key                                       | the family credential's unlock key | `null`       | credential ID |
-| `family-key-for-staff`      | Family Key                                       | Staff Key                          | `null`       | family ID     |
-| `group-key-for-staff`       | Group Key                                        | Staff Key                          | classroom ID | `null`        |
-| `group-key-for-family`      | Group Key                                        | Family Key                         | classroom ID | family ID     |
-| `classroom-profile`         | the classroom's name                             | Group Key                          | classroom ID | `null`        |
-| `teacher-profile`           | the teacher's name                               | Staff Key                          | `null`       | teacher ID    |
-| `child-profile`             | the child's name and families                    | Staff Key                          | `null`       | child ID      |
-| `family-profile`            | the family card's name                           | Staff Key                          | `null`       | family ID     |
-| `notice-key-for-classroom`  | Notice Key                                       | Group Key                          | classroom ID | notice ID     |
-| `notice-content`            | the notice's text, paper colour, and author name | Notice Key                         | `null`       | notice ID     |
+| Purpose                     | Holds                                                  | Encrypted with                     | Classroom    | Subject       |
+| --------------------------- | ------------------------------------------------------ | ---------------------------------- | ------------ | ------------- |
+| `staff-key-for-credential`  | Staff Key                                              | the staff credential's unlock key  | `null`       | credential ID |
+| `family-key-for-credential` | Family Key                                             | the family credential's unlock key | `null`       | credential ID |
+| `family-key-for-staff`      | Family Key                                             | Staff Key                          | `null`       | family ID     |
+| `group-key-for-staff`       | Group Key                                              | Staff Key                          | classroom ID | `null`        |
+| `group-key-for-family`      | Group Key                                              | Family Key                         | classroom ID | family ID     |
+| `classroom-profile`         | the classroom's name                                   | Group Key                          | classroom ID | `null`        |
+| `teacher-profile`           | the teacher's name                                     | Staff Key                          | `null`       | teacher ID    |
+| `child-profile`             | the child's name and families                          | Staff Key                          | `null`       | child ID      |
+| `family-profile`            | the family card's name                                 | Staff Key                          | `null`       | family ID     |
+| `notice-key-for-classroom`  | Notice Key                                             | Group Key                          | classroom ID | notice ID     |
+| `notice-content`            | the notice's text, paper colour, author name, and poll | Notice Key                         | `null`       | notice ID     |
+| `poll-vote`                 | a family's answer to a notice's poll                   | the family's Family Key            | `null`       | notice ID     |
+
+A poll's answer names the option chosen by the ID the poll gives it. Its subject ties it to its notice, and the Family Key it's encrypted with ties it to its family: moved to another family's record, it doesn't open with that family's key.
 
 A wrapped key is its 32 raw bytes, encrypted like data; data records hold JSON. Record IDs are 128 random bits in base64url (22 characters) and encode nothing. The browser generates them, because it binds them into envelopes before the server stores anything. Names, such as "Ivana (mum)" on a family card, and which families a child belongs to live only inside these records.
 
@@ -109,11 +112,11 @@ Other keys are unwrapped into memory from envelopes fetched with the device's se
 
 ## What the server stores
 
-Opaque IDs, timestamps, hashes of auth and session tokens, envelopes, and a count of changes to teachers, children, and family cards, which keeps two devices from undoing each other's changes. To authorize requests and address notifications, it also knows which classroom each child is in, which classrooms each teacher and family belongs to, which staff are admins, and which classrooms each notice is for, who posted it, when it was posted, changed, and taken down, and which families marked it as seen. For notifications, it keeps the push service address of each device that turned them on, tied to that device's session; pushes carry no content. It never receives a card code or secret, an unlock key, a raw key, any classroom, teacher, child, family, or card name, or which families a child belongs to.
+Opaque IDs, timestamps, hashes of auth and session tokens, envelopes, and a count of changes to teachers, children, and family cards, which keeps two devices from undoing each other's changes. To authorize requests and address notifications, it also knows which classroom each child is in, which classrooms each teacher and family belongs to, which staff are admins, and which classrooms each notice is for, who posted it, when it was posted, changed, and taken down, which families marked it as seen, and whether it has a poll and which families answered it. For notifications, it keeps the push service address of each device that turned them on, tied to that device's session; pushes carry no content. It never receives a card code or secret, an unlock key, a raw key, any classroom, teacher, child, family, or card name, which families a child belongs to, or what a poll asks and which answer a family chose.
 
 ## Limits
 
-- Anyone holding a key can write envelopes that open with it. Families hold the Group Key, so group content isn't cryptographically tied to a teacher; server authorization decides who may write.
+- Anyone holding a key can write envelopes that open with it. Families hold the Group Key, so group content isn't cryptographically tied to a teacher; server authorization decides who may write. Staff hold every Family Key, so a poll's answer isn't tied to its family by encryption alone either: the server decides which family may answer.
 - Staff are kept to their classrooms and roles by server authorization only (see Keys).
 - Moving a child, removing a card, or removing a teacher stops server access, not the use of keys a device already opened. Group Keys don't change when a family leaves a classroom.
 - No signatures, no forward secrecy, and no key rotation short of resetting the installation (§12). Replacing a card changes the card, not the Family Key.

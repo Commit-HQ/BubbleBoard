@@ -5,16 +5,21 @@ import { createId, UnreadableError } from './crypto';
 import {
 	allowedLink,
 	maxNoticeBytes,
+	maxOptionLength,
+	maxPollOptions,
 	NoticeTooLongError,
 	openBoard,
 	openNotice,
 	readDocument,
 	sealNotice,
-	type NoticeContent
+	sealVote,
+	type NoticeContent,
+	type PollOption
 } from './notices';
 
 // Notices sealed as a staff device posts them, and opened the way devices get them back from the server:
-// with the keys of the classrooms each viewer sees. Synthetic content only.
+// with the keys of the classrooms each viewer sees, and for a poll's answers, the keys of the families that
+// gave them. Synthetic content only.
 
 const content: NoticeContent = {
 	author: 'Ana',
@@ -25,8 +30,8 @@ const content: NoticeContent = {
 	}
 };
 
-/** A Group Key, as a device holds one once it has opened it. */
-function groupKey() {
+/** A Group Key or a Family Key, as a device holds one once it has opened it. */
+function openedKey() {
 	return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
 }
 
@@ -43,6 +48,7 @@ function served(id: string, sealed: Sealed, visible?: string[]): NoticeRecord {
 		editedAt: null,
 		expiresAt: 2,
 		seen: [],
+		votes: [],
 		classrooms: sealed.classrooms.filter(({ classroom }) => !visible || visible.includes(classroom))
 	};
 }
@@ -51,9 +57,9 @@ describe('notices', () => {
 	it('open with the Group Key of any of their classrooms, which are all the device names', async () => {
 		const [bubbles, owls, ladybirds] = [createId(), createId(), createId()];
 		const keys = new Map([
-			[bubbles, await groupKey()],
-			[owls, await groupKey()],
-			[ladybirds, await groupKey()]
+			[bubbles, await openedKey()],
+			[owls, await openedKey()],
+			[ladybirds, await openedKey()]
 		]);
 		const id = createId();
 		const classrooms = [bubbles, owls].map((classroom) => ({
@@ -84,7 +90,7 @@ describe('notices', () => {
 	});
 
 	it('leave a notice that doesn’t open off the board, and keep the rest', async () => {
-		const classroom = { id: createId(), groupKey: await groupKey() };
+		const classroom = { id: createId(), groupKey: await openedKey() };
 		const keys = new Map([[classroom.id, classroom.groupKey]]);
 		const [kept, broken] = [createId(), createId()];
 		const good = served(kept, await sealNotice(kept, content, [classroom]));
@@ -100,13 +106,85 @@ describe('notices', () => {
 	});
 
 	it('refuse to seal more than the server stores', async () => {
-		const classroom = { id: createId(), groupKey: await groupKey() };
+		const classroom = { id: createId(), groupKey: await openedKey() };
 		const text = 'Bring a hat. '.repeat(maxNoticeBytes / 12);
 		const long = {
 			...content,
 			body: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] }
 		} satisfies NoticeContent;
 		await expect(sealNotice(createId(), long, [classroom])).rejects.toThrow(NoticeTooLongError);
+	});
+});
+
+describe('polls', () => {
+	const option = (text = 'Yes'): PollOption => ({ id: createId(), text });
+	const poll = { options: [option('Tuesday at 5'), option('Wednesday at 5')] };
+	const [tuesday, wednesday] = poll.options.map(({ id }) => id);
+
+	it('open each answer with its family’s key, only for its own notice and an option the poll has', async () => {
+		const classroom = { id: createId(), groupKey: await openedKey() };
+		const groupKeys = new Map([[classroom.id, classroom.groupKey]]);
+		const id = createId();
+		const record = served(id, await sealNotice(id, { ...content, poll }, [classroom]));
+		const [ana, ivo, eva, maja, luka] = [
+			createId(),
+			createId(),
+			createId(),
+			createId(),
+			createId()
+		];
+		const familyKeys = new Map<string, CryptoKey>();
+		for (const family of [ana, ivo, eva, maja]) familyKeys.set(family, await openedKey());
+		const staffKeys = async (family: string) => familyKeys.get(family);
+		const answer = async (family: string, chosen: string, { notice = id, key = family } = {}) => ({
+			family,
+			choice: await sealVote(notice, chosen, familyKeys.get(key) ?? (await openedKey()))
+		});
+		record.votes = [
+			await answer(ana, wednesday),
+			// Written with another family's key, for another notice, for an option the poll doesn't have, and
+			// by a family whose key isn't on this device.
+			await answer(ivo, tuesday, { key: eva }),
+			await answer(eva, tuesday, { notice: createId() }),
+			await answer(maja, createId()),
+			await answer(luka, tuesday)
+		];
+
+		expect(await openNotice(record, groupKeys, staffKeys)).toMatchObject({
+			poll,
+			votes: [{ family: ana, option: wednesday }]
+		});
+		const onlyAna = async (family: string) => (family === ana ? familyKeys.get(ana) : undefined);
+		const { notices } = await openBoard([record], groupKeys, onlyAna);
+		expect(notices[0].votes).toEqual([{ family: ana, option: wednesday }]);
+
+		// The same notice without its poll has no answers to show.
+		const changed = served(id, await sealNotice(id, content, [classroom]));
+		const opened = await openNotice({ ...changed, votes: record.votes }, groupKeys, staffKeys);
+		expect(opened.votes).toEqual([]);
+	});
+
+	it('refuse a poll without two to ten answers, each with its own ID and a few words', async () => {
+		const classroom = { id: createId(), groupKey: await openedKey() };
+		const groupKeys = new Map([[classroom.id, classroom.groupKey]]);
+		const open = async (options: PollOption[]) => {
+			const id = createId();
+			const sealed = await sealNotice(id, { ...content, poll: { options } }, [classroom]);
+			return openNotice(served(id, sealed), groupKeys);
+		};
+		const repeated = option();
+		for (const options of [
+			[option()],
+			Array.from({ length: maxPollOptions + 1 }, () => option()),
+			[repeated, repeated],
+			[option(), option('  ')],
+			[option(), option('x'.repeat(maxOptionLength + 1))],
+			[option(), { id: 'not an ID', text: 'No' }]
+		]) {
+			await expect(open(options), JSON.stringify(options)).rejects.toThrow(UnreadableError);
+		}
+		const most = Array.from({ length: maxPollOptions }, () => option());
+		expect((await open(most)).poll).toEqual({ options: most });
 	});
 });
 

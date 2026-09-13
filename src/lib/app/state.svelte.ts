@@ -19,6 +19,7 @@ import {
 	openCatalog,
 	openFamily,
 	openFamilyKey,
+	openFamilyKeyForStaff,
 	openStaffKeys,
 	staffCard,
 	teacherProfile,
@@ -43,10 +44,13 @@ import {
 import {
 	openBoard,
 	sealNotice,
+	sealVote,
+	type FamilyKeys,
 	type Notice,
 	type NoticeContent,
 	type NoticeDocument,
-	type Paper
+	type Paper,
+	type Poll
 } from '$lib/notices';
 import { createContext } from 'svelte';
 
@@ -79,6 +83,7 @@ export type NoticeValues = {
 	days: number;
 	body: NoticeDocument;
 	announce: boolean;
+	poll?: Poll;
 };
 
 const emptyCatalog: Catalog = {
@@ -283,7 +288,7 @@ export class App {
 			access.family === card.family
 		) {
 			this.familyClassrooms = await readRecords(openFamily(access, card.familyKey));
-			await this.#openBoard(access.notices, this.familyClassrooms);
+			await this.#openBoard(access.notices, this.familyClassrooms, card);
 		} else {
 			throw new UnreadableError();
 		}
@@ -313,10 +318,23 @@ export class App {
 		this.me = catalog.teachers.find((candidate) => candidate.id === teacher);
 	}
 
-	/** Opens notices with the Group Keys of the classrooms this device sees. */
-	async #openBoard(records: NoticeRecord[], classrooms: { id: string; groupKey: CryptoKey }[]) {
+	/**
+	 * Opens notices with the Group Keys of the classrooms this device sees, and their polls' answers with the
+	 * Family Keys it holds: a family device its own, and a staff device those of the families in its catalog.
+	 */
+	async #openBoard(
+		records: NoticeRecord[],
+		classrooms: { id: string; groupKey: CryptoKey }[],
+		familyCard?: Extract<DeviceCard, { kind: 'family' }>
+	) {
 		const groupKeys = new Map(classrooms.map(({ id, groupKey }) => [id, groupKey]));
-		const { notices, unreadable } = await openBoard(records, groupKeys);
+		const familyKeys: FamilyKeys = familyCard
+			? async (family) => (family === familyCard.family ? familyCard.familyKey : undefined)
+			: async (family) => {
+					const record = this.catalog.families.find(({ id }) => id === family);
+					return record && openFamilyKeyForStaff(this.#staff.staffKey, record);
+				};
+		const { notices, unreadable } = await openBoard(records, groupKeys, familyKeys);
 		this.board = notices;
 		this.unreadableNotices = unreadable;
 	}
@@ -616,22 +634,49 @@ export class App {
 		});
 	}
 
+	/** The option this device's family chose in a notice's poll. */
+	myVote(notice: Notice) {
+		const card = this.#card;
+		if (card?.kind !== 'family') return undefined;
+		return notice.votes.find((vote) => vote.family === card.family)?.option;
+	}
+
+	/** Answers a notice's poll for this device's family, which also marks the notice as seen. */
+	async vote(notice: Notice, option: string) {
+		const { family, familyKey } = this.#family;
+		const choice = await sealVote(notice.id, option, familyKey);
+		await this.#send('PUT', `/api/notices/${notice.id}/vote`, { choice }, async () => {
+			// A family device sees only its own family's answer and mark.
+			this.board = this.board.map((candidate) =>
+				candidate.id === notice.id
+					? { ...candidate, votes: [{ family, option }], seen: [family] }
+					: candidate
+			);
+		});
+	}
+
 	/**
 	 * Posts a notice, or changes `notice`, sealed under a new Notice Key for its classrooms. A change keeps
-	 * the name of whoever posted the notice; the recovery card posts without one.
+	 * the name of whoever posted the notice; the recovery card posts without one. A poll goes inside the
+	 * notice, and the server learns only that it has one.
 	 */
 	async saveNotice(values: NoticeValues, notice?: Notice) {
 		const id = notice?.id ?? createId();
 		const author = notice ? notice.author : this.me?.recovery ? undefined : this.me?.name;
 		const content: NoticeContent = { paper: values.paper, body: values.body };
 		if (author) content.author = author;
+		if (values.poll) content.poll = values.poll;
 		const classrooms = values.classrooms.map((classroom) =>
 			byId(this.catalog.classrooms, classroom)
 		);
 		const sealed = await sealNotice(id, content, classrooms);
 		const { days, announce } = values;
-		if (notice) await this.#changeBoard('PUT', `/api/notices/${id}`, { ...sealed, days, announce });
-		else await this.#changeBoard('POST', '/api/notices', { ...sealed, id, days });
+		const poll = values.poll !== undefined;
+		if (notice) {
+			await this.#changeBoard('PUT', `/api/notices/${id}`, { ...sealed, days, announce, poll });
+		} else {
+			await this.#changeBoard('POST', '/api/notices', { ...sealed, id, days, poll });
+		}
 	}
 
 	deleteNotice(notice: Notice) {

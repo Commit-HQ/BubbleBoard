@@ -27,7 +27,7 @@ import {
 	setUp
 } from './catalog';
 import { day } from '$lib/notices';
-import { board, changeNotice, deleteNotice, markSeen, postNotice } from './notices';
+import { board, changeNotice, deleteNotice, markSeen, postNotice, vote } from './notices';
 import {
 	cleanUp,
 	createVapidSecret,
@@ -460,14 +460,18 @@ describe('notices', () => {
 		id: createId(),
 		content: 'content',
 		days,
+		poll: false,
 		classrooms: keys(classrooms)
 	});
 	const change = (classrooms: string[], announce = false) => ({
 		content: 'changed',
 		days: 30,
 		announce,
+		poll: false,
 		classrooms: keys(classrooms)
 	});
+	const familyOf = async (db: D1Database, { credential }: NewFamily) =>
+		(await identityForCard(db, credential.authToken)) as FamilyIdentity;
 	const ids = (records: { id: string }[]) => records.map(({ id }) => id);
 	const count = async (db: D1Database) =>
 		(await db.prepare('SELECT COUNT(*) AS count FROM notices').first<{ count: number }>())?.count;
@@ -603,27 +607,62 @@ describe('notices', () => {
 		const teacher = await addTeacherTo(db, admin, [bubbles]);
 		const posted = notice([bubbles, owls]);
 		await postNotice(db, admin, posted);
-		const familyOf = async ({ credential }: NewFamily) =>
-			(await identityForCard(db, credential.authToken)) as FamilyIdentity;
 		const seenBy = async (viewer: Identity) => (await board(db, viewer))[0]?.seen.sort();
 
-		await markSeen(db, await familyOf(inBubbles), posted.id);
+		await markSeen(db, await familyOf(db, inBubbles), posted.id);
 		// Marking it again changes nothing.
-		await markSeen(db, await familyOf(inBubbles), posted.id);
-		await markSeen(db, await familyOf(inOwls), posted.id);
-		await expect(markSeen(db, await familyOf(elsewhere), posted.id)).rejects.toMatchObject({
+		await markSeen(db, await familyOf(db, inBubbles), posted.id);
+		await markSeen(db, await familyOf(db, inOwls), posted.id);
+		await expect(markSeen(db, await familyOf(db, elsewhere), posted.id)).rejects.toMatchObject({
 			status: 404
 		});
 
 		expect(await seenBy(admin)).toEqual([inBubbles.id, inOwls.id].sort());
 		expect(await seenBy(teacher)).toEqual([inBubbles.id]);
-		expect(await seenBy(await familyOf(inOwls))).toEqual([inOwls.id]);
+		expect(await seenBy(await familyOf(db, inOwls))).toEqual([inOwls.id]);
 
 		// A change keeps the marks, unless it notifies everyone again.
 		await changeNotice(db, admin, posted.id, change([bubbles, owls]));
 		expect(await seenBy(admin)).toHaveLength(2);
 		await changeNotice(db, admin, posted.id, change([bubbles, owls], true));
 		expect(await seenBy(admin)).toEqual([]);
+	});
+
+	it('take one answer from each family that sees a poll, which marks it as seen, and lose them with the poll', async () => {
+		const db = localDatabase();
+		const { admin } = await setUpKindergarten(db);
+		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
+		const [inBubbles, inOwls] = [newFamily(), newFamily()];
+		await addChildTo(db, admin, bubbles, inBubbles);
+		await addChildTo(db, admin, owls, inOwls);
+		const teacher = await addTeacherTo(db, admin, [bubbles]);
+		const [withPoll, withoutPoll] = [{ ...notice([bubbles]), poll: true }, notice([bubbles])];
+		await postNotice(db, admin, withPoll);
+		await postNotice(db, admin, withoutPoll);
+		const family = await familyOf(db, inBubbles);
+		const answered = async (viewer: Identity) =>
+			(await board(db, viewer)).find(({ id }) => id === withPoll.id);
+
+		await vote(db, family, withPoll.id, 'first answer');
+		await vote(db, family, withPoll.id, 'changed answer');
+		await expect(vote(db, await familyOf(db, inOwls), withPoll.id, 'answer')).rejects.toMatchObject(
+			{ status: 404 }
+		);
+		await expect(vote(db, family, withoutPoll.id, 'answer')).rejects.toMatchObject(
+			conflict('stale')
+		);
+		expect(await answered(teacher)).toMatchObject({
+			votes: [{ family: inBubbles.id, choice: 'changed answer' }],
+			seen: [inBubbles.id]
+		});
+		expect((await answered(family))?.votes).toHaveLength(1);
+
+		// A change that keeps the poll keeps its answers, and one that takes the poll off removes them.
+		await changeNotice(db, admin, withPoll.id, { ...change([bubbles]), poll: true });
+		expect((await answered(admin))?.votes).toHaveLength(1);
+		await changeNotice(db, admin, withPoll.id, change([bubbles]));
+		expect((await answered(admin))?.votes).toEqual([]);
+		await expect(vote(db, family, withPoll.id, 'answer')).rejects.toMatchObject(conflict('stale'));
 	});
 });
 

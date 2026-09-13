@@ -25,22 +25,23 @@ export const labelFocus =
 	'has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent';
 
 /**
- * Checkboxes and radios drawn as cards: the input sits hidden in its label, whose look follows it. A
- * `card` is a row, and a `tile` a block with an icon. Put a check icon with `choice.check` in a
+ * Checkboxes and radios drawn as cards: the input sits hidden in its label, whose look follows it. A button
+ * with `aria-pressed` looks the same, for a choice that's sent as soon as it's made, such as a poll's answer.
+ * A `card` is a row, and a `tile` a block with an icon. Put a check icon with `choice.check` in a
  * `choice.box`, or in a round `choice.circle` for a radio: the icon marks the state where forced colours
  * remove fills. `choice.option` is a radio that fills with ink when chosen; forced colours drop the fill,
  * so mark the chosen one another way there.
  */
-const choosable = `group cursor-pointer border border-ink/10 bg-white/60 transition hover:bg-white has-checked:border-accent has-checked:bg-white ${labelFocus}`;
+const choosable = `group cursor-pointer border border-ink/10 bg-white/60 text-left transition hover:bg-white has-checked:border-accent has-checked:bg-white aria-pressed:border-accent aria-pressed:bg-white ${labelFocus}`;
 const mark =
-	'grid size-6 shrink-0 place-items-center border-2 border-ink/20 bg-white text-white transition group-has-checked:border-accent group-has-checked:bg-accent';
+	'grid size-6 shrink-0 place-items-center border-2 border-ink/20 bg-white text-white transition group-has-checked:border-accent group-has-checked:bg-accent group-aria-pressed:border-accent group-aria-pressed:bg-accent';
 
 export const choice = {
 	card: `${choosable} flex min-h-14 items-center gap-3 rounded-2xl px-4 py-3`,
 	tile: `${choosable} flex flex-col gap-3 rounded-3xl p-4`,
 	box: `${mark} rounded-lg`,
 	circle: `${mark} rounded-full`,
-	check: 'size-4 opacity-0 group-has-checked:opacity-100',
+	check: 'size-4 opacity-0 group-has-checked:opacity-100 group-aria-pressed:opacity-100',
 	option: `cursor-pointer border border-ink/10 bg-white/60 transition hover:bg-white has-checked:border-ink has-checked:bg-ink has-checked:text-white ${labelFocus}`
 };
 

@@ -1,9 +1,10 @@
-import type { NoticeRecord } from '$lib/api';
+import type { NoticeRecord, VoteRecord } from '$lib/api';
 import {
 	createKey,
 	decryptData,
 	encryptData,
 	envelopeSize,
+	isId,
 	UnreadableError,
 	unwrapKey,
 	wrapping
@@ -11,7 +12,9 @@ import {
 
 // Notices on the board, as devices write and read them (docs/access-format.md). Every save seals a notice
 // under a new Notice Key, wrapped with the Group Key of each of its classrooms, so a classroom taken off a
-// notice can't open its later versions. The server stores envelopes and decides who may post and read.
+// notice can't open its later versions. A notice can hold a poll, and each family's answer is encrypted with
+// its own Family Key, so only that family and staff read it. The server stores envelopes and decides who may
+// post, read, and answer.
 
 /** How long a notice stays up, in days from when it was first posted. The server accepts only these. */
 export const noticeDays = [1, 3, 7, 14, 30, 60, 90] as const;
@@ -42,12 +45,33 @@ export type NoticeListItem = { type: 'listItem'; content: NoticeBlock[] };
 /** A notice's text, in the part of Tiptap's JSON document format the notice editor writes. */
 export type NoticeDocument = { type: 'doc'; content: NoticeBlock[] };
 
-/** What a notice holds inside its envelope. A notice posted with the recovery card has no author. */
-export type NoticeContent = { author?: string; paper: Paper; body: NoticeDocument };
+/** An answer a poll offers. Its ID stays when its words change, which keeps the votes for it. */
+export type PollOption = { id: string; text: string };
+/** A poll on a notice: the notice's text asks, and each family chooses one of the options. */
+export type Poll = { options: PollOption[] };
+export const minPollOptions = 2;
+export const maxPollOptions = 10;
+/** The longest an option may be, in characters. */
+export const maxOptionLength = 100;
 
-/** A notice as a device shows it, with those of its classrooms the device belongs to. */
-export type Notice = Omit<NoticeRecord, 'content' | 'classrooms'> &
-	NoticeContent & { classrooms: string[] };
+/** What a notice holds inside its envelope. A notice posted with the recovery card has no author. */
+export type NoticeContent = { author?: string; paper: Paper; body: NoticeDocument; poll?: Poll };
+
+/** A family's answer to a notice's poll, as a device that opened it shows it. */
+export type Vote = { family: string; option: string };
+
+/**
+ * A notice as a device shows it, with those of its classrooms the device belongs to, and the answers to its
+ * poll the device can read.
+ */
+export type Notice = Omit<NoticeRecord, 'content' | 'classrooms' | 'votes'> &
+	NoticeContent & { classrooms: string[]; votes: Vote[] };
+
+/**
+ * The Family Key a device reads a family's answers with: a family device holds only its own, and a staff
+ * device opens those of the families in its catalog.
+ */
+export type FamilyKeys = (family: string) => Promise<CryptoKey | undefined>;
 
 const maxListDepth = 4;
 const maxNodes = 4000;
@@ -124,12 +148,26 @@ function readHref(value: unknown) {
 	return typeof value === 'string' && allowedLink(value) ? value : fail();
 }
 
+/** A poll as a device may show it: two to ten options, each with an ID of its own and a few words. */
+function readPoll(value: unknown): Poll {
+	const options = list(fields(value).options, (item) => {
+		const { id, text } = fields(item);
+		const words = typeof text === 'string' && text.trim() && text.length <= maxOptionLength;
+		return isId(id) && words ? { id, text: text as string } : fail();
+	});
+	const distinct = new Set(options.map((option) => option.id)).size === options.length;
+	const count = options.length >= minPollOptions && options.length <= maxPollOptions;
+	return distinct && count ? { options } : fail();
+}
+
 function readContent(value: unknown): NoticeContent {
-	const { author, paper, body } = fields(value);
+	const { author, paper, body, poll } = fields(value);
 	if (author !== undefined && (typeof author !== 'string' || !author)) fail();
 	if (!papers.includes(paper as Paper)) fail();
-	const content = { paper: paper as Paper, body: readDocument(body) };
-	return author === undefined ? content : { author: author as string, ...content };
+	const content: NoticeContent = { paper: paper as Paper, body: readDocument(body) };
+	if (author !== undefined) content.author = author as string;
+	if (poll !== undefined) content.poll = readPoll(poll);
+	return content;
 }
 
 /** The most a notice's content may take, in bytes of JSON, which the server also holds it to. */
@@ -168,12 +206,51 @@ export async function sealNotice(
 	};
 }
 
-/** Opens a notice with the Group Key of any of its classrooms this device holds. */
+/** A family's answer to a notice's poll, encrypted with its Family Key: only that family and staff open it. */
+export function sealVote(notice: string, option: string, familyKey: CryptoKey) {
+	return encryptData({ option }, familyKey, { purpose: 'poll-vote', notice });
+}
+
+/**
+ * The answers to a notice's poll that open with their family's key and choose one of the poll's options.
+ * Anyone holding a family's key could have written one, and an option can be taken off the poll, so the
+ * others are left out.
+ */
+async function openVotes(
+	notice: string,
+	records: VoteRecord[],
+	poll: Poll,
+	familyKeys: FamilyKeys
+) {
+	const votes = await Promise.all(
+		records.map(async ({ family, choice }): Promise<Vote | undefined> => {
+			try {
+				const key = await familyKeys(family);
+				if (!key) return undefined;
+				const data = await decryptData(choice, key, { purpose: 'poll-vote', notice });
+				const { option } = fields(data);
+				return poll.options.some(({ id }) => id === option)
+					? { family, option: option as string }
+					: undefined;
+			} catch (cause) {
+				if (cause instanceof UnreadableError) return undefined;
+				throw cause;
+			}
+		})
+	);
+	return votes.filter((vote) => vote !== undefined);
+}
+
+/**
+ * Opens a notice with the Group Key of any of its classrooms this device holds, and its poll's answers with
+ * the Family Keys it holds. A device without Family Keys reads no answers.
+ */
 export async function openNotice(
 	record: NoticeRecord,
-	groupKeys: ReadonlyMap<string, CryptoKey>
+	groupKeys: ReadonlyMap<string, CryptoKey>,
+	familyKeys: FamilyKeys = async () => undefined
 ): Promise<Notice> {
-	const { content, classrooms, ...details } = record;
+	const { content, classrooms, votes, ...details } = record;
 	const opened = classrooms.filter(({ classroom }) => groupKeys.has(classroom));
 	const [first] = opened;
 	if (!first) fail();
@@ -181,11 +258,14 @@ export async function openNotice(
 		first.noticeKey,
 		wrapping.noticeKeyForClassroom(groupKeys.get(first.classroom)!, first.classroom, record.id)
 	);
-	const data = await decryptData(content, key, { purpose: 'notice-content', notice: record.id });
+	const data = readContent(
+		await decryptData(content, key, { purpose: 'notice-content', notice: record.id })
+	);
 	return {
 		...details,
-		...readContent(data),
-		classrooms: opened.map(({ classroom }) => classroom)
+		...data,
+		classrooms: opened.map(({ classroom }) => classroom),
+		votes: data.poll ? await openVotes(record.id, votes, data.poll, familyKeys) : []
 	};
 }
 
@@ -195,9 +275,18 @@ export async function openNotice(
  */
 export async function openBoard(
 	records: NoticeRecord[],
-	groupKeys: ReadonlyMap<string, CryptoKey>
+	groupKeys: ReadonlyMap<string, CryptoKey>,
+	familyKeys: FamilyKeys = async () => undefined
 ) {
-	const results = await Promise.allSettled(records.map((record) => openNotice(record, groupKeys)));
+	// A family that answered several polls has its key opened once.
+	const opening = new Map<string, Promise<CryptoKey | undefined>>();
+	const familyKey = (family: string) => {
+		if (!opening.has(family)) opening.set(family, familyKeys(family));
+		return opening.get(family)!;
+	};
+	const results = await Promise.allSettled(
+		records.map((record) => openNotice(record, groupKeys, familyKey))
+	);
 	const notices: Notice[] = [];
 	for (const result of results) {
 		if (result.status === 'fulfilled') notices.push(result.value);

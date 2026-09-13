@@ -37,7 +37,9 @@ type DataContext =
 	| { purpose: 'teacher-profile'; teacher: string }
 	| { purpose: 'child-profile'; child: string }
 	| { purpose: 'family-profile'; family: string }
-	| { purpose: 'notice-content'; notice: string };
+	| { purpose: 'notice-content'; notice: string }
+	// Encrypted with the answering family's Family Key, which ties it to that family.
+	| { purpose: 'poll-vote'; notice: string };
 
 /** A key that wraps or opens another key, and the record the wrapped key belongs to. */
 export type Wrapping = { key: CryptoKey; context: KeyContext };

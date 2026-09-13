@@ -1,7 +1,15 @@
 import { expect, it } from 'vitest';
 import { toBase64Url } from '$lib/base64url';
 import { createId } from '$lib/crypto';
-import { familyCards, familyLinks, newChild, newNotice, noticeChange, setup } from './validate';
+import {
+	familyCards,
+	familyLinks,
+	newChild,
+	newNotice,
+	noticeChange,
+	setup,
+	voteChoice
+} from './validate';
 
 // Structure the server enforces on requests it can't read. Envelopes only need the right form here.
 
@@ -56,18 +64,36 @@ it('refuses new family cards that repeat a family or a card', () => {
 	expect(() => familyCards({ cards: [first, { ...second, credential: shared }] })).toThrow();
 });
 
-it('refuses notices without classrooms, with a classroom twice, too big, or up for other days', () => {
+it('refuses notices without classrooms, with a classroom twice, too big, up for other days, or unclear about a poll', () => {
 	const key = () => ({ classroom: createId(), noticeKey: envelope(48) });
-	const notice = { id: createId(), content: envelope(200), days: 30, classrooms: [key(), key()] };
+	const notice = {
+		id: createId(),
+		content: envelope(200),
+		days: 30,
+		poll: true,
+		classrooms: [key(), key()]
+	};
 	expect(newNotice(notice).classrooms).toHaveLength(2);
-	expect(noticeChange({ ...notice, announce: false }).announce).toBe(false);
+	expect(noticeChange({ ...notice, announce: false })).toMatchObject({
+		announce: false,
+		poll: true
+	});
 	for (const refused of [
 		{ ...notice, classrooms: [] },
 		{ ...notice, classrooms: [notice.classrooms[0], notice.classrooms[0]] },
 		{ ...notice, days: 2 },
-		{ ...notice, content: envelope(40 * 1024) }
+		{ ...notice, content: envelope(40 * 1024) },
+		{ ...notice, poll: 'yes' },
+		{ ...notice, poll: undefined }
 	]) {
 		expect(() => newNotice(refused)).toThrow();
 	}
 	expect(() => noticeChange(notice)).toThrow();
+});
+
+it('refuses a poll answer bigger than the option it names', () => {
+	expect(voteChoice({ choice: envelope(40) })).toBe(envelope(40));
+	for (const choice of [envelope(1024), 'Tuesday', undefined]) {
+		expect(() => voteChoice({ choice })).toThrow();
+	}
 });

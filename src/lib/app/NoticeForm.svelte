@@ -1,21 +1,27 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
+	import { createId } from '$lib/crypto';
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import {
 		day,
 		defaultNoticeDays,
+		maxOptionLength,
+		maxPollOptions,
+		minPollOptions,
 		noticeDays,
 		papers,
 		type Notice,
-		type Paper
+		type Paper,
+		type PollOption
 	} from '$lib/notices';
+	import { tick } from 'svelte';
 	import Checklist from './Checklist.svelte';
 	import NoticeEditor from './NoticeEditor.svelte';
 	import { getApp, Task } from './state.svelte';
 	import { alert, button, choice, field, paperClass, surface } from './ui';
 
-	// A notice's text, classrooms, paper, and days, to post or change. Teachers post to their own classrooms
-	// and admins to any. The editor shows the text on the paper chosen for it.
+	// A notice's text, poll, classrooms, paper, and days, to post or change. Teachers post to their own
+	// classrooms and admins to any. The editor shows the text on the paper chosen for it.
 	let { locale, notice, onsaved }: { locale: Locale; notice?: Notice; onsaved: () => void } =
 		$props();
 
@@ -24,6 +30,9 @@
 	const id = $props.id();
 	const task = new Task();
 	const classrooms = $derived(app.myClassrooms);
+
+	/** A new answer for the poll. It keeps its ID when its words change, and with it the votes for it. */
+	const blankOption = (): PollOption => ({ id: createId(), text: '' });
 
 	/**
 	 * What the form starts with: the notice as it is, or a new notice's defaults. The edit page mounts a new
@@ -39,7 +48,12 @@
 				? notice.classrooms.filter((classroom) => own.includes(classroom))
 				: own.length === 1
 					? own
-					: []
+					: [],
+			polling: notice?.poll !== undefined,
+			options: notice?.poll?.options.map((option) => ({ ...option })) ?? [
+				blankOption(),
+				blankOption()
+			]
 		};
 	}
 	const start = starting();
@@ -47,6 +61,9 @@
 	let days = $state(start.days);
 	let chosen = $state(start.chosen);
 	let announce = $state(false);
+	let polling = $state(start.polling);
+	let options = $state(start.options);
+	let optionInputs = $state<HTMLInputElement[]>([]);
 	let editor = $state<ReturnType<typeof NoticeEditor>>();
 	let ready = $state(false);
 
@@ -57,14 +74,34 @@
 		)
 	);
 
+	async function addOption() {
+		options.push(blankOption());
+		await tick();
+		optionInputs[options.length - 1]?.focus();
+	}
+
+	/** Enter in an answer goes on to the next one, adding one at the end, instead of posting the notice. */
+	function nextOption(event: KeyboardEvent, index: number) {
+		if (event.key !== 'Enter' || event.isComposing) return;
+		event.preventDefault();
+		if (index < options.length - 1) optionInputs[index + 1]?.focus();
+		else if (options.length < maxPollOptions) addOption();
+	}
+
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
 		const body = editor?.getDocument();
+		// Answers left empty are dropped.
+		const answers = options
+			.map((option) => ({ id: option.id, text: option.text.trim() }))
+			.filter((option) => option.text);
 		if (!editor || editor.isEmpty()) task.error = 'empty-notice';
 		else if (!body) task.error = 'notice-too-long';
+		else if (polling && answers.length < minPollOptions) task.error = 'poll-answers';
 		else if (!chosen.length) task.error = 'no-classrooms';
 		else {
-			const values = { classrooms: [...chosen], paper, days, body, announce };
+			const poll = polling ? { options: answers } : undefined;
+			const values = { classrooms: [...chosen], paper, days, body, announce, poll };
 			task.run(async () => {
 				await app.saveNotice(values, notice);
 				onsaved();
@@ -85,6 +122,56 @@
 				labelledby="{id}-text"
 				paper={paperClass[paper]}
 			/>
+		</div>
+
+		<div class="grid gap-3">
+			<label class={choice.card}>
+				<input class="sr-only" type="checkbox" bind:checked={polling} />
+				<span class={choice.box}><Icon name="check" class={choice.check} /></span>
+				<span>
+					<span class="block font-semibold">{t.polls.add}</span>
+					<span class={field.hint}>{t.polls.addHint}</span>
+				</span>
+			</label>
+			{#if polling}
+				<div class="grid gap-2" role="group" aria-label={t.polls.answers}>
+					{#each options as option, index (option.id)}
+						<div class="flex items-center gap-2">
+							<input
+								bind:this={optionInputs[index]}
+								bind:value={option.text}
+								class="{field.input} min-w-0"
+								aria-label={t.polls.answer(index + 1)}
+								placeholder={t.polls.answer(index + 1)}
+								maxlength={maxOptionLength}
+								autocomplete="off"
+								onkeydown={(event) => nextOption(event, index)}
+							/>
+							{#if options.length > minPollOptions}
+								<button
+									class={button.icon}
+									type="button"
+									aria-label={t.polls.removeAnswer(index + 1)}
+									onclick={() => options.splice(index, 1)}
+								>
+									<Icon name="x" />
+								</button>
+							{/if}
+						</div>
+					{/each}
+					{#if options.length < maxPollOptions}
+						<button
+							class="{button.quiet} -ml-3 justify-self-start"
+							type="button"
+							onclick={addOption}
+						>
+							<Icon name="plus" class="size-4" />{t.polls.addAnswer}
+						</button>
+					{/if}
+				</div>
+			{:else if notice?.poll}
+				<p class={field.hint}>{t.polls.removing}</p>
+			{/if}
 		</div>
 
 		<fieldset>

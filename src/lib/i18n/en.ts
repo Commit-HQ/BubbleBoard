@@ -442,6 +442,20 @@ export const en = {
 			save: 'Save changes',
 			noClassrooms: 'You can post notices once an admin adds you to a classroom.'
 		},
+		polls: {
+			add: 'Add a poll',
+			addHint: 'Families answer with a tap. Only teachers see who chose what.',
+			answers: 'Answers',
+			answer: (number: number) => `Answer ${number}`,
+			removeAnswer: (number: number) => `Remove answer ${number}`,
+			addAnswer: 'Add an answer',
+			removing: 'Saving takes the poll off the notice, with its answers.',
+			title: 'Poll',
+			choose: 'Choose an answer',
+			private: 'Only teachers see your answer. You can change it.',
+			votes: (count: number) => (count === 1 ? '1 vote' : `${count} votes`),
+			noAnswer: (names: string[]) => `No answer yet: ${list(names)}`
+		},
 		notifications: {
 			test: 'Notifications are on. You’ll get one like this when there’s a new notice.',
 			cardTitle: 'Get a notification when there’s a new notice',
@@ -501,6 +515,7 @@ export const en = {
 			'empty-notice': 'Write the notice first.',
 			'notice-too-long': 'This notice is too long. Shorten it, then try again.',
 			'no-classrooms': 'Choose at least one classroom.',
+			'poll-answers': 'Give the poll at least two answers.',
 			offline: 'BubbleBoard can’t be reached. Check your internet connection and try again.',
 			'signed-out': 'This device was signed out. Scan your card again to continue.',
 			'unreadable-records':

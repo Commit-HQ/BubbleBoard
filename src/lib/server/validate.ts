@@ -216,6 +216,7 @@ export const newNotice = (body: Fields): NewNotice => ({
 	id: id(body.id),
 	content: noticeContent(body.content),
 	days: days(body.days),
+	poll: flag(body.poll),
 	classrooms: noticeKeys(body.classrooms)
 });
 
@@ -223,5 +224,14 @@ export const noticeChange = (body: Fields): NoticeChange => ({
 	content: noticeContent(body.content),
 	days: days(body.days),
 	announce: flag(body.announce),
+	poll: flag(body.poll),
 	classrooms: noticeKeys(body.classrooms)
 });
+
+/** A family's answer to a poll holds the ID of the option it chose. */
+const maxVoteBytes = 256;
+
+export function voteChoice(body: Fields) {
+	const size = envelopeSize(body.choice);
+	return size !== undefined && size <= maxVoteBytes ? (body.choice as string) : invalid();
+}

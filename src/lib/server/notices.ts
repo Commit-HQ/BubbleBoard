@@ -6,7 +6,8 @@ import type {
 	NoticeChange,
 	NoticeKey,
 	NoticeRecord,
-	Staff
+	Staff,
+	VoteRecord
 } from '$lib/api';
 import { day } from '$lib/notices';
 import { includesAll, transaction } from './database';
@@ -14,8 +15,9 @@ import { includesAll, transaction } from './database';
 // The board: notices as envelopes, with the classrooms they're for (docs/access-format.md). The server
 // can't read a notice, so it decides who sees and changes which. Teachers post to their own classrooms and
 // admins to any; the author and admins change and delete a notice; everyone reads the notices of their
-// classrooms, and admins those of every classroom. Families mark the notices they see as seen, which their
-// teachers see. Reads leave out notices past their days, which the daily cleanup deletes (push.ts).
+// classrooms, and admins those of every classroom. Families mark the notices they see as seen and answer
+// their polls, which their teachers see. Reads leave out notices past their days, which the daily cleanup
+// deletes (push.ts).
 
 /** The classrooms whose notices someone sees, as a subquery and its parameters. */
 function visibleClassrooms(viewer: Identity): [string, string[]] {
@@ -27,8 +29,8 @@ function visibleClassrooms(viewer: Identity): [string, string[]] {
 }
 
 /**
- * The families whose marks on notices someone sees, as a subquery and its parameters: a family only its
- * own, a teacher the families in their classrooms, and an admin every family.
+ * The families whose marks and answers on notices someone sees, as a subquery and its parameters: a family
+ * only its own, a teacher the families in their classrooms, and an admin every family.
  */
 function visibleFamilies(viewer: Identity): [string, string[]] {
 	if (viewer.kind === 'family') return ['SELECT ?', [viewer.family]];
@@ -42,7 +44,8 @@ function visibleFamilies(viewer: Identity): [string, string[]] {
 
 /**
  * The notices someone sees that are still up, the most recently announced first. Each comes once, with its
- * key for every one of its classrooms the viewer sees, and the families the viewer sees that marked it.
+ * key for every one of its classrooms the viewer sees, and the marks and poll answers of the families the
+ * viewer sees.
  */
 function boardQuery(db: D1Database, viewer: Identity) {
 	const [classrooms, classroomParams] = visibleClassrooms(viewer);
@@ -54,21 +57,25 @@ function boardQuery(db: D1Database, viewer: Identity) {
 			n.announced_at AS announcedAt, n.edited_at AS editedAt, n.expires_at AS expiresAt,
 			json_group_array(json_object('classroom', nc.classroom_id, 'noticeKey', nc.notice_key)) AS classrooms,
 			(SELECT json_group_array(family_id) FROM notice_seen
-			WHERE notice_id = n.id AND family_id IN (${families})) AS seen
+			WHERE notice_id = n.id AND family_id IN (${families})) AS seen,
+			(SELECT json_group_array(json_object('family', family_id, 'choice', choice)) FROM poll_votes
+			WHERE notice_id = n.id AND family_id IN (${families})) AS votes
 			FROM notices n JOIN notice_classrooms nc ON nc.notice_id = n.id
 			WHERE n.expires_at > ? AND nc.classroom_id IN (${classrooms})
 			GROUP BY n.id ORDER BY n.announced_at DESC, n.id`
 		)
-		.bind(...familyParams, Date.now(), ...classroomParams);
+		.bind(...familyParams, ...familyParams, Date.now(), ...classroomParams);
 }
 
-/** The board's rows as notices. SQLite has no arrays, so each notice's keys and marks come as JSON. */
+/** The board's rows as notices. SQLite has no arrays, so each notice's lists come as JSON. */
 function readBoard({ results }: D1Result): NoticeRecord[] {
-	type Row = Omit<NoticeRecord, 'classrooms' | 'seen'> & { classrooms: string; seen: string };
+	type Lists = 'classrooms' | 'seen' | 'votes';
+	type Row = Omit<NoticeRecord, Lists> & Record<Lists, string>;
 	return (results as Row[]).map((row) => ({
 		...row,
 		classrooms: JSON.parse(row.classrooms) as NoticeKey[],
-		seen: JSON.parse(row.seen) as string[]
+		seen: JSON.parse(row.seen) as string[],
+		votes: JSON.parse(row.votes) as VoteRecord[]
 	}));
 }
 
@@ -108,9 +115,17 @@ export async function postNotice(db: D1Database, staff: Staff, notice: NewNotice
 	return changeBoard(db, staff, [
 		db
 			.prepare(
-				'INSERT INTO notices (id, teacher_id, content, posted_at, announced_at, expires_at) VALUES (?, ?, ?, ?, ?, ?)'
+				'INSERT INTO notices (id, teacher_id, content, poll, posted_at, announced_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
 			)
-			.bind(notice.id, staff.teacher, notice.content, now, now, now + notice.days * day),
+			.bind(
+				notice.id,
+				staff.teacher,
+				notice.content,
+				Number(notice.poll),
+				now,
+				now,
+				now + notice.days * day
+			),
 		...insertKeys(db, notice.id, notice.classrooms)
 	]);
 }
@@ -135,17 +150,27 @@ export async function changeNotice(db: D1Database, staff: Staff, id: string, cha
 	return changeBoard(db, staff, [
 		db
 			.prepare(
-				`UPDATE notices SET content = ?, edited_at = ?, expires_at = ?,
+				`UPDATE notices SET content = ?, poll = ?, edited_at = ?, expires_at = ?,
 				announced_at = CASE WHEN ? THEN ? ELSE announced_at END WHERE id = ?`
 			)
-			.bind(change.content, now, postedAt + change.days * day, Number(change.announce), now, id),
+			.bind(
+				change.content,
+				Number(change.poll),
+				now,
+				postedAt + change.days * day,
+				Number(change.announce),
+				now,
+				id
+			),
 		// Every save seals the notice under a new key, so its old keys all go.
 		db.prepare('DELETE FROM notice_classrooms WHERE notice_id = ?').bind(id),
 		...insertKeys(db, id, change.classrooms),
 		// A change that notifies everyone again asks every family to see the notice again.
 		db
 			.prepare('DELETE FROM notice_seen WHERE ? AND notice_id = ?')
-			.bind(Number(change.announce), id)
+			.bind(Number(change.announce), id),
+		// A poll taken off the notice takes its answers with it.
+		db.prepare('DELETE FROM poll_votes WHERE NOT ? AND notice_id = ?').bind(Number(change.poll), id)
 	]);
 }
 
@@ -154,25 +179,47 @@ export async function deleteNotice(db: D1Database, staff: Staff, id: string) {
 	return changeBoard(db, staff, [db.prepare('DELETE FROM notices WHERE id = ?').bind(id)]);
 }
 
-/** A notice that's still up for one of the classrooms someone sees. */
+/** A notice that's still up for one of the classrooms someone sees, and whether it has a poll. */
 async function visibleNotice(db: D1Database, viewer: Identity, id: string) {
 	const [classrooms, params] = visibleClassrooms(viewer);
 	const notice = await db
 		.prepare(
-			`SELECT 1 FROM notices WHERE id = ? AND expires_at > ? AND id IN
+			`SELECT poll FROM notices WHERE id = ? AND expires_at > ? AND id IN
 			(SELECT notice_id FROM notice_classrooms WHERE classroom_id IN (${classrooms}))`
 		)
 		.bind(id, Date.now(), ...params)
-		.first();
+		.first<{ poll: number }>();
 	if (!notice) error(404, 'not-found');
+	return { poll: notice.poll === 1 };
 }
 
-/** Marks a notice as seen by a family that sees it. Marking it again changes nothing. */
+/** Marks a notice as seen by a family. Marking it again changes nothing. */
+function seenBy(db: D1Database, family: FamilyIdentity, id: string) {
+	return db
+		.prepare('INSERT OR IGNORE INTO notice_seen (notice_id, family_id) VALUES (?, ?)')
+		.bind(id, family.family);
+}
+
+/** Marks a notice as seen by a family that sees it. */
 export async function markSeen(db: D1Database, family: FamilyIdentity, id: string) {
 	await visibleNotice(db, family, id);
+	await transaction(db, [seenBy(db, family, id)]);
+}
+
+/**
+ * Answers a notice's poll for a family that sees it, in place of its earlier answer, and marks the notice
+ * as seen. A device that answers a notice without a poll has an outdated board, so it's told to load it again.
+ */
+export async function vote(db: D1Database, family: FamilyIdentity, id: string, choice: string) {
+	const { poll } = await visibleNotice(db, family, id);
+	if (!poll) error(409, 'stale');
 	await transaction(db, [
 		db
-			.prepare('INSERT OR IGNORE INTO notice_seen (notice_id, family_id) VALUES (?, ?)')
-			.bind(id, family.family)
+			.prepare(
+				`INSERT INTO poll_votes (notice_id, family_id, choice) VALUES (?1, ?2, ?3)
+				ON CONFLICT (notice_id, family_id) DO UPDATE SET choice = ?3`
+			)
+			.bind(id, family.family, choice),
+		seenBy(db, family, id)
 	]);
 }
