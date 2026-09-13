@@ -6,7 +6,7 @@
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
 	import { locales, messages } from '$lib/i18n';
 	import { appPath, localizedPath } from '$lib/paths';
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children, data }: LayoutProps = $props();
@@ -17,6 +17,18 @@
 	const app = setApp(new App());
 	afterNavigate(({ type }) => {
 		if (type === 'enter') tick().then(() => app.start());
+	});
+	// The service worker says when a notification comes or is tapped (src/service-worker.ts), so the board
+	// shows what's new straight away, even when the app is already open.
+	onMount(() => {
+		const container = navigator.serviceWorker;
+		if (!container) return;
+		const reload = ({ data }: MessageEvent) => {
+			if (data === 'board') app.refresh({ now: true });
+		};
+		container.addEventListener('message', reload);
+		container.startMessages();
+		return () => container.removeEventListener('message', reload);
 	});
 
 	const manage = $derived(appPath(data.locale, 'manage'));

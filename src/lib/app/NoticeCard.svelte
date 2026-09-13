@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
-	import { errorMessage, listNames, messages, type Locale } from '$lib/i18n';
+	import { errorMessage, formatDate, listNames, messages, type Locale } from '$lib/i18n';
 	import { namesOf } from '$lib/kindergarten';
 	import type { Notice } from '$lib/notices';
 	import { appPath } from '$lib/paths';
@@ -19,18 +19,9 @@
 	const fileCopy = $derived(messages[locale].app.files);
 	const task = new Task();
 	const fileTask = new Task();
-	// Made once for the card, not again whenever the board loads.
-	const timeFormat = $derived(
-		new Intl.DateTimeFormat(locale, {
-			day: 'numeric',
-			month: 'short',
-			hour: 'numeric',
-			minute: '2-digit'
-		})
-	);
-	/** Who put the notice up and when, and whether it was edited since. */
+	/** Who put the notice up and on which day, and whether it was edited since. */
 	const details = $derived(
-		[notice.author, timeFormat.format(notice.announcedAt), notice.editedAt ? t.edited : undefined]
+		[notice.author, formatDate(locale, notice.announcedAt), notice.editedAt ? t.edited : undefined]
 			.filter(Boolean)
 			.join(' · ')
 	);

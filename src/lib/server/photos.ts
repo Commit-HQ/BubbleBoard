@@ -4,9 +4,10 @@ import { checkClassrooms, transaction, visibleClassrooms } from './database';
 import { deleteMarked, getObject, putObject, type ObjectStore } from './storage';
 
 // The photo of each classroom's board (docs/access-format.md): its encrypted bytes in private R2, and in the
-// database which photo each classroom shows. The classroom's teachers and admins put a photo up in place of
-// the one there, or take it down, and everyone who sees the classroom may fetch it. The server can't open a
-// photo, so an object is named only by its classroom and the photo's random ID.
+// database which photo each classroom shows, since when, and its encrypted details, who put it up. The
+// classroom's teachers and admins put a photo up in place of the one there, or take it down, and everyone who
+// sees the classroom may fetch it. The server can't open a photo, so an object is named only by its classroom
+// and the photo's random ID.
 
 /** Where R2 keeps a board photo, as named_objects names it (migrations/). */
 function objectKey(classroom: string, photo: string) {
@@ -18,7 +19,7 @@ function photosQuery(db: D1Database, viewer: Identity) {
 	const [classrooms, params] = visibleClassrooms(viewer);
 	return db
 		.prepare(
-			`SELECT id, classroom_id AS classroom, posted_at AS postedAt FROM board_photos
+			`SELECT id, classroom_id AS classroom, posted_at AS postedAt, details FROM board_photos
 			WHERE classroom_id IN (${classrooms}) ORDER BY posted_at DESC`
 		)
 		.bind(...params);
@@ -30,10 +31,10 @@ export async function boardPhotos(db: D1Database, viewer: Identity) {
 }
 
 /**
- * Puts a photo up on a classroom's board in place of the one there, and returns the board photos as the
- * staff member sees them now. The bytes are stored before the database names them, and the bytes of the
- * photo they replace are deleted once it's gone; bytes that didn't go up are deleted in the daily cleanup a
- * day later. A photo whose bytes are stored already is refused as `stored`.
+ * Puts a photo up on a classroom's board in place of the one there, with its encrypted details, and returns
+ * the board photos as the staff member sees them now. The bytes are stored before the database names them,
+ * and the bytes of the photo they replace are deleted once it's gone; bytes that didn't go up are deleted in
+ * the daily cleanup a day later. A photo whose bytes are stored already is refused as `stored`.
  */
 export async function putUpPhoto(
 	db: D1Database,
@@ -42,6 +43,7 @@ export async function putUpPhoto(
 	classroom: string,
 	id: string,
 	photo: Uint8Array<ArrayBuffer>,
+	details: string,
 	now = Date.now()
 ) {
 	await checkClassrooms(db, staff, [classroom]);
@@ -49,8 +51,10 @@ export async function putUpPhoto(
 	const [, , photos] = await transaction(db, [
 		db.prepare('DELETE FROM board_photos WHERE classroom_id = ?').bind(classroom),
 		db
-			.prepare('INSERT INTO board_photos (classroom_id, id, posted_at) VALUES (?, ?, ?)')
-			.bind(classroom, id, now),
+			.prepare(
+				'INSERT INTO board_photos (classroom_id, id, posted_at, details) VALUES (?, ?, ?, ?)'
+			)
+			.bind(classroom, id, now, details),
 		photosQuery(db, staff)
 	]);
 	await deleteMarked(db, store.bucket);

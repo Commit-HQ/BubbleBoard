@@ -11,7 +11,13 @@
 </script>
 
 {#if commit}
-	<a class="hover:text-ink" href="{repositoryUrl}/commit/{commit}">
+	<!-- In a window of its own, so the installed app keeps its place. -->
+	<a
+		class="hover:text-ink"
+		href="{repositoryUrl}/commit/{commit}"
+		target="_blank"
+		rel="noopener noreferrer"
+	>
 		{t.label}
 		{commit}
 		{#if modified}({t.modified}){/if}

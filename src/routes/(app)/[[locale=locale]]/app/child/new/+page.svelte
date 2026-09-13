@@ -12,22 +12,17 @@
 	import { appPath } from '$lib/paths';
 	import type { PageProps } from './$types';
 
-	// Children are often added a classroom at a time: the form stays for the next child, and each new family
-	// card waits on this page to be printed with the others. Its code exists nowhere else, so leaving
-	// before printing asks first; cards left unprinted can be replaced from the classroom.
+	// A child goes into the classroom whose page this was opened from. Children are often added a classroom at
+	// a time: the form stays for the next child, and each new family card waits on this page to be printed with
+	// the others. Its code exists nowhere else, so leaving before printing asks first; cards left unprinted can
+	// be replaced from the classroom.
 	let { data }: PageProps = $props();
 	const app = getApp();
 	const t = $derived(messages[data.locale].app);
-	const preset = $derived(queryParam('classroom'));
-	const presetClassroom = $derived(app.catalog.classrooms.find(({ id }) => id === preset));
-	const task = new Task();
-	/** The classroom tile tapped on this page. Until then, the classroom the page was opened from. */
-	let picked = $state<string>();
 	const classroom = $derived(
-		app.catalog.classrooms.find(({ id }) => id === picked) ??
-			presetClassroom ??
-			app.catalog.classrooms[0]
+		app.catalog.classrooms.find(({ id }) => id === queryParam('classroom'))
 	);
+	const task = new Task();
 	let cardFor = $state<'new' | 'sibling'>('new');
 	// The kindergarten's first child has no brother or sister to share a card with.
 	const newCard = $derived(cardFor === 'new' || !app.catalog.children.length);
@@ -56,8 +51,9 @@
 
 	async function submit(event: SubmitEvent & { currentTarget: EventTarget & HTMLFormElement }) {
 		event.preventDefault();
+		if (!classroom) return;
 		const form = new FormData(event.currentTarget);
-		const child = { name: formText(form, 'name'), classroom: formText(form, 'classroom') };
+		const child = { name: formText(form, 'name'), classroom: classroom.id };
 		const values: ChildValues = newCard
 			? { ...child, cardName: formText(form, 'cardName') }
 			: { ...child, sibling: formText(form, 'sibling') };
@@ -90,14 +86,14 @@
 {:else}
 	<Screen
 		locale={data.locale}
-		title={t.newChild.title}
+		title={classroom ? t.newChild.title : t.notFound.title}
 		need="admin"
-		back={presetClassroom && {
-			href: appPath(data.locale, 'classroom', { id: presetClassroom.id }),
-			label: presetClassroom.name
+		back={classroom && {
+			href: appPath(data.locale, 'classroom', { id: classroom.id }),
+			label: classroom.name
 		}}
 	>
-		{#if app.catalog.classrooms.length}
+		{#if classroom}
 			<form class="{surface} grid gap-7" onsubmit={submit}>
 				<label class={field.label}>
 					<span class={field.name}>{t.newChild.name}</span>
@@ -110,25 +106,6 @@
 						autocomplete="off"
 					/>
 				</label>
-
-				<fieldset>
-					<legend class="mb-3 font-semibold">{t.newChild.classroom}</legend>
-					<div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-						{#each app.catalog.classrooms as option (option.id)}
-							<ChoiceTile
-								name="classroom"
-								value={option.id}
-								checked={option.id === classroom?.id}
-								onchange={() => (picked = option.id)}
-								icon="shapes"
-								title={option.name}
-								detail={t.counts.children(
-									app.catalog.children.filter((child) => child.classroom === option.id).length
-								)}
-							/>
-						{/each}
-					</div>
-				</fieldset>
 
 				<fieldset class="grid gap-4">
 					<legend class="mb-3 font-semibold">{t.newChild.cards}</legend>
@@ -214,7 +191,7 @@
 				</section>
 			{/if}
 		{:else}
-			<p class="text-muted">{t.manage.emptyAdmin}</p>
+			<p class="text-muted">{t.notFound.copy}</p>
 		{/if}
 	</Screen>
 {/if}

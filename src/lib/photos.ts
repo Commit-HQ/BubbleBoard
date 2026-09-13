@@ -1,12 +1,20 @@
-import { decryptBytes, encryptBytes, UnreadableError } from '$lib/crypto';
+import type { PhotoRecord } from '$lib/api';
+import { decryptBytes, decryptData, encryptBytes, encryptData, UnreadableError } from '$lib/crypto';
 import { CodedError } from '$lib/errors';
 
 // Photos of a classroom's board (docs/access-format.md): a teacher photographs the corkboard, and the browser
-// makes the photo smaller and encrypts it with the classroom's Group Key before it's uploaded. Devices that
-// see the classroom fetch it and decrypt it to show it. The server keeps its bytes in private R2.
+// makes the photo smaller and encrypts it with the classroom's Group Key before it's uploaded, with its details,
+// who put it up, encrypted on their own. Devices that see the classroom fetch it and decrypt it to show it. The
+// server keeps its bytes in private R2.
 
 /** The most a board photo takes once made smaller, which the server also holds it to. */
 export const maxPhotoBytes = 3 * 1024 * 1024;
+
+/** Who put a board photo up. The recovery card puts photos up without a name, as it posts notices. */
+export type PhotoDetails = { author?: string };
+
+/** A board photo as a device shows it, with who put it up, when its details opened. */
+export type Photo = PhotoRecord & PhotoDetails;
 
 /**
  * The sizes a photo is made at, largest first, until one fits: its longer side in pixels, and the encoding's
@@ -94,4 +102,35 @@ export function imageType(photo: Uint8Array) {
 	if (photo[0] === 0xff && photo[1] === 0xd8 && photo[2] === 0xff) return 'image/jpeg';
 	if (text(0, 4) === 'RIFF' && text(8, 12) === 'WEBP') return 'image/webp';
 	return undefined;
+}
+
+/** Encrypts a board photo's details with the classroom's Group Key, for the server to keep beside the photo. */
+export function sealPhotoDetails(
+	details: PhotoDetails,
+	groupKey: CryptoKey,
+	classroom: string,
+	id: string
+) {
+	return encryptData(details, groupKey, { purpose: 'board-photo-details', classroom, photo: id });
+}
+
+/** A board photo's details, decrypted. Anyone holding the classroom's Group Key could have written them. */
+export async function openPhotoDetails(
+	sealed: string,
+	groupKey: CryptoKey,
+	classroom: string,
+	id: string
+): Promise<PhotoDetails> {
+	const details = await decryptData(sealed, groupKey, {
+		purpose: 'board-photo-details',
+		classroom,
+		photo: id
+	});
+	if (typeof details !== 'object' || details === null || Array.isArray(details)) {
+		throw new UnreadableError();
+	}
+	const { author } = details as Record<string, unknown>;
+	if (author === undefined) return {};
+	if (typeof author !== 'string' || !author) throw new UnreadableError();
+	return { author };
 }

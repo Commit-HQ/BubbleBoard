@@ -42,7 +42,7 @@
 		{@render steps([
 			['share', t.iosShare],
 			['plusSquare', t.iosAdd],
-			['camera', t.iosOpen]
+			['phone', t.iosOpen]
 		])}
 	</Panel>
 {:else}

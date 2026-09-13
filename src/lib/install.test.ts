@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { installPlatform } from './install';
+import { installPlatform, startsWhereAdded } from './install';
 
 it('asks phones and tablets to install, browsers inside apps to open a real browser, and computers nothing', () => {
 	const safari = 'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5';
@@ -44,5 +44,30 @@ it('asks phones and tablets to install, browsers inside apps to open a real brow
 		[`Mozilla/5.0 (X11; CrOS x86_64 16181.0.0) ${chrome} Safari/537.36`, 10, undefined]
 	] as const) {
 		expect(installPlatform(userAgent, touchPoints), userAgent).toBe(platform);
+	}
+});
+
+it('gives browsers on iPhone and iPad a manifest that starts where BubbleBoard was added, and others a start_url', () => {
+	const webkit = 'AppleWebKit/605.1.15 (KHTML, like Gecko)';
+	const chrome = 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0';
+	for (const [userAgent, fromPage] of [
+		[
+			`Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) ${webkit} Version/18.5 Mobile/15E148 Safari/604.1`,
+			true
+		],
+		[
+			`Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) ${webkit} CriOS/139.0.0.0 Mobile/15E148 Safari/604.1`,
+			true
+		],
+		// iPadOS, which reports a Mac, and Safari on a Mac, which gets the same manifest.
+		[
+			`Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ${webkit} Version/18.5 Safari/605.1.15`,
+			true
+		],
+		[`Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ${chrome} Safari/537.36`, false],
+		[`Mozilla/5.0 (Linux; Android 14; Pixel 8) ${chrome} Mobile Safari/537.36`, false],
+		[`Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:141.0) Gecko/20100101 Firefox/141.0`, false]
+	] as const) {
+		expect(startsWhereAdded(userAgent), userAgent).toBe(fromPage);
 	}
 });

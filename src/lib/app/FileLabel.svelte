@@ -10,6 +10,7 @@
 
 <Icon name="file" class="size-5 shrink-0 text-muted" />
 <span class="min-w-0 flex-1 py-1.5">
-	<span class="block truncate font-semibold">{file.name}</span>
+	<!-- Two lines at most, broken anywhere, so a long name never widens its notice. -->
+	<span class="line-clamp-2 font-semibold">{file.name}</span>
 	<span class={field.hint}>{fileSize(locale, file.bytes)}</span>
 </span>

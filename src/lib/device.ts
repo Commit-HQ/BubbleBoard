@@ -29,6 +29,20 @@ export async function forgetCard() {
 	});
 }
 
+/**
+ * Whether the Home Screen app on iPhone and iPad used the card in the address it opens at, the card link it
+ * was added from (src/lib/install.ts). Signing out keeps it, so the app doesn't connect again by itself.
+ */
+const launch = objectStore('bubbleboard-launch', 'settings');
+
+export async function startCardUsed() {
+	return (await launch('readonly', (store) => store.get('startCardUsed'))) === true;
+}
+
+export async function markStartCardUsed() {
+	await launch('readwrite', (store) => void store.put(true, 'startCardUsed'));
+}
+
 function isDeviceCard(value: unknown): value is DeviceCard {
 	const card = value as Record<string, unknown> | undefined;
 	if (typeof card?.credential !== 'string' || typeof card.cardHash !== 'string') return false;

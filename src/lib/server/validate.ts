@@ -13,6 +13,7 @@ import type {
 	NewTeacher,
 	NoticeChange,
 	NoticeKey,
+	PollAnswer,
 	Setup,
 	TeacherChange
 } from '$lib/api';
@@ -251,11 +252,17 @@ function noticeKeys(value: unknown): NoticeKey[] {
  */
 const noticeFiles = (value: unknown) => ids(value, maxNoticeFiles);
 
+/** Whether a notice has a poll, and whether families see its counts, which only a poll can show. */
+function poll(body: Fields) {
+	const [hasPoll, counts] = [flag(body.poll), flag(body.counts)];
+	return counts && !hasPoll ? invalid() : { poll: hasPoll, counts };
+}
+
 export const newNotice = (body: Fields): NewNotice => ({
 	id: id(body.id),
 	content: noticeContent(body.content),
 	days: days(body.days),
-	poll: flag(body.poll),
+	...poll(body),
 	classrooms: noticeKeys(body.classrooms),
 	files: noticeFiles(body.files)
 });
@@ -264,12 +271,26 @@ export const noticeChange = (body: Fields): NoticeChange => ({
 	content: noticeContent(body.content),
 	days: days(body.days),
 	announce: flag(body.announce),
-	poll: flag(body.poll),
+	...poll(body),
 	classrooms: noticeKeys(body.classrooms),
 	files: noticeFiles(body.files)
 });
 
 /** A family's answer to a poll holds the ID of the option it chose. */
-const vote = envelope(256);
+const choice = envelope(256);
 
-export const voteChoice = (body: Fields) => vote(body.choice);
+/**
+ * A family's answer, and whether its device read the poll as one whose counts families see. Every device
+ * sends that, so one from before families could see counts is refused rather than answering with the wrong key.
+ */
+export const pollAnswer = (body: Fields): PollAnswer => ({
+	choice: choice(body.choice),
+	counts: flag(body.counts)
+});
+
+/** A board photo's details hold who put it up. */
+const details = envelope(1024);
+
+/** A board photo's encrypted details, which come in a header beside its bytes. */
+export const photoDetails = (request: Request) =>
+	details(request.headers.get('bubbleboard-photo-details'));

@@ -30,8 +30,25 @@ export function installPlatform(userAgent: string, touchPoints: number): Install
 
 /** The install steps this device still needs: none in the installed app or on a computer. */
 export function installStep(): InstallPlatform {
-	const installed =
-		matchMedia('(display-mode: standalone)').matches ||
-		(navigator as Navigator & { standalone?: boolean }).standalone === true;
+	const installed = matchMedia('(display-mode: standalone)').matches || onAppleHomeScreen();
 	return installed ? undefined : installPlatform(navigator.userAgent, navigator.maxTouchPoints);
+}
+
+/**
+ * Whether a browser, given a manifest without start_url, adds the app with the address of the page it was
+ * added from, fragment and all, to a Home Screen app that doesn't share its storage: Safari and the other
+ * browsers on iPhone and iPad, where WebKit falls back to the page's address (ApplicationManifestParser). They
+ * get such a manifest, and Safari keeps a card's link in the address bar, so the app opens with that card.
+ * iPadOS reports a Mac; Safari on a Mac gets the same manifest, which does no harm there.
+ */
+export function startsWhereAdded(userAgent: string) {
+	return (
+		/iPhone|iPad|iPod/.test(userAgent) ||
+		(/Macintosh/.test(userAgent) && !/Chrome\/|Firefox\/|Edg\//.test(userAgent))
+	);
+}
+
+/** Whether this is the Home Screen app on iPhone or iPad, which opens at the address it was added from. */
+export function onAppleHomeScreen() {
+	return (navigator as Navigator & { standalone?: boolean }).standalone === true;
 }

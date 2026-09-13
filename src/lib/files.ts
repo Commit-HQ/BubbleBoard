@@ -1,4 +1,10 @@
-import { createFileKey, createId, decryptBytes, encryptBytes, openFileKey } from '$lib/crypto';
+import {
+	createContentKey,
+	createId,
+	decryptBytes,
+	encryptBytes,
+	openContentKey
+} from '$lib/crypto';
 import { CodedError } from '$lib/errors';
 import { preparePhoto } from '$lib/photos';
 
@@ -91,7 +97,7 @@ export async function sealFile(
 	name: string,
 	data: Uint8Array<ArrayBuffer>
 ): Promise<NewFile> {
-	const { key, raw } = await createFileKey();
+	const { key, raw } = await createContentKey();
 	const sealed = await encryptBytes(data, key, { purpose: 'notice-file', file: id });
 	return { id, name, bytes: data.length, key: raw, sealed };
 }
@@ -120,7 +126,7 @@ export async function prepareFile(file: File) {
  * so whatever it holds, it's saved as a document or picture and never opens as a page.
  */
 export async function openFile(sealed: Uint8Array<ArrayBuffer>, { id, name, key }: NoticeFile) {
-	const data = await decryptBytes(sealed, await openFileKey(key), {
+	const data = await decryptBytes(sealed, await openContentKey(key), {
 		purpose: 'notice-file',
 		file: id
 	});

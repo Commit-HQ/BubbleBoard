@@ -60,12 +60,12 @@ export const hr = {
 		},
 		devices: {
 			title: 'Na svim obiteljskim uređajima',
-			copy: 'Jedna obiteljska kartica radi na svim mobitelima, tabletima i računalima u kući.'
+			copy: 'Jedan obiteljski QR kod radi na svim mobitelima, tabletima i računalima u kući.'
 		}
 	},
 	how: {
-		title: 'Jedna kartica. Vaša skupina.',
-		copy: 'Roditelji i odgojitelji pridružuju se na isti način. Vrtić dijeli QR kartice: jednu obiteljsku za sve uređaje vaše obitelji i odgojiteljsku za svakog odgojitelja. To je sve što trebate.',
+		title: 'Jedan QR kod. Vaša skupina.',
+		copy: 'Roditelji i odgojitelji pridružuju se na isti način. Vrtić dijeli QR kodove: jedan za sve uređaje vaše obitelji i po jedan za svakog odgojitelja. To je sve što trebate.',
 		photoAlt: 'Odgojiteljica sjedi na podu i razgovara sa skupinom djece',
 		steps: [
 			{
@@ -74,8 +74,8 @@ export const hr = {
 			},
 			{ title: 'Uključite obavijesti', copy: 'Saznajte kada vas čeka nešto novo.' },
 			{
-				title: 'Skenirajte svoju karticu',
-				copy: 'Otvorite aplikaciju i skenirajte karticu koju ste dobili u vrtiću. Bez pamćenja korisničkog imena i lozinke.'
+				title: 'Skenirajte svoj QR kod',
+				copy: 'Otvorite aplikaciju i skenirajte QR kod koji ste dobili u vrtiću. Bez pamćenja korisničkog imena i lozinke.'
 			}
 		]
 	},
@@ -123,7 +123,7 @@ export const hr = {
 		},
 		access: {
 			title: 'Pristup pod vašom kontrolom',
-			copy: 'Dajte zamjeni privremeni pristup ili zamijenite izgubljenu karticu u nekoliko koraka.'
+			copy: 'Dajte zamjeni privremeni pristup ili zamijenite izgubljeni QR kod u nekoliko koraka.'
 		}
 	},
 	kindergartens: {
@@ -181,7 +181,7 @@ export const hr = {
 		},
 		connectFirst: {
 			title: 'Najprije povežite ovaj uređaj',
-			copy: 'Otvorite početnu stranicu BubbleBoarda i upotrijebite svoju karticu.',
+			copy: 'Otvorite početnu stranicu BubbleBoarda i skenirajte svoj QR kod.',
 			action: 'Idi na BubbleBoard'
 		},
 		adminOnly: {
@@ -213,74 +213,74 @@ export const hr = {
 		},
 		staffOnly: {
 			title: 'Ova je stranica za odgojitelje',
-			copy: 'Obiteljska kartica otvara početnu stranicu, gdje će se pojavljivati obavijesti i fotografije.'
+			copy: 'Obiteljski QR kod otvara početnu stranicu, gdje će se pojavljivati obavijesti i fotografije.'
 		},
 		connect: {
 			title: 'Povežite ovaj uređaj',
-			copy: 'Upotrijebite QR karticu koju ste dobili u vrtiću. Možete i usmjeriti kameru mobitela prema kartici.',
-			scan: 'Skeniraj karticu',
+			copy: 'Skenirajte QR kod koji ste dobili u vrtiću. Možete i usmjeriti kameru mobitela prema njemu.',
+			scan: 'Skeniraj QR kod',
 			enter: 'Upiši kod',
-			camera: 'Usmjerite kameru prema QR kodu na kartici.',
+			camera: 'Usmjerite kameru prema QR kodu.',
 			cameraStarting: 'Otvaramo kameru…',
 			cameraBlocked:
-				'BubbleBoard nema dopuštenje za kameru. Dopustite ga u postavkama preglednika ili odaberite fotografiju kartice.',
-			noCamera: 'Ovdje nema kamere koju BubbleBoard može koristiti. Odaberite fotografiju kartice.',
+				'BubbleBoard nema dopuštenje za kameru. Dopustite ga u postavkama preglednika ili odaberite fotografiju QR koda.',
+			noCamera: 'Ovdje nema kamere koju BubbleBoard može koristiti. Odaberite fotografiju QR koda.',
 			photo: 'Odaberi fotografiju',
-			code: 'Kod kartice',
-			codeHint: '28 slova i brojeva otisnutih na kartici.',
+			code: 'Kod',
+			codeHint: '28 slova i brojeva otisnutih ispod QR koda.',
 			submit: 'Poveži',
-			scanning: 'Čitamo karticu…',
+			scanning: 'Čitamo QR kod…',
 			connecting: 'Povezujemo…',
-			replaceTitle: 'Upotrijebiti drugu karticu?',
+			replaceTitle: 'Upotrijebiti drugi QR kod?',
 			replaceStaff: (name: string) =>
-				`Ovaj je uređaj povezan kao ${name}. Za ponovno povezivanje na taj način trebat će vam ta kartica.`,
+				`Ovaj je uređaj povezan kao ${name}. Za ponovno povezivanje na taj način trebat će vam taj QR kod.`,
 			replaceOther:
-				'Ovaj je uređaj već povezan drugom karticom. Za ponovno povezivanje na taj način trebat će vam ta kartica.',
-			replaceConfirm: 'Upotrijebi novu karticu',
-			keep: 'Zadrži dosadašnju'
+				'Ovaj je uređaj već povezan drugim QR kodom. Za ponovno povezivanje na taj način trebat će vam taj QR kod.',
+			replaceConfirm: 'Upotrijebi novi QR kod',
+			keep: 'Zadrži dosadašnji'
 		},
 		setup: {
 			title: 'Postavite BubbleBoard',
-			copy: 'Dobit ćete dvije kartice: svoju i karticu za oporavak koju čuvate na sigurnom. Obje daju pristup svemu.',
+			copy: 'Dobit ćete dva QR koda: svoj i QR kod za oporavak koji čuvate na sigurnom. Oba daju pristup svemu.',
 			name: 'Vaše ime',
 			nameHint: 'Vidjet će ga drugi odgojitelji, na primjer „Ana Horvat”.',
 			token: 'Kod za postavljanje',
 			tokenHint:
 				'Nalazi se u poveznici za postavljanje. Pitajte osobu koja je instalirala BubbleBoard.',
-			submit: 'Izradi kartice',
-			creating: 'Izrađujemo vaše kartice…',
+			submit: 'Izradi QR kodove',
+			creating: 'Izrađujemo vaše QR kodove…',
 			connectedTitle: 'Ovaj je uređaj već povezan',
 			connectedCopy: 'BubbleBoard je postavljen i spreman za korištenje.',
 			open: 'Otvori BubbleBoard',
-			connect: 'Poveži se svojom karticom'
+			connect: 'Poveži se svojim QR kodom'
 		},
 		card: {
 			title: (value: number) =>
-				value === 1 ? 'Ispišite ili spremite ovu karticu' : 'Ispišite ili spremite ove kartice',
-			copy: 'Kod je vidljiv samo sada. Ako odete prije ispisa, napravite novu karticu gumbom „Zamijeni karticu”.',
+				value === 1 ? 'Ispišite ili spremite ovaj QR kod' : 'Ispišite ili spremite ove QR kodove',
+			copy: 'Kod je vidljiv samo sada. Ako odete prije ispisa, napravite novi gumbom „Zamijeni QR kod”.',
 			setupCopy:
-				'Kodovi su vidljivi samo sada. Prije nastavka ispišite obje kartice ili ih spremite kao PDF.',
+				'Kodovi su vidljivi samo sada. Prije nastavka ispišite oba QR koda ili ih spremite kao PDF.',
 			print: 'Ispiši',
-			confirm: 'Obje su kartice ispisane ili spremljene',
+			confirm: 'Oba su QR koda ispisana ili spremljena',
 			continue: 'Nastavi',
-			leaveFirst: 'Najprije ispišite ili spremite obje kartice, a zatim označite kvadratić.',
+			leaveFirst: 'Najprije ispišite ili spremite oba QR koda, a zatim označite kvadratić.',
 			kinds: {
-				admin: 'Administratorska kartica',
-				teacher: 'Kartica odgojitelja',
-				recovery: 'Kartica za oporavak',
-				family: 'Obiteljska kartica'
+				admin: 'Administratorski QR kod',
+				teacher: 'QR kod odgojitelja',
+				recovery: 'QR kod za oporavak',
+				family: 'Obiteljski QR kod'
 			},
 			scan: (address: string) =>
 				`Usmjerite kameru mobitela prema QR kodu ili otvorite ${address} i upišite:`,
 			about: 'Obavijesti i fotografije iz vrtića.',
-			private: 'Ne dijelite ovu karticu. Ako je izgubite, vrtić će vam dati novu.',
+			private: 'Ne dijelite ovaj QR kod. Ako ga izgubite, vrtić će vam dati novi.',
 			recovery:
-				'Upotrijebite je samo ako se izgube sve administratorske kartice. Čuvajte je pod ključem, odvojeno od svoje kartice.',
+				'Upotrijebite ga samo ako se izgube svi administratorski QR kodovi. Čuvajte ga pod ključem, odvojeno od svojeg QR koda.',
 			qr: (name: string) => `QR kod: ${name}`,
-			replace: 'Zamijeni karticu',
-			replaceTitle: (name: string) => `Zamijeniti karticu „${name}”?`,
+			replace: 'Zamijeni QR kod',
+			replaceTitle: (name: string) => `Zamijeniti QR kod „${name}”?`,
 			replaceCopy:
-				'Stara kartica prestaje raditi, a svi uređaji koji su je koristili bit će odjavljeni.'
+				'Stari QR kod prestaje raditi, a svi uređaji koji su ga koristili bit će odjavljeni.'
 		},
 		home: {
 			title: 'Početna'
@@ -293,7 +293,7 @@ export const hr = {
 			addClassroom: 'Dodaj skupinu',
 			classroomName: 'Naziv skupine',
 			teachers: 'Odgojitelji',
-			teachersDetail: 'Imena, skupine i kartice',
+			teachersDetail: 'Imena, skupine i QR kodovi',
 			emptyAdmin: 'Započnite dodavanjem prve skupine.',
 			emptyTeacher: 'Još niste dodani ni u jednu skupinu. Može vas dodati administrator.'
 		},
@@ -306,61 +306,62 @@ export const hr = {
 			delete: 'Obriši skupinu',
 			deleteTitle: (name: string) => `Obrisati skupinu „${name}”?`,
 			deleteCopy: 'To se ne može poništiti.',
-			noCards: 'Još nema obiteljske kartice',
-			replaceCards: 'Zamijeni kartice',
-			replaceTitle: 'Zamjena obiteljskih kartica',
-			replaceCopy: 'Odaberite kartice koje želite zamijeniti pa zajedno ispišite nove.',
-			replaceSubmit: (value: number) => `Zamijeni ${count(value, 'karticu', 'kartice', 'kartica')}`,
+			noCards: 'Još nema obiteljskog QR koda',
+			replaceCards: 'Zamijeni QR kodove',
+			replaceTitle: 'Zamjena obiteljskih QR kodova',
+			replaceCopy: 'Odaberite QR kodove koje želite zamijeniti pa zajedno ispišite nove.',
+			replaceSubmit: (value: number) =>
+				`Zamijeni ${count(value, 'QR kod', 'QR koda', 'QR kodova')}`,
 			replaceConfirm: (value: number) =>
-				`Zamijeniti ${count(value, 'karticu', 'kartice', 'kartica')}?`,
+				`Zamijeniti ${count(value, 'QR kod', 'QR koda', 'QR kodova')}?`,
 			replaceConfirmCopy:
-				'Stare kartice prestaju raditi, a svi uređaji koji su ih koristili bit će odjavljeni.'
+				'Stari QR kodovi prestaju raditi, a svi uređaji koji su ih koristili bit će odjavljeni.'
 		},
 		newChild: {
 			title: 'Dodaj dijete',
 			name: 'Ime djeteta',
-			classroom: 'Skupina',
-			cards: 'Obiteljska kartica',
-			newCard: 'Nova obiteljska kartica',
-			newCardHint: 'Ispisat ćete je za obitelj.',
-			cardName: 'Tko dobiva karticu?',
+			cards: 'Obiteljski QR kod',
+			newCard: 'Novi obiteljski QR kod',
+			newCardHint: 'Ispisat ćete ga za obitelj.',
+			cardName: 'Tko dobiva QR kod?',
 			cardNameHint:
-				'Na primjer „Ivana (mama)”. Roditelji koji ne žive zajedno kasnije mogu dobiti zasebne kartice.',
-			sibling: 'Kartica brata ili sestre',
-			siblingHint: 'Obitelj koristi karticu koju već ima.',
+				'Na primjer „Ivana (mama)”. Roditelji koji ne žive zajedno kasnije mogu dobiti zasebne QR kodove.',
+			sibling: 'QR kod brata ili sestre',
+			siblingHint: 'Obitelj koristi QR kod koji već ima.',
 			siblingName: 'Brat ili sestra',
 			submit: 'Dodaj dijete',
 			added: (name: string) => `Dodano: ${name}.`,
-			toPrint: (value: number) => `Za ispis: ${count(value, 'kartica', 'kartice', 'kartica')}`,
+			toPrint: (value: number) => `Za ispis: ${count(value, 'QR kod', 'QR koda', 'QR kodova')}`,
 			toPrintCopy:
-				'Dodajte još djece pa ispišite sve nove obiteljske kartice zajedno. Njihovi su kodovi vidljivi samo na ovoj stranici.',
+				'Dodajte još djece pa ispišite sve nove obiteljske QR kodove zajedno. Vidljivi su samo na ovoj stranici.',
 			print: (value: number) =>
-				value === 1 ? 'Ispiši karticu' : `Ispiši ${count(value, 'karticu', 'kartice', 'kartica')}`,
+				value === 1 ? 'Ispiši QR kod' : `Ispiši ${count(value, 'QR kod', 'QR koda', 'QR kodova')}`,
 			leaveTitle: 'Otići bez ispisa?',
 			leaveCopy:
-				'Kodovi novih kartica vidljivi su samo na ovoj stranici. Za kasniji ispis zamijenite kartice u skupini.',
+				'Novi QR kodovi vidljivi su samo na ovoj stranici. Za kasniji ispis zamijenite ih u skupini.',
 			leave: 'Otiđi',
 			stay: 'Ostani'
 		},
 		child: {
-			cards: 'Obiteljske kartice',
-			noCards: 'Još nema obiteljske kartice. Dodajte je kako bi se obitelj mogla povezati.',
+			cards: 'Obiteljski QR kodovi',
+			noCards: 'Još nema obiteljskog QR koda. Dodajte ga kako bi se obitelj mogla povezati.',
 			also: (children: string[]) => `Vrijedi i za: ${list(children)}`,
-			removeCardTitle: (name: string) => `Ukloniti karticu „${name}”?`,
-			removeCardShared: (children: string[]) => `Kartica i dalje vrijedi za: ${list(children)}.`,
+			removeCardTitle: (name: string) => `Ukloniti QR kod „${name}”?`,
+			removeCardShared: (children: string[]) => `QR kod i dalje vrijedi za: ${list(children)}.`,
 			removeCardLast:
-				'Kartica prestaje raditi, a svi uređaji koji su je koristili bit će odjavljeni.',
-			cardName: 'Ime na kartici',
-			addFirstCard: 'Dodaj obiteljsku karticu',
-			addCard: 'Dodaj još jednu obiteljsku karticu',
-			addCardHint: 'Za roditelje koji ne žive zajedno: svaka kartica ima svoje privatne poruke.',
+				'QR kod prestaje raditi, a svi uređaji koji su ga koristili bit će odjavljeni.',
+			cardName: 'Ime uz QR kod',
+			addFirstCard: 'Dodaj obiteljski QR kod',
+			addCard: 'Dodaj još jedan obiteljski QR kod',
+			addCardHint: 'Za roditelje koji ne žive zajedno: svaki QR kod ima svoje privatne poruke.',
 			move: 'Premjesti u drugu skupinu',
+			classroom: 'Skupina',
 			moveSubmit: 'Premjesti',
 			remove: 'Ukloni dijete',
 			removeTitle: (name: string) => `Ukloniti dijete „${name}”?`,
 			removeCopy: (cards: string[]) =>
 				cards.length
-					? `Obiteljske kartice koje će prestati raditi: ${list(cards)}.`
+					? `Obiteljski QR kodovi koji će prestati raditi: ${list(cards)}.`
 					: 'To se ne može poništiti.'
 		},
 		teachers: {
@@ -370,7 +371,7 @@ export const hr = {
 			you: 'vi',
 			noClassrooms: 'Bez skupine',
 			recoveryTitle: 'Za hitne slučajeve',
-			recoveryDetail: 'Otvara sve ako se izgube sve administratorske kartice.'
+			recoveryDetail: 'Otvara sve ako se izgube svi administratorski QR kodovi.'
 		},
 		teacher: {
 			newTitle: 'Dodaj odgojitelja',
@@ -380,22 +381,22 @@ export const hr = {
 			admin: 'Administrator',
 			adminHint: 'Može dodavati skupine, odgojitelje i djecu te otvoriti svaku skupinu.',
 			selfAdmin: 'Ovo može promijeniti drugi administrator.',
-			create: 'Izradi karticu',
+			create: 'Izradi QR kod',
 			remove: 'Ukloni odgojitelja',
 			removeTitle: () => 'Ukloniti odgojitelja?',
 			removeCopy: (name: string) =>
-				`${name} više neće moći otvoriti BubbleBoard, a uređaji s tom karticom bit će odjavljeni.`,
+				`${name} više neće moći otvoriti BubbleBoard, a uređaji s tim QR kodom bit će odjavljeni.`,
 			self: 'Ovo ste vi. Ukloniti vas može drugi administrator.',
 			recovery:
-				'Kartica za oporavak može sve što i administrator. Čuvajte je pod ključem i zamijenite je ako ju je netko drugi možda vidio.'
+				'QR kod za oporavak može sve što i administrator. Čuvajte ga pod ključem i zamijenite ga ako ga je netko drugi možda vidio.'
 		},
 		options: {
 			title: 'Opcije',
 			staff: (name: string) => `Povezani ste kao ${name}`,
-			family: 'Povezani ste obiteljskom karticom',
+			family: 'Povezani ste obiteljskim QR kodom',
 			signOut: 'Odjavi ovaj uređaj',
 			signOutTitle: 'Odjaviti ovaj uređaj?',
-			signOutCopy: 'Za ponovno korištenje BubbleBoarda ovdje trebat će vam kartica.',
+			signOutCopy: 'Za ponovno korištenje BubbleBoarda ovdje trebat će vam QR kod.',
 			about: 'O BubbleBoardu'
 		},
 		notices: {
@@ -443,15 +444,23 @@ export const hr = {
 		},
 		polls: {
 			add: 'Dodaj anketu',
-			addHint: 'Obitelji odgovaraju jednim dodirom. Tko je što odabrao vide samo odgojitelji.',
+			addHint: 'Tko je što odabrao vide samo odgojitelji.',
 			answers: 'Odgovori',
 			answer: (number: number) => `${number}. odgovor`,
 			removeAnswer: (number: number) => `Ukloni ${number}. odgovor`,
 			addAnswer: 'Dodaj odgovor',
+			counts: 'Obitelji vide broj glasova',
+			countsHint: 'Uz svaki odgovor vide koliko ga je obitelji odabralo, ali ne i koje.',
+			countsChanging: 'Spremanjem se brišu dosadašnji odgovori, pa obitelji odgovaraju ponovno.',
 			removing: 'Spremanjem se anketa uklanja s obavijesti, zajedno s odgovorima.',
 			title: 'Anketa',
+			countsShown: 'Obitelji vide koliko je glasova dobio svaki odgovor.',
 			choose: 'Odaberite odgovor',
-			private: 'Vaš odgovor vide samo odgojitelji. Možete ga promijeniti.',
+			confirm: 'Potvrdi odgovor',
+			yours: (answer: string) => `Vaš odgovor: ${answer}`,
+			change: 'Izmijeni odgovor',
+			private: 'Vaš odgovor vide samo odgojitelji.',
+			counted: 'Broj glasova vide sve obitelji, a tko je što odabrao samo odgojitelji.',
 			votes: (value: number) => count(value, 'glas', 'glasa', 'glasova'),
 			noAnswer: (names: string[]) => `Još bez odgovora: ${list(names)}`
 		},
@@ -471,7 +480,6 @@ export const hr = {
 			putUp: 'Stavi na ploču',
 			replaces: 'Zamijenit će fotografiju koja je sada na ploči.',
 			open: (classroom: string) => `Otvori fotografiju ploče skupine ${classroom}`,
-			posted: (date: string) => `stavljeno ${date}`,
 			loading: 'Otvaramo fotografiju…',
 			zoom: 'Povećaj',
 			fit: 'Prilagodi zaslonu',
@@ -482,9 +490,9 @@ export const hr = {
 			removeCopy: 'Odmah nestaje sa svih početnih stranica.'
 		},
 		notifications: {
-			test: 'Obavijesti su uključene. Ovakvu ćete dobiti kad stigne nova obavijest.',
-			cardTitle: 'Saznajte kad stigne nova obavijest',
-			cardCopy: 'Na zaslonu piše samo da je stiglo nešto novo. Sama obavijest ostaje u aplikaciji.',
+			test: 'Obavijesti su uključene',
+			cardTitle: 'Uključite obavijesti',
+			cardCopy: 'Saznajte kad vrtić objavi nešto novo.',
 			turnOn: 'Uključi',
 			turnOff: 'Isključi',
 			notNow: 'Ne sada',
@@ -501,7 +509,7 @@ export const hr = {
 				'Na iPhoneu i iPadu obavijesti iz vrtića stižu samo u BubbleBoard na početnom zaslonu.',
 			iosShare: 'Dodirnite Dijeli. U Safariju je možda u izborniku ···.',
 			iosAdd: 'Odaberite Dodaj na početni zaslon, zatim Dodaj.',
-			iosOpen: 'Otvorite BubbleBoard s početnog zaslona i ondje skenirajte karticu.',
+			iosOpen: 'Otvorite BubbleBoard s početnog zaslona.',
 			androidTitle: 'Instalirajte BubbleBoard',
 			androidCopy: 'Kao aplikacija na mobitelu, BubbleBoard vam može javiti kad stigne nešto novo.',
 			androidMenu: 'Otvorite izbornik preglednika.',
@@ -511,7 +519,7 @@ export const hr = {
 			installed: 'BubbleBoard je instaliran. Otvorite ga s početnog zaslona.',
 			inAppTitle: 'Otvorite BubbleBoard u pregledniku',
 			inAppCopy:
-				'Preglednik unutar ove aplikacije ne može instalirati BubbleBoard. Otvorite stranicu u Safariju ili Chromeu, obično iz izbornika ···, pa ponovno skenirajte karticu.'
+				'Preglednik unutar ove aplikacije ne može instalirati BubbleBoard. Otvorite stranicu u Safariju ili Chromeu, obično iz izbornika ···, pa ponovno skenirajte QR kod.'
 		},
 		editor: {
 			toolbar: 'Oblikovanje',
@@ -533,8 +541,7 @@ export const hr = {
 				green: 'Zelena',
 				blue: 'Plava',
 				purple: 'Ljubičasta'
-			},
-			emoji: 'Emoji'
+			}
 		},
 		files: {
 			title: 'Datoteke',
@@ -566,21 +573,20 @@ export const hr = {
 				'BubbleBoard je dosegnuo ovomjesečno ograničenje za otvaranje fotografija i datoteka. Ponovno će se otvarati sljedeći mjesec, a osoba koja je instalirala BubbleBoard može povećati ograničenje.',
 			offline:
 				'BubbleBoard trenutno nije dostupan. Provjerite internetsku vezu i pokušajte ponovno.',
-			'signed-out': 'Ovaj je uređaj odjavljen. Za nastavak ponovno skenirajte karticu.',
+			'signed-out': 'Ovaj je uređaj odjavljen. Za nastavak ponovno skenirajte QR kod.',
 			'unreadable-records':
 				'Neki zapisi vašeg vrtića nisu se otvorili na ovom uređaju. Pokušajte ponovno, a ako se to ponavlja, javite administratoru.',
-			'unknown-card': 'Ova kartica više ne radi. Zatražite novu u vrtiću.',
-			'invalid-card': 'To nije kod BubbleBoard kartice. Provjerite ga i pokušajte ponovno.',
+			'unknown-card': 'Ovaj QR kod više ne radi. Zatražite novi u vrtiću.',
+			'invalid-card': 'To nije BubbleBoard kod. Provjerite ga i pokušajte ponovno.',
 			mistyped: 'Jedan od znakova ne odgovara. Provjerite kod i pokušajte ponovno.',
-			'other-installation': 'Ova kartica pripada drugom BubbleBoardu.',
+			'other-installation': 'Ovaj QR kod pripada drugom BubbleBoardu.',
 			'no-code':
-				'Na fotografiji nema čitljivog QR koda. Pokušajte ponovno tako da se vidi cijela kartica.',
-			unreadable:
-				'Ova kartica ne može otvoriti zapise BubbleBoarda. Zatražite novu karticu u vrtiću.',
+				'Na fotografiji nema čitljivog QR koda. Pokušajte ponovno tako da se vidi cijeli QR kod.',
+			unreadable: 'Ovaj QR kod ne može otvoriti zapise BubbleBoarda. Zatražite novi u vrtiću.',
 			'too-many-attempts': 'Previše pokušaja. Pričekajte minutu pa pokušajte ponovno.',
 			'wrong-setup-token':
 				'Kod za postavljanje nije ispravan. Zatražite novu poveznicu od osobe koja je instalirala BubbleBoard.',
-			'already-set-up': 'BubbleBoard je ovdje već postavljen. Povežite se svojom karticom.',
+			'already-set-up': 'BubbleBoard je ovdje već postavljen. Povežite se svojim QR kodom.',
 			'setup-unavailable':
 				'Postavljanje na ovoj instalaciji još nije spremno. Obratite se osobi koja je instalirala BubbleBoard.',
 			'last-admin':

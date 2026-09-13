@@ -241,7 +241,7 @@
 						<div class={surface}>
 							<FieldForm
 								locale={data.locale}
-								label={t.newChild.classroom}
+								label={t.child.classroom}
 								options={otherClassrooms.map((option) => ({
 									value: option.id,
 									label: option.name

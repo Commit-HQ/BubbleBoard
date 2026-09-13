@@ -6,9 +6,9 @@ import { fromBase64Url, toBase64Url } from '$lib/base64url';
 // labels below for good, whatever happens to envelopes. A change to the bytes of either breaks cards or
 // records that already exist; src/lib/compatibility.test.ts holds values from September 2026 to catch it.
 //
-// Raw key bytes exist only inside createKey, rewrapKey, and unwrapKey, apart from a notice file's key, which
-// travels inside its notice's content (createFileKey). Every CryptoKey returned here is non-extractable,
-// which prevents accidental export, not use by a malicious script running in the app.
+// Raw key bytes exist only inside createKey, rewrapKey, and unwrapKey, apart from the keys that travel inside
+// a notice's content, a file's and a counted poll's (createContentKey). Every CryptoKey returned here is
+// non-extractable, which prevents accidental export, not use by a malicious script running in the app.
 
 /** Card format 1: the secret's size, the auth token's, and the HKDF labels for its two values. Never change them. */
 export const SECRET_BYTES = 16;
@@ -43,7 +43,10 @@ type DataContext =
 	| { purpose: 'notice-content'; notice: string }
 	// Encrypted with the answering family's Family Key, which ties it to that family.
 	| { purpose: 'poll-vote'; notice: string }
+	// Encrypted with its poll's key, which the notice's content holds, so whoever opens the notice counts it.
+	| { purpose: 'counted-poll-vote'; notice: string }
 	| { purpose: 'board-photo'; classroom: string; photo: string }
+	| { purpose: 'board-photo-details'; classroom: string; photo: string }
 	// Encrypted with a key of its own, which its notice's content holds.
 	| { purpose: 'notice-file'; file: string };
 
@@ -97,8 +100,11 @@ export function isId(value: unknown): value is string {
 	return typeof value === 'string' && fromBase64Url(value)?.length === 16;
 }
 
-/** Whether a value is a notice file's key, as its notice's content holds it (createFileKey). */
-export function isFileKey(value: unknown): value is string {
+/**
+ * Whether a value is a key as a notice's content holds it: a file's, or that of a poll whose counts families
+ * see (createContentKey).
+ */
+export function isContentKey(value: unknown): value is string {
 	return typeof value === 'string' && fromBase64Url(value)?.length === KEY_BYTES;
 }
 
@@ -180,10 +186,11 @@ export async function unwrapKey(envelope: string, wrapping: Wrapping) {
 }
 
 /**
- * A new key for one notice file, with its raw bytes in base64url for the notice's content to hold: whoever
- * opens the notice opens the file, and the key opens nothing else (docs/access-format.md).
+ * A new key for a notice's file, or for a poll whose counts families see, with its raw bytes in base64url for
+ * the notice's content to hold: whoever opens the notice opens the file or the answers, and the key opens
+ * nothing else (docs/access-format.md).
  */
-export async function createFileKey() {
+export async function createContentKey() {
 	const raw = randomBytes(KEY_BYTES);
 	try {
 		return { key: await importKey(raw), raw: toBase64Url(raw) };
@@ -192,8 +199,8 @@ export async function createFileKey() {
 	}
 }
 
-/** Opens a notice file's key from the raw bytes its notice's content holds. */
-export async function openFileKey(raw: string) {
+/** Opens a file's or a poll's key from the raw bytes its notice's content holds. */
+export async function openContentKey(raw: string) {
 	const bytes = fromBase64Url(raw);
 	if (bytes?.length !== KEY_BYTES) throw new UnreadableError();
 	try {

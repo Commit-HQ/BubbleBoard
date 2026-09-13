@@ -16,7 +16,7 @@
 	// The notice editor: Tiptap 3, imported when this component mounts, so only the page where notices are
 	// written downloads it (next-step-plan.md, Editor). Its schema holds what boards render: paragraphs,
 	// lists, bold, italic, links, and palette colours. Tiptap's injected stylesheet is off for the CSP, with
-	// its rules in app.css, and a colour is a mark that renders a class.
+	// its rules in app.css, and a colour is a mark that renders a class. Emoji come from the keyboard.
 	let {
 		locale,
 		content,
@@ -34,40 +34,6 @@
 	} = $props();
 
 	const t = $derived(messages[locale].app.editor);
-	const emoji = [
-		'😊',
-		'😂',
-		'🥰',
-		'👍',
-		'👏',
-		'🙏',
-		'❤️',
-		'⭐',
-		'🎉',
-		'🎈',
-		'🎂',
-		'🎁',
-		'🎨',
-		'🎵',
-		'📚',
-		'✏️',
-		'🧸',
-		'⚽',
-		'🍎',
-		'🍕',
-		'🧃',
-		'☀️',
-		'🌈',
-		'🌳',
-		'🍂',
-		'❄️',
-		'☔',
-		'🧤',
-		'📅',
-		'⏰',
-		'🚌',
-		'🏠'
-	];
 	let element = $state<HTMLDivElement>();
 	let editor = $state.raw<Editor>();
 	/** The formatting at the selection, for the toolbar. */
@@ -79,7 +45,7 @@
 		link: false,
 		colour: undefined as TextColour | undefined
 	});
-	let panel = $state<'link' | 'colour' | 'emoji'>();
+	let panel = $state<'link' | 'colour'>();
 	let linkInput = $state<HTMLInputElement>();
 	let linkRefused = $state(false);
 
@@ -188,7 +154,7 @@
 		if (editor) command(editor.chain().focus()).run();
 	}
 
-	function toggle(choice: 'link' | 'colour' | 'emoji') {
+	function toggle(choice: 'link' | 'colour') {
 		panel = panel === choice ? undefined : choice;
 		linkRefused = false;
 	}
@@ -256,7 +222,6 @@
 		)}
 		{@render tool('link', t.link, undefined, () => toggle('link'))}
 		{@render tool('palette', t.colour, undefined, () => toggle('colour'))}
-		{@render tool('smile', t.emoji, undefined, () => toggle('emoji'))}
 	</div>
 
 	{#if panel === 'link'}
@@ -314,20 +279,6 @@
 						class="size-6 rounded-full bg-current {colour ? textColourClass[colour] : 'text-ink'}"
 					></span>
 				</button>
-			{/each}
-		</div>
-	{:else if panel === 'emoji'}
-		<div
-			class="flex flex-wrap gap-1 border-b border-ink/10 bg-white/50 p-2"
-			role="group"
-			aria-label={t.emoji}
-		>
-			{#each emoji as symbol (symbol)}
-				<button
-					class="grid size-11 place-items-center rounded-xl text-2xl hover:bg-ink/5"
-					type="button"
-					onclick={() => run((chain) => chain.insertContent(symbol))}>{symbol}</button
-				>
 			{/each}
 		</div>
 	{/if}

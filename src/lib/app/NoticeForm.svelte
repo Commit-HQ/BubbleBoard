@@ -60,6 +60,8 @@
 					? own
 					: [],
 			polling: notice?.poll !== undefined,
+			counting: notice?.poll?.key !== undefined,
+			answered: (notice?.votes.length ?? 0) > 0,
 			options: notice?.poll?.options.map((option) => ({ ...option })) ?? [
 				blankOption(),
 				blankOption()
@@ -73,6 +75,8 @@
 	let chosen = $state(start.chosen);
 	let announce = $state(false);
 	let polling = $state(start.polling);
+	/** Whether families see how many chose each answer. */
+	let counting = $state(start.counting);
 	let options = $state(start.options);
 	let optionInputs = $state<HTMLInputElement[]>([]);
 	/** The files the notice carries already, and those made ready to attach. */
@@ -85,6 +89,10 @@
 		new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(
 			(notice?.postedAt ?? Date.now()) + days * day
 		)
+	);
+	/** Whether saving clears the answers given: families would see the counts, or stop seeing them. */
+	const clearsAnswers = $derived(
+		start.answered && start.polling && polling && counting !== start.counting
 	);
 
 	async function addOption() {
@@ -127,7 +135,7 @@
 		else if (polling && answers.length < minPollOptions) task.error = 'poll-answers';
 		else if (!chosen.length) task.error = 'no-classrooms';
 		else {
-			const poll = polling ? { options: answers } : undefined;
+			const poll = polling ? { options: answers, counts: counting } : undefined;
 			const values = { classrooms: [...chosen], paper, days, body, announce, poll, files };
 			task.run(async () => {
 				await app.saveNotice(values, notice);
@@ -189,6 +197,8 @@
 						</button>
 					{/if}
 				</div>
+				<CheckCard label={t.polls.counts} hint={t.polls.countsHint} bind:checked={counting} />
+				{#if clearsAnswers}<p class={field.hint}>{t.polls.countsChanging}</p>{/if}
 			{:else if notice?.poll}
 				<p class={field.hint}>{t.polls.removing}</p>
 			{/if}

@@ -139,7 +139,7 @@ describe('polls', () => {
 		const staffKeys = async (family: string) => familyKeys.get(family);
 		const answer = async (family: string, chosen: string, { notice = id, key = family } = {}) => ({
 			family,
-			choice: await sealVote(notice, chosen, familyKeys.get(key) ?? (await openedKey()))
+			choice: await sealVote(notice, chosen, poll, familyKeys.get(key) ?? (await openedKey()))
 		});
 		record.votes = [
 			await answer(ana, wednesday),
@@ -163,6 +163,35 @@ describe('polls', () => {
 		const changed = served(id, await sealNotice(id, content, [classroom]));
 		const opened = await openNotice({ ...changed, votes: record.votes }, groupKeys, staffKeys);
 		expect(opened.votes).toEqual([]);
+	});
+
+	it('open every answer with the poll’s key when families see its counts, on any device that opens the notice', async () => {
+		const classroom = { id: createId(), groupKey: await openedKey() };
+		const groupKeys = new Map([[classroom.id, classroom.groupKey]]);
+		const id = createId();
+		const counted = { ...poll, key: toBase64Url(crypto.getRandomValues(new Uint8Array(32))) };
+		const record = served(id, await sealNotice(id, { ...content, poll: counted }, [classroom]));
+		const [ana, ivo, eva] = [createId(), createId(), createId()];
+		record.votes = [
+			{ family: ana, choice: await sealVote(id, wednesday, counted, await openedKey()) },
+			{ family: ivo, choice: await sealVote(id, tuesday, counted, await openedKey()) },
+			// Written with the family's own key, and for another notice.
+			{ family: eva, choice: await sealVote(id, tuesday, poll, await openedKey()) },
+			{ family: eva, choice: await sealVote(createId(), tuesday, counted, await openedKey()) }
+		];
+
+		// A device without any Family Key, such as another family's, counts them.
+		const opened = await openNotice(record, groupKeys);
+		expect(opened.poll).toEqual(counted);
+		expect(opened.votes).toEqual([
+			{ family: ana, option: wednesday },
+			{ family: ivo, option: tuesday }
+		]);
+
+		// A key that isn't one leaves the notice unreadable.
+		const broken = { ...poll, key: 'not a key' };
+		const unreadable = served(id, await sealNotice(id, { ...content, poll: broken }, [classroom]));
+		await expect(openNotice(unreadable, groupKeys)).rejects.toThrow(UnreadableError);
 	});
 
 	it('refuse a poll without two to ten answers, each with its own ID and a few words', async () => {

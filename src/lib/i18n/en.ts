@@ -59,12 +59,12 @@ export const en = {
 		},
 		devices: {
 			title: 'On every family device',
-			copy: 'One family card works on every phone, tablet, and computer at home.'
+			copy: 'One family QR code works on every phone, tablet, and computer at home.'
 		}
 	},
 	how: {
-		title: 'One card. Your classroom.',
-		copy: 'Parents and teachers join the same way. Your kindergarten hands out QR cards: one family card for all your family’s devices, and a teacher card for each teacher. That’s all you need.',
+		title: 'One QR code. Your classroom.',
+		copy: 'Parents and teachers join the same way. Your kindergarten hands out QR codes: one for all your family’s devices, and one for each teacher. That’s all you need.',
 		photoAlt: 'A kindergarten teacher sitting on the floor talking with a group of children',
 		steps: [
 			{
@@ -73,8 +73,8 @@ export const en = {
 			},
 			{ title: 'Turn on notifications', copy: 'Hear when there’s something new to see.' },
 			{
-				title: 'Scan your card',
-				copy: 'Open the app and scan the card from your kindergarten. No username or password to remember.'
+				title: 'Scan your QR code',
+				copy: 'Open the app and scan the QR code from your kindergarten. No username or password to remember.'
 			}
 		]
 	},
@@ -122,7 +122,7 @@ export const en = {
 		},
 		access: {
 			title: 'Access you control',
-			copy: 'Give a substitute temporary access or replace a lost card in a few taps.'
+			copy: 'Give a substitute temporary access or replace a lost QR code in a few taps.'
 		}
 	},
 	kindergartens: {
@@ -168,6 +168,7 @@ export const en = {
 		home: 'Go to the home page',
 		app: 'Open BubbleBoard'
 	},
+	// In the app, what cards are and do is called a QR code: parents found "card" confusing (2026-09-13).
 	app: {
 		loading: 'Opening BubbleBoard…',
 		noscript:
@@ -183,7 +184,7 @@ export const en = {
 		},
 		connectFirst: {
 			title: 'Connect this device first',
-			copy: 'Open BubbleBoard’s home page and use your card.',
+			copy: 'Open BubbleBoard’s home page and scan your QR code.',
 			action: 'Go to BubbleBoard'
 		},
 		adminOnly: {
@@ -215,72 +216,73 @@ export const en = {
 		},
 		staffOnly: {
 			title: 'This page is for teachers',
-			copy: 'A family card opens the home page, where notices and photos will appear.'
+			copy: 'A family QR code opens the home page, where notices and photos will appear.'
 		},
 		connect: {
 			title: 'Connect this device',
-			copy: 'Use the QR card from your kindergarten. You can also point your phone’s camera at the card.',
-			scan: 'Scan card',
+			copy: 'Scan the QR code from your kindergarten. You can also point your phone’s camera at it.',
+			scan: 'Scan QR code',
 			enter: 'Enter code',
-			camera: 'Point the camera at the QR code on the card.',
+			camera: 'Point the camera at the QR code.',
 			cameraStarting: 'Opening the camera…',
 			cameraBlocked:
-				'BubbleBoard isn’t allowed to use the camera. Allow it in your browser’s settings, or choose a photo of the card.',
-			noCamera: 'There’s no camera BubbleBoard can use here. Choose a photo of the card instead.',
+				'BubbleBoard isn’t allowed to use the camera. Allow it in your browser’s settings, or choose a photo of the QR code.',
+			noCamera:
+				'There’s no camera BubbleBoard can use here. Choose a photo of the QR code instead.',
 			photo: 'Choose a photo',
-			code: 'Card code',
-			codeHint: 'The 28 letters and numbers printed on the card.',
+			code: 'Code',
+			codeHint: 'The 28 letters and numbers printed under the QR code.',
 			submit: 'Connect',
-			scanning: 'Reading the card…',
+			scanning: 'Reading the QR code…',
 			connecting: 'Connecting…',
-			replaceTitle: 'Use a different card?',
+			replaceTitle: 'Use a different QR code?',
 			replaceStaff: (name: string) =>
-				`This device is connected as ${name}. To connect it that way again later, you’ll need that card.`,
+				`This device is connected as ${name}. To connect it that way again later, you’ll need that QR code.`,
 			replaceOther:
-				'This device is already connected with another card. To connect it that way again later, you’ll need that card.',
-			replaceConfirm: 'Use the new card',
-			keep: 'Keep the current card'
+				'This device is already connected with another QR code. To connect it that way again later, you’ll need that QR code.',
+			replaceConfirm: 'Use the new QR code',
+			keep: 'Keep the current one'
 		},
 		setup: {
 			title: 'Set up BubbleBoard',
-			copy: 'You’ll get two cards: your own, and a recovery card to keep somewhere safe. Both can manage everything.',
+			copy: 'You’ll get two QR codes: your own, and a recovery QR code to keep somewhere safe. Both can manage everything.',
 			name: 'Your name',
 			nameHint: 'Other teachers will see it, for example “Ana Horvat”.',
 			token: 'Setup code',
 			tokenHint: 'It’s in the setup link. Ask whoever installed BubbleBoard.',
-			submit: 'Create cards',
-			creating: 'Creating your cards…',
+			submit: 'Create QR codes',
+			creating: 'Creating your QR codes…',
 			connectedTitle: 'This device is already connected',
 			connectedCopy: 'BubbleBoard is set up and ready to use.',
 			open: 'Open BubbleBoard',
-			connect: 'Connect with your card'
+			connect: 'Connect with your QR code'
 		},
 		card: {
 			title: (count: number): string =>
-				count === 1 ? 'Print or save this card' : 'Print or save these cards',
-			copy: 'The code is shown only now. If you leave before printing, use Replace card to make a new one.',
+				count === 1 ? 'Print or save this QR code' : 'Print or save these QR codes',
+			copy: 'The code is shown only now. If you leave before printing, use Replace QR code to make a new one.',
 			setupCopy:
-				'The codes are shown only now. Print both cards, or save them as a PDF, before you continue.',
+				'The codes are shown only now. Print both QR codes, or save them as a PDF, before you continue.',
 			print: 'Print',
-			confirm: 'I’ve printed or saved both cards',
+			confirm: 'I’ve printed or saved both QR codes',
 			continue: 'Continue',
-			leaveFirst: 'Print or save both cards first, then tick the box.',
+			leaveFirst: 'Print or save both QR codes first, then tick the box.',
 			kinds: {
-				admin: 'Admin card',
-				teacher: 'Teacher card',
-				recovery: 'Recovery card',
-				family: 'Family card'
+				admin: 'Admin QR code',
+				teacher: 'Teacher QR code',
+				recovery: 'Recovery QR code',
+				family: 'Family QR code'
 			},
 			scan: (address: string) =>
 				`Point your phone’s camera at the QR code, or go to ${address} and enter:`,
 			about: 'Notices and photos from your kindergarten.',
-			private: 'Don’t share this card. If it’s lost, your kindergarten can give you a new one.',
+			private: 'Don’t share this QR code. If it’s lost, your kindergarten can give you a new one.',
 			recovery:
-				'Use it only if every admin card is lost. Keep it locked away, apart from your own card.',
+				'Use it only if every admin QR code is lost. Keep it locked away, apart from your own.',
 			qr: (name: string) => `QR code for ${name}`,
-			replace: 'Replace card',
-			replaceTitle: (name: string) => `Replace the card for ${name}?`,
-			replaceCopy: 'The old card stops working, and every device that used it is signed out.'
+			replace: 'Replace QR code',
+			replaceTitle: (name: string) => `Replace the QR code for ${name}?`,
+			replaceCopy: 'The old QR code stops working, and every device that used it is signed out.'
 		},
 		home: {
 			title: 'Home'
@@ -293,7 +295,7 @@ export const en = {
 			addClassroom: 'Add classroom',
 			classroomName: 'Classroom name',
 			teachers: 'Teachers',
-			teachersDetail: 'Names, classrooms, and cards',
+			teachersDetail: 'Names, classrooms, and QR codes',
 			emptyAdmin: 'Start by adding your first classroom.',
 			emptyTeacher: 'You haven’t been added to a classroom yet. An admin can add you.'
 		},
@@ -306,59 +308,61 @@ export const en = {
 			delete: 'Delete classroom',
 			deleteTitle: (name: string) => `Delete ${name}?`,
 			deleteCopy: 'This can’t be undone.',
-			noCards: 'No family card yet',
-			replaceCards: 'Replace cards',
-			replaceTitle: 'Replace family cards',
-			replaceCopy: 'Choose the cards to replace, then print the new ones together.',
-			replaceSubmit: (count: number) => (count === 1 ? 'Replace 1 card' : `Replace ${count} cards`),
+			noCards: 'No family QR code yet',
+			replaceCards: 'Replace QR codes',
+			replaceTitle: 'Replace family QR codes',
+			replaceCopy: 'Choose the QR codes to replace, then print the new ones together.',
+			replaceSubmit: (count: number) =>
+				count === 1 ? 'Replace 1 QR code' : `Replace ${count} QR codes`,
 			replaceConfirm: (count: number) =>
-				count === 1 ? 'Replace 1 card?' : `Replace ${count} cards?`,
+				count === 1 ? 'Replace 1 QR code?' : `Replace ${count} QR codes?`,
 			replaceConfirmCopy:
-				'The old cards stop working, and every device that used them is signed out.'
+				'The old QR codes stop working, and every device that used them is signed out.'
 		},
 		newChild: {
 			title: 'Add child',
 			name: 'Child’s name',
-			classroom: 'Classroom',
-			cards: 'Family card',
-			newCard: 'New family card',
+			cards: 'Family QR code',
+			newCard: 'New family QR code',
 			newCardHint: 'You’ll print it for the family.',
-			cardName: 'Who gets the card?',
+			cardName: 'Who gets the QR code?',
 			cardNameHint:
-				'For example “Ivana (mum)”. Parents who live apart can each get their own card later.',
-			sibling: 'Brother’s or sister’s card',
-			siblingHint: 'The family uses the card it already has.',
+				'For example “Ivana (mum)”. Parents who live apart can each get their own QR code later.',
+			sibling: 'Brother’s or sister’s QR code',
+			siblingHint: 'The family uses the QR code it already has.',
 			siblingName: 'Brother or sister',
 			submit: 'Add child',
 			added: (name: string) => `Added ${name}.`,
-			toPrint: (count: number) => (count === 1 ? '1 card to print' : `${count} cards to print`),
+			toPrint: (count: number) =>
+				count === 1 ? '1 QR code to print' : `${count} QR codes to print`,
 			toPrintCopy:
-				'Add more children, then print all the new family cards together. Their codes are shown only on this page.',
-			print: (count: number) => (count === 1 ? 'Print the card' : `Print ${count} cards`),
+				'Add more children, then print all the new family QR codes together. They’re shown only on this page.',
+			print: (count: number) => (count === 1 ? 'Print the QR code' : `Print ${count} QR codes`),
 			leaveTitle: 'Leave without printing?',
 			leaveCopy:
-				'The new cards’ codes are shown only on this page. To print them later, replace the cards from the classroom.',
+				'The new QR codes are shown only on this page. To print them later, replace them from the classroom.',
 			leave: 'Leave',
 			stay: 'Stay'
 		},
 		child: {
-			cards: 'Family cards',
-			noCards: 'No family card yet. Add one so the family can connect.',
+			cards: 'Family QR codes',
+			noCards: 'No family QR code yet. Add one so the family can connect.',
 			also: (children: string[]) => `Also for ${list(children)}`,
-			removeCardTitle: (name: string) => `Remove the card for ${name}?`,
-			removeCardShared: (children: string[]) => `The card keeps working for ${list(children)}.`,
-			removeCardLast: 'The card stops working, and every device that used it is signed out.',
-			cardName: 'Name on the card',
-			addFirstCard: 'Add a family card',
-			addCard: 'Add another family card',
-			addCardHint: 'For parents who live apart: each card gets its own private messages.',
+			removeCardTitle: (name: string) => `Remove the QR code for ${name}?`,
+			removeCardShared: (children: string[]) => `The QR code keeps working for ${list(children)}.`,
+			removeCardLast: 'The QR code stops working, and every device that used it is signed out.',
+			cardName: 'Name on the QR code',
+			addFirstCard: 'Add a family QR code',
+			addCard: 'Add another family QR code',
+			addCardHint: 'For parents who live apart: each QR code gets its own private messages.',
 			move: 'Move to another classroom',
+			classroom: 'Classroom',
 			moveSubmit: 'Move',
 			remove: 'Remove child',
 			removeTitle: (name: string) => `Remove ${name}?`,
 			removeCopy: (cards: string[]) =>
 				cards.length
-					? `Family cards that will stop working: ${list(cards)}.`
+					? `Family QR codes that will stop working: ${list(cards)}.`
 					: 'This can’t be undone.'
 		},
 		teachers: {
@@ -368,7 +372,7 @@ export const en = {
 			you: 'you',
 			noClassrooms: 'No classrooms',
 			recoveryTitle: 'For emergencies',
-			recoveryDetail: 'Opens everything if every admin card is lost.'
+			recoveryDetail: 'Opens everything if every admin QR code is lost.'
 		},
 		teacher: {
 			newTitle: 'Add teacher',
@@ -378,22 +382,22 @@ export const en = {
 			admin: 'Admin',
 			adminHint: 'Can add classrooms, teachers, and children, and open every classroom.',
 			selfAdmin: 'Another admin can change this.',
-			create: 'Create card',
+			create: 'Create QR code',
 			remove: 'Remove teacher',
 			removeTitle: (name: string) => `Remove ${name}?`,
 			removeCopy: (name: string) =>
-				`${name} won’t be able to open BubbleBoard anymore, and devices using their card will be signed out.`,
+				`${name} won’t be able to open BubbleBoard anymore, and devices using their QR code will be signed out.`,
 			self: 'This is you. Another admin can remove you.',
 			recovery:
-				'The recovery card can do everything an admin can. Keep it locked away, and replace it if someone else may have seen it.'
+				'The recovery QR code can do everything an admin can. Keep it locked away, and replace it if someone else may have seen it.'
 		},
 		options: {
 			title: 'Settings',
 			staff: (name: string) => `Connected as ${name}`,
-			family: 'Connected with a family card',
+			family: 'Connected with a family QR code',
 			signOut: 'Sign out of this device',
 			signOutTitle: 'Sign out of this device?',
-			signOutCopy: 'To use BubbleBoard here again, you’ll need your card.',
+			signOutCopy: 'To use BubbleBoard here again, you’ll need your QR code.',
 			about: 'About BubbleBoard'
 		},
 		notices: {
@@ -444,15 +448,23 @@ export const en = {
 		},
 		polls: {
 			add: 'Add a poll',
-			addHint: 'Families answer with a tap. Only teachers see who chose what.',
+			addHint: 'Only teachers see who chose what.',
 			answers: 'Answers',
 			answer: (number: number) => `Answer ${number}`,
 			removeAnswer: (number: number) => `Remove answer ${number}`,
 			addAnswer: 'Add an answer',
+			counts: 'Families see the vote counts',
+			countsHint: 'Beside each answer, how many families chose it, but not which.',
+			countsChanging: 'Saving clears the answers so far, and families answer again.',
 			removing: 'Saving takes the poll off the notice, with its answers.',
 			title: 'Poll',
+			countsShown: 'Families see how many votes each answer has.',
 			choose: 'Choose an answer',
-			private: 'Only teachers see your answer. You can change it.',
+			confirm: 'Confirm answer',
+			yours: (answer: string) => `Your answer: ${answer}`,
+			change: 'Change answer',
+			private: 'Only teachers see your answer.',
+			counted: 'Every family sees the vote counts, and only teachers see who chose what.',
 			votes: (count: number) => (count === 1 ? '1 vote' : `${count} votes`),
 			noAnswer: (names: string[]) => `No answer yet: ${list(names)}`
 		},
@@ -472,7 +484,6 @@ export const en = {
 			putUp: 'Put it up',
 			replaces: 'It takes the place of the photo that’s up now.',
 			open: (classroom: string) => `Open the photo of the ${classroom} board`,
-			posted: (date: string) => `put up ${date}`,
 			loading: 'Opening the photo…',
 			zoom: 'Zoom in',
 			fit: 'Fit to the screen',
@@ -483,9 +494,9 @@ export const en = {
 			removeCopy: 'It comes off every home right away.'
 		},
 		notifications: {
-			test: 'Notifications are on. You’ll get one like this when there’s a new notice.',
-			cardTitle: 'Get a notification when there’s a new notice',
-			cardCopy: 'It says only that there’s something new. The notice itself stays in the app.',
+			test: 'Notifications are on',
+			cardTitle: 'Turn on notifications',
+			cardCopy: 'Find out when your kindergarten posts something new.',
 			turnOn: 'Turn on',
 			turnOff: 'Turn off',
 			notNow: 'Not now',
@@ -502,7 +513,7 @@ export const en = {
 				'On iPhone and iPad, notifications from your kindergarten reach only the BubbleBoard on your Home Screen.',
 			iosShare: 'Tap Share. In Safari, it can be in the ··· menu.',
 			iosAdd: 'Choose Add to Home Screen, then Add.',
-			iosOpen: 'Open BubbleBoard from your Home Screen and scan your card there.',
+			iosOpen: 'Open BubbleBoard from your Home Screen.',
 			androidTitle: 'Install BubbleBoard',
 			androidCopy: 'As an app on your phone, BubbleBoard can tell you when there’s something new.',
 			androidMenu: 'Open your browser’s menu.',
@@ -512,7 +523,7 @@ export const en = {
 			installed: 'BubbleBoard is installed. Open it from your home screen.',
 			inAppTitle: 'Open BubbleBoard in your browser',
 			inAppCopy:
-				'The browser inside this app can’t install BubbleBoard. Open the page in Safari or Chrome, usually from the ··· menu, then scan your card again.'
+				'The browser inside this app can’t install BubbleBoard. Open the page in Safari or Chrome, usually from the ··· menu, then scan your QR code again.'
 		},
 		editor: {
 			toolbar: 'Formatting',
@@ -534,8 +545,7 @@ export const en = {
 				green: 'Green',
 				blue: 'Blue',
 				purple: 'Purple'
-			},
-			emoji: 'Emoji'
+			}
 		},
 		files: {
 			title: 'Files',
@@ -566,21 +576,21 @@ export const en = {
 			'download-limit':
 				'BubbleBoard has reached this month’s limit for opening photos and files. They open again next month, or whoever installed BubbleBoard can raise the limit.',
 			offline: 'BubbleBoard can’t be reached. Check your internet connection and try again.',
-			'signed-out': 'This device was signed out. Scan your card again to continue.',
+			'signed-out': 'This device was signed out. Scan your QR code again to continue.',
 			'unreadable-records':
 				'Some of your kindergarten’s records didn’t open on this device. Try again, and if it keeps happening, tell an admin.',
-			'unknown-card': 'This card doesn’t work anymore. Ask your kindergarten for a new one.',
-			'invalid-card': 'That isn’t a BubbleBoard card code. Check it and try again.',
+			'unknown-card': 'This QR code doesn’t work anymore. Ask your kindergarten for a new one.',
+			'invalid-card': 'That isn’t a BubbleBoard code. Check it and try again.',
 			mistyped: 'One of the characters doesn’t match. Check the code and try again.',
-			'other-installation': 'This card is for a different BubbleBoard.',
+			'other-installation': 'This QR code is for a different BubbleBoard.',
 			'no-code':
-				'There’s no readable QR code in that photo. Try again with the whole card in view.',
+				'There’s no readable QR code in that photo. Try again with the whole QR code in view.',
 			unreadable:
-				'This card couldn’t open BubbleBoard’s records. Ask your kindergarten for a new card.',
+				'This QR code couldn’t open BubbleBoard’s records. Ask your kindergarten for a new one.',
 			'too-many-attempts': 'Too many attempts. Wait a minute, then try again.',
 			'wrong-setup-token':
 				'This setup code isn’t right. Ask whoever installed BubbleBoard for a new setup link.',
-			'already-set-up': 'BubbleBoard is already set up here. Connect with your card instead.',
+			'already-set-up': 'BubbleBoard is already set up here. Connect with your QR code instead.',
 			'setup-unavailable':
 				'Setup isn’t ready on this installation. Ask whoever installed BubbleBoard.',
 			'last-admin': 'BubbleBoard needs at least one admin. Make someone else an admin first.',

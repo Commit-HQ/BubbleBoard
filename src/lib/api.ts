@@ -86,12 +86,21 @@ export type NoticeRecord = {
 	 * the families in a teacher's classrooms, or every family for an admin.
 	 */
 	seen: string[];
-	/** The answers to its poll, from the same families as `seen`. */
+	/**
+	 * The answers to its poll, from the same families as `seen`, and on a family device, when families see the
+	 * poll's counts, from every family the notice is for.
+	 */
 	votes: VoteRecord[];
 };
 
-/** A family's answer to a notice's poll, encrypted with its Family Key. */
+/** A family's answer to a notice's poll, encrypted with its Family Key, or with the poll's key when counted. */
 export type VoteRecord = { family: string; choice: string };
+
+/**
+ * A family's answer as its device sends it, with whether the device read the poll as one whose counts families
+ * see, which says which key the answer is encrypted with.
+ */
+export type PollAnswer = { choice: string; counts: boolean };
 
 /** A notice as a device changes it, sealed again under a new Notice Key. */
 export type NoticeChange = {
@@ -102,14 +111,28 @@ export type NoticeChange = {
 	announce: boolean;
 	/** Whether its content holds a poll for families to answer. Taking the poll off removes the answers. */
 	poll: boolean;
+	/**
+	 * Whether families see how many chose each of the poll's answers, which only a poll can show. Changing it
+	 * removes the answers, which were encrypted with another key.
+	 */
+	counts: boolean;
 	classrooms: NoticeKey[];
 	/** The files its content holds, uploaded just before. The files a change leaves out are deleted. */
 	files: string[];
 };
 export type NewNotice = Omit<NoticeChange, 'announce'> & { id: string };
 
-/** The photo a classroom's board shows, as the server keeps it. Its encrypted bytes are fetched on their own. */
-export type PhotoRecord = { id: string; classroom: string; postedAt: number };
+/**
+ * The photo a classroom's board shows, as the server keeps it, with its details, who put it up, encrypted with
+ * the classroom's Group Key; photos put up before details were kept have none. Its encrypted bytes are fetched
+ * on their own.
+ */
+export type PhotoRecord = {
+	id: string;
+	classroom: string;
+	postedAt: number;
+	details: string | null;
+};
 
 /**
  * What a connected device opens: a staff member's records, or the classrooms a family's card joined, with
@@ -150,13 +173,17 @@ async function failure(response: Response) {
 	return new ApiError(response.status, typeof code === 'string' ? code : 'unexpected');
 }
 
-/** Sends JSON, or encrypted bytes such as a photo's, and reads the JSON that comes back. */
+/**
+ * Sends JSON, or encrypted bytes such as a photo's with the `extra` headers that go with them, and reads the
+ * JSON that comes back.
+ */
 export async function request<T = void>(
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE',
 	path: string,
-	body?: unknown
+	body?: unknown,
+	extra: Record<string, string> = {}
 ): Promise<T> {
-	const headers: Record<string, string> = { accept: 'application/json' };
+	const headers: Record<string, string> = { ...extra, accept: 'application/json' };
 	let content: BodyInit | undefined;
 	if (body instanceof Uint8Array) {
 		headers['content-type'] = 'application/octet-stream';

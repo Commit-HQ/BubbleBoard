@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createId, SEALED_BYTES_OVERHEAD, UnreadableError } from './crypto';
-import { imageType, openPhoto, sealPhoto } from './photos';
+import { createId, encryptData, SEALED_BYTES_OVERHEAD, UnreadableError } from './crypto';
+import { imageType, openPhoto, openPhotoDetails, sealPhoto, sealPhotoDetails } from './photos';
 
 // Photos of the board, sealed as a staff device puts one up and opened as the classroom's devices show it.
 // A few bytes that start the way each format does stand in for a photo.
@@ -54,5 +54,26 @@ describe('board photos', () => {
 		const [classroom, id, key] = [createId(), createId(), await groupKey()];
 		const sealed = await sealPhoto(svg, key, classroom, id);
 		await expect(openPhoto(sealed, key, classroom, id)).rejects.toThrow(UnreadableError);
+	});
+
+	it('say who put them up, in details that open only with their classroom’s key, for their own photo', async () => {
+		const [bubbles, owls, id] = [createId(), createId(), createId()];
+		const [key, otherKey] = [await groupKey(), await groupKey()];
+		const sealed = await sealPhotoDetails({ author: 'Ana Horvat' }, key, bubbles, id);
+		expect(await openPhotoDetails(sealed, key, bubbles, id)).toEqual({ author: 'Ana Horvat' });
+		// The recovery card puts photos up without a name.
+		const unnamed = await sealPhotoDetails({}, key, bubbles, id);
+		expect(await openPhotoDetails(unnamed, key, bubbles, id)).toEqual({});
+
+		const context = { purpose: 'board-photo-details', classroom: bubbles, photo: id } as const;
+		const numbered = await encryptData({ author: 7 }, key, context);
+		for (const [refused, attempt] of [
+			['another classroom’s key', () => openPhotoDetails(sealed, otherKey, bubbles, id)],
+			['another classroom', () => openPhotoDetails(sealed, key, owls, id)],
+			['another photo', () => openPhotoDetails(sealed, key, bubbles, createId())],
+			['an author that isn’t a name', () => openPhotoDetails(numbered, key, bubbles, id)]
+		] as const) {
+			await expect(attempt(), refused).rejects.toThrow(UnreadableError);
+		}
 	});
 });

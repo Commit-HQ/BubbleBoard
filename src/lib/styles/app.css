@@ -197,7 +197,8 @@
  */
 .ProseMirror {
 	position: relative;
-	word-wrap: break-word;
+	/* Anywhere, as on the rest of the page, where Tiptap has break-word: a long link doesn't widen the form. */
+	overflow-wrap: anywhere;
 	white-space: pre-wrap;
 	white-space: break-spaces;
 	font-variant-ligatures: none;

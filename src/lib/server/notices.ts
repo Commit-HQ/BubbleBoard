@@ -6,6 +6,7 @@ import type {
 	NoticeChange,
 	NoticeKey,
 	NoticeRecord,
+	PollAnswer,
 	Staff,
 	VoteRecord
 } from '$lib/api';
@@ -17,9 +18,10 @@ import { deleteMarked, getObject, putObject, type ObjectStore } from './storage'
 // can't read a notice, so it decides who sees and changes which. Teachers post to their own classrooms and
 // admins to any; the author and admins change and delete a notice; everyone reads the notices of their
 // classrooms, and admins those of every classroom. Families mark the notices they see as seen and answer
-// their polls, which their teachers see. A notice names the files it carries: their encrypted bytes are
-// uploaded before it's saved, and deleted once it no longer names them. Reads leave out notices past their
-// days, which the daily cleanup deletes with their files (cleanup.ts).
+// their polls, which their teachers see, and which the notice's families see too when its poll shows the
+// counts. A notice names the files it carries: their encrypted bytes are uploaded before it's saved, and
+// deleted once it no longer names them. Reads leave out notices past their days, which the daily cleanup
+// deletes with their files (cleanup.ts).
 
 /**
  * The families whose marks and answers on notices someone sees, as a query and its parameters: a family
@@ -38,11 +40,17 @@ function visibleFamilies(viewer: Identity): [string, string[]] {
 /**
  * The notices someone sees that are still up, the most recently announced first. Each comes once, with its
  * key for every one of its classrooms the viewer sees, and the marks and poll answers of the families the
- * viewer sees.
+ * viewer sees. A family also gets the answers of every family a notice is for when its poll shows the counts,
+ * which are encrypted with the poll's key.
  */
 function boardQuery(db: D1Database, viewer: Identity) {
 	const [families, familyParams] = visibleFamilies(viewer);
 	const [classrooms, classroomParams] = visibleClassrooms(viewer);
+	const counted =
+		viewer.kind === 'family'
+			? `OR (n.poll_counts AND family_id IN (SELECT fc.family_id FROM family_classrooms fc
+			JOIN notice_classrooms c ON c.classroom_id = fc.classroom_id WHERE c.notice_id = n.id))`
+			: '';
 	// Parameters go in the order the query uses them.
 	return db
 		.prepare(
@@ -53,7 +61,7 @@ function boardQuery(db: D1Database, viewer: Identity) {
 			(SELECT json_group_array(family_id) FROM notice_seen
 			WHERE notice_id = n.id AND family_id IN (SELECT * FROM visible_families)) AS seen,
 			(SELECT json_group_array(json_object('family', family_id, 'choice', choice)) FROM poll_votes
-			WHERE notice_id = n.id AND family_id IN (SELECT * FROM visible_families)) AS votes
+			WHERE notice_id = n.id AND (family_id IN (SELECT * FROM visible_families) ${counted})) AS votes
 			FROM notices n JOIN notice_classrooms nc ON nc.notice_id = n.id
 			WHERE n.expires_at > ? AND nc.classroom_id IN (${classrooms})
 			GROUP BY n.id ORDER BY n.announced_at DESC, n.id`
@@ -121,13 +129,14 @@ export async function postNotice(db: D1Database, staff: Staff, notice: NewNotice
 	return changeBoard(db, staff, [
 		db
 			.prepare(
-				'INSERT INTO notices (id, teacher_id, content, poll, posted_at, announced_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+				'INSERT INTO notices (id, teacher_id, content, poll, poll_counts, posted_at, announced_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
 			)
 			.bind(
 				notice.id,
 				staff.teacher,
 				notice.content,
 				Number(notice.poll),
+				Number(notice.counts),
 				now,
 				now,
 				now + notice.days * day
@@ -166,14 +175,21 @@ export async function changeNotice(
 	);
 	const now = Date.now();
 	const records = await changeBoard(db, staff, [
+		// Answers encrypted for families that see the counts, or for those that don't, go when that changes.
 		db
 			.prepare(
-				`UPDATE notices SET content = ?, poll = ?, edited_at = ?, expires_at = ?,
+				'DELETE FROM poll_votes WHERE notice_id = ?1 AND (SELECT poll_counts FROM notices WHERE id = ?1) <> ?2'
+			)
+			.bind(id, Number(change.counts)),
+		db
+			.prepare(
+				`UPDATE notices SET content = ?, poll = ?, poll_counts = ?, edited_at = ?, expires_at = ?,
 				announced_at = CASE WHEN ? THEN ? ELSE announced_at END WHERE id = ?`
 			)
 			.bind(
 				change.content,
 				Number(change.poll),
+				Number(change.counts),
 				now,
 				postedAt + change.days * day,
 				Number(change.announce),
@@ -230,18 +246,21 @@ export async function uploadFile(
 	await putObject(db, store, fileKey(notice, file), bytes);
 }
 
-/** A notice that's still up for one of the classrooms someone sees, and whether it has a poll. */
+/**
+ * A notice that's still up for one of the classrooms someone sees, whether it has a poll, and whether
+ * families see the poll's counts.
+ */
 async function visibleNotice(db: D1Database, viewer: Identity, id: string) {
 	const [classrooms, params] = visibleClassrooms(viewer);
 	const notice = await db
 		.prepare(
-			`SELECT poll FROM notices WHERE id = ? AND expires_at > ? AND id IN
+			`SELECT poll, poll_counts AS counts FROM notices WHERE id = ? AND expires_at > ? AND id IN
 			(SELECT notice_id FROM notice_classrooms WHERE classroom_id IN (${classrooms}))`
 		)
 		.bind(id, Date.now(), ...params)
-		.first<{ poll: number }>();
+		.first<{ poll: number; counts: number }>();
 	if (!notice) error(404, 'not-found');
-	return { poll: notice.poll === 1 };
+	return { poll: notice.poll === 1, counts: notice.counts === 1 };
 }
 
 /** A notice file's encrypted bytes, while the notice is up and names it, for someone who sees the notice. */
@@ -280,19 +299,21 @@ export async function markSeen(db: D1Database, family: FamilyIdentity, id: strin
 
 /**
  * Answers a notice's poll for a family that sees it, in place of its earlier answer, marks the notice as
- * seen, and returns the board as the family sees it now. A device that answers a notice without a poll has an
- * outdated board, so it's told to load it again.
+ * seen, and returns the board as the family sees it now. A device that answers a notice without a poll, or
+ * one whose counts it read the other way, has an outdated board, so it's told to load it again; an answer
+ * that crosses a change to the counts isn't kept.
  */
-export async function vote(db: D1Database, family: FamilyIdentity, id: string, choice: string) {
-	const { poll } = await visibleNotice(db, family, id);
-	if (!poll) error(409, 'stale');
+export async function vote(db: D1Database, family: FamilyIdentity, id: string, answer: PollAnswer) {
+	const { poll, counts } = await visibleNotice(db, family, id);
+	if (!poll || counts !== answer.counts) error(409, 'stale');
 	return changeBoard(db, family, [
 		db
 			.prepare(
-				`INSERT INTO poll_votes (notice_id, family_id, choice) VALUES (?1, ?2, ?3)
+				`INSERT INTO poll_votes (notice_id, family_id, choice)
+				SELECT ?1, ?2, ?3 WHERE (SELECT poll_counts FROM notices WHERE id = ?1) = ?4
 				ON CONFLICT (notice_id, family_id) DO UPDATE SET choice = ?3`
 			)
-			.bind(id, family.family, choice),
+			.bind(id, family.family, answer.choice, Number(answer.counts)),
 		seenBy(db, family, id)
 	]);
 }

@@ -520,6 +520,7 @@ describe('notices', () => {
 		content: 'content',
 		days,
 		poll: false,
+		counts: false,
 		classrooms: keys(classrooms),
 		files
 	});
@@ -528,9 +529,12 @@ describe('notices', () => {
 		days: 30,
 		announce,
 		poll: false,
+		counts: false,
 		classrooms: keys(classrooms),
 		files
 	});
+	/** A family's answer, as a device that read the poll's counts as `counts` sends it. */
+	const answer = (choice: string, counts = false) => ({ choice, counts });
 	const ids = (records: { id: string }[]) => records.map(({ id }) => id);
 	const count = async (db: D1Database) =>
 		(await db.prepare('SELECT COUNT(*) AS count FROM notices').first<{ count: number }>())?.count;
@@ -709,12 +713,12 @@ describe('notices', () => {
 		const answered = async (viewer: Identity) =>
 			(await board(db, viewer)).find(({ id }) => id === withPoll.id);
 
-		await vote(db, family, withPoll.id, 'first answer');
-		await vote(db, family, withPoll.id, 'changed answer');
-		await expect(vote(db, await familyOf(db, inOwls), withPoll.id, 'answer')).rejects.toMatchObject(
-			{ status: 404 }
-		);
-		await expect(vote(db, family, withoutPoll.id, 'answer')).rejects.toMatchObject(
+		await vote(db, family, withPoll.id, answer('first answer'));
+		await vote(db, family, withPoll.id, answer('changed answer'));
+		await expect(
+			vote(db, await familyOf(db, inOwls), withPoll.id, answer('answer'))
+		).rejects.toMatchObject({ status: 404 });
+		await expect(vote(db, family, withoutPoll.id, answer('answer'))).rejects.toMatchObject(
 			conflict('stale')
 		);
 		expect(await answered(teacher)).toMatchObject({
@@ -728,7 +732,54 @@ describe('notices', () => {
 		expect((await answered(admin))?.votes).toHaveLength(1);
 		await changeNotice(db, bucket, admin, withPoll.id, change([bubbles]));
 		expect((await answered(admin))?.votes).toEqual([]);
-		await expect(vote(db, family, withPoll.id, 'answer')).rejects.toMatchObject(conflict('stale'));
+		await expect(vote(db, family, withPoll.id, answer('answer'))).rejects.toMatchObject(
+			conflict('stale')
+		);
+	});
+
+	it('show every family a notice is for all the answers to its poll while they see its counts, and lose the answers when that changes', async () => {
+		const db = localDatabase();
+		const { admin } = await setUpKindergarten(db);
+		const [bubbles, owls, ladybirds] = [
+			await addClassroomTo(db, admin),
+			await addClassroomTo(db, admin),
+			await addClassroomTo(db, admin)
+		];
+		const [inBubbles, inOwls, inLadybirds] = [newFamily(), newFamily(), newFamily()];
+		await addChildTo(db, admin, bubbles, inBubbles);
+		await addChildTo(db, admin, owls, inOwls);
+		await addChildTo(db, admin, ladybirds, inLadybirds);
+		const counted = { ...notice([bubbles, owls]), poll: true, counts: true };
+		const elsewhere = { ...notice([ladybirds]), poll: true, counts: true };
+		await postNotice(db, admin, counted);
+		await postNotice(db, admin, elsewhere);
+		const [ana, ivo, eva] = await Promise.all(
+			[inBubbles, inOwls, inLadybirds].map((family) => familyOf(db, family))
+		);
+		const votes = async (viewer: Identity, id = counted.id) =>
+			(await board(db, viewer)).find((record) => record.id === id)?.votes;
+
+		// A device that read the counts the other way has an outdated board.
+		await expect(vote(db, ana, counted.id, answer('yes'))).rejects.toMatchObject(conflict('stale'));
+		await vote(db, ana, counted.id, answer('yes', true));
+		await vote(db, ivo, counted.id, answer('no', true));
+		await vote(db, eva, elsewhere.id, answer('yes', true));
+		// Each family a notice is for gets every answer to its poll, to count, and none of another notice's.
+		expect(await votes(ana)).toHaveLength(2);
+		expect(await votes(ivo)).toHaveLength(2);
+		expect(await votes(eva, elsewhere.id)).toEqual([{ family: inLadybirds.id, choice: 'yes' }]);
+
+		// A change that keeps the counts keeps the answers. One that stops them removes the answers, which were
+		// encrypted for everyone, and each family sees only its own again.
+		const keeping = { ...change([bubbles, owls]), poll: true, counts: true };
+		await changeNotice(db, bucket, admin, counted.id, keeping);
+		expect(await votes(admin)).toHaveLength(2);
+		await changeNotice(db, bucket, admin, counted.id, { ...keeping, counts: false });
+		expect(await votes(admin)).toEqual([]);
+		await vote(db, ana, counted.id, answer('yes'));
+		await vote(db, ivo, counted.id, answer('no'));
+		expect(await votes(ivo)).toEqual([{ family: inOwls.id, choice: 'no' }]);
+		expect(await votes(admin)).toHaveLength(2);
 	});
 
 	it('carry the files uploaded for them, which go when a change leaves them out or the notice goes', async () => {
@@ -862,21 +913,21 @@ describe('board photos', () => {
 		const teacher = await addTeacherTo(db, admin, [bubbles]);
 		const [first, second] = [createId(), createId()];
 
-		await expect(putUpPhoto(db, store, teacher, owls, first, photo(1))).rejects.toMatchObject(
-			conflict('stale')
+		await expect(
+			putUpPhoto(db, store, teacher, owls, first, photo(1), 'details')
+		).rejects.toMatchObject(conflict('stale'));
+		expect(await putUpPhoto(db, store, teacher, bubbles, first, photo(1), 'details')).toMatchObject(
+			[{ id: first, classroom: bubbles, details: 'details' }]
 		);
-		expect(await putUpPhoto(db, store, teacher, bubbles, first, photo(1))).toMatchObject([
-			{ id: first, classroom: bubbles }
-		]);
 		// A photo whose bytes are stored already isn't put up again, and stays up.
-		await expect(putUpPhoto(db, store, teacher, bubbles, first, photo(9))).rejects.toMatchObject(
-			conflict('stored')
-		);
+		await expect(
+			putUpPhoto(db, store, teacher, bubbles, first, photo(9), 'other details')
+		).rejects.toMatchObject(conflict('stored'));
 		expect([...objects.keys()]).toEqual([`board/${bubbles}/${first}`]);
-		// A new photo takes its place, in the database and in R2.
-		expect(await putUpPhoto(db, store, teacher, bubbles, second, photo(2))).toMatchObject([
-			{ id: second, classroom: bubbles }
-		]);
+		// A new photo takes its place, with its own details, in the database and in R2.
+		expect(
+			await putUpPhoto(db, store, teacher, bubbles, second, photo(2), 'new details')
+		).toMatchObject([{ id: second, classroom: bubbles, details: 'new details' }]);
 		expect([...objects.keys()]).toEqual([`board/${bubbles}/${second}`]);
 		expect(await storedBytes(db)).toBe(64);
 
@@ -901,8 +952,8 @@ describe('board photos', () => {
 		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
 		const teacher = await addTeacherTo(db, admin, [bubbles]);
 		const [inBubbles, inOwls] = [createId(), createId()];
-		await putUpPhoto(db, store, admin, bubbles, inBubbles, photo(1));
-		await putUpPhoto(db, store, admin, owls, inOwls, photo(2));
+		await putUpPhoto(db, store, admin, bubbles, inBubbles, photo(1), 'details');
+		await putUpPhoto(db, store, admin, owls, inOwls, photo(2), 'details');
 
 		await expect(takeDownPhoto(db, store.bucket, teacher, owls, inOwls)).rejects.toMatchObject(
 			conflict('stale')
@@ -965,7 +1016,7 @@ describe('storage', () => {
 		const { admin } = await setUpKindergarten(db);
 		const bubbles = await addClassroomTo(db, admin);
 		const photo = createId();
-		await putUpPhoto(db, store, admin, bubbles, photo, bytes(10), 1_000);
+		await putUpPhoto(db, store, admin, bubbles, photo, bytes(10), 'details', 1_000);
 		// Uploads whose records never came, or are still on their way, and a deletion that stopped midway.
 		await putObject(db, store, 'left/over', bytes(10), 1_000);
 		await putObject(db, store, 'on/its/way', bytes(10), 5_000);

@@ -75,9 +75,12 @@ export function queryParam(name: string) {
 	return browser ? page.url.searchParams.get(name) : null;
 }
 
-/** How a notice's text looks, the same on the board (NoticeBody.svelte) and in the editor that writes it. */
+/**
+ * How a notice's text looks, the same on the board (NoticeBody.svelte) and in the editor that writes it. Long
+ * links and words break anywhere, as on the rest of the page (app.css), so they never widen a notice.
+ */
 export const noticeText =
-	'text-lg leading-relaxed wrap-break-word [&_a]:font-semibold [&_a]:underline [&_a]:underline-offset-4 [&_li]:pl-1 [&_li>*+*]:mt-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol>*+*]:mt-1 [&_ul]:list-disc [&_ul]:pl-6 [&_ul>*+*]:mt-1 [&>*+*]:mt-3';
+	'text-lg leading-relaxed [&_a]:font-semibold [&_a]:underline [&_a]:underline-offset-4 [&_li]:pl-1 [&_li>*+*]:mt-1 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol>*+*]:mt-1 [&_ul]:list-disc [&_ul]:pl-6 [&_ul>*+*]:mt-1 [&>*+*]:mt-3';
 
 /** The background of each notice paper (src/lib/notices.ts), from the theme in app.css. */
 export const paperClass: Record<Paper, string> = {

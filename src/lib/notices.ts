@@ -4,8 +4,9 @@ import {
 	decryptData,
 	encryptData,
 	envelopeSize,
-	isFileKey,
+	isContentKey,
 	isId,
+	openContentKey,
 	UnreadableError,
 	unwrapKey,
 	wrapping
@@ -16,8 +17,9 @@ import { isFileName, maxNoticeFiles, type NoticeFile } from '$lib/files';
 // Notices on the board, as devices write and read them (docs/access-format.md). Every save seals a notice
 // under a new Notice Key, wrapped with the Group Key of each of its classrooms, so a classroom taken off a
 // notice can't open its later versions. A notice can hold a poll, and each family's answer is encrypted with
-// its own Family Key, so only that family and staff read it. It can carry files, whose names and keys it
-// holds (src/lib/files.ts). The server stores envelopes and decides who may post, read, and answer.
+// its own Family Key, so only that family and staff read it, or, when families see how many chose each answer,
+// with a key the poll holds, so everyone who opens the notice counts it. It can carry files, whose names and
+// keys it holds (src/lib/files.ts). The server stores envelopes and decides who may post, read, and answer.
 
 /** How long a notice stays up, in days from when it was first posted. The server accepts only these. */
 export const noticeDays = [1, 3, 7, 14, 30, 60, 90] as const;
@@ -50,8 +52,11 @@ export type NoticeDocument = { type: 'doc'; content: NoticeBlock[] };
 
 /** An answer a poll offers. Its ID stays when its words change, which keeps the votes for it. */
 export type PollOption = { id: string; text: string };
-/** A poll on a notice: the notice's text asks, and each family chooses one of the options. */
-export type Poll = { options: PollOption[] };
+/**
+ * A poll on a notice: the notice's text asks, and each family chooses one of the options. A poll whose counts
+ * families see holds a key of its own, which their answers are encrypted with.
+ */
+export type Poll = { options: PollOption[]; key?: string };
 export const minPollOptions = 2;
 export const maxPollOptions = 10;
 /** The longest an option may be, in characters. */
@@ -157,16 +162,22 @@ function readHref(value: unknown) {
 	return typeof value === 'string' && allowedLink(value) ? value : fail();
 }
 
-/** A poll as a device may show it: two to ten options, each with an ID of its own and a few words. */
+/**
+ * A poll as a device may show it: two to ten options, each with an ID of its own and a few words, and a key
+ * when families see its counts.
+ */
 function readPoll(value: unknown): Poll {
-	const options = list(fields(value).options, (item) => {
+	const { options: items, key } = fields(value);
+	const options = list(items, (item) => {
 		const { id, text } = fields(item);
 		const words = typeof text === 'string' && text.trim() && text.length <= maxOptionLength;
 		return isId(id) && words ? { id, text: text as string } : fail();
 	});
 	const distinct = new Set(options.map((option) => option.id)).size === options.length;
 	const count = options.length >= minPollOptions && options.length <= maxPollOptions;
-	return distinct && count ? { options } : fail();
+	if (!distinct || !count) fail();
+	if (key === undefined) return { options };
+	return isContentKey(key) ? { options, key } : fail();
 }
 
 /**
@@ -177,7 +188,7 @@ function readFiles(value: unknown): NoticeFile[] {
 	const files = list(value, (item) => {
 		const { id, name, bytes, key } = fields(item);
 		const sized = Number.isSafeInteger(bytes) && (bytes as number) >= 0;
-		return isId(id) && isFileName(name) && sized && isFileKey(key)
+		return isId(id) && isFileName(name) && sized && isContentKey(key)
 			? { id, name, bytes: bytes as number, key }
 			: fail();
 	});
@@ -225,15 +236,22 @@ export async function sealNotice(
 	};
 }
 
-/** A family's answer to a notice's poll, encrypted with its Family Key: only that family and staff open it. */
-export function sealVote(notice: string, option: string, familyKey: CryptoKey) {
-	return encryptData({ option }, familyKey, { purpose: 'poll-vote', notice });
+/**
+ * A family's answer to a notice's poll, encrypted with its Family Key, so only that family and staff open it,
+ * or with the poll's key when families see the counts, so everyone who opens the notice does.
+ */
+export async function sealVote(notice: string, option: string, poll: Poll, familyKey: CryptoKey) {
+	if (poll.key === undefined) {
+		return encryptData({ option }, familyKey, { purpose: 'poll-vote', notice });
+	}
+	const key = await openContentKey(poll.key);
+	return encryptData({ option }, key, { purpose: 'counted-poll-vote', notice });
 }
 
 /**
- * The answers to a notice's poll that open with their family's key and choose one of the poll's options.
- * Anyone holding a family's key could have written one, and an option can be taken off the poll, so the
- * others are left out.
+ * The answers to a notice's poll that open, with the poll's key when families see its counts or with their
+ * family's key otherwise, and choose one of the poll's options. Anyone holding a key could have written one,
+ * and an option can be taken off the poll, so the others are left out.
  */
 async function openVotes(
 	notice: string,
@@ -241,12 +259,16 @@ async function openVotes(
 	poll: Poll,
 	familyKeys: FamilyKeys
 ) {
+	const pollKey = poll.key === undefined ? undefined : await openContentKey(poll.key);
 	const votes = await Promise.all(
 		records.map(async ({ family, choice }): Promise<Vote | undefined> => {
 			try {
-				const key = await familyKeys(family);
+				const key = pollKey ?? (await familyKeys(family));
 				if (!key) return undefined;
-				const data = await decryptData(choice, key, { purpose: 'poll-vote', notice });
+				const data = await decryptData(choice, key, {
+					purpose: pollKey ? 'counted-poll-vote' : 'poll-vote',
+					notice
+				});
 				const { option } = fields(data);
 				return poll.options.some(({ id }) => id === option)
 					? { family, option: option as string }
@@ -262,7 +284,7 @@ async function openVotes(
 
 /**
  * Opens a notice with the Group Key of any of its classrooms this device holds, and its poll's answers with
- * the Family Keys it holds. A device without Family Keys reads no answers.
+ * the keys it holds. A device without Family Keys reads no answers to a poll whose counts families don't see.
  */
 export async function openNotice(
 	record: NoticeRecord,

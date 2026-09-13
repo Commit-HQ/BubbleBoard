@@ -70,7 +70,10 @@
 	</section>
 
 	<div class="flex flex-wrap justify-between gap-x-6 gap-y-2 px-2 text-sm text-muted">
-		<a class="hover:text-ink" href={homePath(data.locale)}>{t.options.about}</a>
+		<!-- In a window of its own: the installed app has no way back from the landing page. -->
+		<a class="hover:text-ink" href={homePath(data.locale)} target="_blank" rel="noopener noreferrer"
+			>{t.options.about}</a
+		>
 		<BuildLabel locale={data.locale} />
 	</div>
 

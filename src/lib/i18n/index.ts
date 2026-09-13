@@ -35,6 +35,15 @@ export function errorMessage(locale: Locale, code: string) {
 	return errors[code] ?? errors.unexpected;
 }
 
+/** A day as notices and board photos show it: “23.01.2026”, or “23/01/2026” in English. */
+export function formatDate(locale: Locale, time: number) {
+	const date = new Date(time);
+	const [day, month] = [date.getDate(), date.getMonth() + 1].map((part) =>
+		String(part).padStart(2, '0')
+	);
+	return [day, month, date.getFullYear()].join(locale === 'hr' ? '.' : '/');
+}
+
 /** A file's size, such as “240 kB” or “3.4 MB”. */
 export function fileSize(locale: Locale, bytes: number) {
 	const megabytes = bytes >= 1e6;

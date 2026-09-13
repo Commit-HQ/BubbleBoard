@@ -37,19 +37,17 @@ export async function hideHomeCard() {
 	await settings('readwrite', (store) => void store.put(true, 'homeCardHidden'));
 }
 
-/** Shows a notification from BubbleBoard with these words. */
+/**
+ * Shows a notification with these words as its title. Phones and computers already say which app it's from,
+ * so a title of "BubbleBoard" would say it twice.
+ */
 export function notify(
 	registration: ServiceWorkerRegistration,
-	body: string,
+	title: string,
 	tag: string,
 	data?: unknown
 ) {
-	return registration.showNotification('BubbleBoard', {
-		body,
-		icon: '/icons/icon-192.png',
-		tag,
-		data
-	});
+	return registration.showNotification(title, { icon: '/icons/icon-192.png', tag, data });
 }
 
 function supported() {

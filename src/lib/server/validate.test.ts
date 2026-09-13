@@ -9,10 +9,11 @@ import {
 	newChild,
 	newNotice,
 	noticeChange,
+	photoDetails,
+	pollAnswer,
 	readFile,
 	readPhoto,
-	setup,
-	voteChoice
+	setup
 } from './validate';
 
 // Structure the server enforces on requests it can't read. Envelopes only need the right form here.
@@ -68,7 +69,7 @@ it('refuses new family cards that repeat a family or a card', () => {
 	expect(() => familyCards({ cards: [first, { ...second, credential: shared }] })).toThrow();
 });
 
-it('refuses notices without classrooms, with a classroom twice, too big, up for other days, or unclear about a poll or files', () => {
+it('refuses notices without classrooms, with a classroom twice, too big, up for other days, or unclear about a poll, its counts, or files', () => {
 	const key = () => ({ classroom: createId(), noticeKey: envelope(48) });
 	const file = createId();
 	const notice = {
@@ -76,14 +77,16 @@ it('refuses notices without classrooms, with a classroom twice, too big, up for 
 		content: envelope(200),
 		days: 30,
 		poll: true,
+		counts: true,
 		classrooms: [key(), key()],
 		files: [file, file]
 	};
-	expect(newNotice(notice)).toMatchObject({ files: [file] });
+	expect(newNotice(notice)).toMatchObject({ counts: true, files: [file] });
 	expect(newNotice(notice).classrooms).toHaveLength(2);
 	expect(noticeChange({ ...notice, announce: false })).toMatchObject({
 		announce: false,
-		poll: true
+		poll: true,
+		counts: true
 	});
 	for (const refused of [
 		// A device from before notices carried files, which would take them off a notice it changes.
@@ -94,6 +97,9 @@ it('refuses notices without classrooms, with a classroom twice, too big, up for 
 		{ ...notice, content: envelope(40 * 1024) },
 		{ ...notice, poll: 'yes' },
 		{ ...notice, poll: undefined },
+		// A device from before families could see a poll's counts, and counts without a poll.
+		{ ...notice, counts: undefined },
+		{ ...notice, poll: false },
 		{ ...notice, files: ['menu.pdf'] },
 		{ ...notice, files: Array.from({ length: maxNoticeFiles + 1 }, createId) }
 	]) {
@@ -102,10 +108,30 @@ it('refuses notices without classrooms, with a classroom twice, too big, up for 
 	expect(() => noticeChange(notice)).toThrow();
 });
 
-it('refuses a poll answer bigger than the option it names', () => {
-	expect(voteChoice({ choice: envelope(40) })).toBe(envelope(40));
-	for (const choice of [envelope(1024), 'Tuesday', undefined]) {
-		expect(() => voteChoice({ choice })).toThrow();
+it('refuses a poll answer bigger than the option it names, or unclear about the poll’s counts', () => {
+	expect(pollAnswer({ choice: envelope(40), counts: false })).toEqual({
+		choice: envelope(40),
+		counts: false
+	});
+	for (const answer of [
+		{ choice: envelope(1024), counts: false },
+		{ choice: 'Tuesday', counts: false },
+		{ counts: true },
+		{ choice: envelope(40) }
+	]) {
+		expect(() => pollAnswer(answer)).toThrow();
+	}
+});
+
+it('reads a board photo’s encrypted details from beside its bytes', () => {
+	const upload = (details?: string) =>
+		new Request('https://bubbleboard.example.com/api', {
+			method: 'PUT',
+			headers: details === undefined ? {} : { 'bubbleboard-photo-details': details }
+		});
+	expect(photoDetails(upload(envelope(40)))).toBe(envelope(40));
+	for (const details of [undefined, 'Ana Horvat', envelope(2048)]) {
+		expect(() => photoDetails(upload(details))).toThrow();
 	}
 });
 

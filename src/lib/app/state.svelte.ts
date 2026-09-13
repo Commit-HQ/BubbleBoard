@@ -7,15 +7,34 @@ import {
 	type Access,
 	type Kindergarten,
 	type NoticeRecord,
-	type PhotoRecord
+	type PhotoRecord,
+	type PollAnswer
 } from '$lib/api';
 import { readCard, type CardReading } from '$lib/card';
-import { createId, deriveCredential, hashAuthToken, UnreadableError } from '$lib/crypto';
-import { forgetCard, loadCard, saveCard, type DeviceCard } from '$lib/device';
+import {
+	createContentKey,
+	createId,
+	deriveCredential,
+	hashAuthToken,
+	UnreadableError
+} from '$lib/crypto';
+import {
+	forgetCard,
+	loadCard,
+	markStartCardUsed,
+	saveCard,
+	startCardUsed,
+	type DeviceCard
+} from '$lib/device';
 import { CodedError, errorCode } from '$lib/errors';
 import { openFile, saveFile, type NewFile, type NoticeFile } from '$lib/files';
 import type { Locale } from '$lib/i18n';
-import { installStep, type InstallPlatform, type InstallPrompt } from '$lib/install';
+import {
+	installStep,
+	onAppleHomeScreen,
+	type InstallPlatform,
+	type InstallPrompt
+} from '$lib/install';
 import {
 	byId,
 	childProfile,
@@ -60,9 +79,9 @@ import {
 	type NoticeContent,
 	type NoticeDocument,
 	type Paper,
-	type Poll
+	type PollOption
 } from '$lib/notices';
-import { openPhoto, sealPhoto } from '$lib/photos';
+import { openPhoto, openPhotoDetails, sealPhoto, sealPhotoDetails, type Photo } from '$lib/photos';
 import { createContext } from 'svelte';
 
 // The app's state in the browser: the card this device holds, and the decrypted records it may see. The
@@ -89,7 +108,8 @@ export type ChildValues = { name: string; classroom: string } & (
 );
 /**
  * A notice as its form fills it in. `announce` puts a changed notice back on top and notifies again. Its
- * files are those it carries already, and files attached in the form, sealed already.
+ * files are those it carries already, and files attached in the form, sealed already. Its poll says whether
+ * families see the counts.
  */
 export type NoticeValues = {
 	classrooms: string[];
@@ -97,7 +117,7 @@ export type NoticeValues = {
 	days: number;
 	body: NoticeDocument;
 	announce: boolean;
-	poll?: Poll;
+	poll?: { options: PollOption[]; counts: boolean };
 	files: (NoticeFile | NewFile)[];
 };
 
@@ -166,7 +186,7 @@ export class App {
 	/** How many notices didn't open on this device. */
 	unreadableNotices = $state(0);
 	/** The photos of the boards of this device's classrooms: one for each classroom that shows one. */
-	photos = $state.raw<PhotoRecord[]>([]);
+	photos = $state.raw<Photo[]>([]);
 	connecting = $state(false);
 	cardError = $state<string>();
 	/** A card from a link, waiting for confirmation before it takes the place of this device's card. */
@@ -177,6 +197,8 @@ export class App {
 	#card?: DeviceCard;
 	#keys?: StaffKeys;
 	#loadedAt = 0;
+	/** The last load of the records and board, which the next one waits for. */
+	#reloading = Promise.resolve();
 	/** Board photos this device has opened, as addresses for their images, while they're up. */
 	#photoUrls = new Map<string, Promise<string>>();
 	/** The Family Keys a staff device has opened, by the envelope each came from, until it disconnects. */
@@ -216,8 +238,12 @@ export class App {
 	}
 
 	async start() {
-		// First, so a card's code leaves the address bar even in a browser that can't use it.
-		const { card, token } = takeFragment();
+		// Safari on iPhone and iPad keeps a card's link in the address bar, for the Home Screen app added from
+		// there to open with (src/lib/install.ts). Everywhere else the code leaves the address bar first, even
+		// in a browser that can't use it.
+		this.install = installStep();
+		const { card, token }: ReturnType<typeof takeFragment> =
+			this.install === 'ios' ? {} : takeFragment();
 		this.setupToken = token;
 		// Android's install panel shows the browser's prompt when asked; elsewhere the browser keeps its own.
 		addEventListener('beforeinstallprompt', (event) => {
@@ -233,7 +259,6 @@ export class App {
 		}
 		// Safari and the browsers inside other apps don't share their storage with the installed app, so
 		// nothing connects there: installing comes first.
-		this.install = installStep();
 		if (this.install === 'ios' || this.install === 'in-app') {
 			this.status = 'install';
 			return;
@@ -245,11 +270,25 @@ export class App {
 			return;
 		}
 		await this.#resume();
-		if (card) await this.useCard(card);
+		if (card) await this.#useStartCard(card);
+	}
+
+	/**
+	 * Uses the card of the link the app opened with. The Home Screen app on iPhone and iPad opens at the card
+	 * link it was added from every time, so it uses that card once the server has answered it, and never
+	 * again: a device signed out, or a card replaced since, stays that way.
+	 */
+	async #useStartCard(card: CardReading) {
+		if (!onAppleHomeScreen()) return this.useCard(card);
+		if (await startCardUsed().catch(() => false)) return;
+		await this.useCard(card);
+		if (this.cardError !== 'offline') await markStartCardUsed().catch(() => {});
 	}
 
 	/** A link opened in a tab already showing the app changes only the fragment, so the page doesn't load again. */
 	async openLink() {
+		// Safari on iPhone and iPad keeps it in the address bar, as `start` does.
+		if (this.install === 'ios') return;
 		const { card, token } = takeFragment();
 		if (token) this.setupToken = token;
 		const ready = !['loading', 'unsupported', 'install'].includes(this.status);
@@ -261,11 +300,21 @@ export class App {
 		await this.#resume();
 	}
 
-	/** Loads the records and board again, quietly, when the app comes back into view. */
-	async refresh() {
-		const card = this.#card;
-		if (!this.connected || !card || Date.now() - this.#loadedAt < refreshAfter) return;
+	/**
+	 * Loads the records and board again, quietly: when the app comes back into view, but not more often than
+	 * `refreshAfter`, or `now`, when a notification says there's something new. Each load waits for the one
+	 * before, so the records that stay are the latest.
+	 */
+	refresh({ now = false } = {}) {
+		if (!this.connected || (!now && Date.now() - this.#loadedAt < refreshAfter)) return;
 		this.#loadedAt = Date.now();
+		this.#reloading = this.#reloading.then(() => this.#reload());
+		return this.#reloading;
+	}
+
+	async #reload() {
+		const card = this.#card;
+		if (!this.connected || !card) return;
 		try {
 			// The session is the one the app opened with, so its subscription isn't sent again.
 			await this.#open(await request<Access>('GET', '/api/session'), card, { resend: false });
@@ -291,22 +340,25 @@ export class App {
 	async #open(access: Access, card: DeviceCard, { resend = true } = {}) {
 		// A session or card that doesn't match the stored card means connecting again with a card.
 		if (access.credential !== card.credential) throw new UnreadableError();
+		let classrooms: FamilyClassroom[];
 		if (access.kind === 'staff' && card.kind === 'staff') {
 			this.#keys = await openStaffKeys(access, card.unlockKey);
 			await this.#load(access.kindergarten, access.teacher);
-			await this.#openBoard(access.notices, this.catalog.classrooms);
+			classrooms = this.catalog.classrooms;
+			await this.#openBoard(access.notices, classrooms);
 		} else if (
 			access.kind === 'family' &&
 			card.kind === 'family' &&
 			access.family === card.family
 		) {
 			const opening = openFamily(access, card.familyKey);
-			this.familyClassrooms = await readable(opening, 'unreadable-records');
-			await this.#openBoard(access.notices, this.familyClassrooms, card);
+			classrooms = await readable(opening, 'unreadable-records');
+			this.familyClassrooms = classrooms;
+			await this.#openBoard(access.notices, classrooms, card);
 		} else {
 			throw new UnreadableError();
 		}
-		this.#showPhotos(access.photos);
+		await this.#showPhotos(access.photos, classrooms);
 		this.#card = card;
 		this.#loadedAt = Date.now();
 		this.status = this.install === 'android' ? 'install' : access.kind;
@@ -371,17 +423,18 @@ export class App {
 	}
 
 	/**
-	 * Sends a change and opens what comes back. When it fails, records that moved on or lost what was
-	 * changed load again to show with the error.
+	 * Sends a change, with the `headers` that go with it, and opens what comes back. When it fails, records
+	 * that moved on or lost what was changed load again to show with the error.
 	 */
 	async #send<T>(
 		method: 'POST' | 'PUT' | 'DELETE',
 		path: string,
 		body: unknown,
-		open: (response: T) => Promise<void>
+		open: (response: T) => Promise<void>,
+		headers?: Record<string, string>
 	) {
 		try {
-			await this.#signedIn(async () => open(await request<T>(method, path, body)));
+			await this.#signedIn(async () => open(await request<T>(method, path, body, headers)));
 		} catch (cause) {
 			if (errorCode(cause) === 'unreadable-records') this.status = 'unreadable';
 			else if (cause instanceof ApiError && ['stale', 'not-found'].includes(cause.code)) {
@@ -416,7 +469,7 @@ export class App {
 		this.familyClassrooms = [];
 		this.board = [];
 		this.unreadableNotices = 0;
-		this.#showPhotos([]);
+		await this.#showPhotos([], []);
 		this.notice = notice;
 		this.status = 'disconnected';
 	}
@@ -655,17 +708,24 @@ export class App {
 		return notice.votes.find((vote) => vote.family === this.#familyCard?.family)?.option;
 	}
 
-	/** Answers a notice's poll for this device's family, which also marks the notice as seen. */
+	/**
+	 * Answers a notice's poll for this device's family, which also marks the notice as seen. The answer is
+	 * encrypted with the key the poll says: the family's own, or the poll's when families see its counts.
+	 */
 	async vote(notice: Notice, option: string) {
-		const choice = await sealVote(notice.id, option, this.#family.familyKey);
-		await this.#changeBoard('PUT', `/api/notices/${notice.id}/vote`, { choice });
+		const { poll } = notice;
+		if (!poll) return;
+		const choice = await sealVote(notice.id, option, poll, this.#family.familyKey);
+		const answer: PollAnswer = { choice, counts: poll.key !== undefined };
+		await this.#changeBoard('PUT', `/api/notices/${notice.id}/vote`, answer);
 	}
 
 	/**
 	 * Posts a notice, or changes `notice`, sealed under a new Notice Key for its classrooms. A change keeps
 	 * the name of whoever posted the notice; the recovery card posts without one. A poll goes inside the
-	 * notice, and the server learns only that it has one, as it learns nothing of its files' names and keys.
-	 * Files attached in the form were sealed then, and are uploaded one at a time once the notice fits.
+	 * notice, with a key of its own while families see its counts, and the server learns only that it has one
+	 * and whether it shows the counts, as it learns nothing of its files' names and keys. Files attached in the
+	 * form were sealed then, and are uploaded one at a time once the notice fits.
 	 */
 	async saveNotice(values: NoticeValues, notice?: Notice) {
 		const id = notice?.id ?? createId();
@@ -678,7 +738,12 @@ export class App {
 		}));
 		const content: NoticeContent = { paper: values.paper, body: values.body };
 		if (author) content.author = author;
-		if (values.poll) content.poll = values.poll;
+		if (values.poll) {
+			const { options, counts } = values.poll;
+			// A poll keeps its key while families see its counts, and with it the answers given.
+			const key = counts ? (notice?.poll?.key ?? (await createContentKey()).raw) : undefined;
+			content.poll = key ? { options, key } : { options };
+		}
 		if (files.length) content.files = files;
 		const classrooms = values.classrooms.map((classroom) =>
 			byId(this.catalog.classrooms, classroom)
@@ -688,8 +753,9 @@ export class App {
 			if ('sealed' in file) await this.#uploadFile(id, file);
 		}
 		const { days, announce } = values;
-		const poll = values.poll !== undefined;
-		const body = { ...sealed, days, poll, files: files.map((file) => file.id) };
+		const poll = content.poll !== undefined;
+		const counts = content.poll?.key !== undefined;
+		const body = { ...sealed, days, poll, counts, files: files.map((file) => file.id) };
 		if (notice) {
 			await this.#changeBoard('PUT', `/api/notices/${id}`, { ...body, announce });
 		} else {
@@ -736,8 +802,23 @@ export class App {
 		return url;
 	}
 
-	/** Keeps the board photos the server sent, and lets go of the images of photos that aren't up anymore. */
-	#showPhotos(photos: PhotoRecord[]) {
+	/**
+	 * Keeps the board photos the server sent, with who put each up, from details opened with the Group Key of
+	 * its classroom, and lets go of the images of photos that aren't up anymore. Details that don't open leave
+	 * the name out.
+	 */
+	async #showPhotos(
+		records: PhotoRecord[],
+		classrooms: { id: string; groupKey: CryptoKey }[] = this.myClassrooms
+	) {
+		const photos = await Promise.all(
+			records.map(async (record): Promise<Photo> => {
+				const groupKey = classrooms.find(({ id }) => id === record.classroom)?.groupKey;
+				if (!record.details || !groupKey) return record;
+				const opening = openPhotoDetails(record.details, groupKey, record.classroom, record.id);
+				return { ...record, ...(await opening.catch(() => ({}))) };
+			})
+		);
 		for (const [id, url] of this.#photoUrls) {
 			if (photos.some((photo) => photo.id === id)) continue;
 			this.#photoUrls.delete(id);
@@ -751,23 +832,28 @@ export class App {
 
 	/**
 	 * Puts a photo made ready for the board up on a classroom's board, encrypted with the classroom's Group
-	 * Key, in place of the one there. This device shows it without fetching it again.
+	 * Key, in place of the one there, with who put it up. This device shows it without fetching it again.
 	 */
 	async putUpPhoto(classroom: string, photo: Blob) {
 		const { groupKey } = byId(this.catalog.classrooms, classroom);
 		const id = createId();
 		const bytes = new Uint8Array(await photo.arrayBuffer());
-		const sealed = await sealPhoto(bytes, groupKey, classroom, id);
+		const author = this.me?.recovery ? undefined : this.me?.name;
+		const [sealed, details] = await Promise.all([
+			sealPhoto(bytes, groupKey, classroom, id),
+			sealPhotoDetails(author ? { author } : {}, groupKey, classroom, id)
+		]);
 		const path = `/api/classrooms/${classroom}/photo/${id}`;
-		await this.#send<PhotoRecord[]>('PUT', path, sealed, async (photos) => {
+		const open = async (photos: PhotoRecord[]) => {
 			this.#photoUrls.set(id, Promise.resolve(URL.createObjectURL(photo)));
-			this.#showPhotos(photos);
-		});
+			await this.#showPhotos(photos);
+		};
+		await this.#send('PUT', path, sealed, open, { 'bubbleboard-photo-details': details });
 	}
 
 	takeDownPhoto(photo: PhotoRecord) {
 		const path = `/api/classrooms/${photo.classroom}/photo/${photo.id}`;
-		return this.#send<PhotoRecord[]>('DELETE', path, undefined, async (photos) =>
+		return this.#send<PhotoRecord[]>('DELETE', path, undefined, (photos) =>
 			this.#showPhotos(photos)
 		);
 	}
