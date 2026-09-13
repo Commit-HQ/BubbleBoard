@@ -1,10 +1,10 @@
 <script lang="ts">
-	import Icon from '$lib/components/Icon.svelte';
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import type { Teacher } from '$lib/kindergarten';
+	import CheckCard from './CheckCard.svelte';
 	import Checklist from './Checklist.svelte';
 	import { getApp, Task, type TeacherValues } from './state.svelte';
-	import { alert, button, choice, field, formText, surface } from './ui';
+	import { alert, button, field, formText, surface } from './ui';
 
 	// A teacher's name, classrooms, and admin rights. Admins can't take away their own rights here: that
 	// would lock them out of this very page, so another admin does it.
@@ -84,14 +84,7 @@
 			<span class={field.hint}>{t.selfAdmin}</span>
 		</p>
 	{:else}
-		<label class={choice.card}>
-			<input class="sr-only" type="checkbox" name="admin" checked={teacher?.admin} />
-			<span class={choice.box}><Icon name="check" class={choice.check} /></span>
-			<span>
-				<span class="block font-semibold">{t.admin}</span>
-				<span class={field.hint}>{t.adminHint}</span>
-			</span>
-		</label>
+		<CheckCard name="admin" label={t.admin} hint={t.adminHint} checked={teacher?.admin} />
 	{/if}
 	{#if task.error}<p class={alert} role="alert">{errorMessage(locale, task.error)}</p>{/if}
 	<button class="{button.primary} justify-self-start" type="submit" disabled={task.busy}>

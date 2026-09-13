@@ -24,6 +24,9 @@ export const button = {
 export const labelFocus =
 	'has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent';
 
+/** A label drawn as a button, with a file input hidden inside it, faded while it can't be used. */
+export const filePicker = `cursor-pointer has-disabled:pointer-events-none has-disabled:opacity-50 ${labelFocus}`;
+
 /**
  * Checkboxes and radios drawn as cards: the input sits hidden in its label, whose look follows it. A button
  * with `aria-pressed` looks the same, for a choice that's sent as soon as it's made, such as a poll's answer.

@@ -13,12 +13,14 @@
 	const task = new Task();
 	let turned = $state(false);
 	let front = $state<HTMLButtonElement>();
+	let form = $state<HTMLFormElement>();
 	let input = $state<HTMLInputElement>();
 
-	/** Turns the tile, and focus with it: the side facing away is inert. */
+	/** Turns the tile, and focus with it: the side facing away is inert. Turning back clears the form. */
 	async function turn(over: boolean) {
 		turned = over;
 		task.error = undefined;
+		if (!over) form?.reset();
 		await tick();
 		(over ? input : front)?.focus();
 	}
@@ -30,11 +32,6 @@
 			await app.addClassroom(name);
 			await turn(false);
 		});
-	}
-
-	/** Keeps the form on the back of the tile for as long as the tile takes to turn away. */
-	function hold(_node: Element) {
-		return { duration: 500 };
 	}
 </script>
 
@@ -62,41 +59,39 @@
 			class="col-start-1 row-start-1 rotate-y-180 rounded-3xl glass p-4 backface-hidden"
 			inert={!turned}
 		>
-			{#if turned}
-				<form class="flex h-full flex-col gap-2" onsubmit={submit} out:hold>
-					<label>
-						<span class="sr-only">{t.manage.classroomName}</span>
-						<input
-							bind:this={input}
-							class={field.input}
-							name="name"
-							placeholder={t.manage.classroomName}
-							required
-							maxlength="80"
-							autocomplete="off"
-						/>
-					</label>
-					{#if task.error}<p class={alert} role="alert">{errorMessage(locale, task.error)}</p>{/if}
-					<!-- Narrow tiles squeeze the button: its word stays whole. -->
-					<div class="mt-auto flex gap-2">
-						<button
-							class="{button.primary} min-w-0 grow whitespace-nowrap"
-							type="submit"
-							disabled={task.busy}
-						>
-							{t.actions.add}
-						</button>
-						<button
-							class={button.icon}
-							type="button"
-							aria-label={t.actions.cancel}
-							onclick={() => turn(false)}
-						>
-							<Icon name="x" />
-						</button>
-					</div>
-				</form>
-			{/if}
+			<form bind:this={form} class="flex h-full flex-col gap-2" onsubmit={submit}>
+				<label>
+					<span class="sr-only">{t.manage.classroomName}</span>
+					<input
+						bind:this={input}
+						class={field.input}
+						name="name"
+						placeholder={t.manage.classroomName}
+						required
+						maxlength="80"
+						autocomplete="off"
+					/>
+				</label>
+				{#if task.error}<p class={alert} role="alert">{errorMessage(locale, task.error)}</p>{/if}
+				<!-- Narrow tiles squeeze the button: its word stays whole. -->
+				<div class="mt-auto flex gap-2">
+					<button
+						class="{button.primary} min-w-0 grow whitespace-nowrap"
+						type="submit"
+						disabled={task.busy}
+					>
+						{t.actions.add}
+					</button>
+					<button
+						class={button.icon}
+						type="button"
+						aria-label={t.actions.cancel}
+						onclick={() => turn(false)}
+					>
+						<Icon name="x" />
+					</button>
+				</div>
+			</form>
 		</div>
 	</div>
 </li>

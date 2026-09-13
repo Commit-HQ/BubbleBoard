@@ -42,7 +42,10 @@ function invalid(): never {
 	error(400, 'invalid');
 }
 
-/** Reads a body of one content type, refusing others and stopping as soon as it's larger than `max` bytes. */
+/**
+ * Reads a body of one content type, refusing others and stopping as soon as it's larger than `max` bytes. Its
+ * bytes are copied once, into one array.
+ */
 async function readBody(request: Request, type: string, max: number) {
 	if (request.headers.get('content-type')?.split(';')[0].trim() !== type) error(415, 'invalid');
 	if (Number(request.headers.get('content-length')) > max) error(413, 'too-large');
@@ -59,14 +62,20 @@ async function readBody(request: Request, type: string, max: number) {
 		}
 		chunks.push(value);
 	}
-	return new Blob(chunks);
+	const body = new Uint8Array(size);
+	let offset = 0;
+	for (const chunk of chunks) {
+		body.set(chunk, offset);
+		offset += chunk.length;
+	}
+	return body;
 }
 
 /** Reads a JSON object. */
 export async function readJson(request: Request): Promise<Fields> {
 	const body = await readBody(request, 'application/json', maxBytes);
 	try {
-		return fields(JSON.parse(await body.text()));
+		return fields(JSON.parse(new TextDecoder().decode(body)));
 	} catch {
 		invalid();
 	}
@@ -74,8 +83,7 @@ export async function readJson(request: Request): Promise<Fields> {
 
 /** Reads encrypted bytes that hold at least one byte, and at most `max` before they were encrypted. */
 async function readSealed(request: Request, max: number) {
-	const body = await readBody(request, 'application/octet-stream', max + SEALED_BYTES_OVERHEAD);
-	const sealed = new Uint8Array(await body.arrayBuffer());
+	const sealed = await readBody(request, 'application/octet-stream', max + SEALED_BYTES_OVERHEAD);
 	return sealed.length > SEALED_BYTES_OVERHEAD ? sealed : invalid();
 }
 
@@ -109,10 +117,13 @@ export const authToken = (value: unknown) =>
 const wrappedKey = (value: unknown) =>
 	envelopeSize(value) === KEY_BYTES ? (value as string) : invalid();
 
-export function profile(value: unknown) {
+/** A value in envelope form that holds at most `max` bytes. */
+const envelope = (max: number) => (value: unknown) => {
 	const size = envelopeSize(value);
-	return size !== undefined && size <= maxProfileBytes ? (value as string) : invalid();
-}
+	return size !== undefined && size <= max ? (value as string) : invalid();
+};
+
+export const profile = envelope(maxProfileBytes);
 
 function credential(value: unknown): NewCredential {
 	const body = fields(value);
@@ -219,10 +230,7 @@ export function childChange(body: Fields): ChildChange {
 
 export const newChild = (body: Fields): NewChild => ({ id: id(body.id), ...childChange(body) });
 
-function noticeContent(value: unknown) {
-	const size = envelopeSize(value);
-	return size !== undefined && size <= maxNoticeBytes ? (value as string) : invalid();
-}
+const noticeContent = envelope(maxNoticeBytes);
 
 const days = (value: unknown) =>
 	noticeDays.includes(value as (typeof noticeDays)[number]) ? (value as number) : invalid();
@@ -262,9 +270,6 @@ export const noticeChange = (body: Fields): NoticeChange => ({
 });
 
 /** A family's answer to a poll holds the ID of the option it chose. */
-const maxVoteBytes = 256;
+const vote = envelope(256);
 
-export function voteChoice(body: Fields) {
-	const size = envelopeSize(body.choice);
-	return size !== undefined && size <= maxVoteBytes ? (body.choice as string) : invalid();
-}
+export const voteChoice = (body: Fields) => vote(body.choice);

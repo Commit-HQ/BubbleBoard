@@ -1,13 +1,14 @@
+import { json } from '@sveltejs/kit';
 import { vote } from '$lib/server/notices';
 import { database, requireFamily } from '$lib/server/session';
 import { readJson, voteChoice } from '$lib/server/validate';
 import type { RequestHandler } from './$types';
 
-// A family answers a notice's poll, or changes its answer, which also marks the notice as seen. The answer
-// is encrypted with the family's key, so the server stores only that the family answered.
+// A family answers a notice's poll, or changes its answer, which also marks the notice as seen, and gets the
+// board back as it sees it now. The answer is encrypted with the family's key, so the server stores only that
+// the family answered.
 export const PUT: RequestHandler = async (event) => {
 	const family = await requireFamily(event);
 	const choice = voteChoice(await readJson(event.request));
-	await vote(database(event), family, event.params.id, choice);
-	return new Response(null, { status: 204 });
+	return json(await vote(database(event), family, event.params.id, choice));
 };

@@ -1,13 +1,25 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
 	import { errorMessage, listNames, messages, type Locale } from '$lib/i18n';
+	import type { Family } from '$lib/kindergarten';
 	import type { Notice, Poll } from '$lib/notices';
 	import { getApp, Task } from './state.svelte';
 	import { alert, choice } from './ui';
 
 	// A notice's poll. A family answers with a tap and can change its answer, which only staff see. Staff see
 	// how many of the notice's families chose each answer, who they are, and who hasn't answered yet.
-	let { locale, notice, poll }: { locale: Locale; notice: Notice; poll: Poll } = $props();
+	let {
+		locale,
+		notice,
+		poll,
+		families
+	}: {
+		locale: Locale;
+		notice: Notice;
+		poll: Poll;
+		/** On a staff device, the families the notice is for. */
+		families: Family[];
+	} = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.polls);
 	const id = $props.id();
@@ -16,20 +28,15 @@
 	let sending = $state<string>();
 	const chosen = $derived(sending ?? app.myVote(notice));
 
-	const families = $derived(app.audience(notice));
+	/** The option each family chose, by family. */
+	const answers = $derived(new Map(notice.votes.map((vote) => [vote.family, vote.option])));
 	const results = $derived(
 		poll.options.map((option) => ({
 			option,
-			names: families
-				.filter(({ id }) =>
-					notice.votes.some((vote) => vote.family === id && vote.option === option.id)
-				)
-				.map(({ name }) => name)
+			names: families.filter(({ id }) => answers.get(id) === option.id).map(({ name }) => name)
 		}))
 	);
-	const unanswered = $derived(
-		families.filter(({ id }) => !notice.votes.some((vote) => vote.family === id))
-	);
+	const unanswered = $derived(families.filter(({ id }) => !answers.has(id)));
 
 	/** How much of the bar under an answer fills: the share of the notice's families that chose it. */
 	function share(count: number) {

@@ -17,10 +17,10 @@ import type {
 } from '$lib/api';
 import { hashAuthToken } from '$lib/crypto';
 import { includesAll, transaction } from './database';
-import { board, classroomFileKeys } from './notices';
-import { boardPhotos, classroomPhotoKeys } from './photos';
+import { board } from './notices';
+import { boardPhotos } from './photos';
 import type { Admin } from './session';
-import { deleteUnnamed } from './storage';
+import { deleteMarked } from './storage';
 
 // The kindergarten's records: plain SQL, and one batch, which D1 runs as a transaction, for each change.
 // Every name is inside an encrypted profile, so these checks are about access and structure. An admin's
@@ -189,14 +189,13 @@ export async function deleteClassroom(db: D1Database, bucket: R2Bucket, admin: A
 	if (await db.prepare('SELECT 1 FROM children WHERE classroom_id = ?').bind(id).first()) {
 		error(409, 'not-empty');
 	}
-	const kept = [...(await classroomPhotoKeys(db, id)), ...(await classroomFileKeys(db, id))];
 	await changesOne(
 		db,
 		db.prepare('DELETE FROM classrooms WHERE id = ?').bind(id),
 		// Notices for this classroom alone go with it.
 		db.prepare('DELETE FROM notices WHERE id NOT IN (SELECT notice_id FROM notice_classrooms)')
 	);
-	await deleteUnnamed(db, bucket, kept);
+	await deleteMarked(db, bucket);
 	return kindergarten(db, admin);
 }
 

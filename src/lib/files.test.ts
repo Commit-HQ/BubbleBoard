@@ -13,23 +13,23 @@ const text = async (file: Blob) => new Uint8Array(await file.arrayBuffer());
 describe('notice files', () => {
 	it('open only with the key their notice holds, as the file they were sealed as', async () => {
 		const data = encoder.encode('Menu for October');
-		const { file, sealed } = await sealFile(createId(), 'menu.txt', data);
+		const file = await sealFile(createId(), 'menu.txt', data);
 		expect(file).toMatchObject({ name: 'menu.txt', bytes: data.length });
-		const opened = await openFile(sealed, file);
+		const opened = await openFile(file.sealed, file);
 		expect(opened.type).toBe('text/plain');
 		expect(await text(opened)).toEqual(data);
 
 		const other = await sealFile(createId(), 'menu.txt', data);
-		await expect(openFile(sealed, { ...file, key: other.file.key })).rejects.toThrow(
+		await expect(openFile(file.sealed, { ...file, key: other.key })).rejects.toThrow(
 			UnreadableError
 		);
-		await expect(openFile(sealed, { ...file, id: other.file.id })).rejects.toThrow(UnreadableError);
+		await expect(openFile(file.sealed, { ...file, id: other.id })).rejects.toThrow(UnreadableError);
 	});
 
 	it('open as the kind of file their name says, never as a page', async () => {
 		const page = encoder.encode('<script>alert(1)</script>');
-		const { file, sealed } = await sealFile(createId(), 'form.pdf', page);
-		expect((await openFile(sealed, file)).type).toBe('application/pdf');
+		const file = await sealFile(createId(), 'form.pdf', page);
+		expect((await openFile(file.sealed, file)).type).toBe('application/pdf');
 		for (const name of [
 			'page.html',
 			'drawing.svg',
@@ -66,7 +66,8 @@ describe('notice files', () => {
 		]);
 		const classroom = { id: createId(), groupKey };
 		const keys = new Map([[classroom.id, groupKey]]);
-		const { file } = await sealFile(createId(), 'menu.pdf', new Uint8Array(4));
+		// The file as its notice's content holds it, without its sealed bytes.
+		const { sealed: _, ...file } = await sealFile(createId(), 'menu.pdf', new Uint8Array(4));
 		const served = async (files: unknown[]): Promise<NoticeRecord> => {
 			const id = createId();
 			const content = { paper: 'white', body: { type: 'doc', content: [] }, files };

@@ -1,4 +1,5 @@
 import { decryptBytes, encryptBytes, UnreadableError } from '$lib/crypto';
+import { CodedError } from '$lib/errors';
 
 // Photos of a classroom's board (docs/access-format.md): a teacher photographs the corkboard, and the browser
 // makes the photo smaller and encrypts it with the classroom's Group Key before it's uploaded. Devices that
@@ -17,25 +18,17 @@ const sizes = [
 	{ side: 1280, quality: 0.75 }
 ];
 
-/** A photo that can't be used, such as a file that isn't an image this browser can read. */
-export class UnusablePhotoError extends Error {
-	readonly code = 'unusable-photo';
-
-	constructor(options?: ErrorOptions) {
-		super('Unusable photo', options);
-		this.name = 'UnusablePhotoError';
-	}
-}
-
 /**
  * A photo made ready for the board: smaller, and encoded again as WebP, or as JPEG where the browser can't
  * write WebP. Encoding it again also leaves out what the camera recorded with it, such as where it was taken.
+ * A file that isn't an image this browser can read can't be used.
  */
-export async function preparePhoto(photo: Blob): Promise<Uint8Array<ArrayBuffer>> {
+export async function preparePhoto(photo: Blob) {
 	const image = await createImageBitmap(photo).catch((cause) => {
-		throw new UnusablePhotoError({ cause });
+		throw new CodedError('unusable-photo', { cause });
 	});
 	try {
+		const type = await encodedType();
 		for (const { side, quality } of sizes) {
 			const scale = Math.min(1, side / Math.max(image.width, image.height));
 			const canvas = new OffscreenCanvas(
@@ -45,17 +38,24 @@ export async function preparePhoto(photo: Blob): Promise<Uint8Array<ArrayBuffer>
 			const context = canvas.getContext('2d');
 			if (!context) break;
 			context.drawImage(image, 0, 0, canvas.width, canvas.height);
-			let encoded = await canvas.convertToBlob({ type: 'image/webp', quality });
-			// Browsers that can't write WebP, such as Safari, write PNG instead.
-			if (encoded.type !== 'image/webp') {
-				encoded = await canvas.convertToBlob({ type: 'image/jpeg', quality });
-			}
-			if (encoded.size <= maxPhotoBytes) return new Uint8Array(await encoded.arrayBuffer());
+			const encoded = await canvas.convertToBlob({ type, quality });
+			if (encoded.size <= maxPhotoBytes) return encoded;
 		}
-		throw new UnusablePhotoError();
+		throw new CodedError('unusable-photo');
 	} finally {
 		image.close();
 	}
+}
+
+/**
+ * The type photos are encoded as: WebP, or JPEG where the browser can't write WebP, such as Safari, which
+ * writes PNG instead. A single pixel tells, so no photo is encoded twice.
+ */
+async function encodedType() {
+	const canvas = new OffscreenCanvas(1, 1);
+	canvas.getContext('2d');
+	const { type } = await canvas.convertToBlob({ type: 'image/webp' });
+	return type === 'image/webp' ? type : 'image/jpeg';
 }
 
 /** Encrypts a photo made ready for a classroom's board, with the classroom's Group Key. */

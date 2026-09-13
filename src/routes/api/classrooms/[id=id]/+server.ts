@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { deleteClassroom, renameClassroom } from '$lib/server/catalog';
-import { database, finish, objectStore, requireAdmin } from '$lib/server/session';
+import { database, objectStore, requireAdmin } from '$lib/server/session';
 import { profile, readJson } from '$lib/server/validate';
 import type { RequestHandler } from './$types';
 
@@ -14,7 +14,5 @@ export const PUT: RequestHandler = async (event) => {
 export const DELETE: RequestHandler = async (event) => {
 	const admin = await requireAdmin(event);
 	const { bucket } = objectStore(event);
-	return json(
-		await finish(event, () => deleteClassroom(database(event), bucket, admin, event.params.id))
-	);
+	return json(await deleteClassroom(database(event), bucket, admin, event.params.id));
 };

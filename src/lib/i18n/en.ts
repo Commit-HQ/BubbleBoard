@@ -474,7 +474,6 @@ export const en = {
 			open: (classroom: string) => `Open the photo of the ${classroom} board`,
 			posted: (date: string) => `put up ${date}`,
 			loading: 'Opening the photo…',
-			unreadable: 'This photo didn’t open. Try again later.',
 			zoom: 'Zoom in',
 			fit: 'Fit to the screen',
 			close: 'Close',
@@ -558,6 +557,8 @@ export const en = {
 			'too-many-files': 'A notice can carry up to 10 files.',
 			'unreadable-file':
 				'This file didn’t open on this device. Ask your kindergarten to attach it again.',
+			'unreadable-photo':
+				'This photo didn’t open on this device. Ask your kindergarten to put it up again.',
 			'storage-full':
 				'BubbleBoard’s storage is full. Delete notices with files or take down photos you no longer need, or ask whoever installed BubbleBoard.',
 			'upload-limit':

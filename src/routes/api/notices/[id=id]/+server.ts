@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { changeNotice, deleteNotice } from '$lib/server/notices';
 import { announce } from '$lib/server/push';
-import { database, finish, objectStore, requireStaff, sessionHash } from '$lib/server/session';
+import { database, objectStore, requireStaff, sessionHash } from '$lib/server/session';
 import { noticeChange, readJson } from '$lib/server/validate';
 import type { RequestHandler } from './$types';
 
@@ -12,9 +12,7 @@ export const PUT: RequestHandler = async (event) => {
 	const staff = await requireStaff(event);
 	const change = noticeChange(await readJson(event.request));
 	const { bucket } = objectStore(event);
-	const board = await finish(event, () =>
-		changeNotice(database(event), bucket, staff, event.params.id, change)
-	);
+	const board = await changeNotice(database(event), bucket, staff, event.params.id, change);
 	if (change.announce) {
 		const classrooms = change.classrooms.map(({ classroom }) => classroom);
 		await announce(event, classrooms, await sessionHash(event));
@@ -25,7 +23,5 @@ export const PUT: RequestHandler = async (event) => {
 export const DELETE: RequestHandler = async (event) => {
 	const staff = await requireStaff(event);
 	const { bucket } = objectStore(event);
-	return json(
-		await finish(event, () => deleteNotice(database(event), bucket, staff, event.params.id))
-	);
+	return json(await deleteNotice(database(event), bucket, staff, event.params.id));
 };

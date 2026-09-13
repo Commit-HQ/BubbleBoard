@@ -12,6 +12,7 @@ import {
 import { readCard, type CardReading } from '$lib/card';
 import { createId, deriveCredential, hashAuthToken, UnreadableError } from '$lib/crypto';
 import { forgetCard, loadCard, saveCard, type DeviceCard } from '$lib/device';
+import { CodedError, errorCode } from '$lib/errors';
 import { openFile, saveFile, type NewFile, type NoticeFile } from '$lib/files';
 import type { Locale } from '$lib/i18n';
 import { installStep, type InstallPlatform, type InstallPrompt } from '$lib/install';
@@ -61,7 +62,7 @@ import {
 	type Paper,
 	type Poll
 } from '$lib/notices';
-import { imageType, openPhoto, sealPhoto } from '$lib/photos';
+import { openPhoto, sealPhoto } from '$lib/photos';
 import { createContext } from 'svelte';
 
 // The app's state in the browser: the card this device holds, and the decrypted records it may see. The
@@ -112,40 +113,16 @@ const emptyCatalog: Catalog = {
 const refreshAfter = 60 * 1000;
 
 /**
- * The kindergarten's records didn't open, although this device's card did. Unlike a card that stopped
- * working, that's no reason to forget the card: the device keeps its keys and shows an error.
+ * Records, a file, or a photo that this device's card opened the keys of, or an error with `code` when they
+ * don't open. Unlike a card that stopped working, that's no reason to forget the card: the device keeps its
+ * keys and shows the error.
  */
-class UnreadableRecords extends Error {
-	readonly code = 'unreadable-records';
-
-	constructor(options?: ErrorOptions) {
-		super('Unreadable records', options);
-		this.name = 'UnreadableRecords';
-	}
-}
-
-/** A notice's file didn't open, although the notice did. */
-class UnreadableFile extends Error {
-	readonly code = 'unreadable-file';
-
-	constructor(options?: ErrorOptions) {
-		super('Unreadable file', options);
-		this.name = 'UnreadableFile';
-	}
-}
-
-async function readRecords<T>(reading: Promise<T>) {
+async function readable<T>(reading: Promise<T>, code: string) {
 	try {
 		return await reading;
 	} catch (cause) {
-		throw cause instanceof UnreadableError ? new UnreadableRecords({ cause }) : cause;
+		throw cause instanceof UnreadableError ? new CodedError(code, { cause }) : cause;
 	}
-}
-
-/** The code the app explains an error with (errors in src/lib/i18n), which each of the app's errors carries. */
-function errorCode(cause: unknown) {
-	const code = (cause as { code?: unknown } | null | undefined)?.code;
-	return typeof code === 'string' ? code : 'unexpected';
 }
 
 /** The session ended, or the card no longer opens its keys: only the card can connect the device again. */
@@ -202,6 +179,8 @@ export class App {
 	#loadedAt = 0;
 	/** Board photos this device has opened, as addresses for their images, while they're up. */
 	#photoUrls = new Map<string, Promise<string>>();
+	/** The Family Keys a staff device has opened, by the envelope each came from, until it disconnects. */
+	#familyKeys = new Map<string, Promise<CryptoKey>>();
 
 	get admin() {
 		return this.me?.admin === true;
@@ -224,9 +203,15 @@ export class App {
 		return this.#keys;
 	}
 
-	get #family() {
+	/** This device's card, when it's a family's. */
+	get #familyCard() {
 		const card = this.#card;
-		if (card?.kind !== 'family') throw new Error('This device isn’t connected with a family card');
+		return card?.kind === 'family' ? card : undefined;
+	}
+
+	get #family() {
+		const card = this.#familyCard;
+		if (!card) throw new Error('This device isn’t connected with a family card');
 		return card;
 	}
 
@@ -299,7 +284,7 @@ export class App {
 			await this.#open(await request<Access>('GET', '/api/session'), card);
 		} catch (cause) {
 			if (isDisconnection(cause)) await this.#disconnect('signed-out');
-			else this.status = cause instanceof UnreadableRecords ? 'unreadable' : 'offline';
+			else this.status = errorCode(cause) === 'unreadable-records' ? 'unreadable' : 'offline';
 		}
 	}
 
@@ -315,7 +300,8 @@ export class App {
 			card.kind === 'family' &&
 			access.family === card.family
 		) {
-			this.familyClassrooms = await readRecords(openFamily(access, card.familyKey));
+			const opening = openFamily(access, card.familyKey);
+			this.familyClassrooms = await readable(opening, 'unreadable-records');
 			await this.#openBoard(access.notices, this.familyClassrooms, card);
 		} else {
 			throw new UnreadableError();
@@ -342,7 +328,8 @@ export class App {
 	}
 
 	async #load(records: Kindergarten, teacher = this.me?.id) {
-		const catalog = await readRecords(openCatalog(this.#staff.staffKey, records));
+		const opening = openCatalog(this.#staff.staffKey, records);
+		const catalog = await readable(opening, 'unreadable-records');
 		this.catalog = catalog;
 		this.me = catalog.teachers.find((candidate) => candidate.id === teacher);
 	}
@@ -361,7 +348,12 @@ export class App {
 			? async (family) => (family === familyCard.family ? familyCard.familyKey : undefined)
 			: async (family) => {
 					const record = this.catalog.families.find(({ id }) => id === family);
-					return record && openFamilyKeyForStaff(this.#staff.staffKey, record);
+					if (!record) return undefined;
+					const opening =
+						this.#familyKeys.get(record.familyKeyForStaff) ??
+						openFamilyKeyForStaff(this.#staff.staffKey, record);
+					this.#familyKeys.set(record.familyKeyForStaff, opening);
+					return opening;
 				};
 		const { notices, unreadable } = await openBoard(records, groupKeys, familyKeys);
 		this.board = notices;
@@ -391,7 +383,7 @@ export class App {
 		try {
 			await this.#signedIn(async () => open(await request<T>(method, path, body)));
 		} catch (cause) {
-			if (cause instanceof UnreadableRecords) this.status = 'unreadable';
+			if (errorCode(cause) === 'unreadable-records') this.status = 'unreadable';
 			else if (cause instanceof ApiError && ['stale', 'not-found'].includes(cause.code)) {
 				await this.#resume();
 			}
@@ -404,10 +396,10 @@ export class App {
 		return this.#send<Kindergarten>(method, path, body, (records) => this.#load(records));
 	}
 
-	/** Sends a change to the board, which comes back as this staff member sees it now. */
+	/** Sends a change to the board, which comes back as this device sees it now. */
 	#changeBoard(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown) {
 		return this.#send<NoticeRecord[]>(method, path, body, (records) =>
-			this.#openBoard(records, this.catalog.classrooms)
+			this.#openBoard(records, this.myClassrooms, this.#familyCard)
 		);
 	}
 
@@ -418,6 +410,7 @@ export class App {
 		this.notifications = 'off';
 		this.#card = undefined;
 		this.#keys = undefined;
+		this.#familyKeys.clear();
 		this.me = undefined;
 		this.catalog = emptyCatalog;
 		this.familyClassrooms = [];
@@ -642,8 +635,7 @@ export class App {
 
 	/** Whether this device's family marked a notice as seen. */
 	isSeen(notice: Notice) {
-		const card = this.#card;
-		return card?.kind === 'family' && notice.seen.includes(card.family);
+		return notice.seen.some((family) => family === this.#familyCard?.family);
 	}
 
 	/** The families a notice is for, of those a staff device knows: the families of its classrooms. */
@@ -654,35 +646,19 @@ export class App {
 	}
 
 	/** Marks a notice as seen by this device's family, which its teachers see. */
-	async markSeen(notice: Notice) {
-		const { family } = this.#family;
-		await this.#send('PUT', `/api/notices/${notice.id}/seen`, undefined, async () => {
-			// A family device sees only its own family's mark.
-			this.board = this.board.map((candidate) =>
-				candidate.id === notice.id ? { ...candidate, seen: [family] } : candidate
-			);
-		});
+	markSeen(notice: Notice) {
+		return this.#changeBoard('PUT', `/api/notices/${notice.id}/seen`);
 	}
 
 	/** The option this device's family chose in a notice's poll. */
 	myVote(notice: Notice) {
-		const card = this.#card;
-		if (card?.kind !== 'family') return undefined;
-		return notice.votes.find((vote) => vote.family === card.family)?.option;
+		return notice.votes.find((vote) => vote.family === this.#familyCard?.family)?.option;
 	}
 
 	/** Answers a notice's poll for this device's family, which also marks the notice as seen. */
 	async vote(notice: Notice, option: string) {
-		const { family, familyKey } = this.#family;
-		const choice = await sealVote(notice.id, option, familyKey);
-		await this.#send('PUT', `/api/notices/${notice.id}/vote`, { choice }, async () => {
-			// A family device sees only its own family's answer and mark.
-			this.board = this.board.map((candidate) =>
-				candidate.id === notice.id
-					? { ...candidate, votes: [{ family, option }], seen: [family] }
-					: candidate
-			);
-		});
+		const choice = await sealVote(notice.id, option, this.#family.familyKey);
+		await this.#changeBoard('PUT', `/api/notices/${notice.id}/vote`, { choice });
 	}
 
 	/**
@@ -738,10 +714,7 @@ export class App {
 		const sealed = await this.#signedIn(() =>
 			requestBytes(`/api/notices/${notice.id}/files/${file.id}`)
 		);
-		const opened = await openFile(sealed, file).catch((cause) => {
-			throw cause instanceof UnreadableError ? new UnreadableFile({ cause }) : cause;
-		});
-		saveFile(opened, file.name);
+		saveFile(await readable(openFile(sealed, file), 'unreadable-file'), file.name);
 	}
 
 	/**
@@ -754,7 +727,8 @@ export class App {
 			url = this.#signedIn(async () => {
 				const { groupKey } = byId(this.myClassrooms, photo.classroom);
 				const sealed = await requestBytes(`/api/classrooms/${photo.classroom}/photo/${photo.id}`);
-				return URL.createObjectURL(await openPhoto(sealed, groupKey, photo.classroom, photo.id));
+				const opening = openPhoto(sealed, groupKey, photo.classroom, photo.id);
+				return URL.createObjectURL(await readable(opening, 'unreadable-photo'));
 			});
 			this.#photoUrls.set(photo.id, url);
 			url.catch(() => this.#photoUrls.delete(photo.id));
@@ -779,14 +753,14 @@ export class App {
 	 * Puts a photo made ready for the board up on a classroom's board, encrypted with the classroom's Group
 	 * Key, in place of the one there. This device shows it without fetching it again.
 	 */
-	async putUpPhoto(classroom: string, photo: Uint8Array<ArrayBuffer>) {
+	async putUpPhoto(classroom: string, photo: Blob) {
 		const { groupKey } = byId(this.catalog.classrooms, classroom);
 		const id = createId();
-		const sealed = await sealPhoto(photo, groupKey, classroom, id);
+		const bytes = new Uint8Array(await photo.arrayBuffer());
+		const sealed = await sealPhoto(bytes, groupKey, classroom, id);
 		const path = `/api/classrooms/${classroom}/photo/${id}`;
 		await this.#send<PhotoRecord[]>('PUT', path, sealed, async (photos) => {
-			const image = new Blob([photo], { type: imageType(photo) });
-			this.#photoUrls.set(id, Promise.resolve(URL.createObjectURL(image)));
+			this.#photoUrls.set(id, Promise.resolve(URL.createObjectURL(photo)));
 			this.#showPhotos(photos);
 		});
 	}

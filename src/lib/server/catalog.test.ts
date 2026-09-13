@@ -58,7 +58,7 @@ import {
 	type Admin
 } from './session';
 import {
-	deleteUnnamed,
+	deleteMarked,
 	getObject,
 	putObject,
 	type ObjectStore,
@@ -129,7 +129,7 @@ function localStore(limits: Partial<StorageLimits> = {}) {
 		bucket,
 		limits: { bytes: 1e9, uploads: 1000, downloads: 1000, ...limits }
 	};
-	return { store, bucket, objects };
+	return { store, objects };
 }
 
 /** A request to routes that use sessions, with a cookie jar kept across calls. */
@@ -237,7 +237,11 @@ async function storedBytes(db: D1Database) {
 	return row?.bytes;
 }
 
-const read = async (body: ReadableStream) => new Uint8Array(await new Response(body).arrayBuffer());
+/** A family as its card's session identifies it. */
+const familyOf = async (db: D1Database, { credential }: NewFamily) =>
+	(await identityForCard(db, credential.authToken)) as FamilyIdentity;
+
+const read = async (response: Response) => new Uint8Array(await response.arrayBuffer());
 const conflict = (message: string) => ({ status: 409, body: { message } });
 const refused = (message: string, status = 429) => ({ status, body: { message } });
 
@@ -434,7 +438,7 @@ describe('the kindergarten', () => {
 
 	it('keeps classrooms with children, and removes a family with its last child', async () => {
 		const db = localDatabase();
-		const { bucket } = localStore();
+		const { bucket } = localStore().store;
 		const { admin } = await setUpKindergarten(db);
 		const bubbles = await addClassroomTo(db, admin);
 		const family = newFamily();
@@ -527,13 +531,11 @@ describe('notices', () => {
 		classrooms: keys(classrooms),
 		files
 	});
-	const familyOf = async (db: D1Database, { credential }: NewFamily) =>
-		(await identityForCard(db, credential.authToken)) as FamilyIdentity;
 	const ids = (records: { id: string }[]) => records.map(({ id }) => id);
 	const count = async (db: D1Database) =>
 		(await db.prepare('SELECT COUNT(*) AS count FROM notices').first<{ count: number }>())?.count;
 	// Notices without files never reach R2.
-	const { bucket } = localStore();
+	const { bucket } = localStore().store;
 
 	it('go to a teacher’s own classrooms, or any for an admin', async () => {
 		const db = localDatabase();
@@ -672,8 +674,10 @@ describe('notices', () => {
 		const seenBy = async (viewer: Identity) => (await board(db, viewer))[0]?.seen.sort();
 
 		await markSeen(db, await familyOf(db, inBubbles), posted.id);
-		// Marking it again changes nothing.
-		await markSeen(db, await familyOf(db, inBubbles), posted.id);
+		// Marking it again changes nothing, and the family gets the board back with its own mark.
+		expect(await markSeen(db, await familyOf(db, inBubbles), posted.id)).toMatchObject([
+			{ id: posted.id, seen: [inBubbles.id] }
+		]);
 		await markSeen(db, await familyOf(db, inOwls), posted.id);
 		await expect(markSeen(db, await familyOf(db, elsewhere), posted.id)).rejects.toMatchObject({
 			status: 404
@@ -764,7 +768,7 @@ describe('notices', () => {
 			{ status: 403 }
 		);
 		await expect(uploadFile(db, store, author, posted.id, menu, file(9))).rejects.toMatchObject(
-			refused('stored', 409)
+			conflict('stored')
 		);
 		expect(await read(await fileBytes(db, store, family, posted.id, menu))).toEqual(file(1));
 		await uploadFile(db, store, author, posted.id, later, file(3));
@@ -801,10 +805,10 @@ describe('notices', () => {
 		);
 		await expect(
 			uploadFile(db, store, admin, posted.id, file, new Uint8Array(8))
-		).rejects.toMatchObject(refused('stored', 409));
+		).rejects.toMatchObject(conflict('stored'));
 
 		// Once it's gone, the file can be uploaded again.
-		await deleteUnnamed(db, store.bucket, [`notices/${posted.id}/${file}`]);
+		await deleteMarked(db, store.bucket);
 		expect(objects.size).toBe(0);
 		await uploadFile(db, store, admin, posted.id, file, new Uint8Array(8));
 		await postNotice(db, admin, { ...posted, files: [file] });
@@ -866,7 +870,7 @@ describe('board photos', () => {
 		]);
 		// A photo whose bytes are stored already isn't put up again, and stays up.
 		await expect(putUpPhoto(db, store, teacher, bubbles, first, photo(9))).rejects.toMatchObject(
-			refused('stored', 409)
+			conflict('stored')
 		);
 		expect([...objects.keys()]).toEqual([`board/${bubbles}/${first}`]);
 		// A new photo takes its place, in the database and in R2.
@@ -876,8 +880,7 @@ describe('board photos', () => {
 		expect([...objects.keys()]).toEqual([`board/${bubbles}/${second}`]);
 		expect(await storedBytes(db)).toBe(64);
 
-		const family = (await identityForCard(db, inBubbles.credential.authToken))!;
-		const other = (await identityForCard(db, inOwls.credential.authToken))!;
+		const [family, other] = [await familyOf(db, inBubbles), await familyOf(db, inOwls)];
 		expect(await boardPhotos(db, family)).toMatchObject([{ id: second }]);
 		expect(await boardPhotos(db, other)).toEqual([]);
 		expect(await read(await photoBytes(db, store, family, bubbles, second))).toEqual(photo(2));
@@ -893,7 +896,7 @@ describe('board photos', () => {
 
 	it('come down for their classroom’s teachers and admins, and go with their classroom', async () => {
 		const db = localDatabase();
-		const { store, bucket, objects } = localStore();
+		const { store, objects } = localStore();
 		const { admin } = await setUpKindergarten(db);
 		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
 		const teacher = await addTeacherTo(db, admin, [bubbles]);
@@ -901,14 +904,14 @@ describe('board photos', () => {
 		await putUpPhoto(db, store, admin, bubbles, inBubbles, photo(1));
 		await putUpPhoto(db, store, admin, owls, inOwls, photo(2));
 
-		await expect(takeDownPhoto(db, bucket, teacher, owls, inOwls)).rejects.toMatchObject(
+		await expect(takeDownPhoto(db, store.bucket, teacher, owls, inOwls)).rejects.toMatchObject(
 			conflict('stale')
 		);
-		expect(await takeDownPhoto(db, bucket, teacher, bubbles, inBubbles)).toEqual([]);
-		await expect(takeDownPhoto(db, bucket, admin, bubbles, inBubbles)).rejects.toMatchObject({
+		expect(await takeDownPhoto(db, store.bucket, teacher, bubbles, inBubbles)).toEqual([]);
+		await expect(takeDownPhoto(db, store.bucket, admin, bubbles, inBubbles)).rejects.toMatchObject({
 			status: 404
 		});
-		await deleteClassroom(db, bucket, admin, owls);
+		await deleteClassroom(db, store.bucket, admin, owls);
 		expect(await boardPhotos(db, admin)).toEqual([]);
 		expect(objects.size).toBe(0);
 		expect(await storedBytes(db)).toBe(0);
@@ -926,9 +929,7 @@ describe('storage', () => {
 			refused('storage-full', 507)
 		);
 		// A key stored already keeps its bytes.
-		await expect(putObject(db, store, 'a', bytes(10))).rejects.toMatchObject(
-			refused('stored', 409)
-		);
+		await expect(putObject(db, store, 'a', bytes(10))).rejects.toMatchObject(conflict('stored'));
 		expect(await storedBytes(db)).toBe(60);
 		expect([...objects.keys()]).toEqual(['a']);
 	});
@@ -960,7 +961,7 @@ describe('storage', () => {
 
 	it('deletes only what no record names, leftovers once a day has passed, and deletions that didn’t finish', async () => {
 		const db = localDatabase();
-		const { store, bucket, objects } = localStore();
+		const { store, objects } = localStore();
 		const { admin } = await setUpKindergarten(db);
 		const bubbles = await addClassroomTo(db, admin);
 		const photo = createId();
@@ -971,9 +972,7 @@ describe('storage', () => {
 		await putObject(db, store, 'half/deleted', bytes(10), 5_000);
 		await db.prepare("UPDATE stored_objects SET deleting = 1 WHERE key = 'half/deleted'").run();
 
-		await deleteUnnamed(db, bucket, [`board/${bubbles}/${photo}`]);
-		expect(objects.size).toBe(4);
-		await cleanUp({ DB: db, FILES: bucket }, 2_000 + day);
+		await cleanUp({ DB: db, FILES: store.bucket }, 2_000 + day);
 		expect([...objects.keys()].sort()).toEqual([`board/${bubbles}/${photo}`, 'on/its/way'].sort());
 		expect(await storedBytes(db)).toBe(20);
 	});
@@ -1032,7 +1031,7 @@ describe('notifications', () => {
 		await endSession(adminDevice);
 		expect(await subscribed(db)).toEqual([endpoint('later')]);
 		await db.prepare('UPDATE sessions SET expires_at = 0').run();
-		await cleanUp({ DB: db, FILES: localStore().bucket });
+		await cleanUp({ DB: db, FILES: localStore().store.bucket });
 		expect(await subscribed(db)).toEqual([]);
 	});
 

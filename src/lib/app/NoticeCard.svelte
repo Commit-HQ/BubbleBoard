@@ -1,9 +1,10 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
-	import { errorMessage, fileSize, listNames, messages, type Locale } from '$lib/i18n';
+	import { errorMessage, listNames, messages, type Locale } from '$lib/i18n';
 	import { namesOf } from '$lib/kindergarten';
 	import type { Notice } from '$lib/notices';
 	import { appPath } from '$lib/paths';
+	import FileLabel from './FileLabel.svelte';
 	import NoticeBody from './NoticeBody.svelte';
 	import NoticePoll from './NoticePoll.svelte';
 	import { getApp, Task } from './state.svelte';
@@ -36,8 +37,9 @@
 	const unseen = $derived(app.status === 'family' && !app.isSeen(notice));
 	/** On a staff device, the families the notice is for, and those of them that marked it as seen. */
 	const families = $derived(app.audience(notice));
-	const seen = $derived(families.filter(({ id }) => notice.seen.includes(id)));
-	const notSeen = $derived(families.filter(({ id }) => !notice.seen.includes(id)));
+	const marked = $derived(new Set(notice.seen));
+	const seen = $derived(families.filter(({ id }) => marked.has(id)));
+	const notSeen = $derived(families.filter(({ id }) => !marked.has(id)));
 </script>
 
 <article
@@ -54,7 +56,7 @@
 	</div>
 	{#if notice.poll}
 		<div class="mt-5">
-			<NoticePoll {locale} {notice} poll={notice.poll} />
+			<NoticePoll {locale} {notice} poll={notice.poll} {families} />
 		</div>
 	{/if}
 
@@ -63,17 +65,13 @@
 			{#each notice.files as file (file.id)}
 				<li>
 					<button
-						class="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-white/60 px-4 py-2 text-left ring-1 ring-ink/10 transition hover:bg-white disabled:opacity-50"
+						class="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-white/60 px-4 py-0.5 text-left ring-1 ring-ink/10 transition hover:bg-white disabled:opacity-50"
 						type="button"
 						aria-label={fileCopy.save(file.name)}
 						disabled={fileTask.busy}
 						onclick={() => fileTask.run(() => app.saveNoticeFile(notice, file))}
 					>
-						<Icon name="file" class="size-5 shrink-0 text-muted" />
-						<span class="min-w-0 flex-1">
-							<span class="block truncate font-semibold">{file.name}</span>
-							<span class="text-sm text-muted">{fileSize(locale, file.bytes)}</span>
-						</span>
+						<FileLabel {locale} {file} />
 						<Icon name="arrowDown" class="size-4 shrink-0 text-muted" />
 					</button>
 				</li>

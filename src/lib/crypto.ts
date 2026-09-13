@@ -97,6 +97,11 @@ export function isId(value: unknown): value is string {
 	return typeof value === 'string' && fromBase64Url(value)?.length === 16;
 }
 
+/** Whether a value is a notice file's key, as its notice's content holds it (createFileKey). */
+export function isFileKey(value: unknown): value is string {
+	return typeof value === 'string' && fromBase64Url(value)?.length === KEY_BYTES;
+}
+
 export function randomBytes(length: number) {
 	return crypto.getRandomValues(new Uint8Array(length));
 }

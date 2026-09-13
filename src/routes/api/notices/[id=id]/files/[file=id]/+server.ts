@@ -1,5 +1,5 @@
 import { fileBytes, uploadFile } from '$lib/server/notices';
-import { database, finish, objectStore, requireIdentity, requireStaff } from '$lib/server/session';
+import { database, objectStore, requireIdentity, requireStaff } from '$lib/server/session';
 import { readFile } from '$lib/server/validate';
 import type { RequestHandler } from './$types';
 
@@ -10,16 +10,13 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async (event) => {
 	const viewer = await requireIdentity(event);
 	const { id, file } = event.params;
-	const body = await fileBytes(database(event), objectStore(event), viewer, id, file);
-	return new Response(body, { headers: { 'content-type': 'application/octet-stream' } });
+	return fileBytes(database(event), objectStore(event), viewer, id, file);
 };
 
 export const PUT: RequestHandler = async (event) => {
 	const staff = await requireStaff(event);
 	const bytes = await readFile(event.request);
 	const { id, file } = event.params;
-	await finish(event, () =>
-		uploadFile(database(event), objectStore(event), staff, id, file, bytes)
-	);
+	await uploadFile(database(event), objectStore(event), staff, id, file, bytes);
 	return new Response(null, { status: 204 });
 };

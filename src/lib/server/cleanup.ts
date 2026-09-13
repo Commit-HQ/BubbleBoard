@@ -4,7 +4,7 @@ import { deleteLeftovers } from './storage';
 // subscriptions, and what R2 keeps that no record names anymore, such as the files of those notices. Imports
 // stay relative: Wrangler bundles this for the scheduled handler without SvelteKit.
 
-export type CleanupEnv = { DB: D1Database; FILES: R2Bucket };
+type CleanupEnv = { DB: D1Database; FILES: R2Bucket };
 
 const day = 24 * 60 * 60 * 1000;
 

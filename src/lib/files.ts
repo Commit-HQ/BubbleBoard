@@ -1,5 +1,6 @@
 import { createFileKey, createId, decryptBytes, encryptBytes, openFileKey } from '$lib/crypto';
-import { imageType, preparePhoto } from '$lib/photos';
+import { CodedError } from '$lib/errors';
+import { preparePhoto } from '$lib/photos';
 
 // Files attached to notices (docs/access-format.md): documents and pictures a teacher adds to a notice. The
 // browser encrypts each with a key of its own, which goes inside the notice's content with the file's name,
@@ -49,17 +50,6 @@ export type NoticeFile = { id: string; name: string; bytes: number; key: string 
  */
 export type NewFile = NoticeFile & { sealed: Uint8Array<ArrayBuffer> };
 
-/** A file a notice can't carry: a kind notices don't carry, or one too large. */
-export class FileError extends Error {
-	readonly code: 'file-type' | 'file-too-large';
-
-	constructor(code: FileError['code']) {
-		super('File not attached');
-		this.name = 'FileError';
-		this.code = code;
-	}
-}
-
 /** Whether a character has no place in a file's name: a control character, or a slash, which makes a path. */
 function unsafe(character: string) {
 	const code = character.charCodeAt(0);
@@ -96,33 +86,33 @@ function nameWith(name: string, extension: string) {
 }
 
 /** Encrypts a file's bytes with a new key of its own, for its notice's content to hold. */
-export async function sealFile(id: string, name: string, data: Uint8Array<ArrayBuffer>) {
+export async function sealFile(
+	id: string,
+	name: string,
+	data: Uint8Array<ArrayBuffer>
+): Promise<NewFile> {
 	const { key, raw } = await createFileKey();
 	const sealed = await encryptBytes(data, key, { purpose: 'notice-file', file: id });
-	const file: NoticeFile = { id, name, bytes: data.length, key: raw };
-	return { file, sealed };
+	return { id, name, bytes: data.length, key: raw, sealed };
 }
 
 /**
  * Makes a file ready to attach and seals it: a document as it is, or a picture made smaller and encoded
  * again, as board photos are, which also leaves out what the camera recorded with it, such as where it was
- * taken. Only the sealed bytes are kept.
+ * taken. Only the sealed bytes are kept. A kind of file notices don't carry, or a document too large, is
+ * refused.
  */
-export async function prepareFile(file: File): Promise<NewFile> {
+export async function prepareFile(file: File) {
 	const extension = extensionOf(file.name);
-	let name: string;
-	let data: Uint8Array<ArrayBuffer>;
 	if (pictureExtensions.includes(extension)) {
-		data = await preparePhoto(file);
-		name = nameWith(file.name, imageType(data) === 'image/webp' ? 'webp' : 'jpg');
-	} else {
-		if (!documentTypes.has(extension)) throw new FileError('file-type');
-		if (file.size > maxFileBytes) throw new FileError('file-too-large');
-		data = new Uint8Array(await file.arrayBuffer());
-		name = nameWith(file.name, extension);
+		const picture = await preparePhoto(file);
+		const name = nameWith(file.name, picture.type === 'image/webp' ? 'webp' : 'jpg');
+		return sealFile(createId(), name, new Uint8Array(await picture.arrayBuffer()));
 	}
-	const { file: attached, sealed } = await sealFile(createId(), name, data);
-	return { ...attached, sealed };
+	if (!documentTypes.has(extension)) throw new CodedError('file-type');
+	if (file.size > maxFileBytes) throw new CodedError('file-too-large');
+	const data = new Uint8Array(await file.arrayBuffer());
+	return sealFile(createId(), nameWith(file.name, extension), data);
 }
 
 /**

@@ -473,7 +473,6 @@ export const hr = {
 			open: (classroom: string) => `Otvori fotografiju ploče skupine ${classroom}`,
 			posted: (date: string) => `stavljeno ${date}`,
 			loading: 'Otvaramo fotografiju…',
-			unreadable: 'Fotografija se nije otvorila. Pokušajte ponovno kasnije.',
 			zoom: 'Povećaj',
 			fit: 'Prilagodi zaslonu',
 			close: 'Zatvori',
@@ -557,6 +556,8 @@ export const hr = {
 			'too-many-files': 'Obavijest može imati najviše 10 datoteka.',
 			'unreadable-file':
 				'Datoteka se nije otvorila na ovom uređaju. Zamolite vrtić da je ponovno priloži.',
+			'unreadable-photo':
+				'Fotografija se nije otvorila na ovom uređaju. Zamolite vrtić da je ponovno stavi.',
 			'storage-full':
 				'Spremište BubbleBoarda je puno. Obrišite obavijesti s datotekama ili skinite fotografije koje više ne trebate, ili se obratite osobi koja je instalirala BubbleBoard.',
 			'upload-limit':

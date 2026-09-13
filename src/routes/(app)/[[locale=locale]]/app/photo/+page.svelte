@@ -1,13 +1,13 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import ChoiceTile from '$lib/app/ChoiceTile.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp, Task } from '$lib/app/state.svelte';
-	import { alert, button, choice, labelFocus, queryParam, surface } from '$lib/app/ui';
+	import { alert, button, filePicker, queryParam, surface } from '$lib/app/ui';
 	import Icon from '$lib/components/Icon.svelte';
-	import IconTile from '$lib/components/IconTile.svelte';
 	import { errorMessage, messages } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
-	import { imageType, preparePhoto } from '$lib/photos';
+	import { preparePhoto } from '$lib/photos';
 	import type { PageProps } from './$types';
 
 	// Putting up a photo of a classroom's board: the classroom, when there are several, then the camera or a
@@ -26,18 +26,14 @@
 	);
 	const current = $derived(app.photos.find((photo) => photo.classroom === classroom?.id));
 	/** The photo, made ready to go up. */
-	let photo = $state.raw<Uint8Array<ArrayBuffer>>();
-	const preview = $derived(
-		photo && URL.createObjectURL(new Blob([photo], { type: imageType(photo) }))
-	);
+	let photo = $state.raw<Blob>();
+	const preview = $derived(photo && URL.createObjectURL(photo));
 	$effect(() => {
 		const url = preview;
 		return () => {
 			if (url) URL.revokeObjectURL(url);
 		};
 	});
-	/** A file input drawn as a button, faded while it can't be used. */
-	const picker = `cursor-pointer has-disabled:pointer-events-none has-disabled:opacity-50 ${labelFocus}`;
 
 	function choose(event: Event & { currentTarget: EventTarget & HTMLInputElement }) {
 		const input = event.currentTarget;
@@ -68,21 +64,14 @@
 					<legend class="mb-3 font-semibold">{t.photos.classroom}</legend>
 					<div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
 						{#each classrooms as option (option.id)}
-							<label class={choice.tile}>
-								<input
-									class="sr-only"
-									type="radio"
-									name="classroom"
-									value={option.id}
-									checked={option.id === classroom?.id}
-									onchange={() => (picked = option.id)}
-								/>
-								<span class="flex items-start justify-between gap-2">
-									<IconTile icon="shapes" />
-									<span class={choice.circle}><Icon name="check" class={choice.check} /></span>
-								</span>
-								<span class="mt-auto leading-snug font-bold">{option.name}</span>
-							</label>
+							<ChoiceTile
+								name="classroom"
+								value={option.id}
+								checked={option.id === classroom?.id}
+								onchange={() => (picked = option.id)}
+								icon="shapes"
+								title={option.name}
+							/>
 						{/each}
 					</div>
 				</fieldset>
@@ -99,7 +88,7 @@
 			<div class="grid gap-3">
 				<div class="flex flex-wrap gap-2">
 					<!-- On phones and tablets, the camera opens; computers choose a file instead. -->
-					<label class="{photo ? button.secondary : button.primary} {picker}">
+					<label class="{photo ? button.secondary : button.primary} {filePicker}">
 						<Icon name="camera" class="size-4" />{photo ? t.photos.retake : t.photos.take}
 						<input
 							class="sr-only"
@@ -110,7 +99,7 @@
 							onchange={choose}
 						/>
 					</label>
-					<label class="{button.secondary} {picker}">
+					<label class="{button.secondary} {filePicker}">
 						<Icon name="image" class="size-4" />{t.photos.choose}
 						<input
 							class="sr-only"

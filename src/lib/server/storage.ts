@@ -5,9 +5,10 @@ import { error } from '@sveltejs/kit';
 // counts as Class A and Class B operations. An object is counted before its bytes are stored and forgotten
 // only after they're deleted, so the count never falls below what R2 holds. Each key is stored once, so no
 // upload changes bytes a record names or slips in while they're deleted. Records name the objects they keep
-// (named_objects in migrations/); bytes no record names are deleted at once when a change leaves them behind,
-// and in the daily cleanup when a change didn't finish. Imports stay relative: the daily cleanup runs this
-// without SvelteKit (worker/index.js).
+// (named_objects in migrations/), and the database marks an object as on its way out when the record naming
+// it goes: the change deletes what it marked once it's saved, and the daily cleanup deletes what a change
+// didn't finish, and uploads no record named. Imports stay relative: the daily cleanup runs this without
+// SvelteKit (worker/index.js).
 
 /** The most an installation keeps in R2, in bytes, and uploads and downloads in a month. */
 export type StorageLimits = { bytes: number; uploads: number; downloads: number };
@@ -67,7 +68,7 @@ export async function putObject(
 	await bucket.put(key, bytes);
 }
 
-/** An object's bytes, counted against the month's downloads, or undefined when R2 doesn't have them. */
+/** An object's bytes as a response, counted against the month's downloads. */
 export async function getObject(
 	db: D1Database,
 	{ bucket, limits }: ObjectStore,
@@ -75,51 +76,47 @@ export async function getObject(
 	now = Date.now()
 ) {
 	await count(db, 'downloads', limits.downloads, now);
-	return (await bucket.get(key))?.body;
+	const object = await bucket.get(key);
+	if (!object) error(404, 'not-found');
+	return new Response(object.body, { headers: { 'content-type': 'application/octet-stream' } });
 }
 
 /**
- * Deletes those of these objects no record names. Each is marked as on its way out in the statement that
- * finds no record names it, so no record can name it after that (migrations/0008_notice_files.sql), and no
- * upload can store its key again until its count goes, after its bytes.
+ * Deletes the objects on their way out, which the database marked as the records naming them went
+ * (migrations/0009_storage_marks.sql). No record can name a marked object, and no upload can store its key
+ * again until its count goes, after its bytes.
  */
-export async function deleteUnnamed(db: D1Database, bucket: R2Bucket, keys: string[]) {
-	for (let start = 0; start < keys.length; start += batchSize) {
+export async function deleteMarked(db: D1Database, bucket: R2Bucket) {
+	for (;;) {
 		const { results } = await db
-			.prepare(
-				`UPDATE stored_objects SET deleting = 1 WHERE key IN (SELECT value FROM json_each(?))
-				AND key NOT IN (SELECT key FROM named_objects) RETURNING key`
-			)
-			.bind(JSON.stringify(keys.slice(start, start + batchSize)))
+			.prepare('SELECT key FROM stored_objects WHERE deleting LIMIT ?')
+			.bind(batchSize)
 			.all<{ key: string }>();
-		const unnamed = results.map(({ key }) => key);
-		if (!unnamed.length) continue;
-		await bucket.delete(unnamed);
-		await db
+		if (!results.length) return;
+		const keys = results.map(({ key }) => key);
+		await bucket.delete(keys);
+		const { meta } = await db
 			.prepare(
 				'DELETE FROM stored_objects WHERE deleting AND key IN (SELECT value FROM json_each(?))'
 			)
-			.bind(JSON.stringify(unnamed))
+			.bind(JSON.stringify(keys))
 			.run();
+		// A change deleting the same objects at the same moment deletes the rest.
+		if (results.length < batchSize || !meta.changes) return;
 	}
 }
 
 /**
- * Deletes objects no record names that were stored before `before`, or were already on their way out: left
- * by a change that didn't finish, or by records that went without deleting them, such as notices past their
- * days.
+ * Deletes objects no record names that were stored before `before`, such as files uploaded for a notice that
+ * was never saved, and objects whose deletion didn't finish.
  */
 export async function deleteLeftovers(db: D1Database, bucket: R2Bucket, before: number) {
-	const { results } = await db
+	await db
 		.prepare(
-			`SELECT key FROM stored_objects WHERE (stored_at < ? OR deleting)
-			AND key NOT IN (SELECT key FROM named_objects)`
+			`UPDATE stored_objects SET deleting = 1
+			WHERE stored_at < ? AND key NOT IN (SELECT key FROM named_objects)`
 		)
 		.bind(before)
-		.all<{ key: string }>();
-	await deleteUnnamed(
-		db,
-		bucket,
-		results.map(({ key }) => key)
-	);
+		.run();
+	await deleteMarked(db, bucket);
 }

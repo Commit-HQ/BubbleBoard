@@ -1,16 +1,16 @@
 import type { NoticeRecord, VoteRecord } from '$lib/api';
-import { fromBase64Url } from '$lib/base64url';
 import {
 	createKey,
 	decryptData,
 	encryptData,
 	envelopeSize,
+	isFileKey,
 	isId,
-	KEY_BYTES,
 	UnreadableError,
 	unwrapKey,
 	wrapping
 } from '$lib/crypto';
+import { CodedError } from '$lib/errors';
 import { isFileName, maxNoticeFiles, type NoticeFile } from '$lib/files';
 
 // Notices on the board, as devices write and read them (docs/access-format.md). Every save seals a notice
@@ -177,9 +177,8 @@ function readFiles(value: unknown): NoticeFile[] {
 	const files = list(value, (item) => {
 		const { id, name, bytes, key } = fields(item);
 		const sized = Number.isSafeInteger(bytes) && (bytes as number) >= 0;
-		const keyed = typeof key === 'string' && fromBase64Url(key)?.length === KEY_BYTES;
-		return isId(id) && isFileName(name) && sized && keyed
-			? { id, name, bytes: bytes as number, key: key as string }
+		return isId(id) && isFileName(name) && sized && isFileKey(key)
+			? { id, name, bytes: bytes as number, key }
 			: fail();
 	});
 	const distinct = new Set(files.map((file) => file.id)).size === files.length;
@@ -200,17 +199,10 @@ function readContent(value: unknown): NoticeContent {
 /** The most a notice's content may take, in bytes of JSON, which the server also holds it to. */
 export const maxNoticeBytes = 32 * 1024;
 
-/** A notice too long to store. A long notice with formatting stays well below the limit. */
-export class NoticeTooLongError extends Error {
-	readonly code = 'notice-too-long';
-
-	constructor() {
-		super('Notice too long');
-		this.name = 'NoticeTooLongError';
-	}
-}
-
-/** Seals a notice, as a device posts or changes it, under a new Notice Key for each of its classrooms. */
+/**
+ * Seals a notice, as a device posts or changes it, under a new Notice Key for each of its classrooms. A notice
+ * too long to store is refused; a long notice with formatting stays well below the limit.
+ */
 export async function sealNotice(
 	id: string,
 	content: NoticeContent,
@@ -223,7 +215,7 @@ export async function sealNotice(
 	);
 	const sealed = await encryptData(content, key, { purpose: 'notice-content', notice: id });
 	// Measured as the server measures it.
-	if (envelopeSize(sealed)! > maxNoticeBytes) throw new NoticeTooLongError();
+	if (envelopeSize(sealed)! > maxNoticeBytes) throw new CodedError('notice-too-long');
 	return {
 		content: sealed,
 		classrooms: classrooms.map((classroom, index) => ({

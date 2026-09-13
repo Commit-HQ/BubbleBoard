@@ -32,17 +32,6 @@ export function objectStore(event: RequestEvent): ObjectStore {
 	return { bucket, limits: storageLimits };
 }
 
-/**
- * Runs a change to R2 and the database to its end even if the device disconnects midway, so R2 keeps
- * nothing the database doesn't count, and deleted bytes don't stay. The request still gets the change's
- * result or failure.
- */
-export function finish<T>(event: RequestEvent, change: () => Promise<T>) {
-	const done = change();
-	event.platform?.ctx.waitUntil(done.catch(() => {}));
-	return done;
-}
-
 /** Compares hashes, so the time a comparison takes says nothing about the secret. */
 export async function isSetupToken(event: RequestEvent, token: string) {
 	const secret = event.platform?.env.SETUP_TOKEN;

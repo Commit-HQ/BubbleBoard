@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { beforeNavigate, goto } from '$app/navigation';
 	import CardSheet, { type PrintableCard } from '$lib/app/CardSheet.svelte';
+	import ChoiceTile from '$lib/app/ChoiceTile.svelte';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp, Task, type ChildValues } from '$lib/app/state.svelte';
-	import { alert, button, choice, field, formText, queryParam, surface } from '$lib/app/ui';
-	import Icon, { type IconName } from '$lib/components/Icon.svelte';
-	import IconTile from '$lib/components/IconTile.svelte';
+	import { alert, button, field, formText, queryParam, surface } from '$lib/app/ui';
+	import Icon from '$lib/components/Icon.svelte';
 	import { errorMessage, messages } from '$lib/i18n';
 	import { byId } from '$lib/kindergarten';
 	import { appPath } from '$lib/paths';
@@ -78,29 +78,6 @@
 	}
 </script>
 
-<!-- A radio drawn as a tile: an icon, a title, and a line under it. -->
-{#snippet tile(
-	name: string,
-	value: string,
-	checked: boolean,
-	choose: () => void,
-	icon: IconName,
-	title: string,
-	detail: string
-)}
-	<label class={choice.tile}>
-		<input class="sr-only" type="radio" {name} {value} {checked} onchange={choose} />
-		<span class="flex items-start justify-between gap-2">
-			<IconTile {icon} />
-			<span class={choice.circle}><Icon name="check" class={choice.check} /></span>
-		</span>
-		<span class="mt-auto min-w-0">
-			<span class="block leading-snug font-bold">{title}</span>
-			<span class="block text-sm text-muted">{detail}</span>
-		</span>
-	</label>
-{/snippet}
-
 {#if printing}
 	<CardSheet
 		locale={data.locale}
@@ -138,17 +115,17 @@
 					<legend class="mb-3 font-semibold">{t.newChild.classroom}</legend>
 					<div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
 						{#each app.catalog.classrooms as option (option.id)}
-							{@render tile(
-								'classroom',
-								option.id,
-								option.id === classroom?.id,
-								() => (picked = option.id),
-								'shapes',
-								option.name,
-								t.counts.children(
+							<ChoiceTile
+								name="classroom"
+								value={option.id}
+								checked={option.id === classroom?.id}
+								onchange={() => (picked = option.id)}
+								icon="shapes"
+								title={option.name}
+								detail={t.counts.children(
 									app.catalog.children.filter((child) => child.classroom === option.id).length
-								)
-							)}
+								)}
+							/>
 						{/each}
 					</div>
 				</fieldset>
@@ -157,24 +134,24 @@
 					<legend class="mb-3 font-semibold">{t.newChild.cards}</legend>
 					{#if app.catalog.children.length}
 						<div class="grid grid-cols-2 gap-3">
-							{@render tile(
-								'cardFor',
-								'new',
-								cardFor === 'new',
-								() => (cardFor = 'new'),
-								'heart',
-								t.newChild.newCard,
-								t.newChild.newCardHint
-							)}
-							{@render tile(
-								'cardFor',
-								'sibling',
-								cardFor === 'sibling',
-								() => (cardFor = 'sibling'),
-								'users',
-								t.newChild.sibling,
-								t.newChild.siblingHint
-							)}
+							<ChoiceTile
+								name="cardFor"
+								value="new"
+								checked={cardFor === 'new'}
+								onchange={() => (cardFor = 'new')}
+								icon="heart"
+								title={t.newChild.newCard}
+								detail={t.newChild.newCardHint}
+							/>
+							<ChoiceTile
+								name="cardFor"
+								value="sibling"
+								checked={cardFor === 'sibling'}
+								onchange={() => (cardFor = 'sibling')}
+								icon="users"
+								title={t.newChild.sibling}
+								detail={t.newChild.siblingHint}
+							/>
 						</div>
 					{/if}
 					{#if newCard}

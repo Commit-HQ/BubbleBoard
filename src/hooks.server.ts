@@ -18,28 +18,44 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const app = event.route.id?.startsWith('/(app)') ?? false;
 	const response = isCrossSite(event)
 		? json({ message: 'cross-site' }, { status: 403 })
-		: await resolve(event, {
-				transformPageChunk: ({ html }) => html.replace('%lang%', locale),
-				// Preload the fonts first paint needs. Only Croatian uses Latin Extended (č ć đ š ž), and app
-				// pages open with body text, so they skip the display font.
-				preload: ({ type, path }) =>
-					type === 'js' ||
-					type === 'css' ||
-					(type === 'font' &&
-						(locale === 'hr' || !path.includes('-latin-ext-')) &&
-						!(app && path.includes('hedvig-letters-serif')))
-			});
+		: await runToEnd(
+				event,
+				resolve(event, {
+					transformPageChunk: ({ html }) => html.replace('%lang%', locale),
+					// Preload the fonts first paint needs. Only Croatian uses Latin Extended (č ć đ š ž), and app
+					// pages open with body text, so they skip the display font.
+					preload: ({ type, path }) =>
+						type === 'js' ||
+						type === 'css' ||
+						(type === 'font' &&
+							(locale === 'hr' || !path.includes('-latin-ext-')) &&
+							!(app && path.includes('hedvig-letters-serif')))
+				})
+			);
 	response.headers.set('Content-Language', locale);
 	response.headers.set('Cache-Control', 'private, no-store');
 	for (const [name, value] of Object.entries(securityHeaders)) response.headers.set(name, value);
 	return response;
 };
 
+/** Whether a request may change something: every method but GET and HEAD. */
+function changes({ method }: Request) {
+	return method !== 'GET' && method !== 'HEAD';
+}
+
+// A request that changes something runs to its end even if the device disconnects midway, so a change to R2
+// and the database finishes: R2 keeps nothing the database doesn't count, deleted bytes don't stay, and
+// notifications go out.
+function runToEnd({ request, platform }: RequestEvent, resolving: Response | Promise<Response>) {
+	const done = Promise.resolve(resolving);
+	if (changes(request)) platform?.ctx.waitUntil(done.catch(() => {}));
+	return done;
+}
+
 // Requests that change something must come from this installation's own pages. Browsers send Origin with
 // them, so a request from another site, or one without Origin, is refused before any route runs. Every
 // such request is checked, whatever its path looks like. Session cookies are also SameSite=Strict
 // (src/lib/server/session.ts).
 function isCrossSite({ request, url }: RequestEvent) {
-	const changes = request.method !== 'GET' && request.method !== 'HEAD';
-	return changes && request.headers.get('origin') !== url.origin;
+	return changes(request) && request.headers.get('origin') !== url.origin;
 }

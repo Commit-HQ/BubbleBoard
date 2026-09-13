@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import type { Identity } from '$lib/api';
+import type { Identity, Staff } from '$lib/api';
 
 /**
  * Runs statements as one D1 batch, which D1 runs as a transaction, turning broken invariants into
@@ -43,4 +43,13 @@ export function visibleClassrooms(viewer: Identity): [string, string[]] {
 	}
 	if (viewer.admin) return ['SELECT id FROM classrooms', []];
 	return ['SELECT classroom_id FROM teacher_classrooms WHERE teacher_id = ?', [viewer.teacher]];
+}
+
+/**
+ * Refuses classrooms a staff member can't put notices or photos up in: a teacher's own, or any for an admin.
+ * Each classroom comes once. A device that offers another has records from before a classroom was deleted or
+ * its teacher moved, so it's told to load them again.
+ */
+export async function checkClassrooms(db: D1Database, staff: Staff, classrooms: string[]) {
+	if (!(await includesAll(db, classrooms, ...visibleClassrooms(staff)))) error(409, 'stale');
 }

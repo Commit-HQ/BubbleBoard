@@ -10,8 +10,8 @@ import type {
 	VoteRecord
 } from '$lib/api';
 import { day } from '$lib/notices';
-import { includesAll, transaction, visibleClassrooms } from './database';
-import { deleteUnnamed, getObject, putObject, type ObjectStore } from './storage';
+import { checkClassrooms, transaction, visibleClassrooms } from './database';
+import { deleteMarked, getObject, putObject, type ObjectStore } from './storage';
 
 // The board: notices as envelopes, with the classrooms they're for (docs/access-format.md). The server
 // can't read a notice, so it decides who sees and changes which. Teachers post to their own classrooms and
@@ -22,7 +22,7 @@ import { deleteUnnamed, getObject, putObject, type ObjectStore } from './storage
 // days, which the daily cleanup deletes with their files (cleanup.ts).
 
 /**
- * The families whose marks and answers on notices someone sees, as a subquery and its parameters: a family
+ * The families whose marks and answers on notices someone sees, as a query and its parameters: a family
  * only its own, a teacher the families in their classrooms, and an admin every family.
  */
 function visibleFamilies(viewer: Identity): [string, string[]] {
@@ -41,23 +41,24 @@ function visibleFamilies(viewer: Identity): [string, string[]] {
  * viewer sees.
  */
 function boardQuery(db: D1Database, viewer: Identity) {
-	const [classrooms, classroomParams] = visibleClassrooms(viewer);
 	const [families, familyParams] = visibleFamilies(viewer);
+	const [classrooms, classroomParams] = visibleClassrooms(viewer);
 	// Parameters go in the order the query uses them.
 	return db
 		.prepare(
-			`SELECT n.id, n.teacher_id AS teacher, n.content, n.posted_at AS postedAt,
+			`WITH visible_families AS (${families})
+			SELECT n.id, n.teacher_id AS teacher, n.content, n.posted_at AS postedAt,
 			n.announced_at AS announcedAt, n.edited_at AS editedAt, n.expires_at AS expiresAt,
 			json_group_array(json_object('classroom', nc.classroom_id, 'noticeKey', nc.notice_key)) AS classrooms,
 			(SELECT json_group_array(family_id) FROM notice_seen
-			WHERE notice_id = n.id AND family_id IN (${families})) AS seen,
+			WHERE notice_id = n.id AND family_id IN (SELECT * FROM visible_families)) AS seen,
 			(SELECT json_group_array(json_object('family', family_id, 'choice', choice)) FROM poll_votes
-			WHERE notice_id = n.id AND family_id IN (${families})) AS votes
+			WHERE notice_id = n.id AND family_id IN (SELECT * FROM visible_families)) AS votes
 			FROM notices n JOIN notice_classrooms nc ON nc.notice_id = n.id
 			WHERE n.expires_at > ? AND nc.classroom_id IN (${classrooms})
 			GROUP BY n.id ORDER BY n.announced_at DESC, n.id`
 		)
-		.bind(...familyParams, ...familyParams, Date.now(), ...classroomParams);
+		.bind(...familyParams, Date.now(), ...classroomParams);
 }
 
 /** The board's rows as notices. SQLite has no arrays, so each notice's lists come as JSON. */
@@ -76,20 +77,10 @@ export async function board(db: D1Database, viewer: Identity) {
 	return readBoard(await boardQuery(db, viewer).all());
 }
 
-/** Changes the board and reads it back as the staff member sees it now, in one transaction. */
-async function changeBoard(db: D1Database, staff: Staff, statements: D1PreparedStatement[]) {
-	const results = await transaction(db, [...statements, boardQuery(db, staff)]);
+/** Changes the board and reads it back as the viewer sees it now, in one transaction. */
+async function changeBoard(db: D1Database, viewer: Identity, statements: D1PreparedStatement[]) {
+	const results = await transaction(db, [...statements, boardQuery(db, viewer)]);
 	return readBoard(results[statements.length]);
-}
-
-/**
- * Refuses a notice for classrooms its poster can't reach: a teacher's own, or any for an admin. Each
- * classroom comes once (validate.ts). A device that offers another has records from before a classroom was
- * deleted or its teacher moved, so it's told to load them again.
- */
-async function checkClassrooms(db: D1Database, staff: Staff, keys: NoticeKey[]) {
-	const classrooms = keys.map(({ classroom }) => classroom);
-	if (!(await includesAll(db, classrooms, ...visibleClassrooms(staff)))) error(409, 'stale');
 }
 
 function insertKeys(db: D1Database, notice: string, keys: NoticeKey[]) {
@@ -107,40 +98,25 @@ function fileKey(notice: string, file: string) {
 	return `notices/${notice}/${file}`;
 }
 
-/** The keys of the files a notice names now. */
-async function fileKeys(db: D1Database, notice: string) {
-	const { results } = await db
-		.prepare('SELECT id FROM notice_files WHERE notice_id = ?')
-		.bind(notice)
-		.all<{ id: string }>();
-	return results.map(({ id }) => fileKey(notice, id));
-}
-
-/** The keys of the files on a classroom's notices, those it shares with other classrooms included. */
-export async function classroomFileKeys(db: D1Database, classroom: string) {
-	const { results } = await db
-		.prepare(
-			`SELECT notice_id AS notice, id FROM notice_files WHERE notice_id IN
-			(SELECT notice_id FROM notice_classrooms WHERE classroom_id = ?)`
-		)
-		.bind(classroom)
-		.all<{ notice: string; id: string }>();
-	return results.map(({ notice, id }) => fileKey(notice, id));
-}
-
 /**
- * Names a notice's files. The database refuses a file that wasn't uploaded for the notice or is on its way
- * out (migrations/0008_notice_files.sql), and the device is told to load its records again. Each file comes
- * once (validate.ts).
+ * Names a notice's files, keeping those it names already. The database refuses a file that wasn't uploaded
+ * for the notice or is on its way out (migrations/0008_notice_files.sql), and the device is told to load its
+ * records again. Each file comes once (validate.ts).
  */
 function insertFiles(db: D1Database, notice: string, files: string[]) {
 	return files.map((file) =>
-		db.prepare('INSERT INTO notice_files (notice_id, id) VALUES (?, ?)').bind(notice, file)
+		db
+			.prepare('INSERT INTO notice_files (notice_id, id) VALUES (?, ?) ON CONFLICT DO NOTHING')
+			.bind(notice, file)
 	);
 }
 
 export async function postNotice(db: D1Database, staff: Staff, notice: NewNotice) {
-	await checkClassrooms(db, staff, notice.classrooms);
+	await checkClassrooms(
+		db,
+		staff,
+		notice.classrooms.map(({ classroom }) => classroom)
+	);
 	const now = Date.now();
 	return changeBoard(db, staff, [
 		db
@@ -183,8 +159,11 @@ export async function changeNotice(
 	change: NoticeChange
 ) {
 	const { postedAt } = await changeable(db, staff, id);
-	await checkClassrooms(db, staff, change.classrooms);
-	const files = await fileKeys(db, id);
+	await checkClassrooms(
+		db,
+		staff,
+		change.classrooms.map(({ classroom }) => classroom)
+	);
 	const now = Date.now();
 	const records = await changeBoard(db, staff, [
 		db
@@ -204,7 +183,12 @@ export async function changeNotice(
 		// Every save seals the notice under a new key, so its old keys all go.
 		db.prepare('DELETE FROM notice_classrooms WHERE notice_id = ?').bind(id),
 		...insertKeys(db, id, change.classrooms),
-		db.prepare('DELETE FROM notice_files WHERE notice_id = ?').bind(id),
+		// The files the change leaves out go on their way out with their rows.
+		db
+			.prepare(
+				'DELETE FROM notice_files WHERE notice_id = ? AND id NOT IN (SELECT value FROM json_each(?))'
+			)
+			.bind(id, JSON.stringify(change.files)),
 		...insertFiles(db, id, change.files),
 		// A change that notifies everyone again asks every family to see the notice again.
 		db
@@ -213,18 +197,17 @@ export async function changeNotice(
 		// A poll taken off the notice takes its answers with it.
 		db.prepare('DELETE FROM poll_votes WHERE NOT ? AND notice_id = ?').bind(Number(change.poll), id)
 	]);
-	await deleteUnnamed(db, bucket, files);
+	await deleteMarked(db, bucket);
 	return records;
 }
 
 /** Deletes a notice with its files. */
 export async function deleteNotice(db: D1Database, bucket: R2Bucket, staff: Staff, id: string) {
 	await changeable(db, staff, id);
-	const files = await fileKeys(db, id);
 	const records = await changeBoard(db, staff, [
 		db.prepare('DELETE FROM notices WHERE id = ?').bind(id)
 	]);
-	await deleteUnnamed(db, bucket, files);
+	await deleteMarked(db, bucket);
 	return records;
 }
 
@@ -269,14 +252,17 @@ export async function fileBytes(
 	notice: string,
 	file: string
 ) {
-	await visibleNotice(db, viewer, notice);
+	const [classrooms, params] = visibleClassrooms(viewer);
 	const named = await db
-		.prepare('SELECT 1 FROM notice_files WHERE notice_id = ? AND id = ?')
-		.bind(notice, file)
+		.prepare(
+			`SELECT 1 FROM notice_files f JOIN notices n ON n.id = f.notice_id
+			WHERE f.notice_id = ? AND f.id = ? AND n.expires_at > ? AND f.notice_id IN
+			(SELECT notice_id FROM notice_classrooms WHERE classroom_id IN (${classrooms}))`
+		)
+		.bind(notice, file, Date.now(), ...params)
 		.first();
-	const body = named && (await getObject(db, store, fileKey(notice, file)));
-	if (!body) error(404, 'not-found');
-	return body;
+	if (!named) error(404, 'not-found');
+	return getObject(db, store, fileKey(notice, file));
 }
 
 /** Marks a notice as seen by a family. Marking it again changes nothing. */
@@ -286,20 +272,21 @@ function seenBy(db: D1Database, family: FamilyIdentity, id: string) {
 		.bind(id, family.family);
 }
 
-/** Marks a notice as seen by a family that sees it. */
+/** Marks a notice as seen by a family that sees it, and returns the board as the family sees it now. */
 export async function markSeen(db: D1Database, family: FamilyIdentity, id: string) {
 	await visibleNotice(db, family, id);
-	await transaction(db, [seenBy(db, family, id)]);
+	return changeBoard(db, family, [seenBy(db, family, id)]);
 }
 
 /**
- * Answers a notice's poll for a family that sees it, in place of its earlier answer, and marks the notice
- * as seen. A device that answers a notice without a poll has an outdated board, so it's told to load it again.
+ * Answers a notice's poll for a family that sees it, in place of its earlier answer, marks the notice as
+ * seen, and returns the board as the family sees it now. A device that answers a notice without a poll has an
+ * outdated board, so it's told to load it again.
  */
 export async function vote(db: D1Database, family: FamilyIdentity, id: string, choice: string) {
 	const { poll } = await visibleNotice(db, family, id);
 	if (!poll) error(409, 'stale');
-	await transaction(db, [
+	return changeBoard(db, family, [
 		db
 			.prepare(
 				`INSERT INTO poll_votes (notice_id, family_id, choice) VALUES (?1, ?2, ?3)

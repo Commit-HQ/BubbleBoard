@@ -7,7 +7,6 @@ import {
 	maxNoticeBytes,
 	maxOptionLength,
 	maxPollOptions,
-	NoticeTooLongError,
 	openBoard,
 	openNotice,
 	readDocument,
@@ -112,7 +111,9 @@ describe('notices', () => {
 			...content,
 			body: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text }] }] }
 		} satisfies NoticeContent;
-		await expect(sealNotice(createId(), long, [classroom])).rejects.toThrow(NoticeTooLongError);
+		await expect(sealNotice(createId(), long, [classroom])).rejects.toMatchObject({
+			code: 'notice-too-long'
+		});
 	});
 });
 

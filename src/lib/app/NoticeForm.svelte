@@ -8,7 +8,7 @@
 		type NewFile,
 		type NoticeFile
 	} from '$lib/files';
-	import { errorMessage, fileSize, messages, type Locale } from '$lib/i18n';
+	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import {
 		day,
 		defaultNoticeDays,
@@ -22,10 +22,12 @@
 		type PollOption
 	} from '$lib/notices';
 	import { tick } from 'svelte';
+	import CheckCard from './CheckCard.svelte';
 	import Checklist from './Checklist.svelte';
+	import FileLabel from './FileLabel.svelte';
 	import NoticeEditor from './NoticeEditor.svelte';
 	import { getApp, Task } from './state.svelte';
-	import { alert, button, choice, field, labelFocus, paperClass, surface } from './ui';
+	import { alert, button, choice, field, filePicker, paperClass, surface } from './ui';
 
 	// A notice's text, poll, files, classrooms, paper, and days, to post or change. Teachers post to their own
 	// classrooms and admins to any. The editor shows the text on the paper chosen for it.
@@ -84,8 +86,6 @@
 			(notice?.postedAt ?? Date.now()) + days * day
 		)
 	);
-	/** A file input drawn as a button, faded while it can't be used. */
-	const picker = `cursor-pointer has-disabled:pointer-events-none has-disabled:opacity-50 ${labelFocus}`;
 
 	async function addOption() {
 		options.push(blankOption());
@@ -152,14 +152,7 @@
 		</div>
 
 		<div class="grid gap-3">
-			<label class={choice.card}>
-				<input class="sr-only" type="checkbox" bind:checked={polling} />
-				<span class={choice.box}><Icon name="check" class={choice.check} /></span>
-				<span>
-					<span class="block font-semibold">{t.polls.add}</span>
-					<span class={field.hint}>{t.polls.addHint}</span>
-				</span>
-			</label>
+			<CheckCard label={t.polls.add} hint={t.polls.addHint} bind:checked={polling} />
 			{#if polling}
 				<div class="grid gap-2" role="group" aria-label={t.polls.answers}>
 					{#each options as option, index (option.id)}
@@ -209,13 +202,7 @@
 						<li
 							class="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white/60 py-1 pr-1 pl-4"
 						>
-							<Icon name="file" class="size-5 shrink-0 text-muted" />
-							<span class="min-w-0 flex-1 py-1.5">
-								<span class="block truncate font-semibold">{file.name}</span>
-								<span class={field.hint}>
-									{fileSize(locale, file.bytes)}
-								</span>
-							</span>
+							<FileLabel {locale} {file} />
 							<button
 								class={button.icon}
 								type="button"
@@ -229,7 +216,7 @@
 				</ul>
 			{/if}
 			{#if files.length < maxNoticeFiles}
-				<label class="{button.secondary} {picker} justify-self-start">
+				<label class="{button.secondary} {filePicker} justify-self-start">
 					<Icon name="plus" class="size-4" />{t.files.attach}
 					<input
 						class="sr-only"
@@ -300,14 +287,7 @@
 		</fieldset>
 
 		{#if notice}
-			<label class={choice.card}>
-				<input class="sr-only" type="checkbox" bind:checked={announce} />
-				<span class={choice.box}><Icon name="check" class={choice.check} /></span>
-				<span>
-					<span class="block font-semibold">{t.notices.announce}</span>
-					<span class={field.hint}>{t.notices.announceHint}</span>
-				</span>
-			</label>
+			<CheckCard label={t.notices.announce} hint={t.notices.announceHint} bind:checked={announce} />
 		{/if}
 		{#if task.error}<p class={alert} role="alert">{errorMessage(locale, task.error)}</p>{/if}
 		<button
