@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import type { Identity, Staff } from '$lib/api';
+import type { FamilyIdentity, Identity, Staff } from '$lib/api';
 import { fromBase64Url, toBase64Url } from '$lib/base64url';
 import { hashAuthToken, hashToken, randomBytes } from '$lib/crypto';
 
@@ -155,6 +155,12 @@ export async function requireIdentity(event: RequestEvent) {
 export async function requireStaff(event: RequestEvent): Promise<Staff> {
 	const current = await requireIdentity(event);
 	if (current.kind !== 'staff') error(403, 'forbidden');
+	return current;
+}
+
+export async function requireFamily(event: RequestEvent): Promise<FamilyIdentity> {
+	const current = await requireIdentity(event);
+	if (current.kind !== 'family') error(403, 'forbidden');
 	return current;
 }
 

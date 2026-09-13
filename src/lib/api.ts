@@ -54,6 +54,7 @@ export type Identity = { credential: string; wrappedKey: string } & (
 	{ kind: 'staff'; teacher: string; admin: boolean } | { kind: 'family'; family: string }
 );
 export type Staff = Extract<Identity, { kind: 'staff' }>;
+export type FamilyIdentity = Extract<Identity, { kind: 'family' }>;
 
 /** The records a staff member may see: everything for admins, their own classrooms for teachers. */
 export type Kindergarten = {
@@ -80,6 +81,11 @@ export type NoticeRecord = {
 	editedAt: number | null;
 	expiresAt: number;
 	classrooms: NoticeKey[];
+	/**
+	 * The families that marked it as seen, of those the device may know about: a family device's own family,
+	 * the families in a teacher's classrooms, or every family for an admin.
+	 */
+	seen: string[];
 };
 
 /** A notice as a device changes it, sealed again under a new Notice Key. */
@@ -99,7 +105,7 @@ export type NewNotice = Omit<NoticeChange, 'announce'> & { id: string };
  */
 export type Access = (
 	| (Staff & { kindergarten: Kindergarten })
-	| (Extract<Identity, { kind: 'family' }> & {
+	| (FamilyIdentity & {
 			classrooms: { id: string; profile: string; groupKeyForFamily: string }[];
 	  })
 ) & { notices: NoticeRecord[] };

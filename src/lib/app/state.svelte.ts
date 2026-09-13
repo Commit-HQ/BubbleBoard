@@ -191,6 +191,12 @@ export class App {
 		return this.#keys;
 	}
 
+	get #family() {
+		const card = this.#card;
+		if (card?.kind !== 'family') throw new Error('This device isn’t connected with a family card');
+		return card;
+	}
+
 	async start() {
 		// First, so a card's code leaves the address bar even in a browser that can't use it.
 		const { card, token } = takeFragment();
@@ -584,6 +590,30 @@ export class App {
 	/** Whether this device may change a notice: its author's own, or any for an admin. */
 	canChange(notice: Notice) {
 		return this.status === 'staff' && (this.admin || notice.teacher === this.me?.id);
+	}
+
+	/** Whether this device's family marked a notice as seen. */
+	isSeen(notice: Notice) {
+		const card = this.#card;
+		return card?.kind === 'family' && notice.seen.includes(card.family);
+	}
+
+	/** The families a notice is for, of those a staff device knows: the families of its classrooms. */
+	audience(notice: Notice) {
+		return this.catalog.families.filter((family) =>
+			family.classrooms.some((classroom) => notice.classrooms.includes(classroom))
+		);
+	}
+
+	/** Marks a notice as seen by this device's family, which its teachers see. */
+	async markSeen(notice: Notice) {
+		const { family } = this.#family;
+		await this.#send('PUT', `/api/notices/${notice.id}/seen`, undefined, async () => {
+			// A family device sees only its own family's mark.
+			this.board = this.board.map((candidate) =>
+				candidate.id === notice.id ? { ...candidate, seen: [family] } : candidate
+			);
+		});
 	}
 
 	/**

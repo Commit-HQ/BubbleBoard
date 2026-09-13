@@ -410,6 +410,12 @@ export const en = {
 			delete: 'Delete',
 			deleteTitle: 'Delete this notice?',
 			deleteCopy: 'It comes off every board right away.',
+			markSeen: 'Mark as seen',
+			seen: 'Seen',
+			seenBy: (seen: number, families: number) =>
+				`Seen by ${seen} of ${families === 1 ? '1 family' : `${families} families`}`,
+			seenNames: (names: string[]) => `Seen: ${list(names)}`,
+			notSeenNames: (names: string[]) => `Not seen yet: ${list(names)}`,
 			newTitle: 'New notice',
 			editTitle: 'Edit notice',
 			text: 'Notice',

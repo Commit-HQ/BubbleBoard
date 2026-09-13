@@ -32,11 +32,18 @@ Tiptap 3 (MIT), chosen by the owner on 2026-09-12. It doesn't depend on a framew
 - **CSP:** the editor's injected stylesheet is off (`injectCSS: false`), with its few rules in `app.css`. Tiptap's Color extension writes inline `style` attributes, which the CSP blocks, so text colour is a small mark of our own that renders a class from the fixed palette.
 - **Emoji:** phone keyboards have them, and a small picker in the toolbar offers a few classroom emoji on every device, without bundling an emoji data set.
 
+## Decisions from the board session — 2026-09-13
+
+The owner asked for three additions to the board, each in a commit of its own: seen marks, polls, and a photo of each classroom's corkboard.
+
+- **Seen:** families mark a notice as seen with a tap, so teachers know which families saw it. A mark is something a family does; nothing records who opened what. On a family device, a notice the family hasn't marked has an accent outline and a Mark as seen button, and a marked one says Seen. Under each notice, staff see how many of its families marked it and, when they open that line, which have and which haven't, among the families of its classrooms they see: a teacher's classrooms', or every family for an admin. Families don't see each other's marks. A change that notifies everyone again clears the marks, so everyone is asked to see it again. The server stores which family marked which notice: opaque IDs, but activity it didn't hold before, which the owner chose (spec §44).
+
 ## Deferred
 
-- Unread markers and app icon badges.
+- Automatic unread markers and app icon badges.
 - Declarative Web Push (iOS 18.4 and later), which needs an encrypted payload.
-- Scheduled, pinned, or recurring notices; reactions, comments, and read receipts, which would tell the server who read what.
+- Scheduled, pinned, or recurring notices; reactions and comments.
+- Marking notices as seen when they're opened rather than with a tap, which would tell the server who read what.
 - Files and images in notices, which come with documents and photos.
 
 ## Scope and constraints

@@ -2,7 +2,14 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import type { RequestEvent } from '@sveltejs/kit';
 import { describe, expect, it, vi } from 'vitest';
-import type { FamilyLinks, NewCredential, NewFamily, Staff } from '$lib/api';
+import type {
+	FamilyIdentity,
+	FamilyLinks,
+	Identity,
+	NewCredential,
+	NewFamily,
+	Staff
+} from '$lib/api';
 import { toBase64Url } from '$lib/base64url';
 import { createId } from '$lib/crypto';
 import {
@@ -20,7 +27,7 @@ import {
 	setUp
 } from './catalog';
 import { day } from '$lib/notices';
-import { board, changeNotice, deleteNotice, postNotice } from './notices';
+import { board, changeNotice, deleteNotice, markSeen, postNotice } from './notices';
 import {
 	cleanUp,
 	createVapidSecret,
@@ -579,6 +586,44 @@ describe('notices', () => {
 		await deleteClassroom(db, admin, owls);
 		expect(await board(db, admin)).toMatchObject([{ id: shared.id, classrooms: keys([bubbles]) }]);
 		expect(await count(db)).toBe(1);
+	});
+
+	it('show who marked them as seen: a family its own mark, teachers their families’, admins every one', async () => {
+		const db = localDatabase();
+		const { admin } = await setUpKindergarten(db);
+		const [bubbles, owls, ladybirds] = [
+			await addClassroomTo(db, admin),
+			await addClassroomTo(db, admin),
+			await addClassroomTo(db, admin)
+		];
+		const [inBubbles, inOwls, elsewhere] = [newFamily(), newFamily(), newFamily()];
+		await addChildTo(db, admin, bubbles, inBubbles);
+		await addChildTo(db, admin, owls, inOwls);
+		await addChildTo(db, admin, ladybirds, elsewhere);
+		const teacher = await addTeacherTo(db, admin, [bubbles]);
+		const posted = notice([bubbles, owls]);
+		await postNotice(db, admin, posted);
+		const familyOf = async ({ credential }: NewFamily) =>
+			(await identityForCard(db, credential.authToken)) as FamilyIdentity;
+		const seenBy = async (viewer: Identity) => (await board(db, viewer))[0]?.seen.sort();
+
+		await markSeen(db, await familyOf(inBubbles), posted.id);
+		// Marking it again changes nothing.
+		await markSeen(db, await familyOf(inBubbles), posted.id);
+		await markSeen(db, await familyOf(inOwls), posted.id);
+		await expect(markSeen(db, await familyOf(elsewhere), posted.id)).rejects.toMatchObject({
+			status: 404
+		});
+
+		expect(await seenBy(admin)).toEqual([inBubbles.id, inOwls.id].sort());
+		expect(await seenBy(teacher)).toEqual([inBubbles.id]);
+		expect(await seenBy(await familyOf(inOwls))).toEqual([inOwls.id]);
+
+		// A change keeps the marks, unless it notifies everyone again.
+		await changeNotice(db, admin, posted.id, change([bubbles, owls]));
+		expect(await seenBy(admin)).toHaveLength(2);
+		await changeNotice(db, admin, posted.id, change([bubbles, owls], true));
+		expect(await seenBy(admin)).toEqual([]);
 	});
 });
 

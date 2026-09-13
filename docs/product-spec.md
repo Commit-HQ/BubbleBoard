@@ -8,6 +8,7 @@
 > - **Language URLs** (not covered by this specification). Croatian is served at `/` and English at `/en`, without a language cookie. App routes and QR links (§33) must fit this scheme.
 > - **Build order** (replaces the pilot steps in §60). Follow the README's “Next slices”: teacher setup and family enrollment; an encrypted notice with push notifications; privacy-aware photos; then private messages and attachments.
 > - **Notices** (extends §6, §34, §39–40, and §53): a notice can go to several classrooms, encrypted once with its own Notice Key, which each classroom's Group Key opens. Pushes carry no content. On phones and tablets, BubbleBoard works only once installed, and computers use the browser; notifications are turned on from home. The [next step plan](next-step-plan.md) records the decisions.
+> - **Seen marks** (extends §44, 2026-09-13): families mark notices as seen with a tap, and the server stores which family marked which notice, so teachers know who saw it. The [next step plan](next-step-plan.md) records the decision.
 > - **Media retention** (§42) is decided as written: 1, 3, 7, 14, 30, 60, or 90 days, with 30 days as the default for classroom photos and notices.
 > - **Deployment** (§46–47) is not automated yet. CI only validates; automated deploys, build manifests, and post-deploy verification come with deployment work, opt-in for each installation.
 

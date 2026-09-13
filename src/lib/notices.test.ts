@@ -42,6 +42,7 @@ function served(id: string, sealed: Sealed, visible?: string[]): NoticeRecord {
 		announcedAt: 1,
 		editedAt: null,
 		expiresAt: 2,
+		seen: [],
 		classrooms: sealed.classrooms.filter(({ classroom }) => !visible || visible.includes(classroom))
 	};
 }
