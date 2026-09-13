@@ -33,29 +33,47 @@ const sizes = [
  * where it was taken. A file that isn't an image this browser can read can't be used.
  */
 export async function preparePhoto(photo: Blob) {
-	const image = await createImageBitmap(photo).catch((cause) => {
+	const image = await openImage(photo).catch((cause) => {
 		throw new CodedError('unusable-photo', { cause });
 	});
-	try {
-		const webp = await writesWebp();
-		let type: string | undefined;
-		for (const { side, quality } of sizes) {
-			const scale = Math.min(1, side / Math.max(image.width, image.height));
-			const canvas = new OffscreenCanvas(
-				Math.round(image.width * scale),
-				Math.round(image.height * scale)
-			);
-			const context = canvas.getContext('2d');
-			if (!context) break;
-			context.drawImage(image, 0, 0, canvas.width, canvas.height);
-			type ??= webp ? 'image/webp' : seeThrough(context) ? 'image/png' : 'image/jpeg';
-			const encoded = await canvas.convertToBlob({ type, quality });
-			if (encoded.size <= maxPhotoBytes) return encoded;
-		}
-		throw new CodedError('unusable-photo');
-	} finally {
-		image.close();
+	const webp = await writesWebp();
+	let type: string | undefined;
+	for (const { side, quality } of sizes) {
+		const context = drawSmaller(image, side);
+		if (!context) break;
+		type ??= webp ? 'image/webp' : seeThrough(context) ? 'image/png' : 'image/jpeg';
+		const encoded = await context.canvas.convertToBlob({ type, quality });
+		if (encoded.size <= maxPhotoBytes) return encoded;
 	}
+	throw new CodedError('unusable-photo');
+}
+
+/**
+ * A photo or picture, opened to be drawn smaller. It's never made into a full-size bitmap, as
+ * `createImageBitmap` would make it: Safari on iPhone can't make one as large as the photos its own camera
+ * takes, and refuses them. A file that isn't an image this browser can read is refused too.
+ */
+export async function openImage(photo: Blob) {
+	const url = URL.createObjectURL(photo);
+	const image = new Image();
+	image.src = url;
+	try {
+		await image.decode();
+		return image;
+	} finally {
+		// The image keeps what it loaded.
+		URL.revokeObjectURL(url);
+	}
+}
+
+/** An image drawn smaller on a canvas, its longer side at most `side` pixels, where the browser can draw. */
+export function drawSmaller(image: HTMLImageElement, side: number) {
+	const { naturalWidth: width, naturalHeight: height } = image;
+	const scale = Math.min(1, side / Math.max(width, height));
+	const canvas = new OffscreenCanvas(Math.round(width * scale), Math.round(height * scale));
+	const context = canvas.getContext('2d');
+	context?.drawImage(image, 0, 0, canvas.width, canvas.height);
+	return context ?? undefined;
 }
 
 /**
