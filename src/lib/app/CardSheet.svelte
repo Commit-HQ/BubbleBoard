@@ -20,7 +20,7 @@
 	import { appPath } from '$lib/paths';
 	import { onMount } from 'svelte';
 	import QrCode from './QrCode.svelte';
-	import { alert, button, field, surface } from './ui';
+	import { alert, button, choice, surface } from './ui';
 
 	// New cards, shown once to print or save as a PDF. Card codes are never stored (docs/access-format.md),
 	// so this page is the only place they appear. With `confirm`, for setup's two cards, nothing leaves
@@ -104,9 +104,10 @@
 
 	<div class="grid justify-items-start gap-4 print:hidden">
 		{#if confirm}
-			<label class="flex items-center gap-3 font-semibold">
-				<input class={field.check} type="checkbox" bind:checked={confirmed} />
-				{t.card.confirm}
+			<label class={choice.card}>
+				<input class="sr-only" type="checkbox" bind:checked={confirmed} />
+				<span class={choice.box}><Icon name="check" class={choice.check} /></span>
+				<span class="font-semibold">{t.card.confirm}</span>
 			</label>
 			{#if blocked && !confirmed}<p class={alert} role="alert">{t.card.leaveFirst}</p>{/if}
 		{/if}

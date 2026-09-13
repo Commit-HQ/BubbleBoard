@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import CardSheet, { type PrintableCard } from '$lib/app/CardSheet.svelte';
+	import Checklist from '$lib/app/Checklist.svelte';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
 	import ListLink from '$lib/app/ListLink.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp } from '$lib/app/state.svelte';
-	import { button, field, queryParam, surface } from '$lib/app/ui';
+	import { button, queryParam, surface } from '$lib/app/ui';
 	import Icon from '$lib/components/Icon.svelte';
 	import { listNames, messages } from '$lib/i18n';
 	import { namesOf } from '$lib/kindergarten';
@@ -119,35 +120,16 @@
 						<h2 class="text-2xl">{t.classroom.replaceTitle}</h2>
 						<p class="mt-1 text-muted">{t.classroom.replaceCopy}</p>
 					</div>
-					<fieldset class="grid gap-3">
-						<legend class="sr-only">{t.classroom.replaceTitle}</legend>
-						<label class="flex items-center gap-3 font-semibold">
-							<input
-								class={field.check}
-								type="checkbox"
-								checked={chosen.length === families.length}
-								onchange={(event) =>
-									(chosen = event.currentTarget.checked ? families.map((family) => family.id) : [])}
-							/>
-							{t.actions.selectAll}
-						</label>
-						{#each families as family (family.id)}
-							<label class="flex items-start gap-3">
-								<input
-									class="{field.check} mt-0.5"
-									type="checkbox"
-									value={family.id}
-									bind:group={chosen}
-								/>
-								<span class="min-w-0">
-									<span class="block font-semibold">{family.name}</span>
-									<span class="block text-sm text-muted">
-										{listNames(data.locale, childrenOf(family.id))}
-									</span>
-								</span>
-							</label>
-						{/each}
-					</fieldset>
+					<Checklist
+						locale={data.locale}
+						label={t.child.cards}
+						options={families.map((family) => ({
+							value: family.id,
+							label: family.name,
+							detail: listNames(data.locale, childrenOf(family.id))
+						}))}
+						bind:chosen
+					/>
 					<div class="flex flex-wrap gap-2">
 						<button class={button.primary} type="submit" disabled={!chosen.length}>
 							{t.classroom.replaceSubmit(chosen.length)}

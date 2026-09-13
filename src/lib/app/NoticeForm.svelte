@@ -9,9 +9,10 @@
 		type Notice,
 		type Paper
 	} from '$lib/notices';
+	import Checklist from './Checklist.svelte';
 	import NoticeEditor from './NoticeEditor.svelte';
 	import { getApp, Task } from './state.svelte';
-	import { alert, button, choice, field, labelFocus, paperClass, surface } from './ui';
+	import { alert, button, choice, field, paperClass, surface } from './ui';
 
 	// A notice's text, classrooms, paper, and days, to post or change. Teachers post to their own classrooms
 	// and admins to any. The editor shows the text on the paper chosen for it.
@@ -49,7 +50,6 @@
 	let editor = $state<ReturnType<typeof NoticeEditor>>();
 	let ready = $state(false);
 
-	const allChosen = $derived(classrooms.every((classroom) => chosen.includes(classroom.id)));
 	/** When the notice comes down: its days count from when it was first posted. */
 	const until = $derived(
 		new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(
@@ -104,37 +104,12 @@
 			</div>
 		</fieldset>
 
-		<div class="grid gap-3" role="group" aria-labelledby="{id}-classrooms">
-			<div class="flex flex-wrap items-center justify-between gap-x-4">
-				<span id="{id}-classrooms" class="font-semibold">{t.notices.classrooms}</span>
-				{#if classrooms.length > 1}
-					<label
-						class="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full font-semibold text-muted transition-colors hover:text-ink {labelFocus}"
-					>
-						<input
-							class="sr-only"
-							type="checkbox"
-							checked={allChosen}
-							onchange={(event) =>
-								(chosen = event.currentTarget.checked
-									? classrooms.map((classroom) => classroom.id)
-									: [])}
-						/>
-						<span class={choice.box}><Icon name="check" class={choice.check} /></span>
-						{t.actions.selectAll}
-					</label>
-				{/if}
-			</div>
-			<div class="grid gap-2 sm:grid-cols-2">
-				{#each classrooms as classroom (classroom.id)}
-					<label class={choice.card}>
-						<input class="sr-only" type="checkbox" value={classroom.id} bind:group={chosen} />
-						<span class={choice.box}><Icon name="check" class={choice.check} /></span>
-						<span class="min-w-0 font-semibold">{classroom.name}</span>
-					</label>
-				{/each}
-			</div>
-		</div>
+		<Checklist
+			{locale}
+			label={t.notices.classrooms}
+			options={classrooms.map((classroom) => ({ value: classroom.id, label: classroom.name }))}
+			bind:chosen
+		/>
 
 		<fieldset>
 			<legend class="mb-3 font-semibold">{t.notices.days}</legend>

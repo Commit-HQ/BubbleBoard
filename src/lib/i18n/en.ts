@@ -195,6 +195,7 @@ export const en = {
 			copy: 'It may have been moved or removed. Go back and try again.'
 		},
 		actions: {
+			add: 'Add',
 			cancel: 'Cancel',
 			save: 'Save',
 			saved: 'Saved',
@@ -288,10 +289,11 @@ export const en = {
 			title: 'Manage',
 			admin: 'Here’s your kindergarten.',
 			teacher: 'Here are your classrooms.',
+			classrooms: 'Classrooms',
 			addClassroom: 'Add classroom',
 			classroomName: 'Classroom name',
-			classroomExample: 'For example, Bubbles',
 			teachers: 'Teachers',
+			teachersDetail: 'Names, classrooms, and cards',
 			emptyAdmin: 'Start by adding your first classroom.',
 			emptyTeacher: 'You haven’t been added to a classroom yet. An admin can add you.'
 		},
@@ -319,11 +321,13 @@ export const en = {
 			name: 'Child’s name',
 			classroom: 'Classroom',
 			cards: 'Family card',
-			newCard: 'A new family card',
+			newCard: 'New family card',
+			newCardHint: 'You’ll print it for the family.',
 			cardName: 'Who gets the card?',
 			cardNameHint:
 				'For example “Ivana (mum)”. Parents who live apart can each get their own card later.',
-			sibling: 'The card a brother or sister already has',
+			sibling: 'Brother’s or sister’s card',
+			siblingHint: 'The family uses the card it already has.',
 			siblingName: 'Brother or sister',
 			submit: 'Add child',
 			added: (name: string) => `Added ${name}.`,

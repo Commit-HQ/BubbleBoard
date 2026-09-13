@@ -4,8 +4,9 @@
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp, Task, type ChildValues } from '$lib/app/state.svelte';
-	import { alert, button, field, formText, queryParam, surface } from '$lib/app/ui';
-	import Icon from '$lib/components/Icon.svelte';
+	import { alert, button, choice, field, formText, queryParam, surface } from '$lib/app/ui';
+	import Icon, { type IconName } from '$lib/components/Icon.svelte';
+	import IconTile from '$lib/components/IconTile.svelte';
 	import { errorMessage, messages } from '$lib/i18n';
 	import { byId } from '$lib/kindergarten';
 	import { appPath } from '$lib/paths';
@@ -20,7 +21,16 @@
 	const preset = $derived(queryParam('classroom'));
 	const presetClassroom = $derived(app.catalog.classrooms.find(({ id }) => id === preset));
 	const task = new Task();
+	/** The classroom tile tapped on this page. Until then, the classroom the page was opened from. */
+	let picked = $state<string>();
+	const classroom = $derived(
+		app.catalog.classrooms.find(({ id }) => id === picked) ??
+			presetClassroom ??
+			app.catalog.classrooms[0]
+	);
 	let cardFor = $state<'new' | 'sibling'>('new');
+	// The kindergarten's first child has no brother or sister to share a card with.
+	const newCard = $derived(cardFor === 'new' || !app.catalog.children.length);
 	/** The child added last, to confirm it. */
 	let added = $state<string>();
 	let unprinted = $state.raw<(PrintableCard & { child: string })[]>([]);
@@ -48,10 +58,9 @@
 		event.preventDefault();
 		const form = new FormData(event.currentTarget);
 		const child = { name: formText(form, 'name'), classroom: formText(form, 'classroom') };
-		const values: ChildValues =
-			cardFor === 'new'
-				? { ...child, cardName: formText(form, 'cardName') }
-				: { ...child, sibling: formText(form, 'sibling') };
+		const values: ChildValues = newCard
+			? { ...child, cardName: formText(form, 'cardName') }
+			: { ...child, sibling: formText(form, 'sibling') };
 		added = undefined;
 		await task.run(async () => {
 			const secret = await app.addChild(values);
@@ -68,6 +77,29 @@
 		});
 	}
 </script>
+
+<!-- A radio drawn as a tile: an icon, a title, and a line under it. -->
+{#snippet tile(
+	name: string,
+	value: string,
+	checked: boolean,
+	choose: () => void,
+	icon: IconName,
+	title: string,
+	detail: string
+)}
+	<label class={choice.tile}>
+		<input class="sr-only" type="radio" {name} {value} {checked} onchange={choose} />
+		<span class="flex items-start justify-between gap-2">
+			<IconTile {icon} />
+			<span class={choice.circle}><Icon name="check" class={choice.check} /></span>
+		</span>
+		<span class="mt-auto min-w-0">
+			<span class="block leading-snug font-bold">{title}</span>
+			<span class="block text-sm text-muted">{detail}</span>
+		</span>
+	</label>
+{/snippet}
 
 {#if printing}
 	<CardSheet
@@ -89,7 +121,7 @@
 		}}
 	>
 		{#if app.catalog.classrooms.length}
-			<form class="{surface} grid gap-6" onsubmit={submit}>
+			<form class="{surface} grid gap-7" onsubmit={submit}>
 				<label class={field.label}>
 					<span class={field.name}>{t.newChild.name}</span>
 					<input
@@ -101,30 +133,52 @@
 						autocomplete="off"
 					/>
 				</label>
-				<label class={field.label}>
-					<span class={field.name}>{t.newChild.classroom}</span>
-					<select class={field.input} name="classroom">
-						{#each app.catalog.classrooms as classroom (classroom.id)}
-							<option value={classroom.id} selected={classroom.id === preset}>
-								{classroom.name}
-							</option>
+
+				<fieldset>
+					<legend class="mb-3 font-semibold">{t.newChild.classroom}</legend>
+					<div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+						{#each app.catalog.classrooms as option (option.id)}
+							{@render tile(
+								'classroom',
+								option.id,
+								option.id === classroom?.id,
+								() => (picked = option.id),
+								'shapes',
+								option.name,
+								t.counts.children(
+									app.catalog.children.filter((child) => child.classroom === option.id).length
+								)
+							)}
 						{/each}
-					</select>
-				</label>
-				<fieldset class="grid gap-3">
-					<legend class="mb-2 font-semibold">{t.newChild.cards}</legend>
-					<label class="flex items-center gap-3">
-						<input
-							class={field.check}
-							type="radio"
-							name="cardFor"
-							value="new"
-							bind:group={cardFor}
-						/>
-						{t.newChild.newCard}
-					</label>
-					{#if cardFor === 'new'}
-						<label class="{field.label} sm:ml-8">
+					</div>
+				</fieldset>
+
+				<fieldset class="grid gap-4">
+					<legend class="mb-3 font-semibold">{t.newChild.cards}</legend>
+					{#if app.catalog.children.length}
+						<div class="grid grid-cols-2 gap-3">
+							{@render tile(
+								'cardFor',
+								'new',
+								cardFor === 'new',
+								() => (cardFor = 'new'),
+								'heart',
+								t.newChild.newCard,
+								t.newChild.newCardHint
+							)}
+							{@render tile(
+								'cardFor',
+								'sibling',
+								cardFor === 'sibling',
+								() => (cardFor = 'sibling'),
+								'users',
+								t.newChild.sibling,
+								t.newChild.siblingHint
+							)}
+						</div>
+					{/if}
+					{#if newCard}
+						<label class={field.label}>
 							<span class={field.name}>{t.newChild.cardName}</span>
 							<input
 								bind:this={cardNameInput}
@@ -136,32 +190,20 @@
 							/>
 							<span class={field.hint}>{t.newChild.cardNameHint}</span>
 						</label>
-					{/if}
-					{#if app.catalog.children.length}
-						<label class="flex items-center gap-3">
-							<input
-								class={field.check}
-								type="radio"
-								name="cardFor"
-								value="sibling"
-								bind:group={cardFor}
-							/>
-							{t.newChild.sibling}
+					{:else}
+						<label class={field.label}>
+							<span class={field.name}>{t.newChild.siblingName}</span>
+							<select class={field.input} name="sibling" required>
+								{#each app.catalog.children as sibling (sibling.id)}
+									<option value={sibling.id}>
+										{sibling.name} ({byId(app.catalog.classrooms, sibling.classroom).name})
+									</option>
+								{/each}
+							</select>
 						</label>
-						{#if cardFor === 'sibling'}
-							<label class="{field.label} sm:ml-8">
-								<span class={field.name}>{t.newChild.siblingName}</span>
-								<select class={field.input} name="sibling" required>
-									{#each app.catalog.children as sibling (sibling.id)}
-										<option value={sibling.id}>
-											{sibling.name} ({byId(app.catalog.classrooms, sibling.classroom).name})
-										</option>
-									{/each}
-								</select>
-							</label>
-						{/if}
 					{/if}
 				</fieldset>
+
 				{#if task.error}
 					<p class={alert} role="alert">{errorMessage(data.locale, task.error)}</p>
 				{/if}

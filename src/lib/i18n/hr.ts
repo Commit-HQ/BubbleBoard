@@ -193,6 +193,7 @@ export const hr = {
 			copy: 'Možda je premješteno ili uklonjeno. Vratite se i pokušajte ponovno.'
 		},
 		actions: {
+			add: 'Dodaj',
 			cancel: 'Odustani',
 			save: 'Spremi',
 			saved: 'Spremljeno',
@@ -288,10 +289,11 @@ export const hr = {
 			title: 'Administracija',
 			admin: 'Evo vašeg vrtića.',
 			teacher: 'Evo vaših skupina.',
+			classrooms: 'Skupine',
 			addClassroom: 'Dodaj skupinu',
 			classroomName: 'Naziv skupine',
-			classroomExample: 'Na primjer Bubamare',
 			teachers: 'Odgojitelji',
+			teachersDetail: 'Imena, skupine i kartice',
 			emptyAdmin: 'Započnite dodavanjem prve skupine.',
 			emptyTeacher: 'Još niste dodani ni u jednu skupinu. Može vas dodati administrator.'
 		},
@@ -320,10 +322,12 @@ export const hr = {
 			classroom: 'Skupina',
 			cards: 'Obiteljska kartica',
 			newCard: 'Nova obiteljska kartica',
+			newCardHint: 'Ispisat ćete je za obitelj.',
 			cardName: 'Tko dobiva karticu?',
 			cardNameHint:
 				'Na primjer „Ivana (mama)”. Roditelji koji ne žive zajedno kasnije mogu dobiti zasebne kartice.',
-			sibling: 'Kartica koju već ima brat ili sestra',
+			sibling: 'Kartica brata ili sestre',
+			siblingHint: 'Obitelj koristi karticu koju već ima.',
 			siblingName: 'Brat ili sestra',
 			submit: 'Dodaj dijete',
 			added: (name: string) => `Dodano: ${name}.`,

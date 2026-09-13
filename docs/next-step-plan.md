@@ -84,7 +84,7 @@ Where the user experience is concerned, the simplest option won; deferred varian
 - **Connecting:** a phone's camera opens the card link; in the app, "Scan card" reads the code with the camera, with "Choose a photo" in the same view for devices without a camera or where it isn't allowed, and "Enter code" accepts the typed code.
 - **One active card per browser.** A working card is never replaced without confirmation, and device keys are stored per card.
 - **Names** of classrooms, teachers, children, and family cards live only in encrypted records.
-- **Screens:** home has a tile for each of the viewer's classrooms (every classroom for admins), Add classroom and Teachers for admins, and This device. Since 2026-09-13 those tiles are on Manage, and This device became Settings, both opened from the header. A classroom lists its children. A child's page shows its family cards, with siblings and their classrooms, and the actions the viewer may take; teachers see only siblings in their own classrooms.
+- **Screens:** home has a tile for each of the viewer's classrooms (every classroom for admins), Add classroom and Teachers for admins, and This device. Since 2026-09-13 those tiles are on Manage, with Teachers in a section of its own below the classrooms, and This device became Settings, both opened from the header. Add classroom turns over to take the new classroom's name in its own place. A classroom lists its children. A child's page shows its family cards, with siblings and their classrooms, and the actions the viewer may take; teachers see only siblings in their own classrooms.
 
 Deferred from that slice:
 
