@@ -4,6 +4,7 @@ import {
 	decryptData,
 	encryptData,
 	envelopeSize,
+	fields,
 	isContentKey,
 	isId,
 	openContentKey,
@@ -85,12 +86,6 @@ const maxLinkLength = 2048;
 
 function fail(): never {
 	throw new UnreadableError();
-}
-
-function fields(value: unknown) {
-	return typeof value === 'object' && value !== null && !Array.isArray(value)
-		? (value as Record<string, unknown>)
-		: fail();
 }
 
 function list<T>(value: unknown, read: (item: unknown) => T) {

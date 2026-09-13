@@ -21,7 +21,7 @@
 		if (type === 'enter') tick().then(() => app.start());
 	});
 	// The service worker says when a notification comes or is tapped (src/service-worker.ts), so the board
-	// shows what's new straight away, even when the app is already open.
+	// shows what's new straight away when the app is open in view, or once it's back in view (`App.refresh`).
 	onMount(() => {
 		const container = navigator.serviceWorker;
 		if (!container) return;
@@ -46,9 +46,7 @@
 
 <svelte:window onhashchange={() => app.openLink()} />
 <!-- Back in view, such as after a tap on a notification, the app loads the board again. -->
-<svelte:document
-	onvisibilitychange={() => document.visibilityState === 'visible' && app.refresh()}
-/>
+<svelte:document onvisibilitychange={() => app.refresh()} />
 
 <svelte:head>
 	<!-- A plain title: tab titles and browser history shouldn't hold children's or families' names. -->

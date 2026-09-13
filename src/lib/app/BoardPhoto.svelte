@@ -6,7 +6,7 @@
 	import type { Photo } from '$lib/photos';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import PictureViewer from './PictureViewer.svelte';
-	import { getApp } from './state.svelte';
+	import { getApp, type Picture } from './state.svelte';
 	import { button } from './ui';
 
 	// The photo of a classroom's corkboard, as it looks now, captioned as the notice board's photo, with its
@@ -20,7 +20,7 @@
 		[classroom, photo.author, formatDateTime(locale, photo.postedAt)].filter(Boolean).join(' · ')
 	);
 	const picture = $derived(app.photoPicture(photo));
-	let viewing = $state(false);
+	let viewing = $state.raw<Picture>();
 	let removing = $state(false);
 </script>
 
@@ -32,14 +32,14 @@
 		>
 			{t.loading}
 		</p>
-	{:then { url }}
+	{:then shown}
 		<button
 			class="block w-full cursor-zoom-in"
 			type="button"
 			aria-label={t.open(classroom)}
-			onclick={() => (viewing = true)}
+			onclick={() => (viewing = shown)}
 		>
-			<img src={url} alt="" class="aspect-4/3 w-full object-cover" />
+			<img src={shown.url} alt="" class="aspect-4/3 w-full object-cover" />
 		</button>
 	{:catch cause}
 		<p
@@ -79,15 +79,13 @@
 </figure>
 
 {#if viewing}
-	{#await picture then shown}
-		<PictureViewer
-			{locale}
-			label={t.open(classroom)}
-			picture={shown}
-			name="{classroom}.jpg"
-			onclose={() => (viewing = false)}
-		/>
-	{/await}
+	<PictureViewer
+		{locale}
+		label={t.open(classroom)}
+		picture={viewing}
+		name="{classroom}.jpg"
+		onclose={() => (viewing = undefined)}
+	/>
 {/if}
 
 {#if removing}

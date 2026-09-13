@@ -200,6 +200,8 @@ export const hr = {
 		app: 'Otvori BubbleBoard'
 	},
 	app: {
+		dateTime: (day: string, month: string, year: number, time: string) =>
+			`${day}.${month}.${year} u ${time}`,
 		loading: 'Otvaramo BubbleBoard…',
 		noscript:
 			'BubbleBoardu treba JavaScript da bi otvorio vašu skupinu. Uključite ga u postavkama preglednika ili otvorite BubbleBoard u drugom pregledniku.',

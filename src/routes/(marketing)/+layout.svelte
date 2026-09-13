@@ -1,12 +1,13 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import favicon from '$lib/assets/favicon.svg';
 	import BuildLabel from '$lib/components/BuildLabel.svelte';
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
 	import LanguageSwitch from '$lib/components/LanguageSwitch.svelte';
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
-	import { messages } from '$lib/i18n';
-	import { homePath, privacyPath } from '$lib/paths';
-	import { contactEmail, organizationUrl, repositoryUrl } from '$lib/project';
+	import { defaultLocale, locales, messages } from '$lib/i18n';
+	import { homePath, localizedPath, privacyPath } from '$lib/paths';
+	import { absoluteUrl, contactEmail, organizationUrl, repositoryUrl } from '$lib/project';
 	import type { LayoutProps } from './$types';
 
 	let { children, data }: LayoutProps = $props();
@@ -22,6 +23,23 @@
 		{ href: '/third-party-notices.txt', label: t.footer.credits, icon: 'image' }
 	]);
 </script>
+
+<svelte:head>
+	<!-- Every landing page in each language, for search engines. -->
+	<link rel="canonical" href={absoluteUrl(page.url.pathname)} />
+	{#each locales as locale (locale)}
+		<link
+			rel="alternate"
+			hreflang={locale}
+			href={absoluteUrl(localizedPath(page.url.pathname, locale))}
+		/>
+	{/each}
+	<link
+		rel="alternate"
+		hreflang="x-default"
+		href={absoluteUrl(localizedPath(page.url.pathname, defaultLocale))}
+	/>
+</svelte:head>
 
 <a
 	class="fixed top-4 left-4 z-20 -translate-y-24 rounded-full bg-ink px-4 py-3 text-white focus:translate-y-0"

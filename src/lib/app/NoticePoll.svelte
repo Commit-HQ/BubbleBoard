@@ -2,7 +2,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import { errorMessage, listNames, messages, type Locale } from '$lib/i18n';
 	import type { Family } from '$lib/kindergarten';
-	import type { Notice, Poll, PollOption } from '$lib/notices';
+	import type { Notice, Poll } from '$lib/notices';
 	import { getApp, Task } from './state.svelte';
 	import { alert, button, choice } from './ui';
 
@@ -29,40 +29,35 @@
 	const counted = $derived(poll.key !== undefined);
 	/** The answer this device's family gave. */
 	const given = $derived(poll.options.find((option) => option.id === app.myVote(notice)));
-	/** Whether the family is choosing another answer in place of the one it gave. */
-	let changing = $state(false);
-	/** The answer ticked, until it's confirmed. */
+	/** The answer ticked, until it's confirmed. A family that gave an answer chooses again while one is. */
 	let ticked = $state<string>();
 
 	/** The option each family chose, by family. */
 	const answers = $derived(new Map(notice.votes.map((vote) => [vote.family, vote.option])));
-	/** On a staff device, each option with the names of the notice's families that chose it. */
-	const named = $derived(
+	/**
+	 * Each option with how many families chose it: on a staff device, the notice's families that did, with
+	 * their names, and on a family device, every answer it reads, without names.
+	 */
+	const rows = $derived(
 		poll.options.map((option) => {
 			const names = families
 				.filter(({ id }) => answers.get(id) === option.id)
 				.map(({ name }) => name);
-			return { option, count: names.length, names };
+			const count =
+				app.status === 'family'
+					? notice.votes.filter((vote) => vote.option === option.id).length
+					: names.length;
+			return { option, count, names };
 		})
-	);
-	/** On a family device, each option with how many families chose it. */
-	const counts = $derived(
-		poll.options.map((option) => ({
-			option,
-			count: notice.votes.filter((vote) => vote.option === option.id).length,
-			names: []
-		}))
 	);
 	const unanswered = $derived(families.filter(({ id }) => !answers.has(id)));
 
 	function change() {
 		ticked = given?.id;
-		changing = true;
 	}
 
 	function cancel() {
 		ticked = undefined;
-		changing = false;
 		task.error = undefined;
 	}
 
@@ -74,12 +69,11 @@
 			// Confirming the answer given already changes nothing.
 			if (option !== given?.id) await app.vote(notice, option);
 			ticked = undefined;
-			changing = false;
 		});
 	}
 </script>
 
-{#snippet results(rows: { option: PollOption; count: number; names: string[] }[], total: number)}
+{#snippet results(total: number)}
 	<ul class="grid gap-3">
 		{#each rows as { option, count, names } (option.id)}
 			<li>
@@ -104,13 +98,13 @@
 {/snippet}
 
 {#if app.status === 'family'}
-	{#if given && !changing}
+	{#if given && ticked === undefined}
 		<section class="grid justify-items-start gap-3" aria-labelledby="{id}-title">
 			<p id="{id}-title" class="flex items-center gap-2 font-semibold">
 				<Icon name="check" class="size-4 shrink-0" />{t.yours(given.text)}
 			</p>
 			{#if counted}
-				<div class="w-full">{@render results(counts, notice.votes.length)}</div>
+				<div class="w-full">{@render results(notice.votes.length)}</div>
 			{/if}
 			<p class="text-sm text-muted">{counted ? t.counted : t.private}</p>
 			<button class={button.secondary} type="button" onclick={change}>
@@ -156,7 +150,7 @@
 			<p id="{id}-title" class="text-sm font-semibold">{t.title}</p>
 			{#if counted}<p class="text-sm text-muted">{t.countsShown}</p>{/if}
 		</div>
-		{@render results(named, families.length)}
+		{@render results(families.length)}
 		{#if unanswered.length}
 			<p class="text-sm">{t.noAnswer(unanswered.map(({ name }) => name))}</p>
 		{/if}

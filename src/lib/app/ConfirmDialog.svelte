@@ -2,7 +2,7 @@
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import { onMount } from 'svelte';
 	import { Task } from './state.svelte';
-	import { alert, button } from './ui';
+	import { alert, button, modal } from './ui';
 
 	// A question before a change that can't be taken back. It opens when mounted and runs its own change,
 	// staying open with the error if that fails. `onclose` runs when it closes, by Escape, Cancel, or the
@@ -44,7 +44,7 @@
 
 <dialog
 	bind:this={dialog}
-	class="m-auto w-[calc(100%-2rem)] max-w-md rounded-4xl bg-white p-7 text-ink shadow-2xl shadow-indigo-950/25 backdrop:bg-ink/30"
+	class="{modal} p-7"
 	aria-labelledby="{id}-title"
 	aria-describedby="{id}-copy"
 	{onclose}

@@ -16,6 +16,8 @@ export const button = {
 	quiet: `${pill} px-3 text-muted hover:bg-ink/5 hover:text-ink`,
 	danger: `${pill} px-3 text-red-700 hover:bg-red-50`,
 	dangerSolid: `${pill} bg-red-700 px-5 text-white hover:bg-red-800`,
+	/** Over a picture, such as Save in the picture viewer. */
+	frosted: `${pill} frosted px-5 text-ink`,
 	/** A small icon beside what it changes, such as a pencil beside a name. Give it an `aria-label`. */
 	icon: 'grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-ink/5 hover:text-ink'
 };
@@ -58,6 +60,10 @@ export const field = {
 
 /** A panel for a form or a group of actions. */
 export const surface = 'rounded-4xl glass p-6 sm:p-8';
+
+/** A dialog in the middle of the screen, over the dimmed page. Each sets its own padding. */
+export const modal =
+	'm-auto w-[calc(100%-2rem)] max-w-md rounded-4xl bg-white text-ink shadow-2xl shadow-indigo-950/25 backdrop:bg-ink/30';
 
 /** The buttons under a page-sized panel's text. */
 export const buttonRow = 'mt-8 flex flex-wrap gap-3';

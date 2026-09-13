@@ -1,8 +1,7 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
-	import { defaultLocale, locales, messages } from '$lib/i18n';
-	import { privacyPath } from '$lib/paths';
-	import { absoluteUrl, contactEmail } from '$lib/project';
+	import { messages } from '$lib/i18n';
+	import { contactEmail } from '$lib/project';
 	import type { PageProps } from './$types';
 
 	// A few short points on what an installation stores, where, and for how long (privacyPolicy in en.ts).
@@ -13,11 +12,6 @@
 <svelte:head>
 	<title>BubbleBoard · {t.title}</title>
 	<meta name="description" content={t.description} />
-	<link rel="canonical" href={absoluteUrl(privacyPath(data.locale))} />
-	{#each locales as locale (locale)}
-		<link rel="alternate" hreflang={locale} href={absoluteUrl(privacyPath(locale))} />
-	{/each}
-	<link rel="alternate" hreflang="x-default" href={absoluteUrl(privacyPath(defaultLocale))} />
 </svelte:head>
 
 <article class="mx-auto max-w-3xl pt-8 pb-20 lg:pt-12 lg:pb-28">

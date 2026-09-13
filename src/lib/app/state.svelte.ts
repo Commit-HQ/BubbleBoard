@@ -210,8 +210,10 @@ export class App {
 	#card?: DeviceCard;
 	#keys?: StaffKeys;
 	#loadedAt = 0;
-	/** The last load of the records and board, which the next one waits for. */
-	#reloading = Promise.resolve();
+	/** The load of the records and board under way, which a refresh meanwhile waits for. */
+	#reloading?: Promise<void>;
+	/** Whether something new came since the last load started, so the board loads again. */
+	#stale = false;
 	/** The board photos and notices' pictures this device has opened, by where they're kept, while they're up. */
 	#pictures = new Map<string, Promise<Picture>>();
 	/** The Family Keys a staff device has opened, by the envelope each came from, until it disconnects. */
@@ -219,6 +221,12 @@ export class App {
 
 	get admin() {
 		return this.me?.admin === true;
+	}
+
+	/** The name this device's staff member goes by, on what they put up and in home's greeting. */
+	get myName() {
+		// The recovery card has none.
+		return this.me?.recovery ? undefined : this.me?.name;
 	}
 
 	get connected() {
@@ -315,28 +323,35 @@ export class App {
 
 	/**
 	 * Loads the records and board again, quietly: when the app comes back into view, but not more often than
-	 * `refreshAfter`, or `now`, when a notification says there's something new or home is pulled down. Each
-	 * load waits for the one before, so the records that stay are the latest.
+	 * `refreshAfter`, or `now`, when a notification says there's something new or home is pulled down. An app
+	 * out of view waits until it's back. One load runs at a time, and a refresh meanwhile waits for it; what's
+	 * new since it started loads once more after it, however often it's asked for.
 	 */
 	refresh({ now = false } = {}) {
-		if (!this.connected || (!now && Date.now() - this.#loadedAt < refreshAfter)) return;
-		this.#loadedAt = Date.now();
-		this.#reloading = this.#reloading.then(() => this.#reload());
+		if (!this.connected) return;
+		this.#stale ||= now;
+		if (document.visibilityState === 'hidden') return;
+		if (!this.#reloading && (this.#stale || Date.now() - this.#loadedAt >= refreshAfter)) {
+			this.#reloading = this.#reload().finally(() => (this.#reloading = undefined));
+		}
 		return this.#reloading;
 	}
 
 	async #reload() {
-		const card = this.#card;
-		if (!this.connected || !card) return;
-		try {
-			// The session is the one the app opened with, so its subscription isn't sent again.
-			await this.#open(await request<Access>('GET', '/api/session'), card, { resend: false });
-		} catch (cause) {
-			if (isDisconnection(cause)) await this.#disconnect('signed-out');
-			// A load that failed, such as while a phone's connection wakes up, is tried again the next time the
-			// app comes into view, without waiting out `refreshAfter`.
-			else this.#loadedAt = 0;
-		}
+		do {
+			this.#stale = false;
+			const card = this.#card;
+			if (!this.connected || !card) return;
+			try {
+				// The session is the one the app opened with, so its subscription isn't sent again.
+				await this.#open(await request<Access>('GET', '/api/session'), card, { resend: false });
+			} catch (cause) {
+				if (isDisconnection(cause)) await this.#disconnect('signed-out');
+				// A load that failed, such as while a phone's connection wakes up, is tried again the next time
+				// the app comes into view, without waiting out `refreshAfter`.
+				else this.#loadedAt = 0;
+			}
+		} while (this.#stale);
 	}
 
 	async #resume() {
@@ -490,7 +505,8 @@ export class App {
 		this.familyClassrooms = [];
 		this.board = [];
 		this.unreadableNotices = 0;
-		await this.#showPhotos([], []);
+		this.photos = [];
+		this.#keepPictures();
 		this.notice = notice;
 		this.status = 'disconnected';
 	}
@@ -750,7 +766,7 @@ export class App {
 	 */
 	async saveNotice(values: NoticeValues, notice?: Notice) {
 		const id = notice?.id ?? createId();
-		const author = notice ? notice.author : this.me?.recovery ? undefined : this.me?.name;
+		const author = notice ? notice.author : this.myName;
 		const files: NoticeFile[] = values.files.map((file) => ({
 			id: file.id,
 			name: file.name,
@@ -854,12 +870,10 @@ export class App {
 	/**
 	 * Keeps the board photos the server sent, with who put each up, from details opened with the Group Key of
 	 * its classroom, and lets go of the pictures of photos that aren't up anymore. Details that don't open leave
-	 * the name out.
+	 * the name out. The classrooms come in, as `#openBoard`'s do: `myClassrooms` follows `status`, which
+	 * `#open` sets last.
 	 */
-	async #showPhotos(
-		records: PhotoRecord[],
-		classrooms: { id: string; groupKey: CryptoKey }[] = this.myClassrooms
-	) {
+	async #showPhotos(records: PhotoRecord[], classrooms: { id: string; groupKey: CryptoKey }[]) {
 		const photos = await Promise.all(
 			records.map(async (record): Promise<Photo> => {
 				const groupKey = classrooms.find(({ id }) => id === record.classroom)?.groupKey;
@@ -880,7 +894,7 @@ export class App {
 		const { groupKey } = byId(this.catalog.classrooms, classroom);
 		const id = createId();
 		const bytes = new Uint8Array(await photo.arrayBuffer());
-		const author = this.me?.recovery ? undefined : this.me?.name;
+		const author = this.myName;
 		const [sealed, details] = await Promise.all([
 			sealPhoto(bytes, groupKey, classroom, id),
 			sealPhotoDetails(author ? { author } : {}, groupKey, classroom, id)
@@ -888,7 +902,7 @@ export class App {
 		const path = photoPath({ classroom, id });
 		const open = async (photos: PhotoRecord[]) => {
 			this.#pictures.set(path, Promise.resolve({ blob: photo, url: URL.createObjectURL(photo) }));
-			await this.#showPhotos(photos);
+			await this.#showPhotos(photos, this.myClassrooms);
 		};
 		await this.#send('PUT', path, sealed, open, { 'bubbleboard-photo-details': details });
 	}
@@ -896,7 +910,7 @@ export class App {
 	takeDownPhoto(photo: PhotoRecord) {
 		const path = photoPath(photo);
 		return this.#send<PhotoRecord[]>('DELETE', path, undefined, (photos) =>
-			this.#showPhotos(photos)
+			this.#showPhotos(photos, this.myClassrooms)
 		);
 	}
 }

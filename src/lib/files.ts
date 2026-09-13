@@ -3,12 +3,11 @@ import {
 	createId,
 	decryptBytes,
 	encryptBytes,
-	openContentKey,
-	UnreadableError
+	openContentKey
 } from '$lib/crypto';
 import { CodedError } from '$lib/errors';
 import { isAppleTouch } from '$lib/install';
-import { imageType, pictureToSave, preparePhoto } from '$lib/photos';
+import { imageBlob, pictureToSave, preparePhoto } from '$lib/photos';
 
 // Files attached to notices (docs/access-format.md): documents and pictures a teacher adds to a notice. The
 // browser encrypts each with a key of its own, which goes inside the notice's content with the file's name,
@@ -149,15 +148,9 @@ export async function openFile(sealed: Uint8Array<ArrayBuffer>, file: NoticeFile
 	return new Blob([await decryptFile(sealed, file)], { type: typeOf(file.name) });
 }
 
-/**
- * One of a notice's pictures, decrypted, as an image a page can show. Anyone holding a classroom's Group Key
- * could have written it, so only JPEG, PNG, and WebP images open, as board photos do.
- */
+/** One of a notice's pictures, decrypted, as an image a page can show, as board photos are (`imageBlob`). */
 export async function openPicture(sealed: Uint8Array<ArrayBuffer>, file: NoticeFile) {
-	const data = await decryptFile(sealed, file);
-	const type = imageType(data);
-	if (!type) throw new UnreadableError();
-	return new Blob([data], { type });
+	return imageBlob(await decryptFile(sealed, file));
 }
 
 /** Saves a file on this device under its name, as a download. */

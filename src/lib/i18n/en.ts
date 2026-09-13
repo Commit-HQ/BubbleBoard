@@ -211,6 +211,9 @@ export const en = {
 	},
 	// In the app, what cards are and do is called a QR code: parents found "card" confusing (2026-09-13).
 	app: {
+		// When a notice or board photo went up (formatDateTime).
+		dateTime: (day: string, month: string, year: number, time: string) =>
+			`${day}/${month}/${year} at ${time}`,
 		loading: 'Opening BubbleBoard…',
 		noscript:
 			'BubbleBoard needs JavaScript to open your classroom. Turn it on in your browser settings, or open BubbleBoard in another browser.',

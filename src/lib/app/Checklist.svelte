@@ -5,7 +5,7 @@
 
 	// Checkboxes drawn as cards under a label, such as a notice's classrooms, with Select all beside the
 	// label when there are several to choose from. A `disabled` list shows a choice that can't change, such
-	// as the only classroom a notice can go to.
+	// as the only classroom a notice can go to, without Select all.
 	let {
 		locale,
 		label,
@@ -28,15 +28,14 @@
 <div class="grid gap-3" role="group" aria-labelledby="{id}-label">
 	<div class="flex flex-wrap items-center justify-between gap-x-4">
 		<span id="{id}-label" class="font-semibold">{label}</span>
-		{#if options.length > 1}
+		{#if options.length > 1 && !disabled}
 			<label
-				class="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full font-semibold text-muted transition-colors hover:text-ink has-disabled:pointer-events-none {labelFocus}"
+				class="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full font-semibold text-muted transition-colors hover:text-ink {labelFocus}"
 			>
 				<input
 					class="sr-only"
 					type="checkbox"
 					checked={allChosen}
-					{disabled}
 					onchange={(event) =>
 						(chosen = event.currentTarget.checked ? options.map((option) => option.value) : [])}
 				/>

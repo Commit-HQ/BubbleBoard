@@ -4,6 +4,7 @@
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import { onMount, tick } from 'svelte';
 	import { Task, type Picture } from './state.svelte';
+	import { button } from './ui';
 
 	// A board photo or a notice's picture on the whole screen, opened when mounted, as ConfirmDialog is. A tap
 	// zooms in around where it was tapped, to read what's pinned up or written, and Save keeps the picture on
@@ -87,7 +88,7 @@
 			</p>
 		{/if}
 		<button
-			class="inline-flex min-h-11 items-center gap-2 rounded-full frosted px-5 font-semibold text-ink transition disabled:opacity-50"
+			class={button.frosted}
 			type="button"
 			disabled={task.busy}
 			onclick={() => task.run(() => savePicture(picture.blob, name))}

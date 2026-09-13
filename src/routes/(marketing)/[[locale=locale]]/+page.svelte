@@ -5,7 +5,7 @@
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
 	import IconTile from '$lib/components/IconTile.svelte';
 	import Photo from '$lib/components/Photo.svelte';
-	import { defaultLocale, locales, messages } from '$lib/i18n';
+	import { locales, messages } from '$lib/i18n';
 	import { appPath, homePath } from '$lib/paths';
 	import { absoluteUrl, contactEmail, repositoryUrl } from '$lib/project';
 	import type { PageProps } from './$types';
@@ -23,11 +23,6 @@
 <svelte:head>
 	<title>BubbleBoard · {t.title}</title>
 	<meta name="description" content={t.description} />
-	<link rel="canonical" href={url} />
-	{#each locales as locale (locale)}
-		<link rel="alternate" hreflang={locale} href={absoluteUrl(homePath(locale))} />
-	{/each}
-	<link rel="alternate" hreflang="x-default" href={absoluteUrl(homePath(defaultLocale))} />
 
 	<!-- Link previews in messaging apps and social networks. -->
 	<meta property="og:type" content="website" />

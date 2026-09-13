@@ -72,17 +72,18 @@ async function installationKey() {
 	return fromBase64Url(key)!;
 }
 
-type InstallationKey = Awaited<ReturnType<typeof installationKey>>;
-
 /** Whether a subscription was made with the installation's key, or undefined where the browser doesn't say. */
-function madeWith(subscription: PushSubscription, key: InstallationKey) {
+function madeWith(subscription: PushSubscription, key: Uint8Array<ArrayBuffer>) {
 	const used = subscription.options.applicationServerKey;
 	if (!used) return undefined;
 	const bytes = new Uint8Array(used);
 	return bytes.length === key.length && bytes.every((byte, index) => byte === key[index]);
 }
 
-function subscribe(registration: ServiceWorkerRegistration, applicationServerKey: InstallationKey) {
+function subscribe(
+	registration: ServiceWorkerRegistration,
+	applicationServerKey: Uint8Array<ArrayBuffer>
+) {
 	return registration.pushManager
 		.subscribe({ userVisibleOnly: true, applicationServerKey })
 		.catch((cause) => {

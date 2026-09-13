@@ -91,6 +91,14 @@ export class UnreadableError extends Error {
 	}
 }
 
+/** The fields of decrypted data, which must be an object. Anyone holding the key could have written it. */
+export function fields(value: unknown) {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+		throw new UnreadableError();
+	}
+	return value as Record<string, unknown>;
+}
+
 /** A random opaque record ID: 128 bits, as 22 base64url characters. */
 export function createId() {
 	return toBase64Url(randomBytes(16));

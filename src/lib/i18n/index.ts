@@ -35,14 +35,14 @@ export function errorMessage(locale: Locale, code: string) {
 	return errors[code] ?? errors.unexpected;
 }
 
-/** When a notice or board photo went up: “23.01.2026 u 8:30”, or “23/01/2026 at 8:30” in English. */
+/** When a notice or board photo went up, as each language writes it (`app.dateTime`). */
 export function formatDateTime(locale: Locale, time: number) {
 	const date = new Date(time);
 	const [day, month, minutes] = [date.getDate(), date.getMonth() + 1, date.getMinutes()].map(
 		(part) => String(part).padStart(2, '0')
 	);
-	const [separator, at] = locale === 'hr' ? ['.', 'u'] : ['/', 'at'];
-	return `${[day, month, date.getFullYear()].join(separator)} ${at} ${date.getHours()}:${minutes}`;
+	const clock = `${date.getHours()}:${minutes}`;
+	return messages[locale].app.dateTime(day, month, date.getFullYear(), clock);
 }
 
 /** A file's size, such as “240 kB” or “3.4 MB”. */

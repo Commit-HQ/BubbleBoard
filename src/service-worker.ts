@@ -10,7 +10,8 @@ import { appPath } from '$lib/paths';
 // BubbleBoard's service worker handles notifications only: no caching and no offline copies
 // (next-step-plan.md). A push carries nothing, so every push shows the same words, in the language
 // notifications were turned on in, and every push shows one, as Safari requires. The app's open windows load
-// the board again straight away (src/routes/(app)/+layout.svelte), and a tap brings one forward, or opens one.
+// the board again, straight away in view or once back in view (src/lib/app/state.svelte.ts), and a tap brings
+// one forward, or opens one.
 
 const worker = self as unknown as ServiceWorkerGlobalScope;
 

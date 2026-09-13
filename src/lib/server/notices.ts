@@ -46,10 +46,11 @@ function visibleFamilies(viewer: Identity): [string, string[]] {
 function boardQuery(db: D1Database, viewer: Identity) {
 	const [families, familyParams] = visibleFamilies(viewer);
 	const [classrooms, classroomParams] = visibleClassrooms(viewer);
+	// An answer counts when its family is in one of the notice's classrooms: a key lookup for each of them.
 	const counted =
 		viewer.kind === 'family'
-			? `OR (n.poll_counts AND family_id IN (SELECT fc.family_id FROM family_classrooms fc
-			JOIN notice_classrooms c ON c.classroom_id = fc.classroom_id WHERE c.notice_id = n.id))`
+			? `OR (n.poll_counts AND EXISTS (SELECT 1 FROM notice_classrooms c JOIN family_classrooms fc
+			ON fc.classroom_id = c.classroom_id AND fc.family_id = poll_votes.family_id WHERE c.notice_id = n.id))`
 			: '';
 	// Parameters go in the order the query uses them.
 	return db

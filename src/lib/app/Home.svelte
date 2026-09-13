@@ -18,7 +18,7 @@
 	const t = $derived(messages[locale].app);
 	const classrooms = $derived(app.myClassrooms);
 	const staff = $derived(app.status === 'staff');
-	const name = $derived(app.me?.recovery ? undefined : app.me?.name);
+	const name = $derived(app.myName);
 	/** The hour on the device's clock, read again when the app comes back into view. */
 	let hour = $state(new Date().getHours());
 </script>

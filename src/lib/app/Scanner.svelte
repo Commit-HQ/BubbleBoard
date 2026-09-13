@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import { onMount } from 'svelte';
-	import { alert, button } from './ui';
+	import { alert, button, modal } from './ui';
 
 	// The rear camera in a dialog in the middle of the screen, reading QR codes until one is a card; the camera
 	// part of the decoder loads when it opens. It opens when mounted, as ConfirmDialog is, and `onclose` runs
@@ -69,12 +69,7 @@
 	});
 </script>
 
-<dialog
-	bind:this={dialog}
-	class="m-auto w-[calc(100%-2rem)] max-w-md rounded-4xl bg-white p-6 text-ink shadow-2xl shadow-indigo-950/25 backdrop:bg-ink/30 sm:p-7"
-	aria-label={t.connect.scan}
-	{onclose}
->
+<dialog bind:this={dialog} class="{modal} p-6 sm:p-7" aria-label={t.connect.scan} {onclose}>
 	{#if camera === 'blocked' || camera === 'missing'}
 		<p class="font-semibold text-muted">
 			{camera === 'blocked' ? t.connect.cameraBlocked : t.connect.noCamera}

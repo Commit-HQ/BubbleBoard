@@ -1,5 +1,12 @@
 import type { PhotoRecord } from '$lib/api';
-import { decryptBytes, decryptData, encryptBytes, encryptData, UnreadableError } from '$lib/crypto';
+import {
+	decryptBytes,
+	decryptData,
+	encryptBytes,
+	encryptData,
+	fields,
+	UnreadableError
+} from '$lib/crypto';
 import { CodedError } from '$lib/errors';
 
 // Photos of a classroom's board (docs/access-format.md): a teacher photographs the corkboard, and the browser
@@ -41,7 +48,12 @@ export async function preparePhoto(photo: Blob) {
 	for (const { side, quality } of sizes) {
 		const context = drawSmaller(image, side);
 		if (!context) break;
-		type ??= webp ? 'image/webp' : seeThrough(context) ? 'image/png' : 'image/jpeg';
+		// A JPEG has no see-through pixels to look for.
+		type ??= webp
+			? 'image/webp'
+			: photo.type !== 'image/jpeg' && seeThrough(context)
+				? 'image/png'
+				: 'image/jpeg';
 		const encoded = await context.canvas.convertToBlob({ type, quality });
 		if (encoded.size <= maxPhotoBytes) return encoded;
 	}
@@ -73,7 +85,7 @@ export function drawSmaller(image: HTMLImageElement, side: number) {
 	const canvas = new OffscreenCanvas(Math.round(width * scale), Math.round(height * scale));
 	const context = canvas.getContext('2d');
 	context?.drawImage(image, 0, 0, canvas.width, canvas.height);
-	return context ?? undefined;
+	return context;
 }
 
 /**
@@ -98,20 +110,14 @@ function seeThrough(context: OffscreenCanvasRenderingContext2D) {
 
 /**
  * A picture as a device saves it: JPEG and PNG as they are, and WebP, which not every iPhone opens once saved,
- * encoded again as PNG, which keeps its see-through pixels.
+ * encoded again as JPEG, or as PNG, which keeps see-through pixels, when it has them.
  */
 export async function pictureToSave(picture: Blob) {
 	if (picture.type !== 'image/webp') return picture;
-	const image = await createImageBitmap(picture);
-	try {
-		const canvas = new OffscreenCanvas(image.width, image.height);
-		const context = canvas.getContext('2d');
-		if (!context) throw new Error('This browser can’t draw pictures');
-		context.drawImage(image, 0, 0);
-		return await canvas.convertToBlob({ type: 'image/png' });
-	} finally {
-		image.close();
-	}
+	const context = drawSmaller(await openImage(picture), Infinity);
+	if (!context) throw new Error('This browser can’t draw pictures');
+	const type = seeThrough(context) ? 'image/png' : 'image/jpeg';
+	return context.canvas.convertToBlob({ type, quality: 0.9 });
 }
 
 /** Encrypts a photo made ready for a classroom's board, with the classroom's Group Key. */
@@ -124,24 +130,26 @@ export function sealPhoto(
 	return encryptBytes(photo, groupKey, { purpose: 'board-photo', classroom, photo: id });
 }
 
-/**
- * A board photo, decrypted, as an image a page can show. Anyone holding the classroom's Group Key could have
- * written it, so only JPEG, PNG, and WebP images open.
- */
+/** A board photo, decrypted, as an image a page can show (`imageBlob`). */
 export async function openPhoto(
 	sealed: Uint8Array<ArrayBuffer>,
 	groupKey: CryptoKey,
 	classroom: string,
 	id: string
 ) {
-	const photo = await decryptBytes(sealed, groupKey, {
-		purpose: 'board-photo',
-		classroom,
-		photo: id
-	});
-	const type = imageType(photo);
+	return imageBlob(
+		await decryptBytes(sealed, groupKey, { purpose: 'board-photo', classroom, photo: id })
+	);
+}
+
+/**
+ * Decrypted bytes as an image a page can show. Anyone holding the key could have written them, so only JPEG,
+ * PNG, and WebP images open.
+ */
+export function imageBlob(bytes: Uint8Array<ArrayBuffer>) {
+	const type = imageType(bytes);
 	if (!type) throw new UnreadableError();
-	return new Blob([photo], { type });
+	return new Blob([bytes], { type });
 }
 
 /** The type of a JPEG, PNG, or WebP image, from the bytes it starts with. */
@@ -170,15 +178,9 @@ export async function openPhotoDetails(
 	classroom: string,
 	id: string
 ): Promise<PhotoDetails> {
-	const details = await decryptData(sealed, groupKey, {
-		purpose: 'board-photo-details',
-		classroom,
-		photo: id
-	});
-	if (typeof details !== 'object' || details === null || Array.isArray(details)) {
-		throw new UnreadableError();
-	}
-	const { author } = details as Record<string, unknown>;
+	const { author } = fields(
+		await decryptData(sealed, groupKey, { purpose: 'board-photo-details', classroom, photo: id })
+	);
 	if (author === undefined) return {};
 	if (typeof author !== 'string' || !author) throw new UnreadableError();
 	return { author };
