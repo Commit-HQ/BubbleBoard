@@ -11,7 +11,10 @@ export const PUT: RequestHandler = async (event) => {
 	const staff = await requireStaff(event);
 	const change = noticeChange(await readJson(event.request));
 	const board = await changeNotice(database(event), staff, event.params.id, change);
-	if (change.announce) await announce(event, change.classrooms, await sessionHash(event));
+	if (change.announce) {
+		const classrooms = change.classrooms.map(({ classroom }) => classroom);
+		await announce(event, classrooms, await sessionHash(event));
+	}
 	return json(board);
 };
 

@@ -1,16 +1,17 @@
 <script lang="ts">
 	import { messages, type Locale } from '$lib/i18n';
 	import type { Notice } from '$lib/notices';
+	import BoardPhoto from './BoardPhoto.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import NoticeCard from './NoticeCard.svelte';
 	import { getApp } from './state.svelte';
 	import { choice } from './ui';
 
-	// Home's notices, newest on top, as on the kindergarten's corkboard. With several classrooms, a filter
-	// shows one classroom's notices; it starts on all of them.
+	// Home's board, as on the kindergarten's corkboard: the photos of its classrooms' boards, then the notices,
+	// newest on top. With several classrooms, a filter shows one classroom's; it starts on all of them.
 	let { locale }: { locale: Locale } = $props();
 	const app = getApp();
-	const t = $derived(messages[locale].app.notices);
+	const t = $derived(messages[locale].app);
 	const id = $props.id();
 	const classrooms = $derived(app.myClassrooms);
 	/** The classroom chosen in the filter, or '' for all of them. */
@@ -19,6 +20,12 @@
 	const shown = $derived(classrooms.some((classroom) => classroom.id === chosen) ? chosen : '');
 	const notices = $derived(
 		shown ? app.board.filter((notice) => notice.classrooms.includes(shown)) : app.board
+	);
+	/** The board photos of the classrooms shown, in the classrooms' order. */
+	const photos = $derived(
+		classrooms
+			.filter((classroom) => !shown || classroom.id === shown)
+			.flatMap((classroom) => app.photos.filter((photo) => photo.classroom === classroom.id))
 	);
 	let deleting = $state.raw<Notice>();
 
@@ -31,9 +38,9 @@
 <div class="grid gap-4">
 	{#if classrooms.length > 1}
 		<fieldset>
-			<legend class="sr-only">{t.show}</legend>
+			<legend class="sr-only">{t.notices.show}</legend>
 			<div class="flex flex-wrap gap-2">
-				{#each [{ id: '', name: t.all }, ...classrooms] as option (option.id)}
+				{#each [{ id: '', name: t.notices.all }, ...classrooms] as option (option.id)}
 					<!-- Forced colours drop the dark fill, so the chosen classroom is underlined there instead. -->
 					<label
 						class="{choice.option} inline-flex min-h-11 items-center rounded-full px-4 font-semibold forced-colors:has-checked:underline"
@@ -52,8 +59,19 @@
 		</fieldset>
 	{/if}
 
+	{#if photos.length}
+		<!-- Several photos scroll sideways, so the notices stay close. -->
+		<ul class="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2" aria-label={t.photos.title}>
+			{#each photos as photo (photo.id)}
+				<li class="shrink-0 snap-start {photos.length > 1 ? 'w-5/6 sm:w-2/3' : 'w-full'}">
+					<BoardPhoto {locale} {photo} />
+				</li>
+			{/each}
+		</ul>
+	{/if}
+
 	{#if app.unreadableNotices}
-		<p class="text-sm font-semibold text-muted">{t.unreadable}</p>
+		<p class="text-sm font-semibold text-muted">{t.notices.unreadable}</p>
 	{/if}
 	{#if notices.length}
 		<ul class="grid gap-4">
@@ -63,7 +81,11 @@
 		</ul>
 	{:else}
 		<p class="text-muted">
-			{shown ? t.emptyClassroom : app.status === 'staff' ? t.emptyStaff : t.empty}
+			{shown
+				? t.notices.emptyClassroom
+				: app.status === 'staff'
+					? t.notices.emptyStaff
+					: t.notices.empty}
 		</p>
 	{/if}
 </div>
@@ -72,9 +94,9 @@
 	{@const notice = deleting}
 	<ConfirmDialog
 		{locale}
-		title={t.deleteTitle}
-		copy={t.deleteCopy}
-		confirmLabel={t.delete}
+		title={t.notices.deleteTitle}
+		copy={t.notices.deleteCopy}
+		confirmLabel={t.notices.delete}
 		danger
 		onconfirm={() => remove(notice)}
 		onclose={() => (deleting = undefined)}

@@ -8,8 +8,8 @@
 	import { getApp } from './state.svelte';
 	import { button } from './ui';
 
-	// Everyone's home is the board of their classrooms, where staff also put up new notices. Managing the
-	// kindergarten has its own page, opened from the header.
+	// Everyone's home is the board of their classrooms, where staff also put up new notices and photos of the
+	// corkboard. Managing the kindergarten has its own page, opened from the header.
 	let { locale }: { locale: Locale } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app);
@@ -28,9 +28,14 @@
 			<p class="mt-2 text-lg text-muted">{classrooms[0].name}</p>
 		{/if}
 		{#if staff && classrooms.length}
-			<a class="{button.primary} mt-6" href={appPath(locale, 'notice/new')}>
-				<Icon name="plus" class="size-4" />{t.notices.new}
-			</a>
+			<div class="mt-6 flex flex-wrap gap-2">
+				<a class={button.primary} href={appPath(locale, 'notice/new')}>
+					<Icon name="plus" class="size-4" />{t.notices.new}
+				</a>
+				<a class={button.secondary} href={appPath(locale, 'photo')}>
+					<Icon name="camera" class="size-4" />{t.photos.new}
+				</a>
+			</div>
 		{/if}
 	</div>
 

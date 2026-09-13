@@ -11,6 +11,7 @@ export const POST: RequestHandler = async (event) => {
 	const staff = await requireStaff(event);
 	const notice = newNotice(await readJson(event.request));
 	const board = await postNotice(database(event), staff, notice);
-	await announce(event, notice.classrooms, await sessionHash(event));
+	const classrooms = notice.classrooms.map(({ classroom }) => classroom);
+	await announce(event, classrooms, await sessionHash(event));
 	return json(board);
 };

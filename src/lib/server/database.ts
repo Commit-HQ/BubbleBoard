@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import type { Identity } from '$lib/api';
 
 /**
  * Runs statements as one D1 batch, which D1 runs as a transaction, turning broken invariants into
@@ -30,4 +31,16 @@ export async function includesAll(
 		.bind(JSON.stringify(ids), ...params)
 		.first<{ count: number }>();
 	return row?.count === ids.length;
+}
+
+/**
+ * The classrooms whose board someone sees, with its notices and photo, as a subquery and its parameters: a
+ * family its children's classrooms, a teacher their own, and an admin every classroom.
+ */
+export function visibleClassrooms(viewer: Identity): [string, string[]] {
+	if (viewer.kind === 'family') {
+		return ['SELECT classroom_id FROM family_classrooms WHERE family_id = ?', [viewer.family]];
+	}
+	if (viewer.admin) return ['SELECT id FROM classrooms', []];
+	return ['SELECT classroom_id FROM teacher_classrooms WHERE teacher_id = ?', [viewer.teacher]];
 }

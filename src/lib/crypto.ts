@@ -19,6 +19,8 @@ const ENVELOPE_FORMAT = 1;
 export const KEY_BYTES = 32;
 const IV_BYTES = 12;
 const TAG_BYTES = 16;
+/** What envelope format 1's binary form adds to the bytes it holds: the format, the IV, and the tag. */
+export const SEALED_BYTES_OVERHEAD = 1 + IV_BYTES + TAG_BYTES;
 const aesGcm = { name: 'AES-GCM', length: 256 };
 const encoder = new TextEncoder();
 
@@ -39,7 +41,8 @@ type DataContext =
 	| { purpose: 'family-profile'; family: string }
 	| { purpose: 'notice-content'; notice: string }
 	// Encrypted with the answering family's Family Key, which ties it to that family.
-	| { purpose: 'poll-vote'; notice: string };
+	| { purpose: 'poll-vote'; notice: string }
+	| { purpose: 'board-photo'; classroom: string; photo: string };
 
 /** A key that wraps or opens another key, and the record the wrapped key belongs to. */
 export type Wrapping = { key: CryptoKey; context: KeyContext };
@@ -182,6 +185,35 @@ export async function decryptData(envelope: string, key: CryptoKey, context: Dat
 	}
 }
 
+/**
+ * Encrypts bytes too big to carry as text, such as a photo, in envelope format 1's binary form: the format
+ * in one byte, the IV, then the ciphertext ending in its tag, with the same additional data as text.
+ */
+export async function encryptBytes(
+	bytes: Uint8Array<ArrayBuffer>,
+	key: CryptoKey,
+	context: DataContext
+) {
+	const { iv, ciphertext } = await encrypt(bytes, key, context);
+	const sealed = new Uint8Array(1 + IV_BYTES + ciphertext.length);
+	sealed.set([ENVELOPE_FORMAT]);
+	sealed.set(iv, 1);
+	sealed.set(ciphertext, 1 + IV_BYTES);
+	return sealed;
+}
+
+/** Decrypts bytes in envelope format 1's binary form. Anyone holding the key could have written them. */
+export async function decryptBytes(
+	sealed: Uint8Array<ArrayBuffer>,
+	key: CryptoKey,
+	context: DataContext
+) {
+	if (sealed[0] !== ENVELOPE_FORMAT || sealed.length < SEALED_BYTES_OVERHEAD) {
+		throw new UnreadableError();
+	}
+	return decrypt(sealed.slice(1, 1 + IV_BYTES), sealed.slice(1 + IV_BYTES), key, context);
+}
+
 /** How many bytes a value in envelope form holds, for the server, which checks envelopes it can't open. */
 export function envelopeSize(value: unknown) {
 	const envelope = parseEnvelope(value);
@@ -222,28 +254,27 @@ function parseEnvelope(value: unknown) {
 	return iv && ciphertext ? { iv, ciphertext } : undefined;
 }
 
-async function seal(
-	plaintext: Uint8Array<ArrayBuffer>,
-	key: CryptoKey,
-	context: KeyContext | DataContext
-) {
+async function encrypt(plaintext: BufferSource, key: CryptoKey, context: KeyContext | DataContext) {
 	const iv = randomBytes(IV_BYTES);
 	const ciphertext = await crypto.subtle.encrypt(
 		{ name: 'AES-GCM', iv, additionalData: additionalData(context) },
 		key,
 		plaintext
 	);
-	return `${ENVELOPE_FORMAT}.${toBase64Url(iv)}.${toBase64Url(new Uint8Array(ciphertext))}`;
+	return { iv, ciphertext: new Uint8Array(ciphertext) };
 }
 
-async function open(envelope: string, key: CryptoKey, context: KeyContext | DataContext) {
-	const parts = parseEnvelope(envelope);
-	if (!parts) throw new UnreadableError();
+async function decrypt(
+	iv: BufferSource,
+	ciphertext: BufferSource,
+	key: CryptoKey,
+	context: KeyContext | DataContext
+) {
 	try {
 		const plaintext = await crypto.subtle.decrypt(
-			{ name: 'AES-GCM', iv: parts.iv, additionalData: additionalData(context) },
+			{ name: 'AES-GCM', iv, additionalData: additionalData(context) },
 			key,
-			parts.ciphertext
+			ciphertext
 		);
 		return new Uint8Array(plaintext);
 	} catch (cause) {
@@ -251,8 +282,23 @@ async function open(envelope: string, key: CryptoKey, context: KeyContext | Data
 	}
 }
 
+async function seal(
+	plaintext: Uint8Array<ArrayBuffer>,
+	key: CryptoKey,
+	context: KeyContext | DataContext
+) {
+	const { iv, ciphertext } = await encrypt(plaintext, key, context);
+	return `${ENVELOPE_FORMAT}.${toBase64Url(iv)}.${toBase64Url(ciphertext)}`;
+}
+
+async function open(envelope: string, key: CryptoKey, context: KeyContext | DataContext) {
+	const parts = parseEnvelope(envelope);
+	if (!parts) throw new UnreadableError();
+	return decrypt(parts.iv, parts.ciphertext, key, context);
+}
+
 // Binds an envelope to its record: format, purpose, the classroom of a classroom record, and the
-// credential, family, teacher, child, or notice it belongs to. Moved to any other record, even one
+// credential, family, teacher, child, notice, or photo it belongs to. Moved to any other record, even one
 // encrypted with the same key, it doesn't open.
 function additionalData(context: KeyContext | DataContext) {
 	const ids: {
@@ -262,8 +308,10 @@ function additionalData(context: KeyContext | DataContext) {
 		teacher?: string;
 		child?: string;
 		notice?: string;
+		photo?: string;
 	} = context;
-	const subject = ids.credential ?? ids.family ?? ids.teacher ?? ids.child ?? ids.notice ?? null;
+	const subject =
+		ids.credential ?? ids.family ?? ids.teacher ?? ids.child ?? ids.notice ?? ids.photo ?? null;
 	return encoder.encode(
 		JSON.stringify([
 			'BubbleBoard',

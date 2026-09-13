@@ -456,6 +456,33 @@ export const en = {
 			votes: (count: number) => (count === 1 ? '1 vote' : `${count} votes`),
 			noAnswer: (names: string[]) => `No answer yet: ${list(names)}`
 		},
+		photos: {
+			new: 'Board photo',
+			title: 'Photos of the board',
+			newTitle: 'Photo of the board',
+			newCopy:
+				'Take a photo of the classroom’s board, with no children in it. Its families see it on their home until you put up a new one.',
+			classroom: 'Classroom',
+			chooseClassroom: 'Choose the classroom first.',
+			take: 'Take a photo',
+			retake: 'Take another',
+			choose: 'Choose a photo',
+			preparing: 'Getting the photo ready…',
+			preview: 'The photo, as families will see it',
+			putUp: 'Put it up',
+			replaces: 'It takes the place of the photo that’s up now.',
+			open: (classroom: string) => `Open the photo of the ${classroom} board`,
+			posted: (date: string) => `put up ${date}`,
+			loading: 'Opening the photo…',
+			unreadable: 'This photo didn’t open. Try again later.',
+			zoom: 'Zoom in',
+			fit: 'Fit to the screen',
+			close: 'Close',
+			replace: 'Put up a new photo',
+			remove: 'Take down',
+			removeTitle: 'Take down this photo?',
+			removeCopy: 'It comes off every home right away.'
+		},
 		notifications: {
 			test: 'Notifications are on. You’ll get one like this when there’s a new notice.',
 			cardTitle: 'Get a notification when there’s a new notice',
@@ -516,6 +543,7 @@ export const en = {
 			'notice-too-long': 'This notice is too long. Shorten it, then try again.',
 			'no-classrooms': 'Choose at least one classroom.',
 			'poll-answers': 'Give the poll at least two answers.',
+			'unusable-photo': 'That photo couldn’t be used. Try another one.',
 			offline: 'BubbleBoard can’t be reached. Check your internet connection and try again.',
 			'signed-out': 'This device was signed out. Scan your card again to continue.',
 			'unreadable-records':

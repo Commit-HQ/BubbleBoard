@@ -1,12 +1,14 @@
 import { expect, it } from 'vitest';
 import { toBase64Url } from '$lib/base64url';
-import { createId } from '$lib/crypto';
+import { createId, SEALED_BYTES_OVERHEAD } from '$lib/crypto';
+import { maxPhotoBytes } from '$lib/photos';
 import {
 	familyCards,
 	familyLinks,
 	newChild,
 	newNotice,
 	noticeChange,
+	readPhoto,
 	setup,
 	voteChoice
 } from './validate';
@@ -96,4 +98,21 @@ it('refuses a poll answer bigger than the option it names', () => {
 	for (const choice of [envelope(1024), 'Tuesday', undefined]) {
 		expect(() => voteChoice({ choice })).toThrow();
 	}
+});
+
+it('reads a board photo’s encrypted bytes, holding something and no bigger than a photo is kept', async () => {
+	const upload = (bytes: number, type = 'application/octet-stream') =>
+		new Request('https://bubbleboard.example.com/api', {
+			method: 'PUT',
+			headers: { 'content-type': type },
+			body: new Uint8Array(bytes)
+		});
+	expect(await readPhoto(upload(SEALED_BYTES_OVERHEAD + 1))).toHaveLength(
+		SEALED_BYTES_OVERHEAD + 1
+	);
+	await expect(readPhoto(upload(maxPhotoBytes + SEALED_BYTES_OVERHEAD + 1))).rejects.toMatchObject({
+		status: 413
+	});
+	await expect(readPhoto(upload(SEALED_BYTES_OVERHEAD))).rejects.toMatchObject({ status: 400 });
+	await expect(readPhoto(upload(100, 'application/json'))).rejects.toMatchObject({ status: 415 });
 });

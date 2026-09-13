@@ -1,5 +1,5 @@
 // Requests between the app and its Worker. Everything in them is opaque to the server: random IDs, auth
-// tokens, wrapped keys, and profiles encrypted in the browser (docs/access-format.md).
+// tokens, wrapped keys, and profiles and photos encrypted in the browser (docs/access-format.md).
 
 /** A new card as the server stores it: it keeps only a hash of the auth token, and the key stays wrapped. */
 export type NewCredential = { id: string; authToken: string; wrappedKey: string };
@@ -106,16 +106,19 @@ export type NoticeChange = {
 };
 export type NewNotice = Omit<NoticeChange, 'announce'> & { id: string };
 
+/** The photo a classroom's board shows, as the server keeps it. Its encrypted bytes are fetched on their own. */
+export type PhotoRecord = { id: string; classroom: string; postedAt: number };
+
 /**
  * What a connected device opens: a staff member's records, or the classrooms a family's card joined, with
- * the notices of the classrooms it sees.
+ * the notices and board photos of the classrooms it sees.
  */
 export type Access = (
 	| (Staff & { kindergarten: Kindergarten })
 	| (FamilyIdentity & {
 			classrooms: { id: string; profile: string; groupKeyForFamily: string }[];
 	  })
-) & { notices: NoticeRecord[] };
+) & { notices: NoticeRecord[]; photos: PhotoRecord[] };
 
 /** A request that failed: `status` is 0 when the server couldn't be reached, and `code` says why. */
 export class ApiError extends Error {
@@ -130,26 +133,44 @@ export class ApiError extends Error {
 	}
 }
 
+async function send(path: string, init?: RequestInit) {
+	try {
+		return await fetch(path, init);
+	} catch (cause) {
+		throw new ApiError(0, 'offline', { cause });
+	}
+}
+
+/** The error a failed response carries: the server sends its code as `message`. */
+async function failure(response: Response) {
+	const payload: unknown = await response.json().catch(() => {});
+	const code = (payload as { message?: unknown } | undefined)?.message;
+	return new ApiError(response.status, typeof code === 'string' ? code : 'unexpected');
+}
+
+/** Sends JSON, or encrypted bytes such as a photo's, and reads the JSON that comes back. */
 export async function request<T = void>(
 	method: 'GET' | 'POST' | 'PUT' | 'DELETE',
 	path: string,
 	body?: unknown
 ): Promise<T> {
 	const headers: Record<string, string> = { accept: 'application/json' };
-	if (body !== undefined) headers['content-type'] = 'application/json';
-	let response: Response;
-	try {
-		response = await fetch(path, {
-			method,
-			headers,
-			body: body === undefined ? undefined : JSON.stringify(body)
-		});
-	} catch (cause) {
-		throw new ApiError(0, 'offline', { cause });
+	let content: BodyInit | undefined;
+	if (body instanceof Uint8Array) {
+		headers['content-type'] = 'application/octet-stream';
+		content = body as Uint8Array<ArrayBuffer>;
+	} else if (body !== undefined) {
+		headers['content-type'] = 'application/json';
+		content = JSON.stringify(body);
 	}
-	const payload: unknown =
-		response.status === 204 ? undefined : await response.json().catch(() => {});
-	if (response.ok) return payload as T;
-	const code = (payload as { message?: unknown } | undefined)?.message;
-	throw new ApiError(response.status, typeof code === 'string' ? code : 'unexpected');
+	const response = await send(path, { method, headers, body: content });
+	if (!response.ok) throw await failure(response);
+	return (response.status === 204 ? undefined : await response.json().catch(() => {})) as T;
+}
+
+/** Fetches encrypted bytes the server keeps, such as a board photo's. */
+export async function requestBytes(path: string) {
+	const response = await send(path);
+	if (!response.ok) throw await failure(response);
+	return new Uint8Array(await response.arrayBuffer());
 }

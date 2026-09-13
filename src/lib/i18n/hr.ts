@@ -455,6 +455,33 @@ export const hr = {
 			votes: (value: number) => count(value, 'glas', 'glasa', 'glasova'),
 			noAnswer: (names: string[]) => `Još bez odgovora: ${list(names)}`
 		},
+		photos: {
+			new: 'Fotografija ploče',
+			title: 'Fotografije ploče',
+			newTitle: 'Fotografija ploče',
+			newCopy:
+				'Fotografirajte oglasnu ploču skupine, bez djece na fotografiji. Obitelji je vide na početnoj stranici dok ne stavite novu.',
+			classroom: 'Skupina',
+			chooseClassroom: 'Najprije odaberite skupinu.',
+			take: 'Fotografiraj',
+			retake: 'Fotografiraj ponovno',
+			choose: 'Odaberi fotografiju',
+			preparing: 'Pripremamo fotografiju…',
+			preview: 'Fotografija kakvu će vidjeti obitelji',
+			putUp: 'Stavi na ploču',
+			replaces: 'Zamijenit će fotografiju koja je sada na ploči.',
+			open: (classroom: string) => `Otvori fotografiju ploče skupine ${classroom}`,
+			posted: (date: string) => `stavljeno ${date}`,
+			loading: 'Otvaramo fotografiju…',
+			unreadable: 'Fotografija se nije otvorila. Pokušajte ponovno kasnije.',
+			zoom: 'Povećaj',
+			fit: 'Prilagodi zaslonu',
+			close: 'Zatvori',
+			replace: 'Stavi novu fotografiju',
+			remove: 'Skini',
+			removeTitle: 'Skinuti ovu fotografiju?',
+			removeCopy: 'Odmah nestaje sa svih početnih stranica.'
+		},
 		notifications: {
 			test: 'Obavijesti su uključene. Ovakvu ćete dobiti kad stigne nova obavijest.',
 			cardTitle: 'Saznajte kad stigne nova obavijest',
@@ -515,6 +542,7 @@ export const hr = {
 			'notice-too-long': 'Obavijest je predugačka. Skratite je i pokušajte ponovno.',
 			'no-classrooms': 'Odaberite barem jednu skupinu.',
 			'poll-answers': 'Anketi dodajte barem dva odgovora.',
+			'unusable-photo': 'Ta se fotografija ne može upotrijebiti. Pokušajte s drugom.',
 			offline:
 				'BubbleBoard trenutno nije dostupan. Provjerite internetsku vezu i pokušajte ponovno.',
 			'signed-out': 'Ovaj je uređaj odjavljen. Za nastavak ponovno skenirajte karticu.',

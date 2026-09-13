@@ -17,11 +17,18 @@ import type {
 	TeacherChange
 } from '$lib/api';
 import { fromBase64Url } from '$lib/base64url';
-import { AUTH_TOKEN_BYTES, envelopeSize, isId, KEY_BYTES } from '$lib/crypto';
+import {
+	AUTH_TOKEN_BYTES,
+	envelopeSize,
+	isId,
+	KEY_BYTES,
+	SEALED_BYTES_OVERHEAD
+} from '$lib/crypto';
 import { maxNoticeBytes, noticeDays } from '$lib/notices';
+import { maxPhotoBytes } from '$lib/photos';
 
-// Request bodies, checked before anything reaches the database. The server can't open profiles or keys,
-// so it checks their form; the browsers that open them check the rest.
+// Request bodies, checked before anything reaches the database. The server can't open profiles, keys, or
+// photos, so it checks their form; the browsers that open them check the rest.
 
 type Fields = Record<string, unknown>;
 
@@ -34,12 +41,10 @@ function invalid(): never {
 	error(400, 'invalid');
 }
 
-/** Reads a JSON object, refusing other content types and stopping as soon as the body is too large. */
-export async function readJson(request: Request): Promise<Fields> {
-	if (request.headers.get('content-type')?.split(';')[0].trim() !== 'application/json') {
-		error(415, 'invalid');
-	}
-	if (Number(request.headers.get('content-length')) > maxBytes) error(413, 'too-large');
+/** Reads a body of one content type, refusing others and stopping as soon as it's larger than `max` bytes. */
+async function readBody(request: Request, type: string, max: number) {
+	if (request.headers.get('content-type')?.split(';')[0].trim() !== type) error(415, 'invalid');
+	if (Number(request.headers.get('content-length')) > max) error(413, 'too-large');
 	const chunks: Uint8Array<ArrayBuffer>[] = [];
 	let size = 0;
 	const reader = request.body?.getReader();
@@ -47,17 +52,32 @@ export async function readJson(request: Request): Promise<Fields> {
 		const { done, value } = await reader.read();
 		if (done) break;
 		size += value.length;
-		if (size > maxBytes) {
+		if (size > max) {
 			await reader.cancel();
 			error(413, 'too-large');
 		}
 		chunks.push(value);
 	}
+	return new Blob(chunks);
+}
+
+/** Reads a JSON object. */
+export async function readJson(request: Request): Promise<Fields> {
+	const body = await readBody(request, 'application/json', maxBytes);
 	try {
-		return fields(JSON.parse(await new Blob(chunks).text()));
+		return fields(JSON.parse(await body.text()));
 	} catch {
 		invalid();
 	}
+}
+
+/** Reads a board photo's encrypted bytes, which hold at least one byte of the photo. */
+export async function readPhoto(request: Request) {
+	const max = maxPhotoBytes + SEALED_BYTES_OVERHEAD;
+	const photo = new Uint8Array(
+		await (await readBody(request, 'application/octet-stream', max)).arrayBuffer()
+	);
+	return photo.length > SEALED_BYTES_OVERHEAD ? photo : invalid();
 }
 
 function fields(value: unknown): Fields {

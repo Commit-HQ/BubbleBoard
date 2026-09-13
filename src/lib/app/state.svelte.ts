@@ -1,6 +1,14 @@
 import { replaceState } from '$app/navigation';
 import { page } from '$app/state';
-import { ApiError, request, type Access, type Kindergarten, type NoticeRecord } from '$lib/api';
+import {
+	ApiError,
+	request,
+	requestBytes,
+	type Access,
+	type Kindergarten,
+	type NoticeRecord,
+	type PhotoRecord
+} from '$lib/api';
 import { readCard, type CardReading } from '$lib/card';
 import { createId, deriveCredential, hashAuthToken, UnreadableError } from '$lib/crypto';
 import { forgetCard, loadCard, saveCard, type DeviceCard } from '$lib/device';
@@ -52,6 +60,7 @@ import {
 	type Paper,
 	type Poll
 } from '$lib/notices';
+import { imageType, openPhoto, sealPhoto } from '$lib/photos';
 import { createContext } from 'svelte';
 
 // The app's state in the browser: the card this device holds, and the decrypted records it may see. The
@@ -164,6 +173,8 @@ export class App {
 	board = $state.raw<Notice[]>([]);
 	/** How many notices didn't open on this device. */
 	unreadableNotices = $state(0);
+	/** The photos of the boards of this device's classrooms: one for each classroom that shows one. */
+	photos = $state.raw<PhotoRecord[]>([]);
 	connecting = $state(false);
 	cardError = $state<string>();
 	/** A card from a link, waiting for confirmation before it takes the place of this device's card. */
@@ -174,6 +185,8 @@ export class App {
 	#card?: DeviceCard;
 	#keys?: StaffKeys;
 	#loadedAt = 0;
+	/** Board photos this device has opened, as addresses for their images, while they're up. */
+	#photoUrls = new Map<string, Promise<string>>();
 
 	get admin() {
 		return this.me?.admin === true;
@@ -184,10 +197,10 @@ export class App {
 	}
 
 	/**
-	 * The classrooms this device belongs to: a family's children's, or those the server sends staff, which
-	 * are a teacher's own, or all of them for an admin.
+	 * The classrooms this device belongs to, with their Group Keys: a family's children's, or those the server
+	 * sends staff, which are a teacher's own, or all of them for an admin.
 	 */
-	get myClassrooms(): { id: string; name: string }[] {
+	get myClassrooms(): FamilyClassroom[] {
 		return this.status === 'family' ? this.familyClassrooms : this.catalog.classrooms;
 	}
 
@@ -292,6 +305,7 @@ export class App {
 		} else {
 			throw new UnreadableError();
 		}
+		this.#showPhotos(access.photos);
 		this.#card = card;
 		this.#loadedAt = Date.now();
 		this.status = this.install === 'android' ? 'install' : access.kind;
@@ -394,6 +408,7 @@ export class App {
 		this.familyClassrooms = [];
 		this.board = [];
 		this.unreadableNotices = 0;
+		this.#showPhotos([]);
 		this.notice = notice;
 		this.status = 'disconnected';
 	}
@@ -681,6 +696,60 @@ export class App {
 
 	deleteNotice(notice: Notice) {
 		return this.#changeBoard('DELETE', `/api/notices/${notice.id}`);
+	}
+
+	/**
+	 * A board photo's image, fetched and decrypted the first time it's shown, and kept while the photo is up.
+	 * A photo that didn't open is tried again the next time it's shown.
+	 */
+	photoUrl(photo: PhotoRecord) {
+		let url = this.#photoUrls.get(photo.id);
+		if (!url) {
+			url = this.#signedIn(async () => {
+				const { groupKey } = byId(this.myClassrooms, photo.classroom);
+				const sealed = await requestBytes(`/api/classrooms/${photo.classroom}/photo/${photo.id}`);
+				return URL.createObjectURL(await openPhoto(sealed, groupKey, photo.classroom, photo.id));
+			});
+			this.#photoUrls.set(photo.id, url);
+			url.catch(() => this.#photoUrls.delete(photo.id));
+		}
+		return url;
+	}
+
+	/** Keeps the board photos the server sent, and lets go of the images of photos that aren't up anymore. */
+	#showPhotos(photos: PhotoRecord[]) {
+		for (const [id, url] of this.#photoUrls) {
+			if (photos.some((photo) => photo.id === id)) continue;
+			this.#photoUrls.delete(id);
+			url.then(
+				(address) => URL.revokeObjectURL(address),
+				() => {}
+			);
+		}
+		this.photos = photos;
+	}
+
+	/**
+	 * Puts a photo made ready for the board up on a classroom's board, encrypted with the classroom's Group
+	 * Key, in place of the one there. This device shows it without fetching it again.
+	 */
+	async putUpPhoto(classroom: string, photo: Uint8Array<ArrayBuffer>) {
+		const { groupKey } = byId(this.catalog.classrooms, classroom);
+		const id = createId();
+		const sealed = await sealPhoto(photo, groupKey, classroom, id);
+		const path = `/api/classrooms/${classroom}/photo/${id}`;
+		await this.#send<PhotoRecord[]>('PUT', path, sealed, async (photos) => {
+			const image = new Blob([photo], { type: imageType(photo) });
+			this.#photoUrls.set(id, Promise.resolve(URL.createObjectURL(image)));
+			this.#showPhotos(photos);
+		});
+	}
+
+	takeDownPhoto(photo: PhotoRecord) {
+		const path = `/api/classrooms/${photo.classroom}/photo/${photo.id}`;
+		return this.#send<PhotoRecord[]>('DELETE', path, undefined, async (photos) =>
+			this.#showPhotos(photos)
+		);
 	}
 }
 

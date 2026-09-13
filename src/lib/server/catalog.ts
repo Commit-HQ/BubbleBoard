@@ -18,6 +18,7 @@ import type {
 import { hashAuthToken } from '$lib/crypto';
 import { includesAll, transaction } from './database';
 import { board } from './notices';
+import { boardPhotos } from './photos';
 import type { Admin } from './session';
 
 // The kindergarten's records: plain SQL, and one batch, which D1 runs as a transaction, for each change.
@@ -98,14 +99,15 @@ export async function setUp(db: D1Database, teachers: Setup['teachers']) {
 
 /**
  * What a connected device opens: a staff member's records, or the classrooms a family's card joined, with
- * the notices of the classrooms it sees.
+ * the notices and board photos of the classrooms it sees.
  */
 export async function accessFor(db: D1Database, current: Identity): Promise<Access> {
+	const onTheBoard = Promise.all([board(db, current), boardPhotos(db, current)]);
 	if (current.kind === 'staff') {
-		const [records, notices] = await Promise.all([kindergarten(db, current), board(db, current)]);
-		return { ...current, kindergarten: records, notices };
+		const [records, [notices, photos]] = await Promise.all([kindergarten(db, current), onTheBoard]);
+		return { ...current, kindergarten: records, notices, photos };
 	}
-	const [{ results }, notices] = await Promise.all([
+	const [{ results }, [notices, photos]] = await Promise.all([
 		db
 			.prepare(
 				`SELECT c.id, c.profile, fc.group_key_for_family AS groupKeyForFamily FROM family_classrooms fc
@@ -113,9 +115,9 @@ export async function accessFor(db: D1Database, current: Identity): Promise<Acce
 			)
 			.bind(current.family)
 			.all<{ id: string; profile: string; groupKeyForFamily: string }>(),
-		board(db, current)
+		onTheBoard
 	]);
-	return { ...current, classrooms: results, notices };
+	return { ...current, classrooms: results, notices, photos };
 }
 
 export async function kindergarten(db: D1Database, staff: Staff): Promise<Kindergarten> {

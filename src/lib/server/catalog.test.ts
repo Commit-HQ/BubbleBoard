@@ -28,6 +28,7 @@ import {
 } from './catalog';
 import { day } from '$lib/notices';
 import { board, changeNotice, deleteNotice, markSeen, postNotice, vote } from './notices';
+import { boardPhotos, deletePhotosOf, photoBytes, putUpPhoto, takeDownPhoto } from './photos';
 import {
 	cleanUp,
 	createVapidSecret,
@@ -90,6 +91,25 @@ function localDatabase() {
 		}
 	};
 	return { prepare: (sql: string) => statement(sql), batch } as unknown as D1Database;
+}
+
+/** The part of R2's API the server uses, in memory, with the objects it keeps. */
+function localBucket() {
+	const objects = new Map<string, Uint8Array<ArrayBuffer>>();
+	const bucket = {
+		put: async (key: string, value: Uint8Array<ArrayBuffer>) => void objects.set(key, value),
+		get: async (key: string) => {
+			const value = objects.get(key);
+			return value ? { body: new Response(value).body } : null;
+		},
+		delete: async (keys: string | string[]) => {
+			for (const key of [keys].flat()) objects.delete(key);
+		},
+		list: async ({ prefix = '' }: { prefix?: string } = {}) => ({
+			objects: [...objects.keys()].filter((key) => key.startsWith(prefix)).map((key) => ({ key }))
+		})
+	};
+	return { bucket: bucket as unknown as R2Bucket, objects };
 }
 
 /** A request to routes that use sessions, with a cookie jar kept across calls. */
@@ -663,6 +683,76 @@ describe('notices', () => {
 		await changeNotice(db, admin, withPoll.id, change([bubbles]));
 		expect((await answered(admin))?.votes).toEqual([]);
 		await expect(vote(db, family, withPoll.id, 'answer')).rejects.toMatchObject(conflict('stale'));
+	});
+});
+
+describe('board photos', () => {
+	const photo = (value: number) => new Uint8Array(64).fill(value);
+	const read = async (body: ReadableStream) =>
+		new Uint8Array(await new Response(body).arrayBuffer());
+
+	it('go up in a teacher’s own classrooms in place of the photo there, for that classroom only', async () => {
+		const db = localDatabase();
+		const { bucket, objects } = localBucket();
+		const { admin } = await setUpKindergarten(db);
+		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
+		const [inBubbles, inOwls] = [newFamily(), newFamily()];
+		await addChildTo(db, admin, bubbles, inBubbles);
+		await addChildTo(db, admin, owls, inOwls);
+		const teacher = await addTeacherTo(db, admin, [bubbles]);
+		const [first, second] = [createId(), createId()];
+
+		await expect(putUpPhoto(db, bucket, teacher, owls, first, photo(1))).rejects.toMatchObject(
+			conflict('stale')
+		);
+		expect(await putUpPhoto(db, bucket, teacher, bubbles, first, photo(1))).toMatchObject([
+			{ id: first, classroom: bubbles }
+		]);
+		// Putting the same photo up again, after a lost response, keeps it.
+		await putUpPhoto(db, bucket, teacher, bubbles, first, photo(1));
+		expect([...objects.keys()]).toEqual([`board/${bubbles}/${first}`]);
+		// A new photo takes its place, in the database and in R2.
+		expect(await putUpPhoto(db, bucket, teacher, bubbles, second, photo(2))).toMatchObject([
+			{ id: second, classroom: bubbles }
+		]);
+		expect([...objects.keys()]).toEqual([`board/${bubbles}/${second}`]);
+
+		const family = (await identityForCard(db, inBubbles.credential.authToken))!;
+		const other = (await identityForCard(db, inOwls.credential.authToken))!;
+		expect(await boardPhotos(db, family)).toMatchObject([{ id: second }]);
+		expect(await boardPhotos(db, other)).toEqual([]);
+		expect(await read(await photoBytes(db, bucket, family, bubbles, second))).toEqual(photo(2));
+		for (const [viewer, id] of [
+			[other, second],
+			[family, first]
+		] as const) {
+			await expect(photoBytes(db, bucket, viewer, bubbles, id)).rejects.toMatchObject({
+				status: 404
+			});
+		}
+	});
+
+	it('come down for their classroom’s teachers and admins, and go with their classroom', async () => {
+		const db = localDatabase();
+		const { bucket, objects } = localBucket();
+		const { admin } = await setUpKindergarten(db);
+		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
+		const teacher = await addTeacherTo(db, admin, [bubbles]);
+		const [inBubbles, inOwls] = [createId(), createId()];
+		await putUpPhoto(db, bucket, admin, bubbles, inBubbles, photo(1));
+		await putUpPhoto(db, bucket, admin, owls, inOwls, photo(2));
+
+		await expect(takeDownPhoto(db, bucket, teacher, owls, inOwls)).rejects.toMatchObject(
+			conflict('stale')
+		);
+		expect(await takeDownPhoto(db, bucket, teacher, bubbles, inBubbles)).toEqual([]);
+		await expect(takeDownPhoto(db, bucket, admin, bubbles, inBubbles)).rejects.toMatchObject({
+			status: 404
+		});
+		await deleteClassroom(db, admin, owls);
+		await deletePhotosOf(bucket, owls);
+		expect(await boardPhotos(db, admin)).toEqual([]);
+		expect(objects.size).toBe(0);
 	});
 });
 

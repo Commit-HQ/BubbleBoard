@@ -1,12 +1,11 @@
 import type { RequestEvent } from '@sveltejs/kit';
-import type { NoticeKey } from '../api';
 import { fromBase64Url, toBase64Url } from '../base64url';
 
-// Notifications for new notices: Web Push without content (RFC 8030), signed with the installation's VAPID
-// key (RFC 8292). A push only wakes the service worker, which shows the same words for every notice, so the
-// server encrypts no payload and a push service learns nothing about a notice. Posting puts the devices to
-// notify on a queue, in groups one Worker invocation can send, and the queue handler sends them
-// (worker/index.js). Imports stay relative: Wrangler bundles this for that handler without SvelteKit.
+// Notifications for new notices and board photos: Web Push without content (RFC 8030), signed with the
+// installation's VAPID key (RFC 8292). A push only wakes the service worker, which shows the same words every
+// time, so the server encrypts no payload and a push service learns nothing about a notice or photo. Posting
+// puts the devices to notify on a queue, in groups one Worker invocation can send, and the queue handler
+// sends them (worker/index.js). Imports stay relative: Wrangler bundles this for that handler without SvelteKit.
 
 /** A queue message: the devices to notify, and how many times this group was tried before. */
 export type PushMessage = { endpoints: string[]; subject: string; attempt: number };
@@ -138,13 +137,17 @@ export async function recipients(
 }
 
 /**
- * Notifies a notice's families and teachers, except the device that posted it, by putting them on the queue
- * in groups, signed for this installation's address. Without a queue, as in `vite dev`, nothing is sent.
+ * Notifies the families and teachers of classrooms about a new notice or board photo, except the device that
+ * posted it, by putting them on the queue in groups, signed for this installation's address. Without a
+ * queue, as in `vite dev`, nothing is sent.
  */
-export async function announce(event: RequestEvent, keys: NoticeKey[], poster: string | undefined) {
+export async function announce(
+	event: RequestEvent,
+	classrooms: string[],
+	poster: string | undefined
+) {
 	const env = event.platform?.env;
 	if (!env?.NOTIFICATIONS) return;
-	const classrooms = keys.map(({ classroom }) => classroom);
 	const endpoints = await recipients(env.DB, classrooms, poster);
 	const subject = event.url.origin;
 	const messages: { body: PushMessage }[] = [];

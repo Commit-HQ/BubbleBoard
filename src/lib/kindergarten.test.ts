@@ -183,6 +183,7 @@ function familyAccess(
 			profile: byId(classrooms, classroom).profile,
 			groupKeyForFamily
 		})),
-		notices: []
+		notices: [],
+		photos: []
 	};
 }

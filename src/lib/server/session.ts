@@ -23,6 +23,13 @@ export function database(event: RequestEvent) {
 	return db;
 }
 
+/** The private R2 bucket that keeps board photos' encrypted bytes. */
+export function photoBucket(event: RequestEvent) {
+	const bucket = event.platform?.env.PHOTOS;
+	if (!bucket) error(503, 'unavailable');
+	return bucket;
+}
+
 /** Compares hashes, so the time a comparison takes says nothing about the secret. */
 export async function isSetupToken(event: RequestEvent, token: string) {
 	const secret = event.platform?.env.SETUP_TOKEN;

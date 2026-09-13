@@ -33,10 +33,12 @@ export default defineConfig({
 			version: { name: commit() },
 			csp: {
 				mode: 'hash',
-				// Scripts, styles, images, fonts, and connections fall back to default-src, and SvelteKit
-				// adds hashes for its inline scripts and styles.
+				// Scripts, styles, fonts, and connections fall back to default-src, and SvelteKit adds hashes
+				// for its inline scripts and styles.
 				directives: {
 					'default-src': ['self'],
+					// Board photos are decrypted in the browser and shown from the blob: URLs it makes for them.
+					'img-src': ['self', 'blob:'],
 					// SvelteKit's route announcer, on pages that run in the browser, has one fixed inline
 					// style attribute. This allows exactly that value, not inline styles in general, and
 					// src/csp.test.ts fails when a SvelteKit update changes it.

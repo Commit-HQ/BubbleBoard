@@ -16,12 +16,12 @@ Cards and encrypted records are versioned separately, because they age different
 
 Every key is 256 random bits from `crypto.getRandomValues`, generated in the browser and used with AES-256-GCM.
 
-| Key        | One for each              | Opens                                                                                                                       |
-| ---------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Staff Key  | kindergarten              | every Group Key and Family Key, and the teacher, child, and family records                                                  |
-| Group Key  | classroom                 | the classroom profile (its name) and the Notice Key of each of its notices; later roster and photos                         |
-| Family Key | family                    | the Group Key of each classroom its children are in, and its answers to polls; later its private messages and photo reveals |
-| Notice Key | notice, new at every save | the notice's text, paper colour, author name, and poll                                                                      |
+| Key        | One for each              | Opens                                                                                                                                  |
+| ---------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Staff Key  | kindergarten              | every Group Key and Family Key, and the teacher, child, and family records                                                             |
+| Group Key  | classroom                 | the classroom profile (its name), the Notice Key of each of its notices, and the photo of its board; later roster and classroom photos |
+| Family Key | family                    | the Group Key of each classroom its children are in, and its answers to polls; later its private messages and photo reveals            |
+| Notice Key | notice, new at every save | the notice's text, paper colour, author name, and poll                                                                                 |
 
 Every staff card, admin or teacher, opens the same Staff Key. Which classrooms a teacher sees, and what an admin may change, is decided by server authorization, not encryption. A teacher who also holds a copy of the database, or a server bug that serves another classroom's records, could therefore decrypt that classroom, and a lost staff card together with a database copy exposes the whole kindergarten. Whoever runs the server still reads nothing, and families stay separated by encryption. Separating teachers by encryption too would take an Admin Key, a key for each teacher, and a teacher key for each classroom, re-wrapped in an admin's browser at every change of assignment.
 
@@ -69,7 +69,9 @@ Everything encrypted, wrapped keys and data alike, is stored as one string:
 ["BubbleBoard", 1, "<purpose>", "<classroom ID or null>", "<subject ID or null>"]
 ```
 
-The classroom is set for records that belong to one classroom, and the subject is the credential, family, teacher, child, or notice a record belongs to. An envelope opens only with the right key _in the record it was written for_: moved to another row, classroom, family, notice, or purpose, even under the same key, it fails to decrypt rather than yielding the wrong key.
+The classroom is set for records that belong to one classroom, and the subject is the credential, family, teacher, child, notice, or photo a record belongs to. An envelope opens only with the right key _in the record it was written for_: moved to another row, classroom, family, notice, photo, or purpose, even under the same key, it fails to decrypt rather than yielding the wrong key.
+
+Photos are too big to carry as text, so they use the envelope's binary form: one byte holding the format, the 12-byte IV, then the ciphertext ending in its tag, with the same additional data. A reader checks the format byte as it checks the `1.` prefix, and refuses anything shorter than those 29 bytes.
 
 | Purpose                     | Holds                                                  | Encrypted with                     | Classroom    | Subject       |
 | --------------------------- | ------------------------------------------------------ | ---------------------------------- | ------------ | ------------- |
@@ -85,6 +87,7 @@ The classroom is set for records that belong to one classroom, and the subject i
 | `notice-key-for-classroom`  | Notice Key                                             | Group Key                          | classroom ID | notice ID     |
 | `notice-content`            | the notice's text, paper colour, author name, and poll | Notice Key                         | `null`       | notice ID     |
 | `poll-vote`                 | a family's answer to a notice's poll                   | the family's Family Key            | `null`       | notice ID     |
+| `board-photo`               | the photo of a classroom's board, as JPEG or WebP      | Group Key                          | classroom ID | photo ID      |
 
 A poll's answer names the option chosen by the ID the poll gives it. Its subject ties it to its notice, and the Family Key it's encrypted with ties it to its family: moved to another family's record, it doesn't open with that family's key.
 
@@ -112,7 +115,7 @@ Other keys are unwrapped into memory from envelopes fetched with the device's se
 
 ## What the server stores
 
-Opaque IDs, timestamps, hashes of auth and session tokens, envelopes, and a count of changes to teachers, children, and family cards, which keeps two devices from undoing each other's changes. To authorize requests and address notifications, it also knows which classroom each child is in, which classrooms each teacher and family belongs to, which staff are admins, and which classrooms each notice is for, who posted it, when it was posted, changed, and taken down, which families marked it as seen, and whether it has a poll and which families answered it. For notifications, it keeps the push service address of each device that turned them on, tied to that device's session; pushes carry no content. It never receives a card code or secret, an unlock key, a raw key, any classroom, teacher, child, family, or card name, which families a child belongs to, or what a poll asks and which answer a family chose.
+Opaque IDs, timestamps, hashes of auth and session tokens, envelopes, and a count of changes to teachers, children, and family cards, which keeps two devices from undoing each other's changes. To authorize requests and address notifications, it also knows which classroom each child is in, which classrooms each teacher and family belongs to, which staff are admins, and which classrooms each notice is for, who posted it, when it was posted, changed, and taken down, which families marked it as seen, and whether it has a poll and which families answered it. It knows which photo each classroom's board shows and since when, and keeps that photo's encrypted bytes in R2. For notifications, it keeps the push service address of each device that turned them on, tied to that device's session; pushes carry no content. It never receives a card code or secret, an unlock key, a raw key, any classroom, teacher, child, family, or card name, which families a child belongs to, what a poll asks and which answer a family chose, or a photo it can open.
 
 ## Limits
 

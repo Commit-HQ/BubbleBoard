@@ -10,7 +10,7 @@ import type {
 	VoteRecord
 } from '$lib/api';
 import { day } from '$lib/notices';
-import { includesAll, transaction } from './database';
+import { includesAll, transaction, visibleClassrooms } from './database';
 
 // The board: notices as envelopes, with the classrooms they're for (docs/access-format.md). The server
 // can't read a notice, so it decides who sees and changes which. Teachers post to their own classrooms and
@@ -18,15 +18,6 @@ import { includesAll, transaction } from './database';
 // classrooms, and admins those of every classroom. Families mark the notices they see as seen and answer
 // their polls, which their teachers see. Reads leave out notices past their days, which the daily cleanup
 // deletes (push.ts).
-
-/** The classrooms whose notices someone sees, as a subquery and its parameters. */
-function visibleClassrooms(viewer: Identity): [string, string[]] {
-	if (viewer.kind === 'family') {
-		return ['SELECT classroom_id FROM family_classrooms WHERE family_id = ?', [viewer.family]];
-	}
-	if (viewer.admin) return ['SELECT id FROM classrooms', []];
-	return ['SELECT classroom_id FROM teacher_classrooms WHERE teacher_id = ?', [viewer.teacher]];
-}
 
 /**
  * The families whose marks and answers on notices someone sees, as a subquery and its parameters: a family
