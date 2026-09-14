@@ -264,16 +264,26 @@ export async function childProfile(
 	});
 }
 
-/** A card for a teacher: the Staff Key, re-wrapped from this device's own card. */
-export async function staffCard(keys: StaffKeys): Promise<NewCard> {
+/** What a device's own card opens its key with: the card's unlock key, and its credential with the envelope. */
+export type OwnCard = { unlockKey: CryptoKey; credential: string; wrappedKey: string };
+
+/** A new card for the key this device's own card opens, re-wrapped from it as the kind `wrap` makes. */
+async function cardFromOwn(own: OwnCard, wrap: typeof wrapping.staffKeyForCard): Promise<NewCard> {
 	const card = await blankCard();
-	const [envelope] = await rewrapKey(
-		keys.wrappedKey,
-		wrapping.staffKeyForCard(keys.unlockKey, keys.credential),
-		[wrapping.staffKeyForCard(card.unlockKey, card.id)]
-	);
+	const [envelope] = await rewrapKey(own.wrappedKey, wrap(own.unlockKey, own.credential), [
+		wrap(card.unlockKey, card.id)
+	]);
 	return { secret: card.secret, credential: credential(card, envelope) };
 }
+
+/** A card for a teacher: the Staff Key, re-wrapped from this device's own card. */
+export const staffCard = (keys: StaffKeys) => cardFromOwn(keys, wrapping.staffKeyForCard);
+
+/**
+ * A one-time card for another of a family's devices: the Family Key, re-wrapped from this device's own card. The
+ * server lets it connect only one device, within a day.
+ */
+export const oneTimeCard = (own: OwnCard) => cardFromOwn(own, wrapping.familyKeyForCard);
 
 /** A replacement card for a family, for the Family Key it already has. */
 export async function familyCard(staffKey: CryptoKey, family: Family): Promise<NewCard> {

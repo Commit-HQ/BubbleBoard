@@ -10,6 +10,7 @@ import {
 	familyLinks,
 	newClassroom,
 	newFamily,
+	oneTimeCard,
 	openCatalog,
 	openFamily,
 	openFamilyKey,
@@ -164,6 +165,33 @@ describe('kindergarten records', () => {
 			'Ladybirds'
 		]);
 		await expect(open(created.secret, replacement.credential)).rejects.toThrow(UnreadableError);
+	});
+
+	it('open a family’s classrooms on another of its devices, with a one-time card from one it connected', async () => {
+		const { staffKey } = (await setUpKindergarten()).keys;
+		const classroom = await newClassroom(staffKey, 'Bubbles');
+		const catalog = await openCatalog(staffKey, { ...noRecords, classrooms: [classroom] });
+		const created = await newFamily(staffKey, 'Horvat family');
+		const { family } = created;
+		const children = [{ classroom: classroom.id, families: [family.id] }];
+		const links = await familyLinks(staffKey, catalog, children, [family.id], [created]);
+		// A device connecting with a card: the classrooms it opens, and what it keeps to make one-time cards.
+		const connect = async (secret: Uint8Array<ArrayBuffer>, credential: NewCredential) => {
+			const access = familyAccess(family.id, credential, links.addMemberships, [classroom]);
+			const { unlockKey } = await deriveCredential(secret);
+			const classrooms = await openFamily(access, await openFamilyKey(access, unlockKey));
+			const own = { credential: credential.id, unlockKey, wrappedKey: credential.wrappedKey };
+			return { names: classrooms.map(({ name }) => name), own };
+		};
+
+		const parent = await connect(created.secret, family.credential);
+		const card = await oneTimeCard(parent.own);
+		const grandparent = await connect(card.secret, card.credential);
+		expect(grandparent.names).toEqual(['Bubbles']);
+		// A device a one-time card connected makes the next one.
+		const next = await oneTimeCard(grandparent.own);
+		expect((await connect(next.secret, next.credential)).names).toEqual(['Bubbles']);
+		await expect(connect(created.secret, card.credential)).rejects.toThrow(UnreadableError);
 	});
 });
 

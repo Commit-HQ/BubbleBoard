@@ -73,12 +73,26 @@ function identity(row: IdentityRow | null): Identity | undefined {
 	return family ? { kind: 'family', credential, wrappedKey, family } : undefined;
 }
 
+/**
+ * The card a device connects with. A one-time card connects one device while its day lasts: connecting ends it,
+ * so any other device, even one at the same moment, is told it ended.
+ */
 export async function identityForCard(db: D1Database, authToken: string) {
 	const hash = await hashAuthToken(authToken);
 	const row = await db
-		.prepare(`SELECT ${identityColumns} FROM ${identityTables} WHERE c.auth_token_hash = ?`)
+		.prepare(
+			`SELECT ${identityColumns}, c.connects_until AS connectsUntil FROM ${identityTables}
+			WHERE c.auth_token_hash = ?`
+		)
 		.bind(hash)
-		.first<IdentityRow>();
+		.first<IdentityRow & { connectsUntil: number | null }>();
+	if (row && row.connectsUntil !== null) {
+		const { meta } = await db
+			.prepare('UPDATE credentials SET connects_until = 0 WHERE id = ? AND connects_until > ?')
+			.bind(row.credential, Date.now())
+			.run();
+		if (!meta.changes) error(401, 'ended-card');
+	}
 	return identity(row);
 }
 

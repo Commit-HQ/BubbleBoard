@@ -453,9 +453,26 @@ export const en = {
 			title: 'Settings',
 			staff: (name: string) => `Connected as ${name}`,
 			family: 'Connected with a family QR code',
+			lostCode: 'Lost your QR code? Your kindergarten can give you a new one.',
 			signOut: 'Sign out of this device',
 			signOutTitle: 'Sign out of this device?',
 			signOutCopy: 'To use BubbleBoard here again, you’ll need your QR code.'
+		},
+		// In a family device's Settings: a one-time QR code that connects another of the family's devices.
+		addDevice: {
+			title: 'Add a device',
+			copy: 'Connect another phone, tablet, or computer, such as a grandparent’s, without the printed QR code.',
+			show: 'Show a QR code',
+			scan: (until: string) =>
+				`Scan it with the other device, or send it as a link. It connects one device, until ${until}.`,
+			qr: 'QR code for another device',
+			share: 'Share link',
+			copyLink: 'Copy link',
+			copied: 'Link copied.',
+			shareText: (until: string) =>
+				`Connect to our kindergarten’s BubbleBoard with this link. It works for one device, until ${until}.`,
+			connectAgain:
+				'This device was connected before it could add others. To add devices from it, sign out, then connect it again with your family QR code.'
 		},
 		// The link to the landing page in the footer of every app page.
 		about: 'About BubbleBoard',
@@ -637,6 +654,8 @@ export const en = {
 			'unreadable-records':
 				'Some of your kindergarten’s records didn’t open on this device. Try again, and if it keeps happening, tell an admin.',
 			'unknown-card': 'This QR code doesn’t work anymore. Ask your kindergarten for a new one.',
+			'ended-card':
+				'This QR code was already used, or its day is over. Ask whoever gave it to you for a new one.',
 			'invalid-card': 'That isn’t a BubbleBoard code. Check it and try again.',
 			mistyped: 'One of the characters doesn’t match. Check the code and try again.',
 			'other-installation': 'This QR code is for a different BubbleBoard.',

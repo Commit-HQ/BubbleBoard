@@ -441,9 +441,25 @@ export const hr = {
 			title: 'Opcije',
 			staff: (name: string) => `Povezani ste kao ${name}`,
 			family: 'Povezani ste obiteljskim QR kodom',
+			lostCode: 'Izgubili ste QR kod? Vrtić vam može dati novi.',
 			signOut: 'Odjavi ovaj uređaj',
 			signOutTitle: 'Odjaviti ovaj uređaj?',
 			signOutCopy: 'Za ponovno korištenje BubbleBoarda ovdje trebat će vam QR kod.'
+		},
+		addDevice: {
+			title: 'Dodaj uređaj',
+			copy: 'Povežite još jedan mobitel, tablet ili računalo, na primjer za baku i djeda, bez ispisanog QR koda.',
+			show: 'Prikaži QR kod',
+			scan: (until: string) =>
+				`Skenirajte ga drugim uređajem ili ga pošaljite kao poveznicu. Povezuje jedan uređaj, do ${until}.`,
+			qr: 'QR kod za drugi uređaj',
+			share: 'Podijeli poveznicu',
+			copyLink: 'Kopiraj poveznicu',
+			copied: 'Poveznica je kopirana.',
+			shareText: (until: string) =>
+				`Povežite se s BubbleBoardom našeg vrtića ovom poveznicom. Radi za jedan uređaj, do ${until}.`,
+			connectAgain:
+				'Ovaj je uređaj povezan prije nego što je mogao dodavati druge. Da biste s njega dodavali uređaje, odjavite ga pa ga ponovno povežite obiteljskim QR kodom.'
 		},
 		about: 'O BubbleBoardu',
 		notices: {
@@ -620,6 +636,8 @@ export const hr = {
 			'unreadable-records':
 				'Neki zapisi vašeg vrtića nisu se otvorili na ovom uređaju. Pokušajte ponovno, a ako se to ponavlja, javite administratoru.',
 			'unknown-card': 'Ovaj QR kod više ne radi. Zatražite novi u vrtiću.',
+			'ended-card':
+				'Ovaj je QR kod već iskorišten ili mu je prošao rok. Zatražite novi od osobe koja vam ga je dala.',
 			'invalid-card': 'To nije BubbleBoard kod. Provjerite ga i pokušajte ponovno.',
 			mistyped: 'Jedan od znakova ne odgovara. Provjerite kod i pokušajte ponovno.',
 			'other-installation': 'Ovaj QR kod pripada drugom BubbleBoardu.',

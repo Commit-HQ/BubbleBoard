@@ -15,6 +15,7 @@ import { createId } from '$lib/crypto';
 import {
 	addChild,
 	addClassroom,
+	addOneTimeCard,
 	addTeacher,
 	changeChild,
 	changeTeacher,
@@ -410,6 +411,79 @@ describe('sessions', () => {
 			expect.any(String),
 			expect.objectContaining({ maxAge: (90 * day) / 1000 })
 		);
+	});
+});
+
+describe('one-time cards', () => {
+	it('connect one device of their family, once, before their day is up, and it stays connected', async () => {
+		const db = localDatabase();
+		const { admin } = await setUpKindergarten(db);
+		const bubbles = await addClassroomTo(db, admin);
+		const family = newFamily();
+		await addChildTo(db, admin, bubbles, family);
+		const [card, late] = [credential(), credential()];
+		const until = await addOneTimeCard(db, await familyOf(db, family), card);
+		expect(until).toBeGreaterThan(Date.now() + day - 60_000);
+
+		expect(await identityForCard(db, card.authToken)).toMatchObject({
+			kind: 'family',
+			family: family.id,
+			credential: card.id
+		});
+		await expect(identityForCard(db, card.authToken)).rejects.toMatchObject(
+			refused('ended-card', 401)
+		);
+		await addOneTimeCard(db, await familyOf(db, family), late, Date.now() - day);
+		await expect(identityForCard(db, late.authToken)).rejects.toMatchObject(
+			refused('ended-card', 401)
+		);
+
+		// Its device stays connected until the family's card is replaced, which ends the rest too.
+		const device = await deviceWith(db, card.id);
+		await expect(requireIdentity(device)).resolves.toMatchObject({ family: family.id });
+		await replaceFamilyCards(db, admin, [{ family: family.id, credential: credential() }]);
+		await expect(requireIdentity(device)).rejects.toMatchObject({ status: 401 });
+		expect(await identityForCard(db, late.authToken)).toBeUndefined();
+	});
+
+	it('wait five at most for each family, and go in the cleanup once they can’t connect and connected none still signed in', async () => {
+		const db = localDatabase();
+		const { admin } = await setUpKindergarten(db);
+		const bubbles = await addClassroomTo(db, admin);
+		const [family, other] = [newFamily(), newFamily()];
+		await addChildTo(db, admin, bubbles, family);
+		await addChildTo(db, admin, bubbles, other);
+		const ids = async (where: string, ...params: number[]) => {
+			const { results } = await db
+				.prepare(`SELECT id FROM credentials WHERE ${where}`)
+				.bind(...params)
+				.all<{ id: string }>();
+			return results.map(({ id }) => id).sort();
+		};
+		const now = Date.now();
+		const cards = Array.from({ length: 6 }, () => credential());
+		for (const [index, card] of cards.entries()) {
+			await addOneTimeCard(db, await familyOf(db, family), card, now + index);
+		}
+		const otherCard = credential();
+		await addOneTimeCard(db, await familyOf(db, other), otherCard, now);
+
+		// The sixth ended the oldest, and another family's waits on.
+		const waiting = [...cards.slice(1), otherCard].map(({ id }) => id).sort();
+		expect(await ids('connects_until > ?', now + cards.length)).toEqual(waiting);
+		await expect(identityForCard(db, cards[0].authToken)).rejects.toMatchObject(
+			refused('ended-card', 401)
+		);
+
+		const connected = await identityForCard(db, cards[1].authToken);
+		const device = await deviceWith(db, connected!.credential);
+		const cleanUpLater = () => cleanUp({ DB: db, FILES: localStore().store.bucket }, now + 2 * day);
+		await cleanUpLater();
+		expect(await ids('connects_until IS NOT NULL')).toEqual([cards[1].id]);
+		await endSession(device);
+		await cleanUpLater();
+		expect(await ids('connects_until IS NOT NULL')).toEqual([]);
+		expect(await familyOf(db, family)).toMatchObject({ family: family.id });
 	});
 });
 

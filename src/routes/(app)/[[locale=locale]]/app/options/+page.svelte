@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import AddDevice from '$lib/app/AddDevice.svelte';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
 	import NotificationSwitch from '$lib/app/NotificationSwitch.svelte';
 	import Screen from '$lib/app/Screen.svelte';
@@ -13,9 +14,10 @@
 	import { appPath } from '$lib/paths';
 	import type { PageProps } from './$types';
 
-	// Settings, from the header of a connected device's pages: its notifications, then the language, and its
-	// card with signing out at the bottom. They open on any device, because the header also has them while the
-	// app starts; a device that turns out not to be connected sees only the language.
+	// Settings, from the header of a connected device's pages: its notifications, then the language, on a family
+	// device adding the family's other devices, and its card with signing out at the bottom. They open on any
+	// device, because the header also has them while the app starts; a device that turns out not to be connected
+	// sees only the language.
 	let { data }: PageProps = $props();
 	const app = getApp();
 	const m = $derived(messages[data.locale]);
@@ -46,6 +48,10 @@
 		</div>
 	</section>
 
+	{#if app.status === 'family'}
+		<AddDevice locale={data.locale} />
+	{/if}
+
 	{#if app.connected}
 		<section class={surface}>
 			<IconTile icon="phone" tone="ink" />
@@ -64,6 +70,7 @@
 						app.myClassrooms.map(({ name }) => name)
 					)}
 				</p>
+				<p class="mt-3 text-sm text-muted">{t.options.lostCode}</p>
 			{/if}
 			<button class="{button.secondary} mt-7" type="button" onclick={() => (confirming = true)}>
 				<Icon name="logOut" class="size-4" />{t.options.signOut}

@@ -3,6 +3,7 @@ import type {
 	Access,
 	ChildChange,
 	FamilyCard,
+	FamilyIdentity,
 	FamilyLinks,
 	Identity,
 	Kindergarten,
@@ -352,4 +353,33 @@ export async function replaceFamilyCards(db: D1Database, staff: Staff, cards: Fa
 		cards.map(({ family, credential }) => replaceCard(db, { family }, credential))
 	);
 	await transaction(db, replacements.flat());
+}
+
+/** How long a one-time card can connect a device, and how many of a family's can wait for one. */
+const oneTimeCardLifetime = 24 * 60 * 60 * 1000;
+const waitingOneTimeCards = 5;
+
+/**
+ * Stores a one-time card that a family's device made for another of its devices, and returns until when it can
+ * connect one (next-step-plan.md). A family's newest few wait, and a new one ends the oldest beyond them, so no
+ * device can pile them up.
+ */
+export async function addOneTimeCard(
+	db: D1Database,
+	family: FamilyIdentity,
+	credential: NewCredential,
+	now = Date.now()
+) {
+	const until = now + oneTimeCardLifetime;
+	await transaction(db, [
+		db
+			.prepare(
+				`UPDATE credentials SET connects_until = 0 WHERE id IN (SELECT id FROM credentials
+				WHERE family_id = ?1 AND connects_until > ?2 ORDER BY connects_until DESC LIMIT -1 OFFSET ?3)`
+			)
+			.bind(family.family, now, waitingOneTimeCards - 1),
+		await insertCredential(db, { family: family.family }, credential),
+		db.prepare('UPDATE credentials SET connects_until = ? WHERE id = ?').bind(until, credential.id)
+	]);
+	return until;
 }

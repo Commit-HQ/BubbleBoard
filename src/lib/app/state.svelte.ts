@@ -45,6 +45,7 @@ import {
 	familyProfile,
 	newClassroom,
 	newFamily,
+	oneTimeCard,
 	openCatalog,
 	openFamily,
 	openFamilyKey,
@@ -209,6 +210,8 @@ export class App {
 
 	#card?: DeviceCard;
 	#keys?: StaffKeys;
+	/** The Family Key's envelope for a family device's card, as the server last sent it, for one-time cards. */
+	#familyKeyEnvelope?: string;
 	#loadedAt = 0;
 	/** The load of the records and board under way, which a refresh meanwhile waits for. */
 	#reloading?: Promise<void>;
@@ -239,6 +242,14 @@ export class App {
 	 */
 	get myClassrooms(): FamilyClassroom[] {
 		return this.status === 'family' ? this.familyClassrooms : this.catalog.classrooms;
+	}
+
+	/**
+	 * Whether this device can add the family's other devices. A family device connected before family devices kept
+	 * their card's unlock key can't, until it connects again.
+	 */
+	get canAddDevices() {
+		return this.#familyCard?.unlockKey !== undefined;
 	}
 
 	get #staff() {
@@ -391,6 +402,7 @@ export class App {
 		}
 		await this.#showPhotos(access.photos, classrooms);
 		this.#card = card;
+		this.#familyKeyEnvelope = access.kind === 'family' ? access.wrappedKey : undefined;
 		this.#loadedAt = Date.now();
 		this.status = this.install === 'android' ? 'install' : access.kind;
 		void this.#keepNotifications(resend);
@@ -499,6 +511,7 @@ export class App {
 		this.notifications = 'off';
 		this.#card = undefined;
 		this.#keys = undefined;
+		this.#familyKeyEnvelope = undefined;
 		this.#familyKeys.clear();
 		this.me = undefined;
 		this.catalog = emptyCatalog;
@@ -545,7 +558,8 @@ export class App {
 							...known,
 							kind: 'family',
 							family: access.family,
-							familyKey: await openFamilyKey(access, unlockKey)
+							familyKey: await openFamilyKey(access, unlockKey),
+							unlockKey
 						};
 			await this.#open(access, card);
 			await saveCard(card);
@@ -563,6 +577,21 @@ export class App {
 	async signOut() {
 		await this.#disconnect();
 		await request('DELETE', '/api/session').catch(() => {});
+	}
+
+	/**
+	 * Makes a one-time card for another of this family's devices, which connects one device within a day. Returns
+	 * its secret, to show, and until when it can connect one.
+	 */
+	async addDevice() {
+		const { credential, unlockKey } = this.#family;
+		const wrappedKey = this.#familyKeyEnvelope;
+		if (!unlockKey || !wrappedKey) throw new Error('This device keeps no unlock key for its card');
+		const card = await oneTimeCard({ credential, unlockKey, wrappedKey });
+		const { until } = await this.#signedIn(() =>
+			request<{ until: number }>('POST', '/api/devices', { credential: card.credential })
+		);
+		return { secret: card.secret, until };
 	}
 
 	/** Turns notifications on, from a tap: the permission request can't wait for anything before it. */

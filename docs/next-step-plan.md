@@ -67,7 +67,7 @@ Teachers and parents at the installation asked for these changes, which take pre
 
 - **Who and when:** notices and board photos say the time they went up as well as the day, as "Ana Horvat · 23.01.2026 u 8:30" ("23/01/2026 at 8:30" in English).
 - **Board photos** on home are captioned Photo of the notice board, with the classroom, who put the photo up, and when under it, so it's clear what the picture is.
-- **Settings** show notifications first, then the language, and the device's QR code with Sign out of this device last.
+- **Settings** show notifications first, then the language, and the device's QR code with Sign out of this device last. On a family device, the QR code's section also says that the kindergarten can give a new one if it's lost (2026-09-14), because parents who threw the printed code away no longer see that line on it.
 - **Back:** a page's way back, in its top corner, says Back ("Natrag") and leads a level up: a classroom and the teachers' list to Manage, as deleting a classroom does; a teacher to the teachers' list; a child to its classroom; and the other pages home.
 - **Recovery QR code:** its printed card and its page explain that it's a spare for when every admin QR code is lost, when only it can replace them and let anyone add children, teachers, and classrooms, and that whoever has it can do everything an admin can, so it's kept locked away at the kindergarten, apart from everyday QR codes.
 - **Naming family QR codes:** Add child suggests a name like "Horvat family" ("Obitelj Horvat") instead of "Ivana (mum)", which reads better where teachers see which families saw a notice.
@@ -76,6 +76,15 @@ Teachers and parents at the installation asked for these changes, which take pre
 - **Editor:** italic is gone from the toolbar and the editor. A notice that had italics shows that text upright, and saving it again leaves them out.
 - **Greeting:** home greets staff by name, by the device's clock: Croatian says Dobro jutro until 10, Dobar dan until 18, and Dobra večer after; English says good morning until noon, good afternoon until 18, and good evening after. Families and the recovery card aren't greeted: a family device can't read the name on its QR code, which is encrypted for staff, the recovery card has no name, and a parent found the greeting without a name unnecessary (2026-09-13).
 - **Pull to refresh:** pulling home down from the top loads the board again, which the installed app had no way to do, with an arrow under the header that spins while it loads. While home is open, the browser's own pull to reload and the page's bounce are off. A load that fails, such as while a phone's connection wakes up, no longer keeps the next return to the app from loading the board for a minute.
+
+## Adding a family's devices — 2026-09-14
+
+The owner asked for a way to connect a family's other devices, such as a partner's or grandparents' phones, without the printed QR code, which parents may have thrown away once their own phone connected.
+
+- **Add a device:** Settings on a family device have Add a device, between the language and the device's QR code. Show a QR code makes a one-time card: a QR code, with its code under it, that connects one device within 24 hours. The owner chose a day over 15 minutes or an hour, so a link sent to grandparents far away still works when they open it later that day. The other device scans it with its camera or with Scan QR code, types its code, or opens it as a link sent with Share link, or Copy link where the browser can't share. Nobody is signed out, and the printed QR code keeps working.
+- **Safety:** a one-time card opens only what the device showing it opens, and connects a single device: once used, or after its day, a photo or a forwarded link of it connects nothing. It only adds devices and never signs any out, so it can't lock a family out, and a teacher's Replace QR code still signs out every device of the family, those added this way too. Whoever holds a family device unlocked could add a device of their own, as they could photograph the printed QR code. A link preview that runs the app's page on a computer would use a one-time card up, and the family would make another.
+- **Limits:** a family keeps at most five one-time cards waiting, and a new one ends the oldest, so no device piles them up. The daily cleanup deletes those that can't connect a device, once no device they connected is still signed in. Only family devices add devices, because a staff card opens the whole kindergarten.
+- **Devices connected earlier:** making a one-time card takes the unlock key of the device's own card, which family devices keep since this change. On a family device connected before, Add a device says to sign out and connect again with the family QR code first.
 
 ## Deferred
 

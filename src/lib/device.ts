@@ -4,8 +4,13 @@ import { objectStore } from '$lib/indexeddb';
 // (docs/access-format.md). A browser has one active card; the store is keyed by credential so a later
 // version can keep several without migrating.
 
+/**
+ * A family device keeps its card's unlock key too, to make one-time cards for the family's other devices, apart
+ * from devices connected before it did (2026-09-14).
+ */
 export type DeviceCard = { credential: string; cardHash: string } & (
-	{ kind: 'staff'; unlockKey: CryptoKey } | { kind: 'family'; family: string; familyKey: CryptoKey }
+	| { kind: 'staff'; unlockKey: CryptoKey }
+	| { kind: 'family'; family: string; familyKey: CryptoKey; unlockKey?: CryptoKey }
 );
 
 const cards = objectStore('bubbleboard', 'cards', { keyPath: 'credential' });
@@ -48,6 +53,9 @@ function isDeviceCard(value: unknown): value is DeviceCard {
 	if (typeof card?.credential !== 'string' || typeof card.cardHash !== 'string') return false;
 	if (card.kind === 'staff') return card.unlockKey instanceof CryptoKey;
 	return (
-		card.kind === 'family' && typeof card.family === 'string' && card.familyKey instanceof CryptoKey
+		card.kind === 'family' &&
+		typeof card.family === 'string' &&
+		card.familyKey instanceof CryptoKey &&
+		(card.unlockKey === undefined || card.unlockKey instanceof CryptoKey)
 	);
 }
