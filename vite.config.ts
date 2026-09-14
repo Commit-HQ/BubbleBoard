@@ -33,10 +33,13 @@ export default defineConfig({
 			version: { name: commit() },
 			csp: {
 				mode: 'hash',
-				// Scripts, styles, fonts, and connections fall back to default-src, and SvelteKit adds hashes
-				// for its inline scripts and styles.
+				// Styles, fonts, and connections fall back to default-src, and SvelteKit adds hashes for its
+				// inline scripts and styles.
 				directives: {
 					'default-src': ['self'],
+					// HEIC photos open with libheif, compiled to WebAssembly, where the browser can't open them
+					// (src/lib/heif.ts). This lets scripts compile WebAssembly, not run text as code.
+					'script-src': ['self', 'wasm-unsafe-eval'],
 					// Board photos are decrypted in the browser and shown from the blob: URLs it makes for them.
 					'img-src': ['self', 'blob:'],
 					// SvelteKit's route announcer, on pages that run in the browser, has one fixed inline

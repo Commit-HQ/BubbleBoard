@@ -1,7 +1,10 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createId, encryptData, SEALED_BYTES_OVERHEAD, UnreadableError } from './crypto';
+import { decodeHeif } from './heif';
 import {
 	imageType,
+	isHeif,
 	openPhoto,
 	openPhotoDetails,
 	pictureToSave,
@@ -74,6 +77,26 @@ describe('board photos', () => {
 			const picture = new Blob([bytes], { type });
 			expect(await pictureToSave(picture)).toBe(picture);
 		}
+	});
+
+	it('open HEIC photos, which only Safari opens itself, with libheif', async () => {
+		// Its left half is red and its right half blue, saved as HEIC on a Mac.
+		const heic = new Uint8Array(readFileSync('src/lib/photos.test.heic'));
+		expect(isHeif(heic)).toBe(true);
+		for (const other of [jpeg, png, webp]) expect(isHeif(other)).toBe(false);
+
+		const { data, width, height } = await decodeHeif(heic);
+		expect([width, height]).toEqual([64, 32]);
+		// HEIC keeps a little less than was saved, so each pixel comes back close to it.
+		for (const [x, rgba] of [
+			[8, [220, 40, 40, 255]],
+			[56, [30, 90, 220, 255]]
+		] as const) {
+			const pixel = data.subarray((16 * width + x) * 4, (16 * width + x + 1) * 4);
+			rgba.forEach((value, channel) => expect(pixel[channel]).toBeCloseTo(value, -1));
+		}
+		expect(() => isHeif(new Uint8Array())).not.toThrow();
+		await expect(decodeHeif(jpeg)).rejects.toThrow();
 	});
 
 	it('say who put them up, in details that open only with their classroom’s key, for their own photo', async () => {

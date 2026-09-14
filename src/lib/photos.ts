@@ -33,11 +33,14 @@ const sizes = [
 	{ side: 1280, quality: 0.75 }
 ];
 
+/** The brands HEIC and HEIF photos name at their start. */
+const heifBrands = ['heic', 'heix', 'hevc', 'hevx', 'mif1', 'msf1'];
+
 /**
  * A photo or picture made ready for the board: smaller, and encoded again as WebP, which keeps see-through
  * pixels. Where the browser can't write WebP, such as Safari, it's JPEG, or PNG when it has see-through pixels,
  * which JPEG would fill with black. Encoding it again also leaves out what the camera recorded with it, such as
- * where it was taken. A file that isn't an image this browser can read can't be used.
+ * where it was taken. A file that doesn't open as an image (`openImage`) can't be used.
  */
 export async function preparePhoto(photo: Blob) {
 	const image = await openImage(photo).catch((cause) => {
@@ -63,24 +66,41 @@ export async function preparePhoto(photo: Blob) {
 /**
  * A photo or picture, opened to be drawn smaller. It's never made into a full-size bitmap, as
  * `createImageBitmap` would make it: Safari on iPhone can't make one as large as the photos its own camera
- * takes, and refuses them. A file that isn't an image this browser can read is refused too.
+ * takes, and refuses them. HEIC and HEIF photos, which phones such as Samsung's save and only Safari opens
+ * itself, are the exception: where the browser can't open one, libheif does (src/lib/heif.ts), loaded only
+ * then, into a bitmap. Any other file that isn't an image this browser can read is refused.
  */
-export async function openImage(photo: Blob) {
+export async function openImage(photo: Blob): Promise<HTMLImageElement | ImageBitmap> {
 	const url = URL.createObjectURL(photo);
 	const image = new Image();
 	image.src = url;
 	try {
 		await image.decode();
 		return image;
+	} catch (cause) {
+		const bytes = new Uint8Array(await photo.arrayBuffer());
+		if (!isHeif(bytes)) throw cause;
+		const { decodeHeif } = await import('$lib/heif');
+		const { data, width, height } = await decodeHeif(bytes);
+		return await createImageBitmap(new ImageData(data, width, height));
 	} finally {
 		// The image keeps what it loaded.
 		URL.revokeObjectURL(url);
 	}
 }
 
+/** Whether a file is a HEIC or HEIF photo, from the bytes it starts with. */
+export function isHeif(photo: Uint8Array) {
+	const start = String.fromCharCode(...photo.subarray(4, 12));
+	return start.startsWith('ftyp') && heifBrands.includes(start.slice(4));
+}
+
 /** An image drawn smaller on a canvas, its longer side at most `side` pixels, where the browser can draw. */
-export function drawSmaller(image: HTMLImageElement, side: number) {
-	const { naturalWidth: width, naturalHeight: height } = image;
+export function drawSmaller(image: HTMLImageElement | ImageBitmap, side: number) {
+	const [width, height] =
+		image instanceof HTMLImageElement
+			? [image.naturalWidth, image.naturalHeight]
+			: [image.width, image.height];
 	const scale = Math.min(1, side / Math.max(width, height));
 	const canvas = new OffscreenCanvas(Math.round(width * scale), Math.round(height * scale));
 	const context = canvas.getContext('2d');

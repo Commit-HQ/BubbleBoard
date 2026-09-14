@@ -125,6 +125,7 @@ Board photos and notice files in R2 have no backup: they're encrypted, notices l
 | Encryption    | Browser Web Crypto API                                                       |
 | Storage       | D1 for records; private R2 for encrypted photos and files, within set limits |
 | QR codes      | `qr`, drawn for printed cards and read with the camera or from photos        |
+| HEIC photos   | `libheif-js`, loaded only for HEIC photos the browser can’t open itself      |
 | Notice editor | Tiptap, loaded only on the page where notices are written                    |
 | Notifications | Web Push without content, sent through a Cloudflare Queue                    |
 

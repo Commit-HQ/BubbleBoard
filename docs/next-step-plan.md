@@ -86,6 +86,12 @@ The owner asked for a way to connect a family's other devices, such as a partner
 - **Limits:** a family keeps at most five one-time cards waiting, and a new one ends the oldest, so no device piles them up. The daily cleanup deletes those that can't connect a device, once no device they connected is still signed in. Only family devices add devices, because a staff card opens the whole kindergarten.
 - **Devices connected earlier:** making a one-time card takes the unlock key of the device's own card, which family devices keep since this change. On a family device connected before, Add a device says to sign out and connect again with the family QR code first.
 
+## HEIC photos — 2026-09-14
+
+A teacher's phone saves photos as HEIC, which only Safari opens itself, so choosing one for the board or a notice said the photo couldn't be used.
+
+- **Opening HEIC:** where the browser can't open a HEIC or HEIF photo, as Chrome and Firefox can't, libheif compiled to WebAssembly (`libheif-js`, LGPL-3.0) opens it in the browser, and the photo is made smaller and encoded again like any other, so the server still gets it only encrypted. Board photos, pictures on notices, and a card's QR code read from a photo all open this way. libheif is about 700 KB compressed and loads only for such a photo, which takes a moment longer to prepare on a phone. The CSP allows compiling WebAssembly (`'wasm-unsafe-eval'`) for it.
+
 ## Deferred
 
 - Automatic unread markers and app icon badges.

@@ -45,6 +45,7 @@
 		"@tiptap/core": "^3.31.3",
 		"@tiptap/pm": "^3.31.3",
 		"@tiptap/starter-kit": "^3.31.3",
+		"libheif-js": "^1.23.2",
 		"qr": "^0.7.0"
 	}
 }
