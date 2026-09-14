@@ -3,12 +3,15 @@ import type {
 	ChildChange,
 	FamilyCard,
 	FamilyLinks,
+	InfoChange,
+	InfoKey,
 	Membership,
 	MembershipKey,
 	NewChild,
 	NewClassroom,
 	NewCredential,
 	NewFamily,
+	NewInfo,
 	NewNotice,
 	NewTeacher,
 	NoticeChange,
@@ -26,6 +29,7 @@ import {
 	SEALED_BYTES_OVERHEAD
 } from '$lib/crypto';
 import { maxFileBytes, maxNoticeFiles } from '$lib/files';
+import { maxInfoBytes } from '$lib/info';
 import { maxNoticeBytes, noticeDays } from '$lib/notices';
 import { maxPhotoBytes } from '$lib/photos';
 
@@ -163,11 +167,39 @@ export function setup(body: Fields): Setup {
 	return teachers.length === 2 && distinct.size === 4 ? { token: body.token, teachers } : invalid();
 }
 
+/** A new classroom, which brings the info page's key once the kindergarten has a page, as the database checks. */
 export const newClassroom = (body: Fields): NewClassroom => ({
 	id: id(body.id),
 	profile: profile(body.profile),
-	groupKeyForStaff: wrappedKey(body.groupKeyForStaff)
+	groupKeyForStaff: wrappedKey(body.groupKeyForStaff),
+	...(body.infoKey === undefined ? {} : { infoKey: wrappedKey(body.infoKey) })
 });
+
+const infoContent = envelope(maxInfoBytes);
+
+/** The info page's key for each classroom, each classroom once. A kindergarten without classrooms has none. */
+function infoKeys(value: unknown): InfoKey[] {
+	const keys = list(value, (item) => {
+		const key = fields(item);
+		return { classroom: id(key.classroom), infoKey: wrappedKey(key.infoKey) };
+	});
+	const classrooms = new Set(keys.map(({ classroom }) => classroom));
+	return classrooms.size === keys.length ? keys : invalid();
+}
+
+/**
+ * The info page as an admin's device saves it, with the files its content holds, each once. Its first save also
+ * brings the page's new key, for staff and for each classroom.
+ */
+export function infoChange(body: Fields): InfoChange | NewInfo {
+	const change = { content: infoContent(body.content), files: ids(body.files, maxNoticeFiles) };
+	if (body.infoKeyForStaff === undefined) return change;
+	return {
+		...change,
+		infoKeyForStaff: wrappedKey(body.infoKeyForStaff),
+		classrooms: infoKeys(body.classrooms)
+	};
+}
 
 const teacher = (body: Fields) => ({
 	admin: flag(body.admin),

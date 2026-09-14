@@ -7,11 +7,11 @@
 	import { onMount } from 'svelte';
 	import { button, field, noticeText, paperClass } from './ui';
 
-	// The notice editor: Tiptap 3, imported when this component mounts, so only the page where notices are
-	// written downloads it (next-step-plan.md, Editor). Its schema holds what boards render: paragraphs,
-	// lists, bold, and links. Its toolbar also chooses the notice's paper, the background the text is written
-	// on. Tiptap's injected stylesheet is off for the CSP, with its rules in app.css. Emoji come from the
-	// keyboard.
+	// The editor of notices and the info page: Tiptap 3, imported when this component mounts, so only the pages
+	// where they're written download it (next-step-plan.md, Editor). Its schema holds what boards render:
+	// paragraphs, lists, bold, and links. For a notice, its toolbar also chooses the paper, the background the
+	// text is written on; the info page's text is on white. Tiptap's injected stylesheet is off for the CSP, with
+	// its rules in app.css. Emoji come from the keyboard.
 	let {
 		locale,
 		content,
@@ -23,8 +23,8 @@
 		content?: NoticeDocument;
 		/** The ID of the text that names the editor. */
 		labelledby: string;
-		/** The notice's background. */
-		paper: Paper;
+		/** A notice's background, which the toolbar chooses. Without one, the text is on white. */
+		paper?: Paper;
 		ready?: boolean;
 	} = $props();
 
@@ -174,7 +174,7 @@
 
 <div
 	class="overflow-hidden rounded-3xl ring-1 ring-ink/15 transition focus-within:ring-2 focus-within:ring-accent {paperClass[
-		paper
+		paper ?? 'white'
 	]}"
 >
 	<div
@@ -190,7 +190,9 @@
 			run((chain) => chain.toggleOrderedList())
 		)}
 		{@render tool('link', t.link, undefined, () => toggle('link'))}
-		{@render tool('palette', t.paper, undefined, () => toggle('paper'))}
+		{#if paper}
+			{@render tool('palette', t.paper, undefined, () => toggle('paper'))}
+		{/if}
 	</div>
 
 	{#if panel === 'link'}

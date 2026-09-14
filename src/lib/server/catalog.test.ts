@@ -13,6 +13,7 @@ import type {
 import { toBase64Url } from '$lib/base64url';
 import { createId } from '$lib/crypto';
 import {
+	accessFor,
 	addChild,
 	addClassroom,
 	addOneTimeCard,
@@ -29,6 +30,7 @@ import {
 } from './catalog';
 import { day } from '$lib/notices';
 import { cleanUp } from './cleanup';
+import { infoFileBytes, saveInfo, uploadInfoFile } from './info';
 import {
 	board,
 	changeNotice,
@@ -184,9 +186,11 @@ async function revision(db: D1Database) {
 	return row?.revision ?? 0;
 }
 
-async function addClassroomTo(db: D1Database, admin: Admin) {
+/** A classroom as an admin device adds one, with the info page's key once the kindergarten has a page. */
+async function addClassroomTo(db: D1Database, admin: Admin, infoKey?: string) {
 	const id = createId();
-	await addClassroom(db, admin, { id, profile: 'profile', groupKeyForStaff: 'wrapped key' });
+	const classroom = { id, profile: 'profile', groupKeyForStaff: 'wrapped key' };
+	await addClassroom(db, admin, infoKey === undefined ? classroom : { ...classroom, infoKey });
 	return id;
 }
 
@@ -970,6 +974,123 @@ describe('notices', () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+});
+
+describe('the info page', () => {
+	/** A first save, with the page's key for staff and for each of these classrooms, named after `key`. */
+	const page = (classrooms: string[], files: string[] = [], key = 'key') => ({
+		content: 'content',
+		files,
+		infoKeyForStaff: `${key} for staff`,
+		classrooms: classrooms.map((classroom) => ({ classroom, infoKey: `${key} for ${classroom}` }))
+	});
+	const change = (files: string[] = []) => ({ content: 'changed', files });
+	// Saves without files never reach R2.
+	const { bucket } = localStore().store;
+
+	it('opens for every staff member and family, whatever their classrooms, once saved for every classroom', async () => {
+		const db = localDatabase();
+		const { teachers, admin } = await setUpKindergarten(db);
+		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
+		const [inBubbles, inOwls] = [newFamily(), newFamily()];
+		await addChildTo(db, admin, bubbles, inBubbles);
+		await addChildTo(db, admin, owls, inOwls);
+		const teacher = await addTeacherTo(db, admin, []);
+		const recovery = (await identityForCard(db, teachers[1].credential.authToken))!;
+		expect(await accessFor(db, teacher)).toMatchObject({ info: null });
+
+		// A first save from a device that didn’t know about a classroom stores nothing.
+		await expect(saveInfo(db, bucket, admin, page([bubbles]))).rejects.toMatchObject(
+			conflict('stale')
+		);
+		expect(await accessFor(db, await familyOf(db, inBubbles))).toMatchObject({
+			info: null,
+			classrooms: [{ id: bubbles, infoKey: null }]
+		});
+		expect(await saveInfo(db, bucket, admin, page([bubbles, owls]))).toMatchObject({
+			content: 'content',
+			infoKeyForStaff: 'key for staff'
+		});
+
+		// Staff get the key for the Staff Key, those without classrooms too, and each family its classrooms’ copies.
+		for (const viewer of [admin, teacher, recovery]) {
+			expect(await accessFor(db, viewer)).toMatchObject({
+				info: { content: 'content', infoKeyForStaff: 'key for staff' }
+			});
+		}
+		const family = await accessFor(db, await familyOf(db, inOwls));
+		expect(family).toMatchObject({
+			info: { content: 'content' },
+			classrooms: [{ id: owls, infoKey: `key for ${owls}` }]
+		});
+		expect(family.info).not.toHaveProperty('infoKeyForStaff');
+
+		// Another first save, from a device that didn’t know about the page, keeps the page’s keys, as a change does.
+		await expect(
+			saveInfo(db, bucket, admin, page([bubbles, owls], [], 'other'))
+		).rejects.toMatchObject(conflict('stale'));
+		expect(await saveInfo(db, bucket, admin, change())).toMatchObject({
+			content: 'changed',
+			infoKeyForStaff: 'key for staff'
+		});
+		expect(await accessFor(db, await familyOf(db, inBubbles))).toMatchObject({
+			info: { content: 'changed' },
+			classrooms: [{ id: bubbles, infoKey: `key for ${bubbles}` }]
+		});
+	});
+
+	it('takes a change only once saved, and a new classroom with its key only once there’s a page', async () => {
+		const db = localDatabase();
+		const { admin } = await setUpKindergarten(db);
+		// A change from a device that thinks there’s a page saves nothing, and until there is one, a classroom has
+		// no key for it.
+		await expect(saveInfo(db, bucket, admin, change())).rejects.toMatchObject(conflict('stale'));
+		await expect(addClassroomTo(db, admin, 'key')).rejects.toMatchObject(conflict('stale'));
+		const bubbles = await addClassroomTo(db, admin);
+		await saveInfo(db, bucket, admin, page([bubbles]));
+
+		// Once there’s one, a classroom added without its key, from a device that didn’t know, is refused.
+		await expect(addClassroomTo(db, admin)).rejects.toMatchObject(conflict('stale'));
+		const owls = await addClassroomTo(db, admin, 'key for owls');
+		const family = newFamily();
+		await addChildTo(db, admin, owls, family);
+		expect(await accessFor(db, await familyOf(db, family))).toMatchObject({
+			info: { content: 'content' },
+			classrooms: [{ id: owls, infoKey: 'key for owls' }]
+		});
+		expect((await kindergarten(db, admin)).classrooms).toHaveLength(2);
+	});
+
+	it('carries the files uploaded for it, whose bytes it gives while it names them, and which go when a save leaves them out', async () => {
+		const db = localDatabase();
+		const { store, objects } = localStore();
+		const { admin } = await setUpKindergarten(db);
+		const bubbles = await addClassroomTo(db, admin);
+		const [menu, form, never] = [createId(), createId(), createId()];
+		const file = (value: number) => new Uint8Array(64).fill(value);
+
+		// The page can’t name a file that wasn’t uploaded for it, and no file is stored twice.
+		await expect(saveInfo(db, store.bucket, admin, page([bubbles], [menu]))).rejects.toMatchObject(
+			conflict('stale')
+		);
+		await uploadInfoFile(db, store, admin, menu, file(1));
+		await uploadInfoFile(db, store, admin, form, file(2));
+		await expect(uploadInfoFile(db, store, admin, menu, file(9))).rejects.toMatchObject(
+			conflict('stored')
+		);
+		await saveInfo(db, store.bucket, admin, page([bubbles], [menu, form]));
+		expect(await read(await infoFileBytes(db, store, menu))).toEqual(file(1));
+
+		// A save that leaves a file out deletes it, and a file the page never names goes in the daily cleanup a day
+		// later.
+		await saveInfo(db, store.bucket, admin, change([form]));
+		await expect(infoFileBytes(db, store, menu)).rejects.toMatchObject({ status: 404 });
+		await uploadInfoFile(db, store, admin, never, file(3));
+		expect([...objects.keys()].sort()).toEqual([`info/${form}`, `info/${never}`].sort());
+		await cleanUp({ DB: db, FILES: store.bucket }, Date.now() + 2 * day);
+		expect([...objects.keys()]).toEqual([`info/${form}`]);
+		expect(await storedBytes(db)).toBe(64);
 	});
 });
 

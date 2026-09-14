@@ -4,7 +4,13 @@
 /** A new card as the server stores it: it keeps only a hash of the auth token, and the key stays wrapped. */
 export type NewCredential = { id: string; authToken: string; wrappedKey: string };
 
-export type NewClassroom = { id: string; profile: string; groupKeyForStaff: string };
+/** A new classroom, with the info page's key wrapped for its Group Key once the kindergarten has a page. */
+export type NewClassroom = {
+	id: string;
+	profile: string;
+	groupKeyForStaff: string;
+	infoKey?: string;
+};
 type TeacherRecord = { admin: boolean; profile: string; classrooms: string[] };
 export type NewTeacher = TeacherRecord & { id: string; credential: NewCredential };
 /**
@@ -134,14 +140,35 @@ export type PhotoRecord = {
 	details: string | null;
 };
 
+/** The kindergarten's info page as the server keeps it: its content, encrypted with the page's Info Key. */
+export type InfoRecord = { content: string; editedAt: number };
+/** The info page as staff get it, with its Info Key wrapped for the Staff Key. */
+export type StaffInfoRecord = InfoRecord & { infoKeyForStaff: string };
+/** The info page's key, wrapped with the Group Key of one classroom. */
+export type InfoKey = { classroom: string; infoKey: string };
 /**
- * What a connected device opens: a staff member's records, or the classrooms a family's card joined, with
- * the notices and board photos of the classrooms it sees.
+ * The info page as an admin's device saves it: its content, sealed with its Info Key, and the files the content
+ * holds, uploaded just before. The files a save leaves out are deleted.
+ */
+export type InfoChange = { content: string; files: string[] };
+/** The info page's first save, which brings its new Info Key, wrapped for staff and for every classroom. */
+export type NewInfo = InfoChange & { infoKeyForStaff: string; classrooms: InfoKey[] };
+
+/**
+ * What a connected device opens: a staff member's records, or the classrooms a family's card joined, each with
+ * its copy of the info page's key, with the notices and board photos of the classrooms it sees, and the info page
+ * once an admin has saved it.
  */
 export type Access = (
-	| (Staff & { kindergarten: Kindergarten })
+	| (Staff & { kindergarten: Kindergarten; info: StaffInfoRecord | null })
 	| (FamilyIdentity & {
-			classrooms: { id: string; profile: string; groupKeyForFamily: string }[];
+			classrooms: {
+				id: string;
+				profile: string;
+				groupKeyForFamily: string;
+				infoKey: string | null;
+			}[];
+			info: InfoRecord | null;
 	  })
 ) & { notices: NoticeRecord[]; photos: PhotoRecord[] };
 

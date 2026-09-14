@@ -26,7 +26,9 @@ type AppPage =
 	| 'teacher/new'
 	| 'notice'
 	| 'notice/new'
-	| 'photo';
+	| 'photo'
+	| 'info'
+	| 'info/edit';
 
 export function appPath(locale: Locale, page?: AppPage, query?: Record<string, string>) {
 	const path = `${prefix(locale)}/app${page ? `/${page}` : ''}`;

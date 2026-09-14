@@ -7,8 +7,9 @@ import { fromBase64Url, toBase64Url } from '$lib/base64url';
 // records that already exist; src/lib/compatibility.test.ts holds values from September 2026 to catch it.
 //
 // Raw key bytes exist only inside createKey, rewrapKey, and unwrapKey, apart from the keys that travel inside
-// a notice's content, a file's and a counted poll's (createContentKey). Every CryptoKey returned here is
-// non-extractable, which prevents accidental export, not use by a malicious script running in the app.
+// the content of a notice or the info page, a file's and a counted poll's (createContentKey). Every CryptoKey
+// returned here is non-extractable, which prevents accidental export, not use by a malicious script running in
+// the app.
 
 /** Card format 1: the secret's size, the auth token's, and the HKDF labels for its two values. Never change them. */
 export const SECRET_BYTES = 16;
@@ -32,7 +33,10 @@ type KeyContext =
 	| { purpose: 'family-key-for-staff'; family: string }
 	| { purpose: 'group-key-for-staff'; classroom: string }
 	| { purpose: 'group-key-for-family'; classroom: string; family: string }
-	| { purpose: 'notice-key-for-classroom'; classroom: string; notice: string };
+	| { purpose: 'notice-key-for-classroom'; classroom: string; notice: string }
+	// A kindergarten has one info page, so its records name no subject.
+	| { purpose: 'info-key-for-staff' }
+	| { purpose: 'info-key-for-classroom'; classroom: string };
 
 /** The record encrypted data belongs to. */
 type DataContext =
@@ -47,8 +51,9 @@ type DataContext =
 	| { purpose: 'counted-poll-vote'; notice: string }
 	| { purpose: 'board-photo'; classroom: string; photo: string }
 	| { purpose: 'board-photo-details'; classroom: string; photo: string }
-	// Encrypted with a key of its own, which its notice's content holds.
-	| { purpose: 'notice-file'; file: string };
+	// Encrypted with a key of its own, which the content of its notice, or of the info page, holds.
+	| { purpose: 'notice-file'; file: string }
+	| { purpose: 'info-content' };
 
 /** A key that wraps or opens another key, and the record the wrapped key belongs to. */
 export type Wrapping = { key: CryptoKey; context: KeyContext };
@@ -78,6 +83,14 @@ export const wrapping = {
 	noticeKeyForClassroom: (key: CryptoKey, classroom: string, notice: string): Wrapping => ({
 		key,
 		context: { purpose: 'notice-key-for-classroom', classroom, notice }
+	}),
+	infoKeyForStaff: (key: CryptoKey): Wrapping => ({
+		key,
+		context: { purpose: 'info-key-for-staff' }
+	}),
+	infoKeyForClassroom: (key: CryptoKey, classroom: string): Wrapping => ({
+		key,
+		context: { purpose: 'info-key-for-classroom', classroom }
 	})
 };
 
@@ -194,9 +207,9 @@ export async function unwrapKey(envelope: string, wrapping: Wrapping) {
 }
 
 /**
- * A new key for a notice's file, or for a poll whose counts families see, with its raw bytes in base64url for
- * the notice's content to hold: whoever opens the notice opens the file or the answers, and the key opens
- * nothing else (docs/access-format.md).
+ * A new key for a file on a notice or the info page, or for a poll whose counts families see, with its raw bytes
+ * in base64url for the content to hold: whoever opens the notice or the page opens the file or the answers, and
+ * the key opens nothing else (docs/access-format.md).
  */
 export async function createContentKey() {
 	const raw = randomBytes(KEY_BYTES);
@@ -350,6 +363,7 @@ async function open(envelope: string, key: CryptoKey, context: KeyContext | Data
 // one encrypted with the same key, it doesn't open.
 function additionalData(context: KeyContext | DataContext) {
 	const ids: {
+		purpose: string;
 		classroom?: string;
 		credential?: string;
 		family?: string;

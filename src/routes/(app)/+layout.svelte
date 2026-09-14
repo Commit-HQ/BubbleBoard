@@ -34,6 +34,7 @@
 	});
 
 	const manage = $derived(appPath(data.locale, 'manage'));
+	const info = $derived(appPath(data.locale, 'info'));
 	const options = $derived(appPath(data.locale, 'options'));
 	// Until a device connects, Settings would hold only the language, so the header has the language switch
 	// instead, as on the landing page. While the app starts, the header has Settings, since most devices that
@@ -64,10 +65,11 @@
 </svelte:head>
 
 <div class="mx-auto flex min-h-dvh max-w-2xl flex-col px-4 sm:px-8 print:max-w-none print:px-0">
-	<SiteHeader href={appPath(data.locale)} class="print:hidden">
+	<SiteHeader href={appPath(data.locale)} compact={app.status === 'staff'} class="print:hidden">
 		{#if settings}
-			<!-- Staff manage the kindergarten from here, and Settings are here on every page. On phones, Manage
-			shows only its icon. -->
+			<!-- Staff manage the kindergarten from here, and the kindergarten's info and Settings are here on every
+			page. On phones, Manage and Info show only their icons, and with all three, the narrowest phones show
+			only the logo beside them. -->
 			<nav class="flex items-center gap-1.5" aria-label={t.nav.label}>
 				{#if app.status === 'staff'}
 					<a class="{headerLink} px-3 sm:px-4" href={manage} aria-current={current(manage)}>
@@ -75,6 +77,10 @@
 						<span class="max-sm:sr-only">{t.app.manage.title}</span>
 					</a>
 				{/if}
+				<a class="{headerLink} px-3 sm:px-4" href={info} aria-current={current(info)}>
+					<Icon name="info" />
+					<span class="max-sm:sr-only">{t.app.info.title}</span>
+				</a>
 				<a
 					class="{headerLink} w-11"
 					href={options}

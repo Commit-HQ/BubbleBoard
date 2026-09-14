@@ -164,12 +164,12 @@ export const en = {
 	privacyPolicy: {
 		title: 'Privacy policy',
 		description: 'What BubbleBoard stores about families and children, where, and for how long.',
-		updated: 'Updated on 13 September 2026',
+		updated: 'Updated on 14 September 2026',
 		// Followed by the project's contact address, which the last point calls the address below.
 		points: [
 			{
 				title: 'What’s stored',
-				copy: 'Names, notices, polls, photos, and files are encrypted on the device before they’re sent. The server can’t read them, and keeps only what it needs to work, without names, such as when a notice was posted.'
+				copy: 'Names, notices, the info page, polls, photos, and files are encrypted on the device before they’re sent. The server can’t read them, and keeps only what it needs to work, without names, such as when a notice was posted.'
 			},
 			{
 				title: 'Where',
@@ -177,7 +177,7 @@ export const en = {
 			},
 			{
 				title: 'How long',
-				copy: 'Notices stay up for the 1 to 90 days a teacher chooses, a notice board photo until it’s replaced, names until an admin removes them, and a device’s login until it goes unused for 90 days. Deleted records stay in the database’s backup history for up to 30 days.'
+				copy: 'Notices stay up for the 1 to 90 days a teacher chooses, a notice board photo until it’s replaced, the info page until an admin changes it, names until an admin removes them, and a device’s login until it goes unused for 90 days. Deleted records stay in the database’s backup history for up to 30 days.'
 			},
 			{
 				title: 'Notifications',
@@ -476,6 +476,23 @@ export const en = {
 		},
 		// The link to the landing page in the footer of every app page.
 		about: 'About BubbleBoard',
+		// The kindergarten's info page, from the header: what everyone who uses the app should know.
+		info: {
+			title: 'Info',
+			empty:
+				'Nothing here yet. When your kindergarten adds information for everyone, such as opening hours or contacts, it appears here.',
+			emptyAdmin:
+				'Nothing here yet. Add what everyone at your kindergarten should know, such as opening hours, contacts, or the menu, with files if you like.',
+			add: 'Add info',
+			edit: 'Edit',
+			editTitle: 'Edit info',
+			text: 'Text',
+			hint: 'Families and teachers of every classroom see this page until you change it. Saving it sends no notification.',
+			// When the page was last saved (formatDateTime).
+			updated: (when: string) => `Updated ${when}`,
+			unreadable:
+				'The info page didn’t open on this device. Try again, and if it keeps happening, tell an admin.'
+		},
 		notices: {
 			title: 'Notices',
 			new: 'Add notice',
@@ -632,13 +649,14 @@ export const en = {
 		errors: {
 			'empty-notice': 'Write the notice first.',
 			'notice-too-long': 'This notice is too long. Shorten it, then try again.',
+			'info-too-long': 'This page is too long. Shorten it, then try again.',
 			'no-classrooms': 'Choose at least one classroom.',
 			'poll-answers': 'Give the poll at least two answers.',
 			'unusable-photo': 'That photo couldn’t be used. Try another one.',
 			'file-type':
 				'BubbleBoard can’t attach that kind of file. Attach a PDF, a document, or a picture.',
 			'file-too-large': 'That file is larger than 10 MB. Attach a smaller one.',
-			'too-many-files': 'A notice can carry up to 10 files.',
+			'too-many-files': 'You can attach up to 10 files.',
 			'unreadable-file':
 				'This file didn’t open on this device. Ask your kindergarten to attach it again.',
 			'unreadable-photo':

@@ -168,10 +168,10 @@ function readPoll(value: unknown): Poll {
 }
 
 /**
- * A notice's files as a device may show them: up to ten, each once, with a name of a kind notices carry, a
- * size, and a key. Anyone holding a classroom's Group Key could have written them.
+ * The files of a notice or the info page as a device may show them: up to ten, each once, with a name of a kind
+ * they carry, a size, and a key. Anyone holding the key that opens them could have written them.
  */
-function readFiles(value: unknown): NoticeFile[] {
+export function readFiles(value: unknown): NoticeFile[] {
 	const files = list(value, (item) => {
 		const { id, name, bytes, key } = fields(item);
 		const sized = Number.isSafeInteger(bytes) && (bytes as number) >= 0;

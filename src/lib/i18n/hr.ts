@@ -157,11 +157,11 @@ export const hr = {
 	privacyPolicy: {
 		title: 'Politika privatnosti',
 		description: 'Što BubbleBoard čuva o obiteljima i djeci, gdje i koliko dugo.',
-		updated: 'Ažurirano 13. rujna 2026.',
+		updated: 'Ažurirano 14. rujna 2026.',
 		points: [
 			{
 				title: 'Što se čuva',
-				copy: 'Imena, obavijesti, ankete, fotografije i datoteke šifriraju se na uređaju prije slanja. Poslužitelj ih ne može pročitati, a čuva samo ono što mu treba za rad, bez imena, na primjer kad je obavijest objavljena.'
+				copy: 'Imena, obavijesti, stranica s informacijama, ankete, fotografije i datoteke šifriraju se na uređaju prije slanja. Poslužitelj ih ne može pročitati, a čuva samo ono što mu treba za rad, bez imena, na primjer kad je obavijest objavljena.'
 			},
 			{
 				title: 'Gdje',
@@ -169,7 +169,7 @@ export const hr = {
 			},
 			{
 				title: 'Koliko dugo',
-				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojitelj, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, imena dok ih administrator ne ukloni, a prijava uređaja do 90 dana bez korištenja. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
+				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojitelj, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, stranica s informacijama dok je administrator ne promijeni, imena dok ih administrator ne ukloni, a prijava uređaja do 90 dana bez korištenja. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
 			},
 			{
 				title: 'Obavijesti na uređaju',
@@ -462,6 +462,21 @@ export const hr = {
 				'Ovaj je uređaj povezan prije nego što je mogao dodavati druge. Da biste s njega dodavali uređaje, odjavite ga pa ga ponovno povežite obiteljskim QR kodom.'
 		},
 		about: 'O BubbleBoardu',
+		info: {
+			title: 'Info',
+			empty:
+				'Ovdje još nema ničega. Kad vrtić doda informacije za sve, na primjer radno vrijeme ili kontakte, pojavit će se ovdje.',
+			emptyAdmin:
+				'Ovdje još nema ničega. Dodajte ono što svi u vrtiću trebaju znati, na primjer radno vrijeme, kontakte ili jelovnik, po želji s datotekama.',
+			add: 'Dodaj informacije',
+			edit: 'Uredi',
+			editTitle: 'Uredi informacije',
+			text: 'Tekst',
+			hint: 'Ovu stranicu vide obitelji i odgojitelji svih skupina dok je ne promijenite. Spremanje ne šalje obavijest.',
+			updated: (when: string) => `Ažurirano ${when}`,
+			unreadable:
+				'Stranica s informacijama nije se otvorila na ovom uređaju. Pokušajte ponovno, a ako se to ponavlja, javite administratoru.'
+		},
 		notices: {
 			title: 'Obavijesti',
 			new: 'Dodaj obavijest',
@@ -613,13 +628,14 @@ export const hr = {
 		errors: {
 			'empty-notice': 'Najprije napišite obavijest.',
 			'notice-too-long': 'Obavijest je predugačka. Skratite je i pokušajte ponovno.',
+			'info-too-long': 'Stranica je predugačka. Skratite je i pokušajte ponovno.',
 			'no-classrooms': 'Odaberite barem jednu skupinu.',
 			'poll-answers': 'Anketi dodajte barem dva odgovora.',
 			'unusable-photo': 'Ta se fotografija ne može upotrijebiti. Pokušajte s drugom.',
 			'file-type':
 				'Takvu datoteku BubbleBoard ne može priložiti. Priložite PDF, dokument ili sliku.',
 			'file-too-large': 'Ta je datoteka veća od 10 MB. Priložite manju.',
-			'too-many-files': 'Obavijest može imati najviše 10 datoteka.',
+			'too-many-files': 'Možete priložiti najviše 10 datoteka.',
 			'unreadable-file':
 				'Datoteka se nije otvorila na ovom uređaju. Zamolite vrtić da je ponovno priloži.',
 			'unreadable-photo':

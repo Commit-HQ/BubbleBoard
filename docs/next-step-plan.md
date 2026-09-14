@@ -92,6 +92,15 @@ A teacher's phone saves photos as HEIC, which only Safari opens itself, so choos
 
 - **Opening HEIC:** where the browser can't open a HEIC or HEIF photo, as Chrome and Firefox can't, libheif compiled to WebAssembly (`libheif-js`, LGPL-3.0) opens it in the browser, and the photo is made smaller and encoded again like any other, so the server still gets it only encrypted. Board photos, pictures on notices, and a card's QR code read from a photo all open this way. libheif is about 700 KB compressed and loads only for such a photo, which takes a moment longer to prepare on a phone. The CSP allows compiling WebAssembly (`'wasm-unsafe-eval'`) for it.
 
+## Kindergarten info page — 2026-09-14
+
+Teachers asked for a page with what everyone at the kindergarten should know, such as opening hours, contacts, and the menu, which admins write.
+
+- **Info:** the header of every connected device has Info, just before Settings, which opens the page. On phones it shows only its icon, as Manage does, and on the narrowest phones a staff member's header leaves out the name beside the logo, so all three fit. Everyone who uses the app sees the same page, whatever their classrooms: families of every classroom, teachers, those without classrooms included, and admins. Until an admin writes it, it says there's nothing there yet.
+- **Writing:** admins write it with the notice editor, on plain white paper, and attach files as a notice carries them: up to ten, of the same kinds and sizes. It has no days, classrooms, poll, or seen marks, stays until an admin changes it, and saving it notifies no one; the owner decided both. It says when it was last updated. It has no Delete: clearing its text and files leaves it empty again.
+- **Loading:** the page's encrypted content, with its files' names, sizes, and keys, comes with everything else a device loads when it opens, as a notice's does. Its pictures are fetched once the page is open and they come near the screen, and a document when it's saved.
+- **Encryption:** the page's content is encrypted with an Info Key made when it's first saved and kept for good, wrapped with the Staff Key, which every staff card opens, and with the Group Key of every classroom, which families open. Every classroom is always on the page, so a new key at each save, as notices get, would keep no one out, and a classroom added meanwhile could get an outdated copy. An admin's device adding a classroom wraps the key for it in the same request. The database refuses a first save that leaves out a classroom or comes after another, and a classroom added without the key once there's a page, and the device loads its records again. The page's files are sealed as a notice's are, with File Keys inside its content. The server knows when the page was last saved, which files it carries, and how big they are, not what it says or what the files are called.
+
 ## Deferred
 
 - Automatic unread markers and app icon badges.

@@ -1,13 +1,7 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
 	import { createId } from '$lib/crypto';
-	import {
-		fileAccept,
-		maxNoticeFiles,
-		prepareFile,
-		type NewFile,
-		type NoticeFile
-	} from '$lib/files';
+	import type { NewFile, NoticeFile } from '$lib/files';
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import {
 		day,
@@ -21,12 +15,12 @@
 		type PollOption
 	} from '$lib/notices';
 	import { tick } from 'svelte';
+	import AttachFiles from './AttachFiles.svelte';
 	import CheckCard from './CheckCard.svelte';
 	import Checklist from './Checklist.svelte';
-	import FileLabel from './FileLabel.svelte';
 	import NoticeEditor from './NoticeEditor.svelte';
 	import { getApp, Task } from './state.svelte';
-	import { alert, button, choice, field, filePicker, surface } from './ui';
+	import { alert, button, choice, field, surface } from './ui';
 
 	// A notice's text on its paper, poll, files, classrooms, and days, to post or change. Teachers post to their
 	// own classrooms and admins to any. The editor's toolbar chooses the paper, which it shows the text on.
@@ -105,20 +99,6 @@
 		event.preventDefault();
 		if (index < options.length - 1) optionInputs[index + 1]?.focus();
 		else if (options.length < maxPollOptions) addOption();
-	}
-
-	/** Makes the files picked ready to attach, one at a time, as long as the notice has room for them. */
-	function attach(event: Event & { currentTarget: EventTarget & HTMLInputElement }) {
-		const input = event.currentTarget;
-		const picked = [...(input.files ?? [])];
-		input.value = '';
-		if (files.length + picked.length > maxNoticeFiles) {
-			fileTask.error = 'too-many-files';
-			return;
-		}
-		fileTask.run(async () => {
-			for (const file of picked) files = [...files, await prepareFile(file)];
-		});
 	}
 
 	function submit(event: SubmitEvent) {
@@ -202,49 +182,7 @@
 			{/if}
 		</div>
 
-		<div class="grid gap-3" role="group" aria-labelledby="{id}-files">
-			<span id="{id}-files" class={field.name}>{t.files.title}</span>
-			{#if files.length}
-				<ul class="grid gap-2">
-					{#each files as file (file.id)}
-						<li
-							class="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white/60 py-1 pr-1 pl-4"
-						>
-							<FileLabel {locale} {file} />
-							<button
-								class={button.icon}
-								type="button"
-								aria-label={t.files.remove(file.name)}
-								onclick={() => (files = files.filter((other) => other.id !== file.id))}
-							>
-								<Icon name="x" />
-							</button>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-			{#if files.length < maxNoticeFiles}
-				<label class="{button.secondary} {filePicker} justify-self-start">
-					<Icon name="plus" class="size-4" />{t.files.attach}
-					<input
-						class="sr-only"
-						type="file"
-						multiple
-						accept={fileAccept}
-						disabled={fileTask.busy || task.busy}
-						onchange={attach}
-					/>
-				</label>
-			{/if}
-			{#if fileTask.busy}
-				<p class="text-sm font-semibold text-muted" role="status">{t.files.preparing}</p>
-			{:else}
-				<p class={field.hint}>{t.files.hint}</p>
-			{/if}
-			{#if fileTask.error}
-				<p class={alert} role="alert">{errorMessage(locale, fileTask.error)}</p>
-			{/if}
-		</div>
+		<AttachFiles {locale} task={fileTask} disabled={task.busy} bind:files />
 
 		<Checklist
 			{locale}

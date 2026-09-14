@@ -21,6 +21,7 @@ import {
 	unwrapKey,
 	wrapping
 } from '$lib/crypto';
+import { infoKeyForClassroom } from '$lib/info';
 
 // The kindergarten as a device sees it once decrypted, and the encrypted records its changes send. Only
 // browsers run this; the server stores what it builds without being able to open any of it.
@@ -215,10 +216,25 @@ export function cardKind(teacher: Pick<Teacher, 'admin' | 'recovery'>): CardKind
 	return teacher.recovery ? 'recovery' : teacher.admin ? 'admin' : 'teacher';
 }
 
-export async function newClassroom(staffKey: CryptoKey, name: string): Promise<NewClassroom> {
+/**
+ * A new classroom: its Group Key, wrapped for staff, and its name. Once the kindergarten has an info page, the
+ * page's key comes wrapped for the classroom too, from its copy for staff (`infoKeyForStaff`).
+ */
+export async function newClassroom(
+	staffKey: CryptoKey,
+	name: string,
+	infoKeyForStaff?: string
+): Promise<NewClassroom> {
 	const id = createId();
 	const { key, envelopes } = await createKey([wrapping.groupKeyForStaff(staffKey, id)]);
-	return { id, profile: await classroomProfile(key, id, name), groupKeyForStaff: envelopes[0] };
+	const classroom = {
+		id,
+		profile: await classroomProfile(key, id, name),
+		groupKeyForStaff: envelopes[0]
+	};
+	if (infoKeyForStaff === undefined) return classroom;
+	const infoKey = await infoKeyForClassroom(staffKey, infoKeyForStaff, { id, groupKey: key });
+	return { ...classroom, infoKey };
 }
 
 /** A name that is empty once trimmed. Readers refuse such a record, so it's never written. */

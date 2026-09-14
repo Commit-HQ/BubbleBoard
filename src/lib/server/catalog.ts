@@ -18,6 +18,7 @@ import type {
 } from '$lib/api';
 import { hashAuthToken } from '$lib/crypto';
 import { includesAll, transaction } from './database';
+import { familyInfo, staffInfo } from './info';
 import { board } from './notices';
 import { boardPhotos } from './photos';
 import type { Admin } from './session';
@@ -100,26 +101,37 @@ export async function setUp(db: D1Database, teachers: Setup['teachers']) {
 }
 
 /**
- * What a connected device opens: a staff member's records, or the classrooms a family's card joined, with
- * the notices and board photos of the classrooms it sees.
+ * What a connected device opens: a staff member's records, or the classrooms a family's card joined, each with its
+ * copy of the info page's key, with the notices and board photos of the classrooms it sees, and the info page.
  */
 export async function accessFor(db: D1Database, current: Identity): Promise<Access> {
 	const onTheBoard = Promise.all([board(db, current), boardPhotos(db, current)]);
 	if (current.kind === 'staff') {
-		const [records, [notices, photos]] = await Promise.all([kindergarten(db, current), onTheBoard]);
-		return { ...current, kindergarten: records, notices, photos };
+		const [records, [notices, photos], info] = await Promise.all([
+			kindergarten(db, current),
+			onTheBoard,
+			staffInfo(db)
+		]);
+		return { ...current, kindergarten: records, notices, photos, info };
 	}
-	const [{ results }, [notices, photos]] = await Promise.all([
+	type Classroom = {
+		id: string;
+		profile: string;
+		groupKeyForFamily: string;
+		infoKey: string | null;
+	};
+	const [{ results }, [notices, photos], info] = await Promise.all([
 		db
 			.prepare(
-				`SELECT c.id, c.profile, fc.group_key_for_family AS groupKeyForFamily FROM family_classrooms fc
-				JOIN classrooms c ON c.id = fc.classroom_id WHERE fc.family_id = ?`
+				`SELECT c.id, c.profile, fc.group_key_for_family AS groupKeyForFamily, c.info_key AS infoKey
+				FROM family_classrooms fc JOIN classrooms c ON c.id = fc.classroom_id WHERE fc.family_id = ?`
 			)
 			.bind(current.family)
-			.all<{ id: string; profile: string; groupKeyForFamily: string }>(),
-		onTheBoard
+			.all<Classroom>(),
+		onTheBoard,
+		familyInfo(db)
 	]);
-	return { ...current, classrooms: results, notices, photos };
+	return { ...current, classrooms: results, notices, photos, info };
 }
 
 export async function kindergarten(db: D1Database, staff: Staff): Promise<Kindergarten> {
@@ -165,11 +177,17 @@ export async function kindergarten(db: D1Database, staff: Staff): Promise<Kinder
 	};
 }
 
+/**
+ * Adds a classroom. Once the kindergarten has an info page, the classroom brings the page's key, and the database
+ * refuses it without one, or with one before there's a page (migrations/0013_info.sql).
+ */
 export async function addClassroom(db: D1Database, admin: Admin, classroom: NewClassroom) {
 	await transaction(db, [
 		db
-			.prepare('INSERT INTO classrooms (id, profile, group_key_for_staff) VALUES (?, ?, ?)')
-			.bind(classroom.id, classroom.profile, classroom.groupKeyForStaff)
+			.prepare(
+				'INSERT INTO classrooms (id, profile, group_key_for_staff, info_key) VALUES (?, ?, ?, ?)'
+			)
+			.bind(classroom.id, classroom.profile, classroom.groupKeyForStaff, classroom.infoKey ?? null)
 	]);
 	return kindergarten(db, admin);
 }

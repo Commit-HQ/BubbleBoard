@@ -1,13 +1,11 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
-	import { isPicture } from '$lib/files';
 	import { errorMessage, formatDateTime, listNames, messages, type Locale } from '$lib/i18n';
 	import { namesOf } from '$lib/kindergarten';
 	import type { Notice } from '$lib/notices';
 	import { appPath } from '$lib/paths';
-	import FileLabel from './FileLabel.svelte';
+	import Attachments from './Attachments.svelte';
 	import NoticeBody from './NoticeBody.svelte';
-	import NoticePictures from './NoticePictures.svelte';
 	import NoticePoll from './NoticePoll.svelte';
 	import { getApp, Task } from './state.svelte';
 	import { alert, button, paperClass } from './ui';
@@ -19,11 +17,7 @@
 		$props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.notices);
-	const fileCopy = $derived(messages[locale].app.files);
-	const pictures = $derived(notice.files?.filter(isPicture) ?? []);
-	const documents = $derived(notice.files?.filter((file) => !isPicture(file)) ?? []);
 	const task = new Task();
-	const fileTask = new Task();
 	/** Who put the notice up and when, and whether it was edited since. */
 	const details = $derived(
 		[
@@ -61,29 +55,13 @@
 	{/if}
 
 	{#if notice.files?.length}
-		<div class="mt-5 grid gap-3">
-			{#if pictures.length}<NoticePictures {locale} {notice} files={pictures} />{/if}
-			{#if documents.length}
-				<ul class="grid gap-2" aria-label={fileCopy.title}>
-					{#each documents as file (file.id)}
-						<li>
-							<button
-								class="flex min-h-14 w-full items-center gap-3 rounded-2xl bg-white/60 px-4 py-0.5 text-left ring-1 ring-ink/10 transition hover:bg-white disabled:opacity-50"
-								type="button"
-								aria-label={fileCopy.save(file.name)}
-								disabled={fileTask.busy}
-								onclick={() => fileTask.run(() => app.saveNoticeFile(notice, file))}
-							>
-								<FileLabel {locale} {file} />
-								<Icon name="arrowDown" class="size-4 shrink-0 text-muted" />
-							</button>
-						</li>
-					{/each}
-				</ul>
-			{/if}
-			{#if fileTask.error}
-				<p class={alert} role="alert">{errorMessage(locale, fileTask.error)}</p>
-			{/if}
+		<div class="mt-5">
+			<Attachments
+				{locale}
+				files={notice.files}
+				openPicture={(file) => app.noticePicture(notice, file)}
+				saveDocument={(file) => app.saveNoticeFile(notice, file)}
+			/>
 		</div>
 	{/if}
 

@@ -209,9 +209,11 @@ function familyAccess(
 		classrooms: memberships.map(({ classroom, groupKeyForFamily }) => ({
 			id: classroom,
 			profile: byId(classrooms, classroom).profile,
-			groupKeyForFamily
+			groupKeyForFamily,
+			infoKey: null
 		})),
 		notices: [],
-		photos: []
+		photos: [],
+		info: null
 	};
 }
