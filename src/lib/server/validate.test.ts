@@ -6,9 +6,11 @@ import { maxPhotoBytes } from '$lib/photos';
 import {
 	familyCards,
 	familyLinks,
-	infoChange,
+	infoOrder,
+	infoPageChange,
 	newChild,
 	newClassroom,
+	newInfoPage,
 	newNotice,
 	noticeChange,
 	photoDetails,
@@ -160,7 +162,7 @@ it('reads a photo’s or a file’s encrypted bytes, holding something and no bi
 	}
 });
 
-it('reads a new classroom with the info page’s key when it brings one', () => {
+it('reads a new classroom with its copy of the Info Key when it brings one', () => {
 	const classroom = { id: createId(), profile: envelope(20), groupKeyForStaff: envelope(48) };
 	expect(newClassroom(classroom)).not.toHaveProperty('infoKey');
 	expect(newClassroom({ ...classroom, infoKey: envelope(48) })).toMatchObject({
@@ -169,22 +171,32 @@ it('reads a new classroom with the info page’s key when it brings one', () => 
 	expect(() => newClassroom({ ...classroom, infoKey: 'key' })).toThrow();
 });
 
-it('refuses an info page too big or without its files, and a first save without a key for staff or with a classroom twice', () => {
+it('refuses an info page too big or without its files, a new Info Key with a classroom twice, and an order that repeats a page', () => {
 	const file = createId();
 	const change = { content: envelope(200), files: [file, file] };
-	expect(infoChange(change)).toEqual({ content: envelope(200), files: [file] });
-	const key = () => ({ classroom: createId(), infoKey: envelope(48) });
-	const first = { ...change, infoKeyForStaff: envelope(48), classrooms: [key(), key()] };
-	expect(infoChange(first)).toMatchObject({ infoKeyForStaff: envelope(48), files: [file] });
-	expect(infoChange({ ...first, classrooms: [] })).toMatchObject({ classrooms: [] });
+	expect(infoPageChange(change)).toEqual({ content: envelope(200), files: [file] });
+	const page = { ...change, id: createId() };
+	expect(newInfoPage(page)).not.toHaveProperty('key');
+	const copy = () => ({ classroom: createId(), infoKey: envelope(48) });
+	const key = { infoKeyForStaff: envelope(48), classrooms: [copy(), copy()] };
+	expect(newInfoPage({ ...page, key })).toMatchObject({ files: [file], key });
+	expect(newInfoPage({ ...page, key: { ...key, classrooms: [] } })).toMatchObject({
+		key: { classrooms: [] }
+	});
 	for (const refused of [
-		{ ...change, files: undefined },
-		{ ...change, content: envelope(40 * 1024) },
-		{ ...change, files: Array.from({ length: maxNoticeFiles + 1 }, createId) },
-		{ ...first, infoKeyForStaff: 'key' },
-		{ ...first, classrooms: undefined },
-		{ ...first, classrooms: [first.classrooms[0], first.classrooms[0]] }
+		{ ...page, files: undefined },
+		{ ...page, content: envelope(40 * 1024) },
+		{ ...page, files: Array.from({ length: maxNoticeFiles + 1 }, createId) },
+		{ ...page, id: 'page' },
+		{ ...page, key: { ...key, infoKeyForStaff: 'key' } },
+		{ ...page, key: { ...key, classrooms: undefined } },
+		{ ...page, key: { ...key, classrooms: [key.classrooms[0], key.classrooms[0]] } }
 	]) {
-		expect(() => infoChange(refused)).toThrow();
+		expect(() => newInfoPage(refused)).toThrow();
+	}
+	const [first, second] = [createId(), createId()];
+	expect(infoOrder({ pages: [second, first] })).toEqual([second, first]);
+	for (const pages of [[first, first], ['page'], undefined]) {
+		expect(() => infoOrder({ pages })).toThrow();
 	}
 });

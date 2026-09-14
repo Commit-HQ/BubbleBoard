@@ -3,15 +3,16 @@ import type {
 	ChildChange,
 	FamilyCard,
 	FamilyLinks,
-	InfoChange,
 	InfoKey,
+	InfoPageChange,
 	Membership,
 	MembershipKey,
 	NewChild,
 	NewClassroom,
 	NewCredential,
 	NewFamily,
-	NewInfo,
+	NewInfoKey,
+	NewInfoPage,
 	NewNotice,
 	NewTeacher,
 	NoticeChange,
@@ -167,7 +168,7 @@ export function setup(body: Fields): Setup {
 	return teachers.length === 2 && distinct.size === 4 ? { token: body.token, teachers } : invalid();
 }
 
-/** A new classroom, which brings the info page's key once the kindergarten has a page, as the database checks. */
+/** A new classroom, which brings the Info Key once the kindergarten has info pages, as the database checks. */
 export const newClassroom = (body: Fields): NewClassroom => ({
 	id: id(body.id),
 	profile: profile(body.profile),
@@ -177,28 +178,33 @@ export const newClassroom = (body: Fields): NewClassroom => ({
 
 const infoContent = envelope(maxInfoBytes);
 
-/** The info page's key for each classroom, each classroom once. A kindergarten without classrooms has none. */
-function infoKeys(value: unknown): InfoKey[] {
-	const keys = list(value, (item) => {
-		const key = fields(item);
-		return { classroom: id(key.classroom), infoKey: wrappedKey(key.infoKey) };
+/** A new Info Key, for staff and for each classroom once. A kindergarten without classrooms has no copies. */
+function newInfoKey(value: unknown): NewInfoKey {
+	const key = fields(value);
+	const classrooms = list(key.classrooms, (item): InfoKey => {
+		const copy = fields(item);
+		return { classroom: id(copy.classroom), infoKey: wrappedKey(copy.infoKey) };
 	});
-	const classrooms = new Set(keys.map(({ classroom }) => classroom));
-	return classrooms.size === keys.length ? keys : invalid();
+	const distinct = new Set(classrooms.map(({ classroom }) => classroom)).size === classrooms.length;
+	return distinct ? { infoKeyForStaff: wrappedKey(key.infoKeyForStaff), classrooms } : invalid();
 }
 
-/**
- * The info page as an admin's device saves it, with the files its content holds, each once. Its first save also
- * brings the page's new key, for staff and for each classroom.
- */
-export function infoChange(body: Fields): InfoChange | NewInfo {
-	const change = { content: infoContent(body.content), files: ids(body.files, maxNoticeFiles) };
-	if (body.infoKeyForStaff === undefined) return change;
-	return {
-		...change,
-		infoKeyForStaff: wrappedKey(body.infoKeyForStaff),
-		classrooms: infoKeys(body.classrooms)
-	};
+/** An info page as an admin's device saves it, with the files its content holds, each once. */
+export const infoPageChange = (body: Fields): InfoPageChange => ({
+	content: infoContent(body.content),
+	files: ids(body.files, maxNoticeFiles)
+});
+
+/** A new info page, which brings the new Info Key when it's the kindergarten's first. */
+export function newInfoPage(body: Fields): NewInfoPage {
+	const page = { id: id(body.id), ...infoPageChange(body) };
+	return body.key === undefined ? page : { ...page, key: newInfoKey(body.key) };
+}
+
+/** The info pages in a new order, each once. */
+export function infoOrder(body: Fields) {
+	const pages = list(body.pages, id);
+	return new Set(pages).size === pages.length ? pages : invalid();
 }
 
 const teacher = (body: Fields) => ({

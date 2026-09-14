@@ -1,4 +1,4 @@
-import type { InfoRecord, StaffInfoRecord } from '$lib/api';
+import type { InfoPageRecord, NewInfoKey, StaffInfo } from '$lib/api';
 import {
 	createKey,
 	decryptData,
@@ -12,44 +12,59 @@ import {
 } from '$lib/crypto';
 import { CodedError } from '$lib/errors';
 import type { NoticeFile } from '$lib/files';
-import { maxNoticeBytes, readDocument, readFiles, type NoticeDocument } from '$lib/notices';
+import {
+	maxNoticeBytes,
+	papers,
+	readDocument,
+	readFiles,
+	type NoticeDocument,
+	type Paper
+} from '$lib/notices';
 
-// The kindergarten's info page, as devices write and read it (docs/access-format.md): text and files for everyone
-// who uses the app, such as opening hours and contacts, which admins write and which stays until they change it.
-// Its content is encrypted with the page's Info Key, made at its first save and kept for good, which the server
+// The kindergarten's info pages, as devices write and read them (docs/access-format.md): text on paper, with files,
+// for everyone who uses the app, such as opening hours, meals, and contacts, in the order admins put them in. Every
+// page is encrypted with the kindergarten's Info Key, made with its first page and kept for good, which the server
 // keeps wrapped with the Staff Key, for staff, and with the Group Key of every classroom, for families; a classroom
-// added later gets the key when it's added. Its files are sealed as a notice's are (src/lib/files.ts).
+// added later gets the key when it's added. A page's files are sealed as a notice's are (src/lib/files.ts).
 
-/** What the page holds inside its envelope: text, as a notice's, and files. */
-export type InfoContent = { body: NoticeDocument; files?: NoticeFile[] };
-/** The page as a device shows it, with when it was last saved. */
-export type Info = InfoContent & { editedAt: number };
+/** What a page holds inside its envelope: text on its paper, as a notice's, and files. */
+export type InfoPageContent = { paper: Paper; body: NoticeDocument; files?: NoticeFile[] };
+/** A page as a device shows it, with when it was last saved. */
+export type InfoPage = InfoPageContent & { id: string; editedAt: number };
+/** The pages that opened on a device, in their order, and how many didn't. */
+export type OpenedInfo = { pages: InfoPage[]; unreadable: number };
 
-/** The most the page's content may take, in bytes of JSON, as a notice's, which the server also holds it to. */
+/** The most a page's content may take, in bytes of JSON, as a notice's, which the server also holds it to. */
 export const maxInfoBytes = maxNoticeBytes;
+/** The most pages a kindergarten keeps, which come with every device's records. The server holds it to this. */
+export const maxInfoPages = 20;
 
-/** Whether the page shows nothing: no text, only empty lines, and no files. */
-export function isBlank({ body, files }: InfoContent) {
-	const text = body.content.some((block) => block.type !== 'paragraph' || block.content?.length);
-	return !text && !files?.length;
+function fail(): never {
+	throw new UnreadableError();
 }
 
-async function seal(content: InfoContent, key: CryptoKey) {
-	const sealed = await encryptData(content, key, { purpose: 'info-content' });
+async function seal(page: string, content: InfoPageContent, key: CryptoKey) {
+	const sealed = await encryptData(content, key, { purpose: 'info-page', page });
 	// Measured as the server measures it.
 	if (envelopeSize(sealed)! > maxInfoBytes) throw new CodedError('info-too-long');
 	return sealed;
 }
 
-/** Seals a change to the page with the Info Key it has, which staff open from its copy for them. */
-export async function sealInfo(content: InfoContent, staffKey: CryptoKey, infoKeyForStaff: string) {
+/** Seals a page with the Info Key, which staff open from its copy for them. */
+export async function sealInfoPage(
+	page: string,
+	content: InfoPageContent,
+	staffKey: CryptoKey,
+	infoKeyForStaff: string
+) {
 	const key = await unwrapKey(infoKeyForStaff, wrapping.infoKeyForStaff(staffKey));
-	return { content: await seal(content, key) };
+	return { content: await seal(page, content, key) };
 }
 
-/** Seals the page's first save under a new Info Key, wrapped for staff and for each classroom. */
-export async function sealNewInfo(
-	content: InfoContent,
+/** Seals the kindergarten's first page under a new Info Key, wrapped for staff and for each classroom. */
+export async function sealFirstInfoPage(
+	page: string,
+	content: InfoPageContent,
 	staffKey: CryptoKey,
 	classrooms: { id: string; groupKey: CryptoKey }[]
 ) {
@@ -58,11 +73,11 @@ export async function sealNewInfo(
 		...classrooms.map(({ id, groupKey }) => wrapping.infoKeyForClassroom(groupKey, id))
 	]);
 	const [infoKeyForStaff, ...infoKeys] = envelopes;
-	return {
-		content: await seal(content, key),
+	const newKey: NewInfoKey = {
 		infoKeyForStaff,
 		classrooms: classrooms.map(({ id }, index) => ({ classroom: id, infoKey: infoKeys[index] }))
 	};
+	return { content: await seal(page, content, key), key: newKey };
 }
 
 /** The Info Key wrapped with a new classroom's Group Key, from its copy for staff. */
@@ -78,33 +93,66 @@ export async function infoKeyForClassroom(
 }
 
 /**
- * The page's content as a device may show it, checked as a notice's is: anyone holding its key, every family
+ * A page's content as a device may show it, checked as a notice's is: anyone holding the Info Key, every family
  * included, could have written it.
  */
-async function open(record: InfoRecord, key: CryptoKey): Promise<Info> {
-	const data = await decryptData(record.content, key, { purpose: 'info-content' });
-	const { body, files } = fields(data);
-	const info: Info = { body: readDocument(body), editedAt: record.editedAt };
-	if (files !== undefined) info.files = readFiles(files);
-	return info;
-}
-
-/** Opens the page on a staff device, with the Staff Key. */
-export async function openInfoForStaff(record: StaffInfoRecord, staffKey: CryptoKey) {
-	return open(record, await unwrapKey(record.infoKeyForStaff, wrapping.infoKeyForStaff(staffKey)));
+async function openPage(record: InfoPageRecord, key: CryptoKey): Promise<InfoPage> {
+	const data = await decryptData(record.content, key, { purpose: 'info-page', page: record.id });
+	const { paper, body, files } = fields(data);
+	if (!papers.includes(paper as Paper)) fail();
+	const page: InfoPage = {
+		id: record.id,
+		editedAt: record.editedAt,
+		paper: paper as Paper,
+		body: readDocument(body)
+	};
+	if (files !== undefined) page.files = readFiles(files);
+	return page;
 }
 
 /**
- * Opens the page on a family device, with the Group Key of any of its classrooms, each of which holds a copy of
- * the Info Key.
+ * Opens pages with the Info Key `opening` gives, in the order the server sends them. A page that doesn't open is
+ * left out and counted, so one bad page doesn't hide the rest; without the key, none opens.
  */
-export async function openInfoForFamily(
-	record: InfoRecord,
+async function openPages(
+	records: InfoPageRecord[],
+	opening: () => Promise<CryptoKey>
+): Promise<OpenedInfo> {
+	if (!records.length) return { pages: [], unreadable: 0 };
+	const key = await opening().catch((cause: unknown) => {
+		if (cause instanceof UnreadableError) return undefined;
+		throw cause;
+	});
+	if (!key) return { pages: [], unreadable: records.length };
+	const results = await Promise.allSettled(records.map((record) => openPage(record, key)));
+	const pages: InfoPage[] = [];
+	for (const result of results) {
+		if (result.status === 'fulfilled') pages.push(result.value);
+		else if (!(result.reason instanceof UnreadableError)) throw result.reason;
+	}
+	return { pages, unreadable: records.length - pages.length };
+}
+
+/** Opens the pages on a staff device, with the Staff Key. */
+export function openInfoForStaff({ infoKeyForStaff, pages }: StaffInfo, staffKey: CryptoKey) {
+	return openPages(pages, async () =>
+		infoKeyForStaff ? unwrapKey(infoKeyForStaff, wrapping.infoKeyForStaff(staffKey)) : fail()
+	);
+}
+
+/**
+ * Opens the pages on a family device, with the Group Key of any of its classrooms, each of which holds a copy of the
+ * Info Key.
+ */
+export function openInfoForFamily(
+	records: InfoPageRecord[],
 	classrooms: { id: string; infoKey: string | null }[],
 	groupKeys: ReadonlyMap<string, CryptoKey>
 ) {
-	const copy = classrooms.find(({ id, infoKey }) => infoKey !== null && groupKeys.has(id));
-	if (!copy?.infoKey) throw new UnreadableError();
-	const opening = wrapping.infoKeyForClassroom(groupKeys.get(copy.id)!, copy.id);
-	return open(record, await unwrapKey(copy.infoKey, opening));
+	return openPages(records, async () => {
+		const copy = classrooms.find(({ id, infoKey }) => infoKey !== null && groupKeys.has(id));
+		if (!copy?.infoKey) fail();
+		const opening = wrapping.infoKeyForClassroom(groupKeys.get(copy.id)!, copy.id);
+		return unwrapKey(copy.infoKey, opening);
+	});
 }

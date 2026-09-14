@@ -4,7 +4,7 @@
 /** A new card as the server stores it: it keeps only a hash of the auth token, and the key stays wrapped. */
 export type NewCredential = { id: string; authToken: string; wrappedKey: string };
 
-/** A new classroom, with the info page's key wrapped for its Group Key once the kindergarten has a page. */
+/** A new classroom, with the Info Key wrapped for its Group Key once the kindergarten has info pages. */
 export type NewClassroom = {
 	id: string;
 	profile: string;
@@ -140,27 +140,32 @@ export type PhotoRecord = {
 	details: string | null;
 };
 
-/** The kindergarten's info page as the server keeps it: its content, encrypted with the page's Info Key. */
-export type InfoRecord = { content: string; editedAt: number };
-/** The info page as staff get it, with its Info Key wrapped for the Staff Key. */
-export type StaffInfoRecord = InfoRecord & { infoKeyForStaff: string };
-/** The info page's key, wrapped with the Group Key of one classroom. */
-export type InfoKey = { classroom: string; infoKey: string };
+/** One of the kindergarten's info pages as the server keeps it: its content, encrypted with the Info Key. */
+export type InfoPageRecord = { id: string; content: string; editedAt: number };
 /**
- * The info page as an admin's device saves it: its content, sealed with its Info Key, and the files the content
- * holds, uploaded just before. The files a save leaves out are deleted.
+ * The kindergarten's info pages as staff get them, in the order admins put them in, with the Info Key wrapped for
+ * the Staff Key, which the first page brings.
  */
-export type InfoChange = { content: string; files: string[] };
-/** The info page's first save, which brings its new Info Key, wrapped for staff and for every classroom. */
-export type NewInfo = InfoChange & { infoKeyForStaff: string; classrooms: InfoKey[] };
+export type StaffInfo = { infoKeyForStaff: string | null; pages: InfoPageRecord[] };
+/** The Info Key, wrapped with the Group Key of one classroom. */
+export type InfoKey = { classroom: string; infoKey: string };
+/** A new Info Key, wrapped for staff and for every classroom. */
+export type NewInfoKey = { infoKeyForStaff: string; classrooms: InfoKey[] };
+/**
+ * An info page as an admin's device saves it: its content, sealed with the Info Key, and the files the content
+ * holds, uploaded just before. The files a change leaves out are deleted.
+ */
+export type InfoPageChange = { content: string; files: string[] };
+/** A new info page, which goes after the others. The kindergarten's first brings the new Info Key. */
+export type NewInfoPage = InfoPageChange & { id: string; key?: NewInfoKey };
 
 /**
  * What a connected device opens: a staff member's records, or the classrooms a family's card joined, each with
- * its copy of the info page's key, with the notices and board photos of the classrooms it sees, and the info page
- * once an admin has saved it.
+ * its copy of the Info Key, with the notices and board photos of the classrooms it sees, and the kindergarten's
+ * info pages.
  */
 export type Access = (
-	| (Staff & { kindergarten: Kindergarten; info: StaffInfoRecord | null })
+	| (Staff & { kindergarten: Kindergarten; info: StaffInfo })
 	| (FamilyIdentity & {
 			classrooms: {
 				id: string;
@@ -168,7 +173,7 @@ export type Access = (
 				groupKeyForFamily: string;
 				infoKey: string | null;
 			}[];
-			info: InfoRecord | null;
+			info: Pick<StaffInfo, 'pages'>;
 	  })
 ) & { notices: NoticeRecord[]; photos: PhotoRecord[] };
 

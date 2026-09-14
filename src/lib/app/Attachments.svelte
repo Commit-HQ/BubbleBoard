@@ -8,7 +8,7 @@
 	import { Task, type Picture } from './state.svelte';
 	import { alert } from './ui';
 
-	// The files a notice or the info page carries: pictures as small squares that open on the whole screen, as the
+	// The files a notice or an info page carries: pictures as small squares that open on the whole screen, as the
 	// board's photo does, to zoom in or save one, and documents in rows that save them. Pictures are fetched once
 	// they come near the screen, so a long board doesn't fetch pictures no one scrolls to.
 	let {

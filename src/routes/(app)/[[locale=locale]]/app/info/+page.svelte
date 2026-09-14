@@ -1,55 +1,67 @@
 <script lang="ts">
-	import Attachments from '$lib/app/Attachments.svelte';
-	import NoticeBody from '$lib/app/NoticeBody.svelte';
+	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
+	import InfoPageCard from '$lib/app/InfoPageCard.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp } from '$lib/app/state.svelte';
-	import { button, paperClass } from '$lib/app/ui';
+	import { button } from '$lib/app/ui';
 	import Icon from '$lib/components/Icon.svelte';
-	import { formatDateTime, messages } from '$lib/i18n';
-	import { isBlank } from '$lib/info';
+	import { messages } from '$lib/i18n';
+	import { maxInfoPages, type InfoPage } from '$lib/info';
 	import { appPath } from '$lib/paths';
 	import type { PageProps } from './$types';
 
-	// The kindergarten's info page, from the header of every connected device: what everyone who uses the app should
-	// know, on plain paper, with its files. Admins write and change it from here; until they do, it says so.
+	// The kindergarten's info, from the header of every connected device: pages of what everyone who uses the app
+	// should know, each on its paper with its files, in the order admins put them in. Admins add pages here, and
+	// change, move, and delete each; until there's one, the page says so.
 	let { data }: PageProps = $props();
 	const app = getApp();
 	const t = $derived(messages[data.locale].app.info);
-	/** The page, when it shows something. */
-	const info = $derived(app.info && !isBlank(app.info) ? app.info : undefined);
+	const pages = $derived(app.infoPages);
+	let deleting = $state.raw<InfoPage>();
+
+	async function remove(page: InfoPage) {
+		await app.deleteInfoPage(page);
+		deleting = undefined;
+	}
 </script>
 
 <Screen locale={data.locale} title={t.title} need="connected">
-	{#if info}
-		<article
-			class="rounded-3xl p-5 text-ink shadow-lg ring-1 shadow-ink/5 ring-ink/5 sm:p-6 {paperClass.white}"
-		>
-			<NoticeBody blocks={info.body.content} />
-			{#if info.files?.length}
-				<div class="mt-5">
-					<Attachments
-						locale={data.locale}
-						files={info.files}
-						openPicture={(file) => app.infoPicture(file)}
-						saveDocument={(file) => app.saveInfoFile(file)}
-					/>
-				</div>
-			{/if}
-			<p class="mt-5 text-sm text-muted">
-				{t.updated(formatDateTime(data.locale, info.editedAt))}
-			</p>
-		</article>
-	{:else}
-		<p class="text-muted">
-			{app.unreadableInfo ? t.unreadable : app.admin ? t.emptyAdmin : t.empty}
-		</p>
-	{/if}
-	{#if app.admin}
-		<a
-			class="{app.info ? button.secondary : button.primary} justify-self-start"
-			href={appPath(data.locale, 'info/edit')}
-		>
-			<Icon name="pencil" class="size-4" />{app.info ? t.edit : t.add}
+	{#if app.admin && pages.length + app.unreadableInfoPages < maxInfoPages}
+		<a class="{button.primary} justify-self-start" href={appPath(data.locale, 'info/new')}>
+			<Icon name="plus" class="size-4" />{t.add}
 		</a>
 	{/if}
+	{#if app.unreadableInfoPages}
+		<p class="text-sm font-semibold text-muted">{t.unreadable}</p>
+	{/if}
+	{#if pages.length}
+		<ul class="grid gap-4">
+			{#each pages as page, index (page.id)}
+				<li>
+					<InfoPageCard
+						locale={data.locale}
+						{page}
+						first={index === 0}
+						last={index === pages.length - 1}
+						ondelete={() => (deleting = page)}
+					/>
+				</li>
+			{/each}
+		</ul>
+	{:else if !app.unreadableInfoPages}
+		<p class="text-muted">{app.admin ? t.emptyAdmin : t.empty}</p>
+	{/if}
 </Screen>
+
+{#if deleting}
+	{@const page = deleting}
+	<ConfirmDialog
+		locale={data.locale}
+		title={t.deleteTitle}
+		copy={t.deleteCopy}
+		confirmLabel={t.delete}
+		danger
+		onconfirm={() => remove(page)}
+		onclose={() => (deleting = undefined)}
+	/>
+{/if}

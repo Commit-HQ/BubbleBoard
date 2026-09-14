@@ -217,8 +217,8 @@ export function cardKind(teacher: Pick<Teacher, 'admin' | 'recovery'>): CardKind
 }
 
 /**
- * A new classroom: its Group Key, wrapped for staff, and its name. Once the kindergarten has an info page, the
- * page's key comes wrapped for the classroom too, from its copy for staff (`infoKeyForStaff`).
+ * A new classroom: its Group Key, wrapped for staff, and its name. Once the kindergarten has info pages, their
+ * Info Key comes wrapped for the classroom too, from its copy for staff (`infoKeyForStaff`).
  */
 export async function newClassroom(
 	staffKey: CryptoKey,

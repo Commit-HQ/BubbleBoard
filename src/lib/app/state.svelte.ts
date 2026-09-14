@@ -9,7 +9,7 @@ import {
 	type NoticeRecord,
 	type PhotoRecord,
 	type PollAnswer,
-	type StaffInfoRecord
+	type StaffInfo
 } from '$lib/api';
 import { readCard, type CardReading } from '$lib/card';
 import {
@@ -33,10 +33,11 @@ import type { Locale } from '$lib/i18n';
 import {
 	openInfoForFamily,
 	openInfoForStaff,
-	sealInfo,
-	sealNewInfo,
-	type Info,
-	type InfoContent
+	sealFirstInfoPage,
+	sealInfoPage,
+	type InfoPage,
+	type InfoPageContent,
+	type OpenedInfo
 } from '$lib/info';
 import {
 	installStep,
@@ -131,11 +132,11 @@ export type NoticeValues = {
 	files: (NoticeFile | NewFile)[];
 };
 
-/** The info page as its form fills it in: its text, and its files, as a notice's. */
-export type InfoValues = Pick<NoticeValues, 'body' | 'files'>;
+/** An info page as its form fills it in: its text on its paper, and its files, as a notice's. */
+export type InfoPageValues = Pick<NoticeValues, 'paper' | 'body' | 'files'>;
 
 /**
- * A board photo, or a picture on a notice or the info page, that this device opened, with the address its image
+ * A board photo, or a picture on a notice or an info page, that this device opened, with the address its image
  * shows at.
  */
 export type Picture = { blob: Blob; url: string };
@@ -179,9 +180,9 @@ function noticeFilePath(notice: string, file: string) {
 	return `/api/notices/${notice}/files/${file}`;
 }
 
-/** Where the encrypted bytes of the info page's file are kept. */
-function infoFilePath(file: string) {
-	return `/api/info/files/${file}`;
+/** Where the encrypted bytes of an info page's file are kept. */
+function infoFilePath(page: string, file: string) {
+	return `/api/info/pages/${page}/files/${file}`;
 }
 
 /**
@@ -221,10 +222,10 @@ export class App {
 	unreadableNotices = $state(0);
 	/** The photos of the boards of this device's classrooms: one for each classroom that shows one. */
 	photos = $state.raw<Photo[]>([]);
-	/** The kindergarten's info page, once an admin has saved it, when it opens on this device. */
-	info = $state.raw<Info>();
-	/** Whether the info page didn't open on this device. */
-	unreadableInfo = $state(false);
+	/** The kindergarten's info pages that open on this device, in the order admins put them in. */
+	infoPages = $state.raw<InfoPage[]>([]);
+	/** How many info pages didn't open on this device. */
+	unreadableInfoPages = $state(0);
 	connecting = $state(false);
 	cardError = $state<string>();
 	/** A card from a link, waiting for confirmation before it takes the place of this device's card. */
@@ -237,17 +238,19 @@ export class App {
 	/** The Family Key's envelope for a family device's card, as the server last sent it, for one-time cards. */
 	#familyKeyEnvelope?: string;
 	/**
-	 * The info page's key wrapped for staff, as the server last sent it to a staff device, which saves the page and
-	 * adds classrooms with it.
+	 * The Info Key wrapped for staff, as the server last sent it to a staff device, which saves info pages and adds
+	 * classrooms with it, once the first page made it.
 	 */
 	#infoKeyForStaff?: string;
+	/** Every info page's ID, in order, as the server last sent them to a staff device, pages that didn't open too. */
+	#infoPageIds: string[] = [];
 	#loadedAt = 0;
 	/** The load of the records and board under way, which a refresh meanwhile waits for. */
 	#reloading?: Promise<void>;
 	/** Whether something new came since the last load started, so the board loads again. */
 	#stale = false;
 	/**
-	 * The board photos and the pictures on notices and the info page this device has opened, by where they're kept,
+	 * The board photos and the pictures on notices and info pages this device has opened, by where they're kept,
 	 * while they're up.
 	 */
 	#pictures = new Map<string, Promise<Picture>>();
@@ -430,12 +433,10 @@ export class App {
 			classrooms = await readable(opening, 'unreadable-records');
 			this.familyClassrooms = classrooms;
 			await this.#openBoard(access.notices, classrooms, card);
-			const { info } = access;
 			const groupKeys = new Map(classrooms.map(({ id, groupKey }) => [id, groupKey]));
 			this.#infoKeyForStaff = undefined;
-			await this.#showInfo(
-				info ? openInfoForFamily(info, access.classrooms, groupKeys) : undefined
-			);
+			this.#infoPageIds = [];
+			this.#showInfo(await openInfoForFamily(access.info.pages, access.classrooms, groupKeys));
 		} else {
 			throw new UnreadableError();
 		}
@@ -499,26 +500,21 @@ export class App {
 		this.#keepPictures();
 	}
 
-	/**
-	 * Shows the info page an opening gives, or none before an admin first saves it. A page that doesn't open is left
-	 * out and said so, as notices are, so it doesn't hold back the rest.
-	 */
-	async #showInfo(opening?: Promise<Info>) {
-		try {
-			this.info = await opening;
-			this.unreadableInfo = false;
-		} catch (cause) {
-			if (!(cause instanceof UnreadableError)) throw cause;
-			this.info = undefined;
-			this.unreadableInfo = true;
-		}
+	/** Shows the info pages that opened, and how many didn't, as notices are, and lets go of pictures no page has. */
+	#showInfo({ pages, unreadable }: OpenedInfo) {
+		this.infoPages = pages;
+		this.unreadableInfoPages = unreadable;
 		this.#keepPictures();
 	}
 
-	/** Shows the info page as staff get it, keeping its key's copy for staff, which saving it and adding classrooms take. */
-	#showStaffInfo(record: StaffInfoRecord | null) {
-		this.#infoKeyForStaff = record?.infoKeyForStaff;
-		return this.#showInfo(record ? openInfoForStaff(record, this.#staff.staffKey) : undefined);
+	/**
+	 * Shows the info pages as staff get them, keeping the Info Key's copy for staff, which saving pages and adding
+	 * classrooms take, and every page's place, which moving one takes.
+	 */
+	async #showStaffInfo(info: StaffInfo) {
+		this.#infoKeyForStaff = info.infoKeyForStaff ?? undefined;
+		this.#infoPageIds = info.pages.map(({ id }) => id);
+		this.#showInfo(await openInfoForStaff(info, this.#staff.staffKey));
 	}
 
 	/** Runs a request made on purpose. A device whose session ended disconnects: only its card connects it again. */
@@ -565,6 +561,11 @@ export class App {
 		);
 	}
 
+	/** Sends an admin's change to the info pages, which come back as staff get them now. */
+	#changeInfo(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown) {
+		return this.#send<StaffInfo>(method, path, body, (info) => this.#showStaffInfo(info));
+	}
+
 	async #disconnect(notice?: string) {
 		// Notifications end with the session, whose subscription the server forgets: after connecting again,
 		// the device turns them on again.
@@ -574,6 +575,7 @@ export class App {
 		this.#keys = undefined;
 		this.#familyKeyEnvelope = undefined;
 		this.#infoKeyForStaff = undefined;
+		this.#infoPageIds = [];
 		this.#familyKeys.clear();
 		this.me = undefined;
 		this.catalog = emptyCatalog;
@@ -581,8 +583,8 @@ export class App {
 		this.board = [];
 		this.unreadableNotices = 0;
 		this.photos = [];
-		this.info = undefined;
-		this.unreadableInfo = false;
+		this.infoPages = [];
+		this.unreadableInfoPages = 0;
 		this.#keepPictures();
 		this.notice = notice;
 		this.status = 'disconnected';
@@ -690,7 +692,7 @@ export class App {
 		await this.#resume();
 	}
 
-	/** Adds a classroom, with the info page's key wrapped for it once the kindergarten has a page. */
+	/** Adds a classroom, with the Info Key wrapped for it once the kindergarten has info pages. */
 	async addClassroom(name: string) {
 		const classroom = await newClassroom(this.#staff.staffKey, name, this.#infoKeyForStaff);
 		await this.#change('POST', '/api/classrooms', classroom);
@@ -852,6 +854,16 @@ export class App {
 		await this.#changeBoard('PUT', `/api/notices/${notice.id}/vote`, answer);
 	}
 
+	/** The files a form attached or kept, as the content of a notice or an info page holds them. */
+	#contentFiles(files: (NoticeFile | NewFile)[]): NoticeFile[] {
+		return files.map((file) => ({
+			id: file.id,
+			name: file.name,
+			bytes: file.bytes,
+			key: file.key
+		}));
+	}
+
 	/**
 	 * Posts a notice, or changes `notice`, sealed under a new Notice Key for its classrooms. A change keeps
 	 * the name of whoever posted the notice; the recovery card posts without one. A poll goes inside the
@@ -862,12 +874,7 @@ export class App {
 	async saveNotice(values: NoticeValues, notice?: Notice) {
 		const id = notice?.id ?? createId();
 		const author = notice ? notice.author : this.myName;
-		const files: NoticeFile[] = values.files.map((file) => ({
-			id: file.id,
-			name: file.name,
-			bytes: file.bytes,
-			key: file.key
-		}));
+		const files = this.#contentFiles(values.files);
 		const content: NoticeContent = { paper: values.paper, body: values.body };
 		if (author) content.author = author;
 		if (values.poll) {
@@ -907,31 +914,45 @@ export class App {
 	}
 
 	/**
-	 * Saves the info page for an admin, sealed with its key, or at its first save under a new key for staff and for
-	 * every classroom, all of which an admin's device sees. The server learns nothing of its text or of its files'
-	 * names and keys. Files attached in the form were sealed then, and are uploaded one at a time first.
+	 * Adds an info page after the others, or changes `page`, sealed with the Info Key, or for the kindergarten's first
+	 * page under a new key for staff and for every classroom, all of which an admin's device sees. The server learns
+	 * nothing of a page's text, paper, or files' names and keys. Files attached in the form were sealed then, and are
+	 * uploaded one at a time first.
 	 */
-	async saveInfo(values: InfoValues) {
+	async saveInfoPage(values: InfoPageValues, page?: InfoPage) {
 		const { staffKey } = this.#staff;
-		const files: NoticeFile[] = values.files.map((file) => ({
-			id: file.id,
-			name: file.name,
-			bytes: file.bytes,
-			key: file.key
-		}));
-		const content: InfoContent = { body: values.body };
+		const id = page?.id ?? createId();
+		const files = this.#contentFiles(values.files);
+		const content: InfoPageContent = { paper: values.paper, body: values.body };
 		if (files.length) content.files = files;
 		const envelope = this.#infoKeyForStaff;
 		const sealed = envelope
-			? await sealInfo(content, staffKey, envelope)
-			: await sealNewInfo(content, staffKey, this.catalog.classrooms);
+			? await sealInfoPage(id, content, staffKey, envelope)
+			: await sealFirstInfoPage(id, content, staffKey, this.catalog.classrooms);
 		for (const file of values.files) {
-			if ('sealed' in file) await this.#uploadFile(infoFilePath(file.id), file);
+			if ('sealed' in file) await this.#uploadFile(infoFilePath(id, file.id), file);
 		}
 		const body = { ...sealed, files: files.map((file) => file.id) };
-		await this.#send<StaffInfoRecord>('PUT', '/api/info', body, (record) =>
-			this.#showStaffInfo(record)
+		if (page) await this.#changeInfo('PUT', `/api/info/pages/${id}`, body);
+		else await this.#changeInfo('POST', '/api/info/pages', { ...body, id });
+	}
+
+	deleteInfoPage(page: InfoPage) {
+		return this.#changeInfo('DELETE', `/api/info/pages/${page.id}`);
+	}
+
+	/**
+	 * Moves an info page one place up or down, past the page shown beside it, and sends every page's place, pages that
+	 * didn't open on this device too. The server refuses an order that missed a page added or deleted meanwhile.
+	 */
+	async moveInfoPage(page: InfoPage, by: -1 | 1) {
+		const index = this.infoPages.findIndex(({ id }) => id === page.id);
+		const beside = index < 0 ? undefined : this.infoPages[index + by];
+		if (!beside) return;
+		const pages = this.#infoPageIds.map((id) =>
+			id === page.id ? beside.id : id === beside.id ? page.id : id
 		);
+		await this.#changeInfo('PUT', '/api/info/order', { pages });
 	}
 
 	/** Fetches and decrypts one of a notice's documents, and saves it on this device under its name. */
@@ -939,9 +960,9 @@ export class App {
 		return this.#saveFile(noticeFilePath(notice.id, file.id), file);
 	}
 
-	/** Fetches and decrypts one of the info page's documents, and saves it on this device under its name. */
-	saveInfoFile(file: NoticeFile) {
-		return this.#saveFile(infoFilePath(file.id), file);
+	/** Fetches and decrypts one of an info page's documents, and saves it on this device under its name. */
+	saveInfoFile(page: InfoPage, file: NoticeFile) {
+		return this.#saveFile(infoFilePath(page.id, file.id), file);
 	}
 
 	async #saveFile(path: string, file: NoticeFile) {
@@ -963,9 +984,9 @@ export class App {
 		return this.#filePicture(noticeFilePath(notice.id, file.id), file);
 	}
 
-	/** One of the info page's pictures, opened with the key the page holds (`#picture`). */
-	infoPicture(file: NoticeFile) {
-		return this.#filePicture(infoFilePath(file.id), file);
+	/** One of an info page's pictures, opened with the key the page holds (`#picture`). */
+	infoPicture(page: InfoPage, file: NoticeFile) {
+		return this.#filePicture(infoFilePath(page.id, file.id), file);
 	}
 
 	#filePicture(path: string, file: NoticeFile) {
@@ -989,14 +1010,16 @@ export class App {
 		return picture;
 	}
 
-	/** Lets go of the pictures of board photos, notices' files, and the info page's files that aren't up anymore. */
+	/** Lets go of the pictures of board photos, and of files on notices and info pages, that aren't up anymore. */
 	#keepPictures() {
 		const up = new Set([
 			...this.photos.map(photoPath),
 			...this.board.flatMap(({ id, files = [] }) =>
 				files.map((file) => noticeFilePath(id, file.id))
 			),
-			...(this.info?.files ?? []).map((file) => infoFilePath(file.id))
+			...this.infoPages.flatMap(({ id, files = [] }) =>
+				files.map((file) => infoFilePath(id, file.id))
+			)
 		]);
 		for (const [path, picture] of this.#pictures) {
 			if (up.has(path)) continue;

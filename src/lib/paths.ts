@@ -28,6 +28,7 @@ type AppPage =
 	| 'notice/new'
 	| 'photo'
 	| 'info'
+	| 'info/new'
 	| 'info/edit';
 
 export function appPath(locale: Locale, page?: AppPage, query?: Record<string, string>) {

@@ -6,7 +6,7 @@ A small, open-source communication app for kindergarten communities. Inspired by
 
 Teachers share a moment. Parents get a notification. The hosting server stores encrypted content without the keys needed to read it.
 
-> **Status: first version, in use at one kindergarten.** This repository contains prerendered Croatian and English landing and privacy pages and the first part of the app: setting up a kindergarten, classrooms, teachers and admins, children with their family cards, printing cards, and connecting devices with a card's link, the camera, a photo of it, or its code, or, for a family's other devices, a one-time QR code shown on a connected one. Everything is encrypted in the browser ([access format](docs/access-format.md)). Teachers post notices, written with a rich text editor and sometimes with a poll or attached files, to the board on everyone's home, and families mark them as seen, answer the polls for their teachers, open the pictures on the whole screen, and save pictures and documents. Teachers also put up a photo of each classroom's corkboard, which its families see until a new one replaces it. Admins write an info page for the whole kindergarten, with text and files, which everyone opens from the header. Phones and tablets install the app before using it, and devices can turn on notifications for new notices and board photos, which carry no content; messages and classroom photos are not implemented yet. The landing page deliberately describes the finished product; this README tracks what exists.
+> **Status: first version, in use at one kindergarten.** This repository contains prerendered Croatian and English landing and privacy pages and the first part of the app: setting up a kindergarten, classrooms, teachers and admins, children with their family cards, printing cards, and connecting devices with a card's link, the camera, a photo of it, or its code, or, for a family's other devices, a one-time QR code shown on a connected one. Everything is encrypted in the browser ([access format](docs/access-format.md)). Teachers post notices, written with a rich text editor and sometimes with a poll or attached files, to the board on everyone's home, and families mark them as seen, answer the polls for their teachers, open the pictures on the whole screen, and save pictures and documents. Teachers also put up a photo of each classroom's corkboard, which its families see until a new one replaces it. Admins write info pages for the whole kindergarten, each on its paper with its own files and in the order they choose, which everyone opens from the header. Phones and tablets install the app before using it, and devices can turn on notifications for new notices and board photos, which carry no content; messages and classroom photos are not implemented yet. The landing page deliberately describes the finished product; this README tracks what exists.
 
 ## What we’re building
 
@@ -81,13 +81,13 @@ npx wrangler d1 execute DB --remote --file scripts/start-over.sql
 npm run setup-link
 ```
 
-Board photos and the files of notices and the info page stay in R2, where nothing can open them without the old keys, until a daily cleanup a day later deletes them, since no record names them anymore.
+Board photos and the files of notices and info pages stay in R2, where nothing can open them without the old keys, until a daily cleanup a day later deletes them, since no record names them anymore.
 
 The landing page is the same on every installation: it names no kindergarten, and its contact details belong to the BubbleBoard project (`src/lib/project.ts`). No credentials belong in Git.
 
 ### Storage
 
-The Worker keeps its records in a D1 database bound as `DB`, with the schema in `migrations/`. `wrangler.jsonc` names the database without an ID, so the first deploy creates it in your account, and local development keeps its own copy in `.wrangler/`. Nothing in it is readable without a card: names live in encrypted profiles, and the server stores hashes of card and session tokens. See [Backup and restore](#backup-and-restore). Board photos and the files of notices and the info page are encrypted in the browser and kept in a private R2 bucket bound as `FILES`, which the first deploy creates as `bubbleboard-files`; only the Worker reads it, for devices that may see a photo or file.
+The Worker keeps its records in a D1 database bound as `DB`, with the schema in `migrations/`. `wrangler.jsonc` names the database without an ID, so the first deploy creates it in your account, and local development keeps its own copy in `.wrangler/`. Nothing in it is readable without a card: names live in encrypted profiles, and the server stores hashes of card and session tokens. See [Backup and restore](#backup-and-restore). Board photos and the files of notices and info pages are encrypted in the browser and kept in a private R2 bucket bound as `FILES`, which the first deploy creates as `bubbleboard-files`; only the Worker reads it, for devices that may see a photo or file.
 
 Cloudflare’s free allowances may suit a small kindergarten, but usage limits and pricing still apply. On the Free plan, the Worker and D1 stop at their daily limits rather than charging, while R2 charges once a month’s use passes its free allowance of 10 GB stored, a million uploads, and ten million downloads, and Cloudflare offers no way to cap that. So the database counts every byte BubbleBoard keeps in R2 and every upload and download, and refuses more once a limit set in `.env` is reached, whoever asks:
 
@@ -97,7 +97,7 @@ Cloudflare’s free allowances may suit a small kindergarten, but usage limits a
 | `STORAGE_UPLOADS_PER_MONTH`   | 900000  | Photos and files put up in a month, across R2 |
 | `STORAGE_DOWNLOADS_PER_MONTH` | 9000000 | Photos and files opened in a month, across R2 |
 
-The defaults stay a tenth below the free allowance; `0` stops uploads or downloads altogether. Months are counted in UTC. Teachers make room by taking down photos and deleting notices with files, and admins by taking files off the info page, which deletes their bytes right away; notices past their days leave with their files in the daily cleanup. Change a limit in `.env`, then run `npm run deploy`.
+The defaults stay a tenth below the free allowance; `0` stops uploads or downloads altogether. Months are counted in UTC. Teachers make room by taking down photos and deleting notices with files, and admins by taking files off info pages or deleting pages, which deletes their bytes right away; notices past their days leave with their files in the daily cleanup. Change a limit in `.env`, then run `npm run deploy`.
 
 ### Backup and restore
 
@@ -110,7 +110,7 @@ npx wrangler d1 time-travel restore DB --bookmark=<bookmark>
 
 For a copy that lasts longer, export the database: `npx wrangler d1 export DB --remote --output=backup.sql`. It holds only encrypted records, IDs, and hashes, but keep it private. An export briefly holds up other requests to the database. To restore an export into a new, empty database, run `npx wrangler d1 execute DB --remote --file=backup.sql`.
 
-Board photos and the files of notices and the info page in R2 have no backup: they're encrypted, notices leave after their days, and a teacher can put a lost one up again. Nothing above restores keys: keep the recovery QR code locked away and `VAPID_KEY` in a password manager. If every staff card is lost, the only way back is starting over.
+Board photos and the files of notices and info pages in R2 have no backup: they're encrypted, notices leave after their days, and a teacher can put a lost one up again. Nothing above restores keys: keep the recovery QR code locked away and `VAPID_KEY` in a password manager. If every staff card is lost, the only way back is starting over.
 
 ## Small by design
 

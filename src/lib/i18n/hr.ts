@@ -161,7 +161,7 @@ export const hr = {
 		points: [
 			{
 				title: 'Što se čuva',
-				copy: 'Imena, obavijesti, stranica s informacijama, ankete, fotografije i datoteke šifriraju se na uređaju prije slanja. Poslužitelj ih ne može pročitati, a čuva samo ono što mu treba za rad, bez imena, na primjer kad je obavijest objavljena.'
+				copy: 'Imena, obavijesti, stranice s informacijama, ankete, fotografije i datoteke šifriraju se na uređaju prije slanja. Poslužitelj ih ne može pročitati, a čuva samo ono što mu treba za rad, bez imena, na primjer kad je obavijest objavljena.'
 			},
 			{
 				title: 'Gdje',
@@ -169,7 +169,7 @@ export const hr = {
 			},
 			{
 				title: 'Koliko dugo',
-				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojitelj, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, stranica s informacijama dok je administrator ne promijeni, imena dok ih administrator ne ukloni, a prijava uređaja do 90 dana bez korištenja. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
+				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojitelj, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, stranice s informacijama dok ih administrator ne promijeni ili obriše, imena dok ih administrator ne ukloni, a prijava uređaja do 90 dana bez korištenja. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
 			},
 			{
 				title: 'Obavijesti na uređaju',
@@ -467,15 +467,21 @@ export const hr = {
 			empty:
 				'Ovdje još nema ničega. Kad vrtić doda informacije za sve, na primjer radno vrijeme ili kontakte, pojavit će se ovdje.',
 			emptyAdmin:
-				'Ovdje još nema ničega. Dodajte ono što svi u vrtiću trebaju znati, na primjer radno vrijeme, kontakte ili jelovnik, po želji s datotekama.',
-			add: 'Dodaj informacije',
+				'Ovdje još nema ničega. Dodajte stranicu za svaku temu koju svi u vrtiću trebaju znati, na primjer radno vrijeme, kontakte ili prehranu, po želji s datotekama.',
+			add: 'Dodaj stranicu',
+			newTitle: 'Nova stranica',
+			editTitle: 'Uredi stranicu',
 			edit: 'Uredi',
-			editTitle: 'Uredi informacije',
+			delete: 'Obriši',
+			deleteTitle: 'Obrisati ovu stranicu?',
+			deleteCopy: 'Odmah nestaje, zajedno s datotekama.',
+			moveUp: 'Pomakni gore',
+			moveDown: 'Pomakni dolje',
 			text: 'Tekst',
-			hint: 'Ovu stranicu vide obitelji i odgojitelji svih skupina dok je ne promijenite. Spremanje ne šalje obavijest.',
+			hint: 'Ovu stranicu vide obitelji i odgojitelji svih skupina dok je ne promijenite ili obrišete. Spremanje ne šalje obavijest.',
+			save: 'Spremi promjene',
 			updated: (when: string) => `Ažurirano ${when}`,
-			unreadable:
-				'Stranica s informacijama nije se otvorila na ovom uređaju. Pokušajte ponovno, a ako se to ponavlja, javite administratoru.'
+			unreadable: 'Neke se stranice nisu otvorile na ovom uređaju.'
 		},
 		notices: {
 			title: 'Obavijesti',
@@ -629,6 +635,8 @@ export const hr = {
 			'empty-notice': 'Najprije napišite obavijest.',
 			'notice-too-long': 'Obavijest je predugačka. Skratite je i pokušajte ponovno.',
 			'info-too-long': 'Stranica je predugačka. Skratite je i pokušajte ponovno.',
+			'empty-page': 'Najprije napišite stranicu.',
+			'too-many-pages': 'Stranica može biti najviše 20. Najprije obrišite onu koja više ne treba.',
 			'no-classrooms': 'Odaberite barem jednu skupinu.',
 			'poll-answers': 'Anketi dodajte barem dva odgovora.',
 			'unusable-photo': 'Ta se fotografija ne može upotrijebiti. Pokušajte s drugom.',

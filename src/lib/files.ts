@@ -9,11 +9,11 @@ import { CodedError } from '$lib/errors';
 import { isAppleTouch } from '$lib/install';
 import { imageBlob, pictureToSave, preparePhoto } from '$lib/photos';
 
-// Files attached to notices and the info page (docs/access-format.md): documents and pictures a teacher adds to a
-// notice, or an admin to the info page. The browser encrypts each with a key of its own, which goes inside the
+// Files attached to notices and info pages (docs/access-format.md): documents and pictures a teacher adds to a
+// notice, or an admin to an info page. The browser encrypts each with a key of its own, which goes inside the
 // content with the file's name, so whoever opens the notice or the page opens its files. The server keeps their
-// encrypted bytes in private R2, can't open them, and deletes them with what carries them. Boards and the info
-// page show pictures, which devices save as JPEG or PNG, and devices save documents as they are.
+// encrypted bytes in private R2, can't open them, and deletes them with what carries them. Boards and info pages
+// show pictures, which devices save as JPEG or PNG, and devices save documents as they are.
 
 /** The most a file may take, which the server also holds it to. */
 export const maxFileBytes = 10 * 1024 * 1024;

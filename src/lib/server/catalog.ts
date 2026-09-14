@@ -102,7 +102,7 @@ export async function setUp(db: D1Database, teachers: Setup['teachers']) {
 
 /**
  * What a connected device opens: a staff member's records, or the classrooms a family's card joined, each with its
- * copy of the info page's key, with the notices and board photos of the classrooms it sees, and the info page.
+ * copy of the Info Key, with the notices and board photos of the classrooms it sees, and the info pages.
  */
 export async function accessFor(db: D1Database, current: Identity): Promise<Access> {
 	const onTheBoard = Promise.all([board(db, current), boardPhotos(db, current)]);
@@ -178,8 +178,8 @@ export async function kindergarten(db: D1Database, staff: Staff): Promise<Kinder
 }
 
 /**
- * Adds a classroom. Once the kindergarten has an info page, the classroom brings the page's key, and the database
- * refuses it without one, or with one before there's a page (migrations/0013_info.sql).
+ * Adds a classroom. Once the kindergarten has an Info Key, the classroom brings a copy of it, and the database
+ * refuses it without one, or with one before there's a key (migrations/0013_info.sql).
  */
 export async function addClassroom(db: D1Database, admin: Admin, classroom: NewClassroom) {
 	await transaction(db, [

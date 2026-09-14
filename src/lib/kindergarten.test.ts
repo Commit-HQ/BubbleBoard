@@ -214,6 +214,6 @@ function familyAccess(
 		})),
 		notices: [],
 		photos: [],
-		info: null
+		info: { pages: [] }
 	};
 }

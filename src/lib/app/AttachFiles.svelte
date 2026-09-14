@@ -12,7 +12,7 @@
 	import type { Task } from './state.svelte';
 	import { alert, button, field, filePicker } from './ui';
 
-	// The files in the form of a notice or the info page: those it carries already, and files picked here, each made
+	// The files in the form of a notice or an info page: those it carries already, and files picked here, each made
 	// ready and sealed as it's attached, as long as there's room for them. `task` attaches them, so the form can wait
 	// for it before saving.
 	let {

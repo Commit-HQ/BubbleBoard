@@ -169,7 +169,7 @@ export const en = {
 		points: [
 			{
 				title: 'What’s stored',
-				copy: 'Names, notices, the info page, polls, photos, and files are encrypted on the device before they’re sent. The server can’t read them, and keeps only what it needs to work, without names, such as when a notice was posted.'
+				copy: 'Names, notices, info pages, polls, photos, and files are encrypted on the device before they’re sent. The server can’t read them, and keeps only what it needs to work, without names, such as when a notice was posted.'
 			},
 			{
 				title: 'Where',
@@ -177,7 +177,7 @@ export const en = {
 			},
 			{
 				title: 'How long',
-				copy: 'Notices stay up for the 1 to 90 days a teacher chooses, a notice board photo until it’s replaced, the info page until an admin changes it, names until an admin removes them, and a device’s login until it goes unused for 90 days. Deleted records stay in the database’s backup history for up to 30 days.'
+				copy: 'Notices stay up for the 1 to 90 days a teacher chooses, a notice board photo until it’s replaced, info pages until an admin changes or deletes them, names until an admin removes them, and a device’s login until it goes unused for 90 days. Deleted records stay in the database’s backup history for up to 30 days.'
 			},
 			{
 				title: 'Notifications',
@@ -476,22 +476,28 @@ export const en = {
 		},
 		// The link to the landing page in the footer of every app page.
 		about: 'About BubbleBoard',
-		// The kindergarten's info page, from the header: what everyone who uses the app should know.
+		// The kindergarten's info pages, from the header: what everyone who uses the app should know.
 		info: {
 			title: 'Info',
 			empty:
 				'Nothing here yet. When your kindergarten adds information for everyone, such as opening hours or contacts, it appears here.',
 			emptyAdmin:
-				'Nothing here yet. Add what everyone at your kindergarten should know, such as opening hours, contacts, or the menu, with files if you like.',
-			add: 'Add info',
+				'Nothing here yet. Add a page for each thing everyone at your kindergarten should know, such as opening hours, contacts, or meals, with files if you like.',
+			add: 'Add page',
+			newTitle: 'New page',
+			editTitle: 'Edit page',
 			edit: 'Edit',
-			editTitle: 'Edit info',
+			delete: 'Delete',
+			deleteTitle: 'Delete this page?',
+			deleteCopy: 'It comes off right away, with its files.',
+			moveUp: 'Move up',
+			moveDown: 'Move down',
 			text: 'Text',
-			hint: 'Families and teachers of every classroom see this page until you change it. Saving it sends no notification.',
-			// When the page was last saved (formatDateTime).
+			hint: 'Families and teachers of every classroom see this page until you change or delete it. Saving it sends no notification.',
+			save: 'Save changes',
+			// When a page was last saved (formatDateTime).
 			updated: (when: string) => `Updated ${when}`,
-			unreadable:
-				'The info page didn’t open on this device. Try again, and if it keeps happening, tell an admin.'
+			unreadable: 'Some pages didn’t open on this device.'
 		},
 		notices: {
 			title: 'Notices',
@@ -650,6 +656,8 @@ export const en = {
 			'empty-notice': 'Write the notice first.',
 			'notice-too-long': 'This notice is too long. Shorten it, then try again.',
 			'info-too-long': 'This page is too long. Shorten it, then try again.',
+			'empty-page': 'Write the page first.',
+			'too-many-pages': 'There can be up to 20 pages. Delete one you no longer need first.',
 			'no-classrooms': 'Choose at least one classroom.',
 			'poll-answers': 'Give the poll at least two answers.',
 			'unusable-photo': 'That photo couldn’t be used. Try another one.',

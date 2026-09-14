@@ -168,7 +168,7 @@ function readPoll(value: unknown): Poll {
 }
 
 /**
- * The files of a notice or the info page as a device may show them: up to ten, each once, with a name of a kind
+ * The files of a notice or an info page as a device may show them: up to ten, each once, with a name of a kind
  * they carry, a size, and a key. Anyone holding the key that opens them could have written them.
  */
 export function readFiles(value: unknown): NoticeFile[] {
