@@ -469,8 +469,7 @@ export const en = {
 			share: 'Share link',
 			copyLink: 'Copy link',
 			copied: 'Link copied.',
-			shareText: (until: string) =>
-				`Connect to our kindergarten’s BubbleBoard with this link. It works for one device, until ${until}.`,
+			shareText: 'Join our kindergarten’s BubbleBoard. The link works for 24 hours.',
 			connectAgain:
 				'This device was connected before it could add others. To add devices from it, sign out, then connect it again with your family QR code.'
 		},

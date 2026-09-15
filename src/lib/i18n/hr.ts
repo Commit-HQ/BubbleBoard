@@ -456,8 +456,7 @@ export const hr = {
 			share: 'Podijeli poveznicu',
 			copyLink: 'Kopiraj poveznicu',
 			copied: 'Poveznica je kopirana.',
-			shareText: (until: string) =>
-				`Povežite se s BubbleBoardom našeg vrtića ovom poveznicom. Radi za jedan uređaj, do ${until}.`,
+			shareText: 'Priključite se BubbleBoardu našeg vrtića. Poveznica vrijedi 24 sata.',
 			connectAgain:
 				'Ovaj je uređaj povezan prije nego što je mogao dodavati druge. Da biste s njega dodavali uređaje, odjavite ga pa ga ponovno povežite obiteljskim QR kodom.'
 		},

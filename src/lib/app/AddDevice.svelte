@@ -36,7 +36,7 @@
 		});
 	}
 
-	function share(link: string, until: string) {
+	function share(link: string) {
 		return task.run(async () => {
 			if (!canShare) {
 				await navigator.clipboard.writeText(link);
@@ -44,7 +44,7 @@
 				return;
 			}
 			try {
-				await navigator.share({ text: t.addDevice.shareText(until), url: link });
+				await navigator.share({ text: t.addDevice.shareText, url: link });
 			} catch (cause) {
 				// Closing the share sheet shares nothing, as it should.
 				if (!(cause instanceof DOMException && cause.name === 'AbortError')) throw cause;
@@ -77,12 +77,7 @@
 			</div>
 		</div>
 		<div class="mt-6 flex flex-wrap gap-2">
-			<button
-				class={button.primary}
-				type="button"
-				disabled={task.busy}
-				onclick={() => share(link, until)}
-			>
+			<button class={button.primary} type="button" disabled={task.busy} onclick={() => share(link)}>
 				<Icon name={canShare ? 'share' : 'link'} class="size-4" />
 				{canShare ? t.addDevice.share : t.addDevice.copyLink}
 			</button>
