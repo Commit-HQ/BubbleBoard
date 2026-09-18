@@ -1,5 +1,15 @@
-/** What every notification says. The service worker shows it without the rest of the messages. */
-export const notificationText = 'New notice from your kindergarten';
+import type { PushKind } from '../push';
+
+/**
+ * What a notification says, by what happened. The service worker shows these without the rest of the
+ * messages. A teacher sees the same words as a family, so none of them say who they came from.
+ */
+export const notificationText: Record<PushKind, string> = {
+	notice: 'New notice from your kindergarten',
+	message: 'New message',
+	slots: 'New meeting times',
+	booking: 'Meeting time changed'
+};
 
 export const en = {
 	languageName: 'English',

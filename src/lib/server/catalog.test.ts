@@ -1279,7 +1279,11 @@ describe('storage', () => {
 describe('notifications', () => {
 	const endpoint = (name: string | number) => `https://fcm.googleapis.com/fcm/send/${name}`;
 	const turnOn = async (db: D1Database, device: RequestEvent, name: string | number) =>
-		subscribe(db, endpoint(name), (await sessionHash(device))!);
+		subscribe(
+			db,
+			{ endpoint: endpoint(name), p256dh: null, auth: null },
+			(await sessionHash(device))!
+		);
 	const subscribed = async (db: D1Database) => {
 		const { results } = await db
 			.prepare('SELECT endpoint FROM push_subscriptions ORDER BY endpoint')
@@ -1307,7 +1311,10 @@ describe('notifications', () => {
 		}
 
 		const reached = await recipients(db, [bubbles], await sessionHash(poster));
-		expect(reached.sort()).toEqual([endpoint('family'), endpoint('teacher')]);
+		expect(reached.map(({ endpoint }) => endpoint).sort()).toEqual([
+			endpoint('family'),
+			endpoint('teacher')
+		]);
 	});
 
 	it('end with their session: signing out, a replaced card, or a session that ran out', async () => {
@@ -1348,7 +1355,17 @@ describe('notifications', () => {
 			return new Response(null, { status: Number(String(url).split('/').pop()) });
 		};
 		const subject = 'https://bubbleboard.example.com';
-		const body: PushMessage = { endpoints: statuses.map(endpoint), subject, attempt: 0 };
+		const subscriber = (status: number) => ({
+			endpoint: endpoint(status),
+			p256dh: null,
+			auth: null
+		});
+		const body: PushMessage = {
+			devices: statuses.map(subscriber),
+			subject,
+			kind: 'notice',
+			attempt: 0
+		};
 		const batch = { messages: [{ body, ack: () => (acknowledged = true) }] };
 		const env = {
 			DB: db,
@@ -1365,7 +1382,10 @@ describe('notifications', () => {
 		expect(requests[0].headers).toMatchObject({ TTL: '86400', Topic: 'notice' });
 		expect(await subscribed(db)).toEqual([201, 400, 429, 503].map(endpoint));
 		expect(queued).toEqual([
-			[{ endpoints: [endpoint(429), endpoint(503)], subject, attempt: 1 }, { delaySeconds: 60 }]
+			[
+				{ devices: [subscriber(429), subscriber(503)], subject, kind: 'notice', attempt: 1 },
+				{ delaySeconds: 60 }
+			]
 		]);
 		expect(acknowledged).toBe(true);
 	});

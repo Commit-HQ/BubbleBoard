@@ -1,7 +1,13 @@
 import type { Messages } from './en';
+import type { PushKind } from '../push';
 
-/** What every notification says (en.ts). */
-export const notificationText = 'Nova obavijest iz vrtića';
+/** What a notification says, by what happened (en.ts). */
+export const notificationText: Record<PushKind, string> = {
+	notice: 'Nova obavijest iz vrtića',
+	message: 'Nova poruka',
+	slots: 'Novi termini za razgovore',
+	booking: 'Promjena termina razgovora'
+};
 
 export const hr = {
 	languageName: 'Hrvatski',

@@ -1,16 +1,22 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import { fromBase64Url, toBase64Url } from '../base64url';
+import { pushCode, type PushKind } from '../push';
 
-// Notifications for new notices and board photos: Web Push without content (RFC 8030), signed with the
-// installation's VAPID key (RFC 8292). A push only wakes the service worker, which shows the same words every
-// time, so the server encrypts no payload and a push service learns nothing about a notice or photo. Posting
-// puts the devices to notify on a queue, in groups one Worker invocation can send, and the queue handler
-// sends them (worker/index.js). Imports stay relative: Wrangler bundles this for that handler without SvelteKit.
+// Notifications for new notices, board photos, messages and meeting times: Web Push (RFC 8030), signed with
+// the installation's VAPID key (RFC 8292). A push carries one letter saying which of those happened,
+// encrypted for the one device it's going to (RFC 8291), so a push service carries it without being able to
+// read it and learns nothing about a notice, a message, or a child. The words themselves never leave the
+// device: the service worker holds them. Posting puts the devices to notify on a queue, in groups one Worker
+// invocation can send, and the queue handler sends them (worker/index.js). Imports stay relative: Wrangler
+// bundles this for that handler without SvelteKit.
 
-/** A queue message: the devices to notify, and how many times this group was tried before. */
+/** Where to push, and the keys the device's browser made, which are empty until its app sends them. */
+export type PushDevice = { endpoint: string; p256dh: string | null; auth: string | null };
+/** A queue message: the devices to notify, what happened, and how many times this group was tried before. */
 export type PushMessage = {
-	endpoints: string[];
+	devices: PushDevice[];
 	subject: string;
+	kind: PushKind;
 	attempt: number;
 	conversation?: string;
 };
@@ -38,15 +44,23 @@ export function isPushEndpoint(value: unknown): value is string {
 	);
 }
 
+/** A subscription key of the length its browser makes it, or nothing, which leaves that device's pushes empty. */
+export function pushKey(value: unknown, bytes: number) {
+	if (typeof value !== 'string') return null;
+	return fromBase64Url(value)?.length === bytes ? value : null;
+}
+
 /** Keeps a device's subscription with the session that sent it, moving it from an earlier session. */
-export async function subscribe(db: D1Database, endpoint: string, session: string) {
-	// A subscription that's already with this session isn't written again.
+export async function subscribe(db: D1Database, device: PushDevice, session: string) {
+	// A subscription already with this session, by these keys, isn't written again. `IS NOT` compares keys
+	// that aren't there, which is what a device subscribed before this installation stored them has.
 	await db
 		.prepare(
-			`INSERT INTO push_subscriptions (endpoint, session_hash) VALUES (?1, ?2)
-			ON CONFLICT (endpoint) DO UPDATE SET session_hash = ?2 WHERE session_hash <> ?2`
+			`INSERT INTO push_subscriptions (endpoint, session_hash, p256dh, auth) VALUES (?1, ?2, ?3, ?4)
+			ON CONFLICT (endpoint) DO UPDATE SET session_hash = ?2, p256dh = ?3, auth = ?4
+			WHERE session_hash <> ?2 OR p256dh IS NOT ?3 OR auth IS NOT ?4`
 		)
-		.bind(endpoint, session)
+		.bind(device.endpoint, session, device.p256dh, device.auth)
 		.run();
 }
 
@@ -116,6 +130,78 @@ export async function vapidAuthorization(
 	return `vapid t=${token}.${toBase64Url(new Uint8Array(signature))}, k=${key.publicKey}`;
 }
 
+/** Bytes WebCrypto takes: a view of an ArrayBuffer of its own, not of memory shared with another thread. */
+type Bytes = Uint8Array<ArrayBuffer>;
+
+const join = (...parts: Uint8Array[]): Bytes => {
+	const all = new Uint8Array(parts.reduce((size, part) => size + part.length, 0));
+	let at = 0;
+	for (const part of parts) {
+		all.set(part, at);
+		at += part.length;
+	}
+	return all;
+};
+/** A label, which RFC 8188 ends with a zero byte. */
+const label = (text: string) => join(new TextEncoder().encode(text), new Uint8Array([0]));
+/** HKDF (RFC 5869), whose extract and expand WebCrypto does in the one step. */
+async function hkdf(salt: Bytes, secret: Bytes, info: Bytes, bytes: number) {
+	const key = await crypto.subtle.importKey('raw', secret, 'HKDF', false, ['deriveBits']);
+	return new Uint8Array(
+		await crypto.subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt, info }, key, bytes * 8)
+	);
+}
+
+/**
+ * The letter for what happened, encrypted for one device (RFC 8291) in the aes128gcm encoding (RFC 8188).
+ * The key comes from this message's own key agreed with the device's, so the push service carries a body it
+ * can't read, and every letter is one byte, so every body is the same size. A device whose keys aren't
+ * there yet gets an empty body, and its service worker shows the words for a notice.
+ */
+export async function encryptKind(device: PushDevice, kind: PushKind) {
+	const theirPublic = fromBase64Url(device.p256dh ?? '');
+	const authSecret = fromBase64Url(device.auth ?? '');
+	if (theirPublic?.length !== 65 || authSecret?.length !== 16) return new Uint8Array();
+	const salt = crypto.getRandomValues(new Uint8Array(16));
+	const ours = (await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, [
+		'deriveBits'
+	])) as CryptoKeyPair;
+	const ourPublic = new Uint8Array(await crypto.subtle.exportKey('raw', ours.publicKey));
+	const theirs = await crypto.subtle.importKey(
+		'raw',
+		theirPublic,
+		{ name: 'ECDH', namedCurve: 'P-256' },
+		false,
+		[]
+	);
+	const shared = new Uint8Array(
+		await crypto.subtle.deriveBits({ name: 'ECDH', public: theirs }, ours.privateKey, 256)
+	);
+	// The secret binds to both devices' keys, so it's good for this one device only (RFC 8291 §3.3).
+	const secret = await hkdf(
+		authSecret,
+		shared,
+		join(label('WebPush: info'), theirPublic, ourPublic),
+		32
+	);
+	const [contentKey, nonce] = await Promise.all([
+		hkdf(salt, secret, label('Content-Encoding: aes128gcm'), 16),
+		hkdf(salt, secret, label('Content-Encoding: nonce'), 12)
+	]);
+	const aes = await crypto.subtle.importKey('raw', contentKey, 'AES-GCM', false, ['encrypt']);
+	// One record: the letter, then the byte that says no more records follow.
+	const record = join(new TextEncoder().encode(pushCode(kind)), new Uint8Array([2]));
+	const sealed = new Uint8Array(
+		await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aes, record)
+	);
+	// The header the device reads the message with: the salt, the record size, and this message's key.
+	const header = new Uint8Array(21);
+	header.set(salt);
+	new DataView(header.buffer).setUint32(16, 4096);
+	header[20] = ourPublic.length;
+	return join(header, ourPublic, sealed);
+}
+
 /**
  * The devices that turned on notifications for a notice's classrooms: families in them and the teachers
  * assigned to them, except the device that posted it. Admins hear only about the classrooms they teach.
@@ -128,7 +214,7 @@ export async function recipients(
 ) {
 	const { results } = await db
 		.prepare(
-			`SELECT p.endpoint FROM push_subscriptions p
+			`SELECT p.endpoint, p.p256dh, p.auth FROM push_subscriptions p
 			JOIN sessions s ON s.token_hash = p.session_hash
 			JOIN credentials c ON c.id = s.credential_id
 			WHERE s.expires_at > ?1 AND p.session_hash <> ?2 AND (
@@ -137,28 +223,29 @@ export async function recipients(
 			)`
 		)
 		.bind(now, poster ?? '', JSON.stringify(classrooms))
-		.all<{ endpoint: string }>();
-	return results.map(({ endpoint }) => endpoint);
+		.all<PushDevice>();
+	return results;
 }
 
-/**
- * Notifies the families and teachers of classrooms about a new notice or board photo, except the device that
- * posted it, by putting them on the queue in groups, signed for this installation's address. Without a
- * queue, as in `vite dev`, nothing is sent.
- */
-export async function announce(
+/** Puts devices on the queue in groups, each saying what happened, signed for this installation's address. */
+async function queue(
 	event: RequestEvent,
-	classrooms: string[],
-	poster: string | undefined
+	env: PushEnv,
+	devices: PushDevice[],
+	kind: PushKind,
+	conversation?: string
 ) {
-	const env = event.platform?.env;
-	if (!env?.NOTIFICATIONS) return;
-	const endpoints = await recipients(env.DB, classrooms, poster);
 	const subject = event.url.origin;
 	const messages: { body: PushMessage }[] = [];
-	for (let start = 0; start < endpoints.length; start += groupSize) {
+	for (let start = 0; start < devices.length; start += groupSize) {
 		messages.push({
-			body: { endpoints: endpoints.slice(start, start + groupSize), subject, attempt: 0 }
+			body: {
+				devices: devices.slice(start, start + groupSize),
+				subject,
+				kind,
+				attempt: 0,
+				...(conversation ? { conversation } : {})
+			}
 		});
 	}
 	// A batch takes at most 100 messages.
@@ -167,24 +254,45 @@ export async function announce(
 	}
 }
 
+/**
+ * Notifies the families and teachers of classrooms about a new notice or board photo, or meeting times they
+ * can book, except the device that posted it. Without a queue, as in `vite dev`, nothing is sent.
+ */
+export async function announce(
+	event: RequestEvent,
+	classrooms: string[],
+	poster: string | undefined,
+	kind: PushKind = 'notice'
+) {
+	const env = event.platform?.env;
+	if (!env?.NOTIFICATIONS) return;
+	await queue(event, env, await recipients(env.DB, classrooms, poster), kind);
+}
+
 type Outcome = 'sent' | 'gone' | 'again' | 'refused';
 
 async function push(
-	endpoint: string,
+	device: PushDevice,
+	kind: PushKind,
 	authorization: string,
 	fetcher: typeof fetch
 ): Promise<Outcome> {
+	const body = await encryptKind(device, kind);
 	try {
-		const response = await fetcher(endpoint, {
+		const response = await fetcher(device.endpoint, {
 			method: 'POST',
-			// Topic lets a push service keep only the latest of the pushes a device hasn't picked up yet.
+			// Topic lets a push service keep only the latest of the pushes a device hasn't picked up yet, and
+			// it's the kind, so a message doesn't drop a cancelled meeting time a phone hasn't seen.
 			headers: {
 				Authorization: authorization,
 				TTL: String(day),
 				Urgency: 'normal',
-				Topic: 'notice'
+				Topic: kind,
+				...(body.length
+					? { 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream' }
+					: {})
 			},
-			body: new Uint8Array()
+			body
 		});
 		await response.body?.cancel();
 		if (response.ok) return 'sent';
@@ -206,37 +314,39 @@ export async function deliver(
 ) {
 	const key = await vapidKey(env.VAPID_KEY);
 	for (const message of batch.messages) {
+		const { subject, attempt, conversation, kind } = message.body;
 		const eligible = new Set(
-			message.body.conversation
-				? await conversationRecipients(env.DB, message.body.conversation)
-				: []
+			(conversation ? await conversationRecipients(env.DB, conversation) : []).map(
+				(device) => device.endpoint
+			)
 		);
-		const { subject, attempt, conversation } = message.body;
-		const endpoints = conversation
-			? message.body.endpoints.filter((endpoint) => eligible.has(endpoint))
-			: message.body.endpoints;
+		const devices = conversation
+			? message.body.devices.filter((device) => eligible.has(device.endpoint))
+			: message.body.devices;
 		const signed = new Map<string, Promise<string>>();
 		const outcomes = await Promise.all(
-			endpoints.map(async (endpoint) => {
-				const { origin } = new URL(endpoint);
-				if (!signed.has(origin)) signed.set(origin, vapidAuthorization(key, endpoint, subject));
-				return { endpoint, outcome: await push(endpoint, await signed.get(origin)!, fetcher) };
+			devices.map(async (device) => {
+				const { origin } = new URL(device.endpoint);
+				if (!signed.has(origin))
+					signed.set(origin, vapidAuthorization(key, device.endpoint, subject));
+				return { device, outcome: await push(device, kind, await signed.get(origin)!, fetcher) };
 			})
 		);
 		const having = (wanted: Outcome) =>
-			outcomes.filter(({ outcome }) => outcome === wanted).map(({ endpoint }) => endpoint);
+			outcomes.filter(({ outcome }) => outcome === wanted).map(({ device }) => device);
 		const [gone, again] = [having('gone'), having('again')];
 		if (gone.length) {
 			await env.DB.prepare(
 				'DELETE FROM push_subscriptions WHERE endpoint IN (SELECT value FROM json_each(?))'
 			)
-				.bind(JSON.stringify(gone))
+				.bind(JSON.stringify(gone.map(({ endpoint }) => endpoint)))
 				.run();
 		}
 		if (again.length && attempt + 1 < attempts) {
 			const next: PushMessage = {
-				endpoints: again,
+				devices: again,
 				subject,
+				kind,
 				attempt: attempt + 1,
 				...(conversation ? { conversation } : {})
 			};
@@ -255,15 +365,15 @@ export async function conversationRecipients(
 ) {
 	const { results } = await db
 		.prepare(
-			`SELECT p.endpoint FROM push_subscriptions p
+			`SELECT p.endpoint, p.p256dh, p.auth FROM push_subscriptions p
  JOIN sessions s ON s.token_hash=p.session_hash JOIN credentials c ON c.id=s.credential_id
  JOIN conversations t ON t.id=?
  WHERE s.expires_at>? AND p.session_hash<>? AND (
  c.family_id=t.family_id OR c.teacher_id IN (SELECT teacher_id FROM teacher_classrooms WHERE classroom_id=t.classroom_id))`
 		)
 		.bind(conversation, now, poster)
-		.all<{ endpoint: string }>();
-	return results.map(({ endpoint }) => endpoint);
+		.all<PushDevice>();
+	return results;
 }
 export async function announceConversation(
 	event: RequestEvent,
@@ -272,15 +382,8 @@ export async function announceConversation(
 ) {
 	const env = event.platform?.env;
 	if (!env?.NOTIFICATIONS) return;
-	const endpoints = await conversationRecipients(env.DB, conversation, poster);
-	for (let offset = 0; offset < endpoints.length; offset += groupSize) {
-		await env.NOTIFICATIONS.send({
-			endpoints: endpoints.slice(offset, offset + groupSize),
-			subject: event.url.origin,
-			attempt: 0,
-			conversation
-		} satisfies PushMessage);
-	}
+	const devices = await conversationRecipients(env.DB, conversation, poster);
+	await queue(event, env, devices, 'message', conversation);
 }
 
 /** Booking changes notify the child's families and the classroom's teachers; names never leave devices. */
@@ -303,18 +406,13 @@ export async function announceMeetingChanges(
 	const env = event.platform?.env;
 	if (!env?.NOTIFICATIONS) return;
 	const { results } = await env.DB.prepare(
-		`SELECT DISTINCT p.endpoint FROM push_subscriptions p
+		`SELECT DISTINCT p.endpoint, p.p256dh, p.auth FROM push_subscriptions p
  JOIN sessions s ON s.token_hash=p.session_hash JOIN credentials c ON c.id=s.credential_id
  JOIN json_each(?) changed JOIN meeting_offers o ON o.id=json_extract(changed.value,'$.offer') WHERE s.expires_at>? AND p.session_hash<>? AND (
  c.family_id IN(SELECT i.family_id FROM meeting_invites i JOIN family_classrooms f ON f.family_id=i.family_id AND f.classroom_id=o.classroom_id WHERE i.offer_id=o.id AND i.child_id=json_extract(changed.value,'$.child'))
  OR c.teacher_id IN(SELECT teacher_id FROM teacher_classrooms WHERE classroom_id=o.classroom_id))`
 	)
 		.bind(JSON.stringify(changes), Date.now(), poster ?? '')
-		.all<{ endpoint: string }>();
-	for (let offset = 0; offset < results.length; offset += groupSize)
-		await env.NOTIFICATIONS.send({
-			endpoints: results.slice(offset, offset + groupSize).map((r) => r.endpoint),
-			subject: event.url.origin,
-			attempt: 0
-		} satisfies PushMessage);
+		.all<PushDevice>();
+	await queue(event, env, results, 'booking');
 }

@@ -1,5 +1,5 @@
 import { request } from '$lib/api';
-import { fromBase64Url } from '$lib/base64url';
+import { fromBase64Url, toBase64Url } from '$lib/base64url';
 import { isLocale, messages, type Locale } from '$lib/i18n';
 import { objectStore } from '$lib/indexeddb';
 
@@ -48,6 +48,18 @@ export function notify(
 	data?: unknown
 ) {
 	return registration.showNotification(title, { icon: '/icons/icon-192.png', tag, data });
+}
+
+/**
+ * What the server keeps for this device: where to push, and the keys the browser made, which let a push
+ * carry a letter saying what happened. A browser that won't give them still gets pushes, without it.
+ */
+function subscriptionOf(subscription: PushSubscription) {
+	const key = (name: 'p256dh' | 'auth') => {
+		const bytes = subscription.getKey(name);
+		return bytes ? toBase64Url(new Uint8Array(bytes)) : null;
+	};
+	return { endpoint: subscription.endpoint, p256dh: key('p256dh'), auth: key('auth') };
 }
 
 function supported() {
@@ -107,7 +119,7 @@ export async function turnOn(locale: Locale): Promise<NotificationState> {
 	}
 	subscription ??= await subscribe(registration, key);
 	await settings('readwrite', (store) => void store.put(locale, 'locale'));
-	await request('PUT', '/api/push', { endpoint: subscription.endpoint });
+	await request('PUT', '/api/push', subscriptionOf(subscription));
 	await notify(registration, messages[locale].app.notifications.test, 'test');
 	return 'on';
 }
@@ -141,6 +153,6 @@ export async function sendSubscription(): Promise<NotificationState> {
 			return 'off';
 		}
 	}
-	await request('PUT', '/api/push', { endpoint: subscription.endpoint });
+	await request('PUT', '/api/push', subscriptionOf(subscription));
 	return 'on';
 }

@@ -14,7 +14,7 @@ export function privacyPath(locale: Locale) {
 }
 
 /** App pages. Pages are prerendered once, so record IDs go in the query; they aren't secret. */
-type AppPage =
+export type AppPage =
 	| 'meetings'
 	| 'messages'
 	| 'setup'

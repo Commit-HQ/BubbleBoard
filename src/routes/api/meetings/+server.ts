@@ -10,7 +10,9 @@ export const POST: RequestHandler = async (event) => {
 	const who = await requireStaff(event),
 		offer = parseOffer(await readJson(event.request));
 	await publishMeetings(database(event), who, offer);
-	const task = announce(event, [offer.classroom], await sessionHash(event)).catch(() => {});
+	const task = announce(event, [offer.classroom], await sessionHash(event), 'slots').catch(
+		() => {}
+	);
 	await task;
 	return json({ ok: true });
 };

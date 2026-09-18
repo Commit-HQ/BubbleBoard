@@ -309,17 +309,19 @@ describe('private inquiries', () => {
 				.bind(`session${index}`, credential, monday + 100000)
 				.run();
 			await f.db
-				.prepare('INSERT INTO push_subscriptions VALUES (?,?)')
+				.prepare('INSERT INTO push_subscriptions (endpoint, session_hash) VALUES (?,?)')
 				.bind(`https://web.push.apple.com/${index}`, `session${index}`)
 				.run();
 		}
-		expect(await conversationRecipients(f.db, first.id, '', monday)).toEqual([
+		const reached = async (poster: string) =>
+			(await conversationRecipients(f.db, first.id, poster, monday)).map(
+				({ endpoint }) => endpoint
+			);
+		expect(await reached('')).toEqual([
 			'https://web.push.apple.com/0',
 			'https://web.push.apple.com/2'
 		]);
-		expect(await conversationRecipients(f.db, first.id, 'session0', monday)).toEqual([
-			'https://web.push.apple.com/2'
-		]);
+		expect(await reached('session0')).toEqual(['https://web.push.apple.com/2']);
 		await f.db
 			.prepare('UPDATE sessions SET expires_at=?')
 			.bind(Date.now() + 100000)
@@ -334,8 +336,11 @@ describe('private inquiries', () => {
 				messages: [
 					{
 						body: {
-							endpoints: ['https://web.push.apple.com/0', 'https://web.push.apple.com/2'],
+							devices: ['https://web.push.apple.com/0', 'https://web.push.apple.com/2'].map(
+								(endpoint) => ({ endpoint, p256dh: null, auth: null })
+							),
 							subject: 'http://localhost',
+							kind: 'message',
 							attempt: 0,
 							conversation: first.id
 						},

@@ -334,7 +334,7 @@ it('notifies only affected families once per device when several bookings are re
 			.bind(id, id, Date.now() + 86400000)
 			.run();
 		await db
-			.prepare('INSERT INTO push_subscriptions VALUES(?,?)')
+			.prepare('INSERT INTO push_subscriptions (endpoint, session_hash) VALUES(?,?)')
 			.bind(`https://push.example/${id}`, id)
 			.run();
 	}
@@ -344,8 +344,8 @@ it('notifies only affected families once per device when several bookings are re
 			env: {
 				DB: db,
 				NOTIFICATIONS: {
-					send: async (message: PushMessage) => {
-						sent.push(message);
+					sendBatch: async (messages: { body: PushMessage }[]) => {
+						for (const { body } of messages) sent.push(body);
 					}
 				}
 			}
@@ -360,7 +360,8 @@ it('notifies only affected families once per device when several bookings are re
 		],
 		staff.teacher
 	);
-	expect(sent.flatMap((s) => s.endpoints).sort()).toEqual(
+	expect(sent.every((message) => message.kind === 'booking')).toBe(true);
+	expect(sent.flatMap((s) => s.devices.map(({ endpoint }) => endpoint)).sort()).toEqual(
 		[`https://push.example/${parent.family}`, `https://push.example/${second.family}`].sort()
 	);
 });

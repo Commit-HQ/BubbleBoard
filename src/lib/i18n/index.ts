@@ -1,5 +1,6 @@
 import { en, notificationText as enNotification, type Messages } from './en';
 import { hr, notificationText as hrNotification } from './hr';
+import type { PushKind } from '../push';
 
 // The languages and their messages. The languages are plain values, so code that only checks a language,
 // such as the service worker's, doesn't bundle every message.
@@ -8,8 +9,11 @@ export const locales = ['hr', 'en'] as const;
 export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = 'hr';
 export const messages: Record<Locale, Messages> = { hr, en };
-/** What every notification says, apart from `messages` so the service worker takes only these words. */
-export const notificationTexts: Record<Locale, string> = { hr: hrNotification, en: enNotification };
+/** What notifications say, apart from `messages` so the service worker takes only these words. */
+export const notificationTexts: Record<Locale, Record<PushKind, string>> = {
+	hr: hrNotification,
+	en: enNotification
+};
 
 export function isLocale(value: unknown): value is Locale {
 	return locales.includes(value as Locale);
