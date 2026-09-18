@@ -126,25 +126,42 @@ async function fixture() {
 	};
 }
 describe('private inquiries', () => {
-	it('charges only new family inquiries; replies and teacher-initiated inquiries stay free', async () => {
+	it('charges every family message a teacher hasn’t answered yet, and nothing else', async () => {
 		const f = await fixture(),
 			first = f.inquiry();
 		expect(await startConversation(f.db, f.parent, first, monday)).toBe(true);
 		expect(await startConversation(f.db, f.parent, first, monday)).toBe(false);
-		await expect(startConversation(f.db, f.parent, f.inquiry(), monday)).rejects.toMatchObject({
-			status: 409,
-			body: { message: 'messages-limit' }
-		});
+		// The month's one allowance went on the inquiry, so neither another inquiry nor another message
+		// before an answer goes through.
+		for (const blocked of [
+			startConversation(f.db, f.parent, f.inquiry(), monday),
+			reply(f.db, f.parent, first.id, createId(), 'anyone there?', monday)
+		])
+			await expect(blocked).rejects.toMatchObject({
+				status: 409,
+				body: { message: 'messages-limit' }
+			});
 		await reply(f.db, f.staff, first.id, createId(), 'teacher reply', monday);
 		const answer = createId();
-		expect(await reply(f.db, f.parent, first.id, answer, 'family reply', monday)).toBe(true);
-		expect(await reply(f.db, f.parent, first.id, answer, 'family reply', monday)).toBe(false);
-		await startConversation(f.db, f.staff, f.inquiry(), monday);
+		expect(await reply(f.db, f.parent, first.id, answer, 'family answer', monday)).toBe(true);
+		expect(await reply(f.db, f.parent, first.id, answer, 'family answer', monday)).toBe(false);
 		expect((await inbox(f.db, f.parent, monday)).policies[0].used).toBe(1);
+		// Writing again before the next answer charges again, once the allowance allows it.
+		await expect(
+			reply(f.db, f.parent, first.id, createId(), 'one more thing', monday)
+		).rejects.toMatchObject({ body: { message: 'messages-limit' } });
+		await saveSettings(f.db, f.admin, { ...f.settings, monthlyLimit: 3, revision: 1 });
+		expect(await reply(f.db, f.parent, first.id, createId(), 'one more thing', monday)).toBe(true);
+		expect((await inbox(f.db, f.parent, monday)).policies[0].used).toBe(2);
+		// Teachers are never charged, and a family answers an inquiry a teacher started for free.
+		const theirs = f.inquiry();
+		await startConversation(f.db, f.staff, theirs, monday);
+		await reply(f.db, f.parent, theirs.id, createId(), 'thank you', monday);
+		expect((await inbox(f.db, f.parent, monday)).policies[0].used).toBe(2);
 		await closeConversation(f.db, f.staff, first.id);
-		expect((await inbox(f.db, f.parent, monday)).policies[0].used).toBe(1);
+		expect((await inbox(f.db, f.parent, monday)).policies[0].used).toBe(2);
 		await expect(reply(f.db, f.parent, first.id, createId(), 'late', monday)).rejects.toMatchObject(
-			{ status: 409 }
+			{ status: 409, body: { message: 'messages-closed' } }
 		);
 		await expect(closeConversation(f.db, f.parent, first.id)).rejects.toMatchObject({
 			status: 403
@@ -202,6 +219,25 @@ describe('private inquiries', () => {
 		);
 		await startConversation(f.db, f.parent, f.inquiry(), Date.parse('2026-10-01T08:00Z'));
 		expect(messageClock(Date.parse('2026-09-30T22:05Z')).month).toBe('2026-10');
+		// One inquiry spent in each classroom in September, and October starts both over.
+		const september = await inbox(f.db, f.parent, monday);
+		const spent = (policies: typeof september.policies, classroom: string) =>
+			policies.find((policy) => policy.classroom === classroom)?.used;
+		expect(spent(september.policies, f.classroom)).toBe(1);
+		expect(spent(september.policies, f.otherClassroom)).toBe(1);
+		const october = await inbox(f.db, f.parent, Date.parse('2026-10-05T08:00Z'));
+		expect(spent(october.policies, f.classroom)).toBe(1);
+		expect(spent(october.policies, f.otherClassroom)).toBe(0);
+	});
+	it('starts a classroom nobody has settled switched off, with three inquiries a month', async () => {
+		const f = await fixture();
+		const { policies } = await inbox(f.db, f.admin, monday);
+		expect(policies.find((policy) => policy.classroom === f.otherClassroom)).toMatchObject({
+			enabled: false,
+			monthlyLimit: 3,
+			allowed: false,
+			used: 0
+		});
 	});
 	it('handles concurrent last-slot sends and identical retries without partial or duplicate messages', async () => {
 		const f = await fixture();
@@ -327,6 +363,7 @@ describe('sending schedule', () => {
 		expect(parseSettings('class', body).schedule).toHaveLength(5);
 		for (const changed of [
 			{ schedule: [] },
+			{ monthlyLimit: 0 },
 			{ monthlyLimit: -1 },
 			{ monthlyLimit: 1.5 },
 			{ schedule: [{ start: '16:00', end: '08:00' }, null, null, null, null] },

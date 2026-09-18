@@ -1,12 +1,21 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { request } from '$lib/api';
+	import Icon from '$lib/components/Icon.svelte';
 	import { errorCode } from '$lib/errors';
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import { defaultSchedule, type MessageSettings } from '$lib/messages';
 	import { getApp } from './state.svelte';
-	import { button, field, surface } from './ui';
-	let { locale, settings }: { locale: Locale; settings: MessageSettings } = $props();
+	import { alert, button, choice, field, labelFocus, surface } from './ui';
+
+	// What an admin decides about a classroom's parent messaging: whether families may write at all, how many
+	// inquiries each family has a month, and the hours their messages go through. Teachers are never held to
+	// any of it. It opens from the classroom's page, where it stays out of the way until asked for.
+	let {
+		locale,
+		settings,
+		onclose
+	}: { locale: Locale; settings: MessageSettings; onclose: () => void } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.messaging);
 	let enabled = $state(untrack(() => settings.enabled));
@@ -23,11 +32,21 @@
 	let busy = $state(false);
 	let failure = $state<string>();
 	let saved = $state(false);
+	/** A time on one line of the week, narrower than a field of its own with a label above it. */
+	const timeField =
+		'min-h-11 rounded-xl border border-ink/15 bg-white/80 px-2 py-1.5 text-base text-ink focus-visible:border-accent focus-visible:outline-offset-0';
+
 	async function save(event: SubmitEvent) {
 		event.preventDefault();
+		saved = false;
+		// A time field lets the same time stand at both ends of a day, which is no interval at all: the server
+		// refuses it, so the form says which way round it goes instead of sending it.
+		if (schedule.some((day) => day.active && day.start >= day.end)) {
+			failure = 'messages-schedule';
+			return;
+		}
 		busy = true;
 		failure = undefined;
-		saved = false;
 		try {
 			await request('PUT', `/api/classrooms/${settings.classroom}/messages`, {
 				enabled,
@@ -59,56 +78,73 @@
 	}
 </script>
 
-<form class="{surface} grid gap-4" onsubmit={save}>
-	<h2 class="text-2xl">{t.settings}</h2>
-	<fieldset disabled={busy} class="grid gap-4">
-		<label class="flex min-h-11 items-center gap-3"
-			><input type="checkbox" bind:checked={enabled} />{t.enabled}</label
-		>
-		<label class={field.label}
-			><span>{t.limit}</span><input
-				class={field.input}
+<form class="{surface} grid gap-5" onsubmit={save}>
+	<fieldset disabled={busy} class="grid gap-5">
+		<label class={choice.card}>
+			<input class="sr-only" type="checkbox" bind:checked={enabled} />
+			<span class={choice.box}><Icon name="check" class={choice.check} /></span>
+			<span class="font-semibold">{t.enabled}</span>
+		</label>
+		<label class={field.label}>
+			<span class={field.name}>{t.limit}</span>
+			<input
+				class="{field.input} max-w-28"
 				type="number"
-				min="0"
+				inputmode="numeric"
+				min="1"
 				max="1000"
 				required
 				bind:value={limit}
-			/></label
-		>
-		<p class="text-sm text-muted">{t.quotaCopy}</p>
-		<p class="font-semibold">{t.schedule}</p>
-		{#each schedule as day, index}
-			<div class="grid gap-2 rounded-2xl bg-white/50 p-3">
-				<label class="flex min-h-11 items-center gap-3"
-					><input type="checkbox" bind:checked={day.active} />{t.days[index]}</label
-				>
-				{#if day.active}
-					<div class="grid grid-cols-2 gap-2">
-						<label class={field.label}
-							><span>{t.fromTime}</span><input
-								aria-label={`${t.days[index]} ${t.fromTime}`}
-								class={field.input}
-								type="time"
-								required
-								bind:value={day.start}
-							/></label
-						>
-						<label class={field.label}
-							><span>{t.toTime}</span><input
-								aria-label={`${t.days[index]} ${t.toTime}`}
-								class={field.input}
-								type="time"
-								required
-								min={day.start}
-								bind:value={day.end}
-							/></label
-						>
+			/>
+			<span class={field.hint}>{t.limitHint}</span>
+		</label>
+		<div class="grid gap-2">
+			<p class={field.name}>{t.schedule}</p>
+			<!-- A week in five rows: each day is a line with its switch and, when it's open, the two times
+			beside it. Narrow screens shorten the day's name, and take the times to a line of their own. -->
+			<div class="rounded-2xl bg-white/50 px-4">
+				{#each schedule as day, index (index)}
+					<div
+						class="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-ink/10 py-1 first:border-t-0"
+					>
+						<label class="group flex min-h-11 grow cursor-pointer items-center gap-3 {labelFocus}">
+							<input class="sr-only" type="checkbox" bind:checked={day.active} />
+							<span class={choice.box}><Icon name="check" class={choice.check} /></span>
+							<span class="font-semibold">
+								<span class="sm:hidden">{t.daysShort[index]}</span>
+								<span class="max-sm:hidden">{t.days[index]}</span>
+							</span>
+							{#if !day.active}<span class="text-sm text-muted">{t.offDay}</span>{/if}
+						</label>
+						{#if day.active}
+							<div class="flex items-center gap-1.5">
+								<input
+									aria-label={`${t.days[index]} ${t.fromTime}`}
+									class={timeField}
+									type="time"
+									required
+									bind:value={day.start}
+								/>
+								<span class="text-muted" aria-hidden="true">–</span>
+								<input
+									aria-label={`${t.days[index]} ${t.toTime}`}
+									class={timeField}
+									type="time"
+									required
+									min={day.start}
+									bind:value={day.end}
+								/>
+							</div>
+						{/if}
 					</div>
-				{/if}
+				{/each}
 			</div>
-		{/each}
-		<button class={button.primary} type="submit">{t.save}</button>
+		</div>
+		<div class="flex flex-wrap gap-2">
+			<button class={button.primary} type="submit">{t.save}</button>
+			<button class={button.quiet} type="button" onclick={onclose}>{t.done}</button>
+		</div>
 	</fieldset>
-	{#if failure}<p role="alert" class="text-red-700">{errorMessage(locale, failure)}</p>{/if}
-	{#if saved}<p role="status">{t.saved}</p>{/if}
+	{#if failure}<p class={alert} role="alert">{errorMessage(locale, failure)}</p>{/if}
+	{#if saved}<p class="font-semibold text-muted" role="status">{t.saved}</p>{/if}
 </form>

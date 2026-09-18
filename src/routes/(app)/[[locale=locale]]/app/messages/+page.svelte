@@ -2,15 +2,25 @@
 	import { goto } from '$app/navigation';
 	import { request } from '$lib/api';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
+	import InquiryLink from '$lib/app/InquiryLink.svelte';
+	import MessageBubble from '$lib/app/MessageBubble.svelte';
 	import MessagePolicy from '$lib/app/MessagePolicy.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp } from '$lib/app/state.svelte';
-	import { button, field, queryParam, surface } from '$lib/app/ui';
+	import { alert, button, field, queryParam, surface } from '$lib/app/ui';
+	import Icon from '$lib/components/Icon.svelte';
+	import IconTile from '$lib/components/IconTile.svelte';
 	import { createId } from '$lib/crypto';
 	import { errorCode } from '$lib/errors';
 	import { errorMessage, messages } from '$lib/i18n';
 	import {
+		byTeacher,
+		chargesAllowance,
+		messageClock,
+		messageDate,
+		messageTime,
 		openMessage,
+		remainingMessages,
 		sealMessage,
 		sealSubject,
 		type MessageRecord,
@@ -19,12 +29,18 @@
 	import { appPath } from '$lib/paths';
 	import { onMount, untrack } from 'svelte';
 	import type { PageProps } from './$types';
+
+	// Private conversations between one family and its classroom's teachers: the inbox, one conversation as a
+	// chat, and the form that starts a new one. A family's message spends one of the month's inquiries unless
+	// it answers a teacher, so the app says what a message costs before it goes, and asks once more in the
+	// conversation itself.
 	let { data }: PageProps = $props();
 	const app = getApp();
 	const t = $derived(messages[data.locale].app.messaging);
 	const id = $derived(queryParam('id'));
 	const creating = $derived(queryParam('new') === '1');
 	const thread = $derived(app.conversations.find((item) => item.id === id));
+	const staff = $derived(app.status === 'staff');
 	let search = $state('');
 	let visibleCount = $state(30);
 	let filter = $state('all');
@@ -38,18 +54,24 @@
 	let loading = $state(false);
 	let failure = $state<string>();
 	let closing = $state(false);
+	let confirming = $state(false);
+	let end = $state<HTMLOListElement>();
+	let scrolledTo = 0;
 	let generation = 0;
 	let pending: { fingerprint: string; payload: Record<string, string> } | undefined;
+
 	const policy = $derived(
 		app.messagePolicies.find((item) => item.classroom === (thread?.classroom ?? classroom))
 	);
 	const families = $derived(
 		app.catalog.families.filter((item) => item.classrooms.includes(classroom))
 	);
-	const canSend = $derived(
-		app.status === 'staff' ||
-			(!!policy?.allowed && (!creating || policy.used < policy.monthlyLimit))
+	/** Whether the next message spends an inquiry: a new one always does, an answer to a teacher never. */
+	const charged = $derived(
+		!staff && (creating || chargesAllowance(rows.at(-1)?.author ?? thread?.author))
 	);
+	const remaining = $derived(policy ? remainingMessages(policy) : 0);
+	const canSend = $derived(staff || (!!policy?.allowed && (!charged || remaining > 0)));
 	const filtered = $derived(
 		app.conversations.filter(
 			(item) =>
@@ -58,15 +80,56 @@
 				item.subject.toLocaleLowerCase(data.locale).includes(search.toLocaleLowerCase(data.locale))
 		)
 	);
+	/** The inbox shows its filters only where there's something to filter. */
+	const pickClassroom = $derived(app.myClassrooms.length > 1);
+	const pickState = $derived(app.conversations.some((item) => item.closed));
+
 	const classroomName = (id: string) => app.myClassrooms.find((item) => item.id === id)?.name ?? '';
 	const familyName = (id: string) =>
 		app.catalog.families.find((item) => item.id === id)?.name ?? t.parent;
-	const stamp = (time: number) =>
-		new Intl.DateTimeFormat(data.locale, {
-			dateStyle: 'short',
-			timeStyle: 'short',
-			timeZone: 'Europe/Zagreb'
-		}).format(time);
+	/** Who the conversation is with, as its tile shows them: the family for teachers, the classroom for families. */
+	const withName = (item: { classroom: string; family: string }) =>
+		staff ? familyName(item.family) : classroomName(item.classroom);
+	/** The children the family has in this classroom, so a teacher sees whose parent is writing. */
+	function childrenOf(item: { classroom: string; family: string }) {
+		const names = app.catalog.children
+			.filter((child) => child.classroom === item.classroom && child.families.includes(item.family))
+			.map((child) => child.name);
+		return names.length ? t.children(names) : undefined;
+	}
+	/** The line under a conversation's subject: who a teacher is talking to, and where. */
+	const about = (item: { classroom: string; family: string }, withClassroom: boolean) =>
+		[
+			staff ? familyName(item.family) : undefined,
+			staff ? childrenOf(item) : undefined,
+			withClassroom ? classroomName(item.classroom) : undefined
+		]
+			.filter(Boolean)
+			.join(' · ');
+	const initialOf = (name: string) => [...name][0]?.toLocaleUpperCase(data.locale) ?? '';
+	/**
+	 * The name above a message: which teacher wrote it, and, on a teacher's device, the family on the other
+	 * side. A family sees no name over its own messages, which are all its own.
+	 */
+	const bubbleName = (author: string, name: string, family: string) =>
+		byTeacher(author) ? name || t.teacher : staff ? familyName(family) : undefined;
+	/** When the last message came: the time today, the day and month before that. */
+	const listTime = (time: number) =>
+		messageClock(time).date === messageClock().date
+			? messageTime(data.locale, time)
+			: new Intl.DateTimeFormat(data.locale, {
+					day: 'numeric',
+					month: 'numeric',
+					timeZone: 'Europe/Zagreb'
+				}).format(time);
+	/** The chip above the first message of each day. */
+	function dayLabel(time: number) {
+		const day = messageClock(time).date;
+		if (day === messageClock().date) return t.today;
+		if (day === messageClock(Date.now() - 86400000).date) return t.yesterday;
+		return messageDate(data.locale, time);
+	}
+
 	$effect(() => {
 		if (!classroom && app.myClassrooms.length === 1) classroom = app.myClassrooms[0].id;
 	});
@@ -84,6 +147,7 @@
 			rows = [];
 			more = false;
 			loading = false;
+			scrolledTo = 0;
 			generation++;
 		});
 	});
@@ -91,6 +155,13 @@
 		const selected = id;
 		const version = app.messagesVersion;
 		if (app.connected && selected && version) untrack(() => void load(selected));
+	});
+	// A conversation opens at its newest message, and follows it as answers come in.
+	$effect(() => {
+		const last = rows.at(-1)?.sequence ?? 0;
+		if (!last || last === scrolledTo) return;
+		scrolledTo = last;
+		end?.scrollIntoView({ block: 'end' });
 	});
 	onMount(() => {
 		const interval = setInterval(() => {
@@ -101,6 +172,7 @@
 			generation++;
 		};
 	});
+
 	async function load(selected: string, older = false) {
 		const item = app.conversations.find((item) => item.id === selected);
 		if (!item) {
@@ -139,9 +211,16 @@
 			if (ticket === generation) loading = false;
 		}
 	}
-	async function send(event: SubmitEvent) {
+
+	/** Families are asked once more when a message spends an inquiry, so none goes by mistake. */
+	function submit(event: SubmitEvent) {
 		event.preventDefault();
 		if (busy || !text.trim() || !canSend || (creating && !subject.trim())) return;
+		if (charged && !creating) confirming = true;
+		else void send();
+	}
+
+	async function send() {
 		const targetClassroom = thread?.classroom ?? classroom;
 		const targetFamily = thread?.family ?? app.messageFamily ?? family;
 		if (!targetClassroom || !targetFamily) return;
@@ -154,7 +233,7 @@
 				const message = createId();
 				const conversation = creating ? createId() : id!;
 				const content = await sealMessage(
-					{ text: text.trim(), name: app.status === 'staff' ? (app.myName ?? t.teacher) : '' },
+					{ text: text.trim(), name: staff ? (app.myName ?? t.teacher) : '' },
 					key,
 					targetClassroom,
 					message,
@@ -185,6 +264,7 @@
 			busy = false;
 		}
 	}
+
 	async function close() {
 		await request('PUT', `/api/messages/${id}`, { action: 'close' });
 		closing = false;
@@ -198,174 +278,234 @@
 	need="connected"
 	back={id || creating ? appPath(data.locale, 'messages') : undefined}
 >
-	{#if app.messagesError}<p role="alert" class="text-red-700">
-			{errorMessage(data.locale, app.messagesError)}
-		</p>{/if}
-	{#if failure}<p role="alert" class="text-red-700">{errorMessage(data.locale, failure)}</p>{/if}
+	{#if app.messagesError}
+		<p role="alert" class={alert}>{errorMessage(data.locale, app.messagesError)}</p>
+	{/if}
+	{#if failure}<p role="alert" class={alert}>{errorMessage(data.locale, failure)}</p>{/if}
+
 	{#if id}
 		{#if thread}
-			<div class="flex flex-wrap items-center justify-between gap-2">
-				<p class="text-muted">
-					{classroomName(thread.classroom)}{app.status === 'staff'
-						? ` · ${familyName(thread.family)}`
-						: ''} · {thread.closed ? t.closedStatus : t.openStatus}
-				</p>
-				{#if app.status === 'staff' && !thread.closed}<button
-						class={button.secondary}
-						onclick={() => (closing = true)}>{t.close}</button
-					>{/if}
-			</div>
-			{#if more}<button class={button.quiet} disabled={loading} onclick={() => load(id!, true)}
-					>{t.older}</button
-				>{/if}
-			{#if loading}<p role="status">{t.loading}</p>{/if}
-			<ol class="grid gap-3" aria-label={t.title}>
-				{#each rows as row (row.id)}
-					<li class="{surface} min-w-0">
-						<div class="mb-2 flex flex-wrap justify-between gap-2 text-sm text-muted">
-							<span class="font-semibold"
-								>{row.author.startsWith('teacher:') ? row.name || t.teacher : t.parent}</span
-							><time datetime={new Date(row.postedAt).toISOString()}>{stamp(row.postedAt)}</time>
+			<!-- One block, not the page's grid: the box to write in sticks above the messages while they
+			scroll, and a sticky box can only move inside the element that holds it. -->
+			<div>
+				<div class="-mt-2 flex flex-wrap items-center justify-between gap-2">
+					<p class="text-muted">{about(thread, true)}</p>
+					{#if thread.closed}
+						<span class="rounded-full bg-ink/10 px-3 py-1 text-xs font-semibold text-muted">
+							{t.closedStatus}
+						</span>
+					{:else if staff}
+						<button class={button.secondary} onclick={() => (closing = true)}>{t.close}</button>
+					{/if}
+				</div>
+
+				{#if more}
+					<div class="mt-4 text-center">
+						<button class={button.quiet} disabled={loading} onclick={() => load(id!, true)}>
+							{t.older}
+						</button>
+					</div>
+				{/if}
+				{#if loading && !rows.length}
+					<p class="mt-4 text-center text-muted" role="status">{t.loading}</p>
+				{/if}
+				<ol class="mt-5 grid gap-2" aria-label={thread.subject} bind:this={end}>
+					{#each rows as row, index (row.id)}
+						{@const previous = rows[index - 1]}
+						{#if !previous || messageClock(previous.postedAt).date !== messageClock(row.postedAt).date}
+							<li class="mt-2 flex justify-center">
+								<span class="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-muted">
+									{dayLabel(row.postedAt)}
+								</span>
+							</li>
+						{/if}
+						<MessageBubble
+							locale={data.locale}
+							message={row}
+							mine={byTeacher(row.author) === staff}
+							name={bubbleName(row.author, row.name, thread.family)}
+						/>
+					{/each}
+				</ol>
+
+				{#if thread.closed}
+					<p class="mt-5 text-muted">{t.closedCopy}</p>
+				{:else}
+					<form class="sticky bottom-4 mt-5 grid gap-2" onsubmit={submit}>
+						{#if !staff && policy}
+							<MessagePolicy locale={data.locale} {policy} {charged} />
+						{/if}
+						<div class="flex items-end gap-2 rounded-3xl frosted p-2">
+							<label class="min-w-0 grow">
+								<span class="sr-only">{t.body}</span>
+								<textarea
+									class="field-sizing-content max-h-40 w-full resize-none bg-transparent px-3 py-2.5 text-base focus-visible:outline-none"
+									rows="1"
+									required
+									maxlength="4000"
+									placeholder={t.write}
+									bind:value={text}
+									disabled={busy}></textarea>
+							</label>
+							<button
+								class="grid size-11 shrink-0 place-items-center rounded-full bg-ink text-white shadow-lg shadow-ink/20 transition disabled:pointer-events-none disabled:opacity-40"
+								aria-label={t.send}
+								disabled={busy || !canSend || !text.trim()}
+							>
+								<Icon name="arrowUp" />
+							</button>
 						</div>
-						<p class="break-words whitespace-pre-wrap">{row.text}</p>
-					</li>
-				{/each}
-			</ol>
-			{#if thread.closed}<p>{t.closedCopy}</p>
-			{:else}
-				{#if app.status === 'family' && policy}<MessagePolicy locale={data.locale} {policy} />{/if}
-				<form class="grid gap-3" onsubmit={send}>
-					<label class={field.label}
-						><span class={field.name}>{t.body}</span><textarea
-							class={field.input}
-							rows="4"
-							required
-							maxlength="4000"
-							bind:value={text}
-							disabled={busy}></textarea></label
-					>
-					<button class={button.primary} disabled={busy || !canSend || !text.trim()}
-						>{t.send}</button
-					>
-				</form>
-			{/if}
-		{:else if !app.messagesError}<p>{messages[data.locale].app.notFound.copy}</p>{/if}
+					</form>
+				{/if}
+			</div>
+		{:else if !app.messagesError}
+			<p class="text-muted">{messages[data.locale].app.notFound.copy}</p>
+		{/if}
 	{:else if creating}
-		<form class="{surface} grid gap-4" onsubmit={send}>
-			<fieldset class="grid gap-4" disabled={busy}>
-				<label class={field.label}
-					><span>{t.classroom}</span><select class={field.input} required bind:value={classroom}
-						><option value="">{t.choose}</option>{#each app.myClassrooms as item}<option
-								value={item.id}>{item.name}</option
-							>{/each}</select
-					></label
-				>
-				{#if app.status === 'staff'}<label class={field.label}
-						><span>{t.family}</span><select class={field.input} required bind:value={family}
-							><option value="">{t.choose}</option>{#each families as item}<option value={item.id}
-									>{item.name}</option
-								>{/each}</select
-						></label
-					>{/if}
-				{#if app.status === 'family' && policy}<MessagePolicy
-						locale={data.locale}
-						{policy}
-						creating
-					/>{/if}
-				<label class={field.label}
-					><span>{t.subject}</span><input
-						class={field.input}
-						required
-						maxlength="120"
-						bind:value={subject}
-					/></label
-				>
-				<label class={field.label}
-					><span>{t.body}</span><textarea
-						class={field.input}
-						rows="6"
-						required
-						maxlength="4000"
-						bind:value={text}></textarea></label
-				>
+		<form class="{surface} grid gap-5" onsubmit={submit}>
+			<fieldset class="grid gap-5" disabled={busy}>
+				{#if pickClassroom}
+					<label class={field.label}>
+						<span class={field.name}>{t.classroom}</span>
+						<select class={field.input} required bind:value={classroom}>
+							<option value="">{t.choose}</option>
+							{#each app.myClassrooms as item (item.id)}<option value={item.id}>{item.name}</option
+								>{/each}
+						</select>
+					</label>
+				{/if}
+				{#if staff}
+					<label class={field.label}>
+						<span class={field.name}>{t.family}</span>
+						<select class={field.input} required bind:value={family}>
+							<option value="">{t.choose}</option>
+							{#each families as item (item.id)}<option value={item.id}>{item.name}</option>{/each}
+						</select>
+					</label>
+				{/if}
+				{#if !staff && policy}
+					<MessagePolicy locale={data.locale} {policy} charged full />
+				{/if}
+				<label class={field.label}>
+					<span class={field.name}>{t.subject}</span>
+					<input class={field.input} required maxlength="120" bind:value={subject} />
+				</label>
+				<label class={field.label}>
+					<span class={field.name}>{t.body}</span>
+					<textarea class={field.input} rows="6" required maxlength="4000" bind:value={text}
+					></textarea>
+				</label>
 				<button
-					class={button.primary}
-					disabled={!canSend ||
-						!classroom ||
-						(app.status === 'staff' && !family) ||
-						!subject.trim() ||
-						!text.trim()}>{t.send}</button
+					class="{button.primary} justify-self-start"
+					disabled={!canSend || !classroom || (staff && !family) || !subject.trim() || !text.trim()}
+					>{t.sendInquiry}</button
 				>
 			</fieldset>
 		</form>
 	{:else}
-		<div class="flex flex-wrap gap-2">
-			<a class={button.primary} href={appPath(data.locale, 'messages', { new: '1' })}>{t.new}</a
-			><button class={button.secondary} onclick={() => app.loadMessages()}>{t.refresh}</button>
+		<div class="flex flex-wrap items-center gap-2">
+			<a class={button.primary} href={appPath(data.locale, 'messages', { new: '1' })}>
+				<Icon name="plus" class="size-4" />{t.new}
+			</a>
+			<button class={button.icon} aria-label={t.refresh} onclick={() => app.loadMessages()}>
+				<Icon name="refresh" />
+			</button>
 		</div>
-		<div class="grid gap-3">
-			<label class={field.label}
-				><span class="sr-only">{t.search}</span><input
-					class={field.input}
-					type="search"
-					placeholder={t.search}
-					bind:value={search}
-				/></label
-			>
-			<div class="grid grid-cols-2 gap-3">
-				<label class={field.label}
-					><span class="sr-only">{t.classroom}</span><select
-						class={field.input}
-						bind:value={classroom}
-						><option value="">{t.classroom}: {t.all}</option>{#each app.myClassrooms as item}<option
-								value={item.id}>{item.name}</option
-							>{/each}</select
-					></label
-				>
-				<label class={field.label}
-					><span class="sr-only">{t.all}</span><select class={field.input} bind:value={filter}
-						><option value="all">{t.all}</option><option value="open">{t.open}</option><option
-							value="closed">{t.closed}</option
-						></select
-					></label
-				>
-			</div>
-		</div>
-		<ul class="grid gap-3">
-			{#each filtered.slice(0, visibleCount) as item (item.id)}
-				<li>
-					<a
-						href={appPath(data.locale, 'messages', { id: item.id })}
-						class="{surface} grid gap-2 transition hover:bg-white/80"
-					>
-						<div class="flex flex-wrap justify-between gap-2">
-							<h2 class="text-xl break-words">{item.subject}</h2>
-							{#if item.lastSequence > item.readSequence}<span
-									class="rounded-full bg-ink px-3 py-1 text-xs text-white">{t.unread}</span
-								>{/if}
+
+		{#if app.conversations.length}
+			{#if app.conversations.length > 5 || pickState || pickClassroom}
+				<div class="grid gap-3">
+					{#if app.conversations.length > 5}
+						<label class={field.label}>
+							<span class="sr-only">{t.search}</span>
+							<input class={field.input} type="search" placeholder={t.search} bind:value={search} />
+						</label>
+					{/if}
+					{#if pickState || pickClassroom}
+						<div class="flex flex-wrap items-center gap-2">
+							{#if pickState}
+								{#each [['all', t.all], ['open', t.open], ['closed', t.closed]] as [value, label] (value)}
+									<button
+										class={button.chip}
+										type="button"
+										aria-pressed={filter === value}
+										onclick={() => (filter = value)}>{label}</button
+									>
+								{/each}
+							{/if}
+							{#if pickClassroom}
+								<label class={pickState ? 'ml-auto' : ''}>
+									<span class="sr-only">{t.classroom}</span>
+									<select
+										class="min-h-9 rounded-full bg-white/60 px-3 text-sm font-semibold text-ink ring-1 ring-ink/10"
+										bind:value={classroom}
+									>
+										<option value="">{t.classroom}: {t.all}</option>
+										{#each app.myClassrooms as item (item.id)}<option value={item.id}
+												>{item.name}</option
+											>{/each}
+									</select>
+								</label>
+							{/if}
 						</div>
-						<p class="line-clamp-2 break-words text-muted">{item.preview}</p>
-						<p class="text-sm text-muted">
-							{classroomName(item.classroom)}{app.status === 'staff'
-								? ` · ${familyName(item.family)}`
-								: ''} · {item.closed ? t.closedStatus : t.openStatus} · {stamp(item.postedAt)}
-						</p>
-					</a>
-				</li>
-			{:else}<li class="text-muted">{t.empty}</li>{/each}
-		</ul>
-		{#if filtered.length > visibleCount}<button
-				class={button.secondary}
-				onclick={() => (visibleCount += 30)}>{t.more}</button
-			>{/if}
+					{/if}
+				</div>
+			{/if}
+			<ul class="grid gap-2">
+				{#each filtered.slice(0, visibleCount) as item (item.id)}
+					<InquiryLink
+						href={appPath(data.locale, 'messages', { id: item.id })}
+						initial={initialOf(withName(item))}
+						subject={item.subject}
+						preview={item.preview}
+						detail={[about(item, pickClassroom), item.closed ? t.closedStatus : undefined]
+							.filter(Boolean)
+							.join(' · ')}
+						time={listTime(item.postedAt)}
+						unread={item.lastSequence > item.readSequence}
+						unreadLabel={t.unread}
+					/>
+				{:else}
+					<li class="text-muted">{t.empty}</li>
+				{/each}
+			</ul>
+			{#if filtered.length > visibleCount}
+				<button class="{button.secondary} justify-self-center" onclick={() => (visibleCount += 30)}>
+					{t.more}
+				</button>
+			{/if}
+			<p class="text-sm text-muted">{t.retention}</p>
+		{:else if app.messagesVersion}
+			<!-- Once the inbox has answered at least once: before that it's still loading, and a load that
+			failed says so in the alert above instead of telling a family it has no messages. -->
+			<div class="{surface} grid justify-items-start gap-3">
+				<IconTile icon="message" />
+				<h2 class="text-2xl">{t.emptyTitle}</h2>
+				<p class="text-muted">{staff ? t.emptyCopyStaff : t.emptyCopy}</p>
+			</div>
+		{/if}
 	{/if}
-	<p class="text-sm text-muted">{t.retention}</p>
-	{#if closing}<ConfirmDialog
+
+	{#if closing}
+		<ConfirmDialog
 			locale={data.locale}
 			title={t.closeTitle}
 			copy={t.closeCopy}
 			confirmLabel={t.close}
 			onconfirm={close}
 			onclose={() => (closing = false)}
-		/>{/if}
+		/>
+	{:else if confirming}
+		<ConfirmDialog
+			locale={data.locale}
+			title={t.confirmTitle}
+			copy={t.confirmCopy(Math.max(0, remaining - 1))}
+			confirmLabel={t.send}
+			onconfirm={async () => {
+				await send();
+				confirming = false;
+			}}
+			onclose={() => (confirming = false)}
+		/>
+	{/if}
 </Screen>

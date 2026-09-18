@@ -11,6 +11,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import { listNames, messages } from '$lib/i18n';
 	import { namesOf } from '$lib/kindergarten';
+	import type { MessagePolicy } from '$lib/messages';
 	import { appPath } from '$lib/paths';
 	import type { PageProps } from './$types';
 
@@ -26,7 +27,8 @@
 	const teachers = $derived(
 		app.catalog.teachers.filter((teacher) => classroom && teacher.classrooms.includes(classroom.id))
 	);
-	let open = $state<'delete' | 'replace' | 'confirmReplace'>();
+	const messaging = $derived(app.messagePolicies.find((policy) => policy.classroom === id));
+	let open = $state<'delete' | 'replace' | 'confirmReplace' | 'messages'>();
 	/** The families whose cards are chosen to be replaced. */
 	let chosen = $state<string[]>([]);
 	let printed = $state.raw<PrintableCard[]>();
@@ -39,6 +41,19 @@
 	/** The family's children in this classroom, which tell cards with similar names apart. */
 	function childrenOf(family: string) {
 		return children.filter((child) => child.families.includes(family)).map((child) => child.name);
+	}
+
+	/** The week families may write in, in one line: the days that are open, and when, folded where they agree. */
+	function sendingHours({ schedule }: MessagePolicy) {
+		const open = schedule.flatMap((day, index) => (day ? [{ ...day, index }] : []));
+		if (!open.length) return t.messaging.noDays;
+		const days = open.map(({ index }) => t.messaging.daysShort[index]);
+		const alike = open.every(({ start, end }) => start === open[0].start && end === open[0].end);
+		return alike
+			? `${listNames(data.locale, days)} ${open[0].start}–${open[0].end}`
+			: open
+					.map(({ index, start, end }) => `${t.messaging.daysShort[index]} ${start}–${end}`)
+					.join(' · ');
 	}
 
 	function closeReplacing() {
@@ -143,11 +158,6 @@
 				</form>
 			{/if}
 
-			{#if app.admin}
-				{#each app.messagePolicies.filter((policy) => policy.classroom === id) as settings (settings.classroom)}
-					<MessageSettings locale={data.locale} {settings} />
-				{/each}
-			{/if}
 			<section class="grid gap-3" aria-labelledby="children-title">
 				<h2 id="children-title" class="text-2xl">{t.classroom.children}</h2>
 				{#if children.length}
@@ -165,6 +175,44 @@
 					<p class="text-muted">{t.classroom.empty}</p>
 				{/if}
 			</section>
+
+			{#if app.admin && messaging}
+				<!-- Under the children, where an admin comes to settle the classroom rather than to look
+				someone up: the week at a glance, and the form itself only once it's asked for. -->
+				<section class="grid gap-3" aria-labelledby="messaging-title">
+					<h2 id="messaging-title" class="text-2xl">{t.messaging.settings}</h2>
+					{#if open === 'messages'}
+						<MessageSettings
+							locale={data.locale}
+							settings={messaging}
+							onclose={() => (open = undefined)}
+						/>
+					{:else}
+						<div
+							class="flex flex-wrap items-center justify-between gap-3 rounded-3xl glass px-5 py-4"
+						>
+							<p class="min-w-0">
+								<span class="block font-bold">
+									{messaging.enabled ? t.messaging.settingsOn : t.messaging.settingsOff}
+								</span>
+								<span class="block text-sm text-muted">
+									{messaging.enabled
+										? `${t.messaging.quotaEach(messaging.monthlyLimit)} · ${sendingHours(messaging)}`
+										: t.messaging.disabled}
+								</span>
+							</p>
+							<button
+								class={button.secondary}
+								type="button"
+								aria-expanded="false"
+								onclick={() => (open = 'messages')}
+							>
+								<Icon name="pencil" class="size-4" />{t.messaging.edit}
+							</button>
+						</div>
+					{/if}
+				</section>
+			{/if}
 
 			{#if open === 'delete'}
 				<ConfirmDialog

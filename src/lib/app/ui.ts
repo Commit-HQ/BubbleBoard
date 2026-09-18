@@ -19,7 +19,9 @@ export const button = {
 	/** Over a picture, such as Save in the picture viewer. */
 	frosted: `${pill} frosted px-5 text-ink`,
 	/** A small icon beside what it changes, such as a pencil beside a name. Give it an `aria-label`. */
-	icon: 'grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-ink/5 hover:text-ink'
+	icon: 'grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-ink/5 hover:text-ink',
+	/** A small pill that picks one view of a list. Mark the chosen one with `aria-pressed`. */
+	chip: 'inline-flex min-h-9 items-center justify-center rounded-full bg-white/60 px-4 text-sm font-semibold ring-1 ring-ink/10 transition hover:bg-white aria-pressed:bg-ink aria-pressed:text-white aria-pressed:ring-ink'
 };
 
 /** The focus ring of a label whose input is hidden inside it. */

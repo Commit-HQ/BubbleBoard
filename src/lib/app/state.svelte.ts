@@ -211,14 +211,15 @@ export class App {
 	get unreadConversations() {
 		return this.conversations.filter((item) => item.lastSequence > item.readSequence).length;
 	}
+	/** The key that opens a conversation: a family device's own, or the family's key a staff device holds. */
 	async messageKey(family: string) {
 		if (this.#familyCard) {
 			if (this.#familyCard.family !== family) throw new UnreadableError();
 			return this.#familyCard.familyKey;
 		}
-		const record = this.catalog.families.find((item) => item.id === family);
-		if (!record) throw new UnreadableError();
-		return openFamilyKeyForStaff(this.#staff.staffKey, record);
+		const opening = this.#familyKeyForStaff(family);
+		if (!opening) throw new UnreadableError();
+		return opening;
 	}
 	#messageLoad = 0;
 	async loadMessages() {
@@ -242,9 +243,9 @@ export class App {
 				: undefined;
 			this.messagesVersion++;
 		} catch (cause) {
+			// What loaded before stays: a connection that dropped for a moment shouldn't empty the inbox, or
+			// take away the settings an admin has open. Only the card going away clears them (`#disconnect`).
 			if (this.#card !== card || load !== this.#messageLoad) return;
-			this.conversations = [];
-			this.messagePolicies = [];
 			this.messagesError = errorCode(cause);
 		}
 	}
@@ -492,7 +493,9 @@ export class App {
 		this.#familyKeyEnvelope = access.kind === 'family' ? access.wrappedKey : undefined;
 		this.#loadedAt = Date.now();
 		this.status = this.install === 'android' ? 'install' : access.kind;
-		await this.loadMessages();
+		// The inbox grows with every conversation the kindergarten has ever had, so the board doesn't wait for
+		// it: it fills in beside the rest, and the pages that show it follow `messagesVersion`.
+		void this.loadMessages();
 		void this.#keepNotifications(resend);
 	}
 
@@ -522,6 +525,21 @@ export class App {
 	}
 
 	/**
+	 * A family's key on a staff device, opened from the envelope in the catalog. Notices, polls, and every
+	 * conversation of that family share the one opening, which the device keeps until it disconnects: opening
+	 * it again for each record would unwrap the same key hundreds of times.
+	 */
+	#familyKeyForStaff(family: string) {
+		const record = this.catalog.families.find(({ id }) => id === family);
+		if (!record) return undefined;
+		const opening =
+			this.#familyKeys.get(record.familyKeyForStaff) ??
+			openFamilyKeyForStaff(this.#staff.staffKey, record);
+		this.#familyKeys.set(record.familyKeyForStaff, opening);
+		return opening;
+	}
+
+	/**
 	 * Opens notices with the Group Keys of the classrooms this device sees, and their polls' answers with the
 	 * Family Keys it holds: a family device its own, and a staff device those of the families in its catalog.
 	 */
@@ -533,15 +551,7 @@ export class App {
 		const groupKeys = new Map(classrooms.map(({ id, groupKey }) => [id, groupKey]));
 		const familyKeys: FamilyKeys = familyCard
 			? async (family) => (family === familyCard.family ? familyCard.familyKey : undefined)
-			: async (family) => {
-					const record = this.catalog.families.find(({ id }) => id === family);
-					if (!record) return undefined;
-					const opening =
-						this.#familyKeys.get(record.familyKeyForStaff) ??
-						openFamilyKeyForStaff(this.#staff.staffKey, record);
-					this.#familyKeys.set(record.familyKeyForStaff, opening);
-					return opening;
-				};
+			: async (family) => this.#familyKeyForStaff(family);
 		const { notices, unreadable } = await openBoard(records, groupKeys, familyKeys);
 		this.board = notices;
 		this.unreadableNotices = unreadable;

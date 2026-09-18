@@ -68,29 +68,49 @@
 <div class="mx-auto flex min-h-dvh max-w-2xl flex-col px-4 sm:px-8 print:max-w-none print:px-0">
 	<SiteHeader href={appPath(data.locale)} compact={settings} class="print:hidden">
 		{#if settings}
-			<!-- Staff manage the kindergarten from here, and the kindergarten's info and Settings are here on every
-			page. On phones, Manage and Info show only their icons, and with all three, the narrowest phones show
-			only the logo beside them. -->
-			<nav class="flex items-center gap-1.5" aria-label={t.nav.label}>
-				<a class="{headerLink} relative px-3 sm:px-4" href={inbox} aria-current={current(inbox)}>
-					<Icon name="message" /><span class="max-sm:sr-only">{t.app.messaging.title}</span>
-					{#if app.unreadConversations}<span class="rounded-full bg-ink px-1.5 text-xs text-white"
+			<!-- Messages, the kindergarten's info, what staff manage, and Settings, on every page. Each is an
+			icon with a label for screen readers and a tooltip: with four of them, words would leave the
+			narrowest phones no room for the logo. Messages carries how many conversations have something new. -->
+			<nav class="flex items-center gap-1" aria-label={t.nav.label}>
+				<a
+					class="{headerLink} relative w-11"
+					href={inbox}
+					title={t.app.messaging.title}
+					aria-label={t.app.messaging.title}
+					aria-current={current(inbox)}
+				>
+					<Icon name="message" />
+					{#if app.unreadConversations}
+						<span
+							class="absolute -top-0.5 -right-0.5 grid min-w-5 place-items-center rounded-full bg-accent px-1 text-xs font-bold text-white ring-2 ring-canvas"
 							>{app.unreadConversations}</span
-						>{/if}
-				</a>
-				{#if app.status === 'staff'}
-					<a class="{headerLink} px-3 sm:px-4" href={manage} aria-current={current(manage)}>
-						<Icon name="dashboard" />
-						<span class="max-sm:sr-only">{t.app.manage.title}</span>
-					</a>
-				{/if}
-				<a class="{headerLink} px-3 sm:px-4" href={info} aria-current={current(info)}>
-					<Icon name="info" />
-					<span class="max-sm:sr-only">{t.app.info.title}</span>
+						>
+					{/if}
 				</a>
 				<a
 					class="{headerLink} w-11"
+					href={info}
+					title={t.app.info.title}
+					aria-label={t.app.info.title}
+					aria-current={current(info)}
+				>
+					<Icon name="info" />
+				</a>
+				{#if app.status === 'staff'}
+					<a
+						class="{headerLink} w-11"
+						href={manage}
+						title={t.app.manage.title}
+						aria-label={t.app.manage.title}
+						aria-current={current(manage)}
+					>
+						<Icon name="dashboard" />
+					</a>
+				{/if}
+				<a
+					class="{headerLink} w-11"
 					href={options}
+					title={t.app.options.title}
 					aria-label={t.app.options.title}
 					aria-current={current(options)}
 				>
