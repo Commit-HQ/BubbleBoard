@@ -2,21 +2,28 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import type { Snippet } from 'svelte';
 
-	// The sticky header of every page: the logo leading home, then the page's links and controls. A `compact`
-	// header has more links than fit beside the name on the narrowest phones, where only the logo shows.
+	// The sticky header of every page: the logo leading home, then the page's links and controls. `links` is
+	// how many icon links sit beside the name, which is what decides whether the name still fits.
 	let {
 		href,
 		label,
-		compact = false,
+		links = 0,
 		class: className = '',
 		children
 	}: {
 		href: string;
 		label?: string;
-		compact?: boolean;
+		links?: number;
 		class?: string;
 		children?: Snippet;
 	} = $props();
+
+	// Enlarged text on a phone narrows the page below 20rem. Beside the name, each icon link takes 44px of its
+	// own, so three of them leave the name no room below 24rem and four none below 26rem; under that the logo
+	// stands for the name on its own.
+	const nameHidden = $derived(
+		links > 3 ? 'max-[26rem]:sr-only' : links > 0 ? 'max-[24rem]:sr-only' : 'max-[20rem]:sr-only'
+	);
 </script>
 
 <header
@@ -28,9 +35,7 @@
 		aria-label={label}
 	>
 		<img src={favicon} alt="" width="36" height="36" />
-		<!-- Enlarged text on a phone narrows the page below 20rem, and a compact header's links need 24rem beside
-		the name; below that, only the logo shows. -->
-		<span class={compact ? 'max-[24rem]:sr-only' : 'max-[20rem]:sr-only'}>BubbleBoard</span>
+		<span class={nameHidden}>BubbleBoard</span>
 	</a>
 	{@render children?.()}
 </header>

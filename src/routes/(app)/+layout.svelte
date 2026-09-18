@@ -41,6 +41,10 @@
 	// instead, as on the landing page. While the app starts, the header has Settings, since most devices that
 	// open the app are connected.
 	const settings = $derived(app.connected || app.status === 'loading');
+	const staff = $derived(app.status === 'staff');
+	// Messages, the kindergarten's info, Manage on a staff device, and Settings: what the name shares the
+	// header with, and so how narrow the header can get before the name gives way to the logo.
+	const headerLinks = $derived(settings ? (staff ? 4 : 3) : 0);
 	const current = (href: string) => (page.url.pathname === href ? 'page' : undefined);
 	const headerLink =
 		'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-ink/5 font-semibold transition-colors hover:bg-ink/10 aria-[current=page]:bg-ink aria-[current=page]:text-white';
@@ -66,7 +70,7 @@
 </svelte:head>
 
 <div class="mx-auto flex min-h-dvh max-w-2xl flex-col px-4 sm:px-8 print:max-w-none print:px-0">
-	<SiteHeader href={appPath(data.locale)} compact={settings} class="print:hidden">
+	<SiteHeader href={appPath(data.locale)} links={headerLinks} class="print:hidden">
 		{#if settings}
 			<!-- Messages, the kindergarten's info, what staff manage, and Settings, on every page. Each is an
 			icon with a label for screen readers and a tooltip: with four of them, words would leave the
@@ -96,7 +100,7 @@
 				>
 					<Icon name="info" />
 				</a>
-				{#if app.status === 'staff'}
+				{#if staff}
 					<a
 						class="{headerLink} w-11"
 						href={manage}
