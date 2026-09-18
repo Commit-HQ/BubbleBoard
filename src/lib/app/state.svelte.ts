@@ -334,6 +334,12 @@ export class App {
 		await this.loadMessages();
 	}
 
+	/** Takes a closed inquiry away for everyone, the family included. The inbox then no longer holds it. */
+	async deleteConversation(conversation: string) {
+		await this.#signedIn(() => request('DELETE', `/api/messages/${conversation}`));
+		await this.loadMessages();
+	}
+
 	/**
 	 * Saves what an admin decided about a classroom's messaging. The policy is loaded again either way, so a
 	 * save refused as stale leaves the form showing what the other admin settled.

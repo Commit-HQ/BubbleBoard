@@ -1,5 +1,11 @@
 import { error, json } from '@sveltejs/kit';
-import { closeConversation, markRead, readMessages, reply } from '$lib/server/messages';
+import {
+	closeConversation,
+	deleteConversation,
+	markRead,
+	readMessages,
+	reply
+} from '$lib/server/messages';
 import { announceConversation } from '$lib/server/push';
 import { database, requireIdentity, sessionHash } from '$lib/server/session';
 import { id, readJson, sealed } from '$lib/server/validate';
@@ -39,5 +45,11 @@ export const PUT: RequestHandler = async (event) => {
 	)
 		await markRead(database(event), who, event.params.id, body.sequence as number);
 	else error(400, 'invalid');
+	return new Response(null, { status: 204 });
+};
+/** Takes a closed inquiry away, for the family as well as the teachers. */
+export const DELETE: RequestHandler = async (event) => {
+	const who = await requireIdentity(event);
+	await deleteConversation(database(event), who, event.params.id);
 	return new Response(null, { status: 204 });
 };

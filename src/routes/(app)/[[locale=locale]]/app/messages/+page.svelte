@@ -52,6 +52,7 @@
 	let loading = $state(false);
 	let failure = $state<string>();
 	let closing = $state(false);
+	let removing = $state(false);
 	let confirming = $state(false);
 	let end = $state<HTMLOListElement>();
 	/** The clock the sending window is measured against, moved on with every look for new messages. */
@@ -249,6 +250,13 @@
 		await app.closeConversation(id!);
 		closing = false;
 	}
+
+	/** The inquiry is gone, so the page it was on goes back to the inbox rather than say it isn't there. */
+	async function remove() {
+		await app.deleteConversation(id!);
+		removing = false;
+		await goto(appPath(data.locale, 'messages'));
+	}
 </script>
 
 <Screen
@@ -270,9 +278,15 @@
 				<div class="-mt-2 flex flex-wrap items-center justify-between gap-2">
 					<p class="text-muted">{about(thread, true)}</p>
 					{#if thread.closed}
-						<span class="rounded-full bg-ink/10 px-3 py-1 text-xs font-semibold text-muted">
-							{t.closedStatus}
-						</span>
+						<div class="flex items-center gap-1">
+							<span class="rounded-full bg-ink/10 px-3 py-1 text-xs font-semibold text-muted">
+								{t.closedStatus}
+							</span>
+							<!-- A closed inquiry is the only one a teacher can take away, so this is where it goes. -->
+							{#if staff}
+								<button class={button.danger} onclick={() => (removing = true)}>{t.remove}</button>
+							{/if}
+						</div>
 					{:else if staff}
 						<button class={button.secondary} onclick={() => (closing = true)}>{t.close}</button>
 					{/if}
@@ -480,6 +494,16 @@
 			confirmLabel={t.close}
 			onconfirm={close}
 			onclose={() => (closing = false)}
+		/>
+	{:else if removing}
+		<ConfirmDialog
+			locale={data.locale}
+			title={t.removeTitle}
+			copy={t.removeCopy}
+			confirmLabel={t.remove}
+			danger
+			onconfirm={remove}
+			onclose={() => (removing = false)}
 		/>
 	{:else if confirming}
 		<ConfirmDialog

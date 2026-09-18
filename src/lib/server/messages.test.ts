@@ -6,6 +6,7 @@ import { createId } from '$lib/crypto';
 import { defaultSchedule, messageClock, sendingAllowed } from '$lib/messages';
 import {
 	closeConversation,
+	deleteConversation,
 	inbox,
 	markRead,
 	parseSettings,
@@ -184,6 +185,36 @@ describe('private inquiries', () => {
 			).rejects.toMatchObject({ status: 404 });
 		}
 		expect(await readMessages(f.db, f.staff, first.id)).toHaveLength(1);
+	});
+	it('deletes a closed inquiry for both sides, and only a closed one, and only for staff', async () => {
+		const f = await fixture(),
+			first = f.inquiry();
+		await startConversation(f.db, f.parent, first, monday);
+		await markRead(f.db, f.staff, first.id, 1);
+		expect((await inbox(f.db, f.parent, monday)).policies[0].used).toBe(1);
+		// Closing it is the deliberate first step: an open one can't be taken from a family mid-conversation.
+		await expect(deleteConversation(f.db, f.staff, first.id)).rejects.toMatchObject({
+			status: 409,
+			body: { message: 'stale' }
+		});
+		await closeConversation(f.db, f.staff, first.id);
+		await expect(deleteConversation(f.db, f.parent, first.id)).rejects.toMatchObject({
+			status: 403
+		});
+		await expect(deleteConversation(f.db, f.stranger, first.id)).rejects.toMatchObject({
+			status: 404
+		});
+		await deleteConversation(f.db, f.staff, first.id);
+		// Gone on both sides, with the messages and read marks the schema carries out with it.
+		expect((await inbox(f.db, f.parent, monday)).conversations).toHaveLength(0);
+		expect((await inbox(f.db, f.staff, monday)).conversations).toHaveLength(0);
+		for (const table of ['messages', 'conversation_reads'])
+			expect(
+				await f.db.prepare(`SELECT 1 FROM ${table} WHERE conversation_id=?`).bind(first.id).first()
+			).toBe(null);
+		// What the family spent on it is spent no longer, so the month's allowance is its own again.
+		expect((await inbox(f.db, f.parent, monday)).policies[0].used).toBe(0);
+		expect(await startConversation(f.db, f.parent, f.inquiry(), monday)).toBe(true);
 	});
 	it('applies off switch and hours to replies too, but never restricts teachers', async () => {
 		const f = await fixture(),

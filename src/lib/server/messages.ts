@@ -392,3 +392,21 @@ export async function closeConversation(db: D1Database, who: Identity, id: strin
 		.bind(id, ...params)
 		.run();
 }
+/**
+ * Takes a closed inquiry away for good: its messages and both sides' read progress go with it
+ * (migrations/0015_messages.sql), and so does the family's copy, since both sides read the one record. Only a
+ * closed one, so a conversation can't disappear under a family still writing in it. What the family spent on
+ * it returns to that month's allowance, which is what the messages it spent them on no longer being there means.
+ */
+export async function deleteConversation(db: D1Database, who: Identity, id: string) {
+	if (who.kind !== 'staff') error(403, 'forbidden');
+	await conversationFor(db, who, id);
+	const [sql, params] = visibleClassrooms(who);
+	const result = await db
+		.prepare(`DELETE FROM conversations WHERE id=? AND closed=1 AND classroom_id IN (${sql})`)
+		.bind(id, ...params)
+		.run();
+	// It's there and this device may see it, so nothing deleted means it isn't closed: the device asked from
+	// a page written before someone reopened the question, and loading the inbox again shows what's there now.
+	if (!result.meta.changes) error(409, 'stale');
+}

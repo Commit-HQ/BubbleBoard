@@ -738,6 +738,9 @@ export const en = {
 			closeCopy:
 				'The conversation remains available to read. For a new topic, start a new inquiry.',
 			closedCopy: 'This inquiry is closed and remains available to read.',
+			remove: 'Delete inquiry',
+			removeTitle: 'Delete this inquiry?',
+			removeCopy: 'The conversation is deleted for the family too. This cannot be undone.',
 			empty: 'No inquiries match this view.',
 			emptyTitle: 'No messages yet',
 			emptyCopy: 'Private conversations with your classroom’s teachers happen here.',
