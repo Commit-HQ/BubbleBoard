@@ -9,11 +9,12 @@ export const POST: RequestHandler = async (event) => {
 	const staff = await requireStaff(event);
 	const removed = await removeMeetingDay(database(event), staff, await readJson(event.request));
 	const poster = await sessionHash(event);
-	await announceMeetingChanges(
-		event,
-		removed.flatMap((slot) => (slot.child ? [{ offer: slot.offer, child: slot.child }] : [])),
-		poster
-	).catch(() => {});
-
+	event.platform?.ctx.waitUntil(
+		announceMeetingChanges(
+			event,
+			removed.flatMap((slot) => (slot.child ? [{ offer: slot.offer, child: slot.child }] : [])),
+			poster
+		)
+	);
 	return json({ ok: true });
 };

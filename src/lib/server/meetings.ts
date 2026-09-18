@@ -6,56 +6,44 @@ import {
 	type MeetingSlot,
 	type NewMeetingOffer
 } from '$lib/meetings';
-import { isId, envelopeSize } from '$lib/crypto';
-import { checkClassrooms, visibleClassrooms } from './database';
+import { isId } from '$lib/crypto';
+import { checkClassrooms, transaction, visibleClassrooms } from './database';
+import { fields, id, invalid, list, revision, sealed } from './validate';
 
-const invalid = (): never => error(400, 'invalid');
-export function parseOffer(body: Record<string, unknown>, now = Date.now()): NewMeetingOffer {
+/** A time offered: it must be ahead, within the year, and long enough to meet in but not a whole afternoon. */
+function offeredSlot(value: unknown, now: number) {
+	const slot = fields(value);
+	const start = Number(slot.start),
+		end = Number(slot.end);
 	if (
-		!isId(body.id) ||
-		!isId(body.classroom) ||
-		!Number.isInteger(body.revision) ||
-		!Array.isArray(body.slots) ||
-		body.slots.length < 1 ||
-		body.slots.length > 100 ||
-		!Array.isArray(body.invites) ||
-		body.invites.length > 200
+		!Number.isSafeInteger(slot.start) ||
+		!Number.isSafeInteger(slot.end) ||
+		start <= now ||
+		start > now + 366 * 86400000 ||
+		end - start < 5 * 60000 ||
+		end - start > 120 * 60000
 	)
 		invalid();
-	const slots = (body.slots as Record<string, unknown>[]).map((s) => {
-		if (
-			!s ||
-			!isId(s.id) ||
-			!Number.isSafeInteger(s.start) ||
-			!Number.isSafeInteger(s.end) ||
-			Number(s.start) <= now ||
-			Number(s.start) > now + 366 * 86400000 ||
-			Number(s.end) - Number(s.start) < 5 * 60000 ||
-			Number(s.end) - Number(s.start) > 120 * 60000
-		)
-			invalid();
-		return { id: s.id as string, start: s.start as number, end: s.end as number };
-	});
-	if (new Set(slots.map((s) => s.id)).size !== slots.length) invalid();
-	const invites = (body.invites as Record<string, unknown>[]).map((i) => {
-		const size = envelopeSize(i?.label);
-		if (
-			!i ||
-			!isId(i.child) ||
-			!isId(i.family) ||
-			typeof i.label !== 'string' ||
-			size === undefined ||
-			size < 1 ||
-			size > 2048
-		)
-			invalid();
-		return { child: i.child as string, family: i.family as string, label: i.label as string };
-	});
-	if (new Set(invites.map((i) => `${i.child}:${i.family}`)).size !== invites.length) invalid();
+	return { id: id(slot.id), start, end };
+}
+/** Each invited child's name, sealed for one family; the server never sees which child it names. */
+function invitation(value: unknown) {
+	const invite = fields(value);
+	return { child: id(invite.child), family: id(invite.family), label: sealed(invite.label, 2048) };
+}
+export function parseOffer(body: Record<string, unknown>, now = Date.now()): NewMeetingOffer {
+	const slots = list(body.slots, (value) => offeredSlot(value, now), 100);
+	const invites = list(body.invites, invitation);
+	if (
+		!slots.length ||
+		new Set(slots.map((slot) => slot.id)).size !== slots.length ||
+		new Set(invites.map((invite) => `${invite.child}:${invite.family}`)).size !== invites.length
+	)
+		invalid();
 	return {
-		id: body.id as string,
-		classroom: body.classroom as string,
-		revision: body.revision as number,
+		id: id(body.id),
+		classroom: id(body.classroom),
+		revision: revision(body.revision),
 		slots,
 		invites
 	};
@@ -118,16 +106,15 @@ export async function publishMeetings(db: D1Database, who: Staff, offer: NewMeet
 			)
 			.bind(offer.id, offer.classroom, offer.classroom, JSON.stringify(offer.invites))
 	];
-	try {
-		await db.batch(statements);
-	} catch (cause) {
-		const msg = String(cause);
-		if (msg.includes('meeting-overlap')) error(409, 'meeting-overlap');
-		if (msg.includes('constraint')) error(409, 'stale');
-		throw cause;
-	}
+	// Each statement leaves a required column empty when what it depends on has moved — a stale catalog, a
+	// child who changed classroom, a family who left — which `transaction` reports as a conflict.
+	await transaction(db, statements);
 }
-/** Conditional writes make booking/cancellation safe even with stale pages and simultaneous requests. */
+/**
+ * Conditional writes make booking/cancellation safe even with stale pages and simultaneous requests. It
+ * answers with the booking that changed, which its families and teachers are told about, or nothing when a
+ * free time was simply withdrawn.
+ */
 export async function changeMeeting(
 	db: D1Database,
 	who: Identity,
@@ -156,9 +143,12 @@ export async function changeMeeting(
 		}>();
 	if (!slot) error(404, 'missing');
 	let sql: string, values: unknown[];
+	/** Whose meeting moved, taken where the request was checked rather than read from the body again. */
+	let booking: { offer: string; child: string } | null = null;
 	if (body.action === 'book') {
 		if (who.kind !== 'family') error(403, 'forbidden');
 		if (!isId(body.child)) invalid();
+		booking = { offer: slot.offer, child: body.child };
 		sql = `UPDATE meeting_slots SET child_id=?,version=version+1 WHERE id=? AND version=? AND child_id IS NULL AND starts_at>?
  AND EXISTS(SELECT 1 FROM meeting_invites i JOIN children c ON c.id=i.child_id AND c.classroom_id=? JOIN family_classrooms f ON f.family_id=i.family_id AND f.classroom_id=c.classroom_id WHERE i.offer_id=meeting_slots.offer_id AND i.child_id=? AND i.family_id=?)`;
 		values = [body.child, id, body.version, now, slot.classroom, body.child, who.family];
@@ -170,6 +160,7 @@ export async function changeMeeting(
 				'DELETE FROM meeting_slots WHERE id=? AND version=? AND child_id IS NULL AND starts_at>?';
 			values = [id, body.version, now];
 		} else {
+			booking = slot.child ? { offer: slot.offer, child: slot.child } : null;
 			sql =
 				'UPDATE meeting_slots SET child_id=NULL,version=version+1 WHERE id=? AND version=? AND child_id IS NOT NULL AND starts_at>?';
 			values = [id, body.version, now];
@@ -190,7 +181,7 @@ export async function changeMeeting(
 		if (String(cause).includes('UNIQUE constraint')) error(409, 'meeting-already-booked');
 		throw cause;
 	}
-	return slot;
+	return booking;
 }
 
 /** Remove the staff member's upcoming times for one classroom/day, only if the confirmed list is current. */

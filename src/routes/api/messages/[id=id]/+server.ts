@@ -1,15 +1,8 @@
 import { error, json } from '@sveltejs/kit';
-import {
-	closeConversation,
-	markRead,
-	messageId,
-	readMessages,
-	reply,
-	sealed
-} from '$lib/server/messages';
+import { closeConversation, markRead, readMessages, reply } from '$lib/server/messages';
 import { announceConversation } from '$lib/server/push';
 import { database, requireIdentity, sessionHash } from '$lib/server/session';
-import { readJson } from '$lib/server/validate';
+import { id, readJson, sealed } from '$lib/server/validate';
 import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async (event) => {
 	const who = await requireIdentity(event);
@@ -26,7 +19,7 @@ export const POST: RequestHandler = async (event) => {
 		database(event),
 		who,
 		event.params.id,
-		messageId(body.id),
+		id(body.id),
 		sealed(body.content)
 	);
 	if (inserted)

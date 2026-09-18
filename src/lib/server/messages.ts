@@ -1,6 +1,5 @@
 import { error } from '@sveltejs/kit';
 import type { Identity } from '$lib/api';
-import { envelopeSize, isId } from '$lib/crypto';
 import {
 	chargesAllowance,
 	defaultMonthlyLimit,
@@ -14,51 +13,42 @@ import {
 } from '$lib/messages';
 import { visibleClassrooms } from './database';
 import type { Admin } from './session';
+import { fields, flag, invalid, list, revision } from './validate';
 
 export const actor = (who: Identity) =>
 	who.kind === 'family' ? `family:${who.family}` : `teacher:${who.teacher}`;
-const invalid = (): never => error(400, 'invalid');
-export function messageId(value: unknown): string {
-	return isId(value) ? value : invalid();
-}
-export function sealed(value: unknown, max = 18000): string {
-	const size = envelopeSize(value);
-	return typeof value === 'string' && size !== undefined && size > 0 && size <= max
-		? value
-		: invalid();
-}
-export function parseSettings(classroom: string, body: Record<string, unknown>): MessageSettings {
+
+const clockTime = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+/** One weekday's sending hours, or nothing at all when the classroom takes no messages that day. */
+function hours(value: unknown) {
+	if (value === null) return null;
+	const { start, end } = fields(value);
 	if (
-		typeof body.enabled !== 'boolean' ||
-		!Number.isInteger(body.monthlyLimit) ||
-		Number(body.monthlyLimit) < 1 ||
-		Number(body.monthlyLimit) > 1000 ||
-		!Number.isInteger(body.revision) ||
-		Number(body.revision) < 0 ||
-		!Array.isArray(body.schedule) ||
-		body.schedule.length !== 5
+		typeof start !== 'string' ||
+		typeof end !== 'string' ||
+		!clockTime.test(start) ||
+		!clockTime.test(end) ||
+		start >= end
 	)
 		invalid();
-	const schedule = (body.schedule as unknown[]).map((entry) => {
-		if (entry === null) return null;
-		if (!entry || typeof entry !== 'object') return invalid();
-		const { start, end } = entry as Record<string, unknown>;
-		const time = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
-		if (
-			typeof start !== 'string' ||
-			typeof end !== 'string' ||
-			!time.test(start) ||
-			!time.test(end) ||
-			start >= end
-		)
-			return invalid();
-		return { start, end };
-	});
+	return { start: start as string, end: end as string };
+}
+export function parseSettings(classroom: string, body: Record<string, unknown>): MessageSettings {
+	const monthlyLimit = body.monthlyLimit;
+	if (
+		!Number.isInteger(monthlyLimit) ||
+		(monthlyLimit as number) < 1 ||
+		(monthlyLimit as number) > 1000
+	)
+		invalid();
+	// Five weekdays, always all five: a day the classroom is closed is there as nothing.
+	const schedule = list(body.schedule, hours, 5);
+	if (schedule.length !== 5) invalid();
 	return {
 		classroom,
-		enabled: body.enabled as boolean,
-		monthlyLimit: body.monthlyLimit as number,
-		revision: body.revision as number,
+		enabled: flag(body.enabled),
+		monthlyLimit: monthlyLimit as number,
+		revision: revision(body.revision),
 		schedule
 	};
 }
@@ -131,15 +121,21 @@ async function checkAudience(db: D1Database, who: Identity, classroom: string, f
 		.first();
 	if (!row || (who.kind === 'family' && who.family !== family)) error(404, 'not-found');
 }
+/**
+ * The conversation, if this device may see it: one statement asks for it and for the membership that makes
+ * it visible, since a conversation nobody on this device belongs to is simply not there.
+ */
 export async function conversationFor(db: D1Database, who: Identity, id: string) {
+	const [sql, params] = visibleClassrooms(who);
 	const row = await db
 		.prepare(
-			'SELECT id,family_id AS family,classroom_id AS classroom,closed FROM conversations WHERE id=?'
+			`SELECT c.id,c.family_id AS family,c.classroom_id AS classroom,c.closed FROM conversations c
+ JOIN family_classrooms f ON f.family_id=c.family_id AND f.classroom_id=c.classroom_id
+ WHERE c.id=? AND c.classroom_id IN (${sql})`
 		)
-		.bind(id)
+		.bind(id, ...params)
 		.first<{ id: string; family: string; classroom: string; closed: number }>();
-	if (!row) error(404, 'not-found');
-	await checkAudience(db, who, row.classroom, row.family);
+	if (!row || (who.kind === 'family' && who.family !== row.family)) error(404, 'not-found');
 	return row;
 }
 /** What a family has spent of a classroom's monthly allowance: its classroom, family, and Zagreb month. */

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { listRow } from './ui';
+
 	// One conversation in the inbox: who it's with, its subject, the last thing said, and when. A conversation
 	// with something new on it stands out, as an unseen notice does on the board.
 	let {
@@ -23,12 +25,7 @@
 </script>
 
 <li>
-	<a
-		class="flex items-center gap-4 rounded-3xl glass px-4 py-4 transition hover:bg-white/75 {unread
-			? 'ring-2 ring-accent'
-			: ''}"
-		{href}
-	>
+	<a class="{listRow} {unread ? 'ring-2 ring-accent' : ''}" {href}>
 		<span
 			class="grid size-11 shrink-0 place-items-center rounded-2xl text-lg font-bold {unread
 				? 'bg-sunrise text-white'

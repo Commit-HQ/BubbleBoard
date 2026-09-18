@@ -1,4 +1,4 @@
-import { messageClock } from '$lib/messages';
+import { messageClock, messageTime, perLocale } from '$lib/messages';
 
 export type MeetingSlot = {
 	id: string;
@@ -22,7 +22,6 @@ export type NewMeetingOffer = {
 	slots: { id: string; start: number; end: number }[];
 	invites: { child: string; family: string; label: string }[];
 };
-export const meetingZone = 'Europe/Zagreb';
 /** Converts a kindergarten wall-clock time, independently of the device's timezone. */
 export function meetingTimestamp(date: string, time: string): number {
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) return NaN;
@@ -58,7 +57,8 @@ export function generateMeetingSlots(date: string, from: string, to: string, min
 		result.push({ start: time, end: time + minutes * 60000 });
 	return result;
 }
-export const meetingDay = (locale: string, time: number) =>
-	new Intl.DateTimeFormat(locale, { dateStyle: 'full', timeZone: meetingZone }).format(time);
-export const meetingTime = (locale: string, time: number) =>
-	new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone: meetingZone }).format(time);
+const dayFormat = perLocale({ dateStyle: 'full' });
+/** The day a meeting falls on, written in full over the times offered that day. */
+export const meetingDay = (locale: string, time: number) => dayFormat(locale).format(time);
+/** A meeting's time reads like a message's, and is the same clock. */
+export const meetingTime = messageTime;

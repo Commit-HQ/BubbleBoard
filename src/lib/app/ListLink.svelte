@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
 	import IconTile from '$lib/components/IconTile.svelte';
+	import { listRow } from './ui';
 
 	// A record in a list, linking to its page. An icon sets apart a record unlike the others.
 	let {
@@ -12,10 +13,7 @@
 </script>
 
 <li>
-	<a
-		class="flex items-center gap-4 rounded-3xl glass px-5 py-4 transition hover:bg-white/75"
-		{href}
-	>
+	<a class={listRow} {href}>
 		{#if icon}<IconTile {icon} tone="ink" />{/if}
 		<span class="min-w-0 grow">
 			<span class="block font-bold">{title}</span>

@@ -5,7 +5,7 @@
 	import { generateMeetingSlots, meetingDay, meetingTime, type MeetingSlot } from '$lib/meetings';
 	import { messageClock } from '$lib/messages';
 	import { getApp, Task } from './state.svelte';
-	import { alert, button, field, surface } from './ui';
+	import { alert, button, everyHalfMinute, field, surface } from './ui';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	let { locale }: { locale: Locale } = $props();
 	const app = getApp(),
@@ -43,18 +43,20 @@
 				return groups;
 			}, {})
 		);
+	// Grouping reads the clock once per slot, so it happens when the times change, not on every render.
+	const upcomingGroups = $derived(groups(upcoming));
+	const pastGroups = $derived(groups([...past].reverse()));
 	const children = (offer: string) => app.meetingChildren.filter((c) => c.offer === offer);
 	const chosenChild = (offer: string) => selectedChildren[offer] || children(offer)[0]?.child;
 	const alreadyBooked = (offer: string) =>
 		app.meetings.some((s) => s.offer === offer && s.child === chosenChild(offer) && s.mine);
 	const canManage = (s: MeetingSlot) => staff && (app.admin || s.teacher === app.me?.id);
-	const removableDay = (slot: MeetingSlot) =>
-		upcoming.filter(
-			(s) =>
-				s.classroom === slot.classroom &&
-				messageClock(s.start).date === messageClock(slot.start).date &&
-				canManage(s)
+	const removableDay = (slot: MeetingSlot) => {
+		const day = messageClock(slot.start).date;
+		return upcoming.filter(
+			(s) => s.classroom === slot.classroom && messageClock(s.start).date === day && canManage(s)
 		);
+	};
 	async function removeDay() {
 		if (!dayRemoval?.length) return;
 		await app.removeMeetingDay(
@@ -72,13 +74,10 @@
 			: app.meetingChildren.find((c) => c.offer === s.offer && c.child === s.child)?.name;
 	const time = (s: { start: number; end: number }) =>
 		`${meetingTime(locale, s.start)}–${meetingTime(locale, s.end)}`;
-	onMount(() => {
-		void app.loadMeetings();
-		const timer = setInterval(() => {
-			now = Date.now();
-			if (document.visibilityState === 'visible') void app.loadMeetings();
-		}, 30000);
-		return () => clearInterval(timer);
+	onMount(() => void app.loadMeetings());
+	everyHalfMinute((visible) => {
+		now = Date.now();
+		if (visible) void app.loadMeetings();
 	});
 	function toggle(start: number) {
 		excluded = excluded.includes(start)
@@ -92,19 +91,24 @@
 		excluded = [];
 		notice = t.success;
 	}
+	/** What each of the three changes is called, asked, and said once it's done. */
+	const actions = $derived({
+		book: { title: t.reservation, label: t.reserve, copy: t.confirmCopy, done: t.reserved },
+		cancel: {
+			title: t.cancelBooking,
+			label: t.cancelBooking,
+			copy: t.cancelCopy,
+			// A family cancelling its own meeting sees the list change, which says it plainly enough.
+			done: staff ? t.cancelled : ''
+		},
+		remove: { title: t.remove, label: t.remove, copy: t.removeCopy, done: t.removed }
+	});
 	async function confirm() {
 		if (!confirmation) return;
 		const current = confirmation;
 		await app.changeMeeting(current.slot, current.action, current.child);
 		confirmation = undefined;
-		notice =
-			current.action === 'book'
-				? t.reserved
-				: current.action === 'cancel'
-					? staff
-						? t.cancelled
-						: ''
-					: t.removed;
+		notice = actions[current.action].done;
 	}
 </script>
 
@@ -225,14 +229,11 @@
 	{:else if app.meetingsLoaded}
 		{#if !staff}<p class="text-sm text-muted">{t.onePerChild}</p>{/if}
 		{#if !upcoming.length}<p class="text-muted">{staff ? t.emptyStaff : t.emptyFamily}</p>{/if}
-		{#each groups(upcoming) as slots (slots[0].id)}{@render group(slots, false)}{/each}
+		{#each upcomingGroups as slots (slots[0].id)}{@render group(slots, false)}{/each}
 		{#if past.length}<details>
 				<summary class="cursor-pointer py-3 font-semibold">{t.past} ({past.length})</summary>
 				<div class="mt-3 grid gap-4">
-					{#each groups([...past].reverse()) as slots (slots[0].id)}{@render group(
-							slots,
-							true
-						)}{/each}
+					{#each pastGroups as slots (slots[0].id)}{@render group(slots, true)}{/each}
 				</div>
 			</details>{/if}
 	{/if}
@@ -325,19 +326,12 @@
 {/snippet}
 
 {#if confirmation}
+	{@const asked = actions[confirmation.action]}
 	<ConfirmDialog
 		{locale}
-		title={confirmation.action === 'book'
-			? t.reservation
-			: confirmation.action === 'cancel'
-				? t.cancelBooking
-				: t.remove}
-		copy={`${meetingDay(locale, confirmation.slot.start)} · ${time(confirmation.slot)}. ${confirmation.action === 'book' ? t.confirmCopy : confirmation.action === 'cancel' ? t.cancelCopy : t.removeCopy}`}
-		confirmLabel={confirmation.action === 'book'
-			? t.reserve
-			: confirmation.action === 'cancel'
-				? t.cancelBooking
-				: t.remove}
+		title={asked.title}
+		copy={`${meetingDay(locale, confirmation.slot.start)} · ${time(confirmation.slot)}. ${asked.copy}`}
+		confirmLabel={asked.label}
 		danger={confirmation.action !== 'book'}
 		onconfirm={confirm}
 		onclose={() => (confirmation = undefined)}

@@ -1,13 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { request } from '$lib/api';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
 	import InquiryLink from '$lib/app/InquiryLink.svelte';
 	import MessageBubble from '$lib/app/MessageBubble.svelte';
 	import MessagePolicy from '$lib/app/MessagePolicy.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp } from '$lib/app/state.svelte';
-	import { alert, button, field, queryParam, surface } from '$lib/app/ui';
+	import { alert, button, everyHalfMinute, field, queryParam, surface } from '$lib/app/ui';
 	import Icon from '$lib/components/Icon.svelte';
 	import IconTile from '$lib/components/IconTile.svelte';
 	import { createId } from '$lib/crypto';
@@ -19,13 +18,10 @@
 		closingSoon,
 		messageClock,
 		messageDate,
+		messageShortDate,
 		messageTime,
-		openMessage,
 		remainingMessages,
-		sealMessage,
-		sealSubject,
 		sendingLeft,
-		type MessageRecord,
 		type OpenMessage
 	} from '$lib/messages';
 	import { appPath } from '$lib/paths';
@@ -125,11 +121,7 @@
 	const listTime = (time: number) =>
 		messageClock(time).date === messageClock().date
 			? messageTime(data.locale, time)
-			: new Intl.DateTimeFormat(data.locale, {
-					day: 'numeric',
-					month: 'numeric',
-					timeZone: 'Europe/Zagreb'
-				}).format(time);
+			: messageShortDate(data.locale, time);
 	/** The chip above the first message of each day. */
 	function dayLabel(time: number) {
 		const day = messageClock(time).date;
@@ -171,16 +163,12 @@
 		scrolledTo = last;
 		end?.scrollIntoView({ block: 'end' });
 	});
-	onMount(() => {
-		const interval = setInterval(() => {
-			now = Date.now();
-			if (document.visibilityState === 'visible' && app.connected && !busy) void app.loadMessages();
-		}, 30000);
-		return () => {
-			clearInterval(interval);
-			generation++;
-		};
+	everyHalfMinute((visible) => {
+		now = Date.now();
+		if (visible && app.connected && !busy) void app.loadMessages();
 	});
+	// A conversation left behind stops taking what its last load brings back.
+	onMount(() => () => void generation++);
 
 	async function load(selected: string, older = false) {
 		const item = app.conversations.find((item) => item.id === selected);
@@ -193,11 +181,9 @@
 		const ticket = ++generation;
 		loading = true;
 		try {
-			const before = older && rows.length ? `?before=${rows[0].sequence}` : '';
-			const records = await request<MessageRecord[]>('GET', `/api/messages/${selected}${before}`);
-			const key = await app.messageKey(item.family);
-			const opened = await Promise.all(
-				records.map((record) => openMessage(record, key, item.classroom, item.id))
+			const opened = await app.readConversation(
+				item,
+				older && rows.length ? rows[0].sequence : undefined
 			);
 			if (ticket !== generation || id !== selected) return;
 			if (older) rows = [...opened, ...rows];
@@ -205,15 +191,12 @@
 				const oldest = opened[0]?.sequence ?? Infinity;
 				rows = [...rows.filter((row) => row.sequence < oldest), ...opened];
 			}
-			if (older || rows.length <= 50) more = records.length === 50;
+			if (older || rows.length <= 50) more = opened.length === 50;
+			// Only a message the family hasn't seen yet is worth a write; the look for new ones comes round
+			// every half minute, and nearly always finds the conversation where it left it.
 			const last = opened.at(-1)?.sequence;
-			if (last && !older && document.visibilityState === 'visible') {
-				await request('PUT', `/api/messages/${selected}`, { action: 'read', sequence: last });
-				if (ticket === generation)
-					app.conversations = app.conversations.map((row) =>
-						row.id === selected ? { ...row, readSequence: Math.max(row.readSequence, last) } : row
-					);
-			}
+			if (last && last > item.readSequence && !older && document.visibilityState === 'visible')
+				await app.markConversationRead(selected, last);
 		} catch (cause) {
 			if (ticket === generation) failure = errorCode(cause);
 		} finally {
@@ -238,46 +221,33 @@
 		try {
 			const fingerprint = JSON.stringify([id, targetClassroom, targetFamily, subject, text]);
 			if (pending?.fingerprint !== fingerprint) {
-				const key = await app.messageKey(targetFamily);
-				const message = createId();
 				const conversation = creating ? createId() : id!;
-				const content = await sealMessage(
-					{ text: text.trim(), name: staff ? (app.myName ?? t.teacher) : '' },
-					key,
-					targetClassroom,
-					message,
-					conversation
-				);
-				const payload: Record<string, string> = creating
-					? {
-							id: conversation,
-							classroom: targetClassroom,
-							family: targetFamily,
-							title: await sealSubject(subject.trim(), key, targetClassroom, conversation),
-							message,
-							content
-						}
-					: { id: message, content };
-				pending = { fingerprint, payload };
+				pending = {
+					fingerprint,
+					payload: await app.sealFor(
+						targetClassroom,
+						targetFamily,
+						conversation,
+						{ text: text.trim(), name: staff ? (app.myName ?? t.teacher) : '' },
+						creating ? subject.trim() : undefined
+					)
+				};
 			}
 			const savedId = creating ? pending.payload.id : id!;
-			await request('POST', creating ? '/api/messages' : `/api/messages/${id}`, pending.payload);
+			await app.sendMessage(pending.payload, creating ? undefined : id!);
 			text = '';
 			pending = undefined;
-			await app.loadMessages();
 			if (creating) await goto(appPath(data.locale, 'messages', { id: savedId }));
 		} catch (cause) {
 			failure = errorCode(cause);
-			await app.loadMessages();
 		} finally {
 			busy = false;
 		}
 	}
 
 	async function close() {
-		await request('PUT', `/api/messages/${id}`, { action: 'close' });
+		await app.closeConversation(id!);
 		closing = false;
-		await app.loadMessages();
 	}
 </script>
 
@@ -363,7 +333,7 @@
 									disabled={busy || !canSend}></textarea>
 							</label>
 							<button
-								class="grid size-11 shrink-0 place-items-center rounded-full bg-ink text-white shadow-lg shadow-ink/20 transition disabled:pointer-events-none disabled:opacity-40"
+								class={button.iconPrimary}
 								aria-label={t.send}
 								disabled={busy || !canSend || !text.trim()}
 							>
@@ -455,10 +425,7 @@
 							{#if pickClassroom}
 								<label class={pickState ? 'ml-auto' : ''}>
 									<span class="sr-only">{t.classroom}</span>
-									<select
-										class="min-h-9 rounded-full bg-white/60 px-3 text-sm font-semibold text-ink ring-1 ring-ink/10"
-										bind:value={classroom}
-									>
+									<select class={button.chipSelect} bind:value={classroom}>
 										<option value="">{t.classroom}: {t.all}</option>
 										{#each app.myClassrooms as item (item.id)}<option value={item.id}
 												>{item.name}</option

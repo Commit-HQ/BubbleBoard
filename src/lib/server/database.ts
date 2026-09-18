@@ -11,8 +11,16 @@ export async function transaction(db: D1Database, statements: D1PreparedStatemen
 	} catch (cause) {
 		const message = cause instanceof Error ? cause.message : '';
 		if (message.includes('last-admin')) error(409, 'last-admin');
-		// The records changed since the device read them, or something the change refers to is gone.
-		if (message.includes('stale') || message.includes('FOREIGN KEY constraint failed')) {
+		// Two meetings offered over each other, in one classroom or for one teacher.
+		if (message.includes('meeting-overlap')) error(409, 'meeting-overlap');
+		// The records changed since the device read them, or something the change refers to is gone. A
+		// statement that writes nothing where the schema insists on something says the same: a write made
+		// conditional on records that have since moved leaves the column it depended on empty.
+		if (
+			message.includes('stale') ||
+			message.includes('FOREIGN KEY constraint failed') ||
+			message.includes('NOT NULL constraint failed')
+		) {
 			error(409, 'stale');
 		}
 		throw cause;

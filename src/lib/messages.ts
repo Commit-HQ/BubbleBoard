@@ -42,18 +42,29 @@ export const defaultSchedule = () =>
 	Array.from({ length: 5 }, () => ({ start: '08:00', end: '16:00' }));
 /** What a classroom starts with when an admin first opens its messaging settings. */
 export const defaultMonthlyLimit = 3;
+/** The kindergarten's own timezone: every hour the app shows or reckons with is read in it. */
+export const zone = 'Europe/Zagreb';
+// A formatter is slow to make, and these run for every message on the screen, so each is made once.
+const clockFormat = new Intl.DateTimeFormat('en-GB', {
+	timeZone: zone,
+	year: 'numeric',
+	month: '2-digit',
+	day: '2-digit',
+	weekday: 'short',
+	hour: '2-digit',
+	minute: '2-digit',
+	hourCycle: 'h23'
+});
+/** Keeps one formatter per language, made the first time that language asks for it. */
+export function perLocale(options: Intl.DateTimeFormatOptions) {
+	const made: Record<string, Intl.DateTimeFormat> = {};
+	return (locale: string) =>
+		(made[locale] ??= new Intl.DateTimeFormat(locale, { timeZone: zone, ...options }));
+}
+
 /** The kindergarten's own clock: sending hours, calendar months, and the days a conversation is grouped by. */
 export function messageClock(now = Date.now()) {
-	const parts = new Intl.DateTimeFormat('en-GB', {
-		timeZone: 'Europe/Zagreb',
-		year: 'numeric',
-		month: '2-digit',
-		day: '2-digit',
-		weekday: 'short',
-		hour: '2-digit',
-		minute: '2-digit',
-		hourCycle: 'h23'
-	}).formatToParts(now);
+	const parts = clockFormat.formatToParts(now);
 	const value = (type: string) => parts.find((part) => part.type === type)!.value;
 	return {
 		date: `${value('year')}-${value('month')}-${value('day')}`,
@@ -88,12 +99,16 @@ export const remainingMessages = (policy: MessagePolicy) =>
  * teacher is free; starting a conversation, and writing again before an answer comes, is not.
  */
 export const chargesAllowance = (latest: string | undefined) => !latest || !byTeacher(latest);
+const timeFormat = perLocale({ timeStyle: 'short' });
+const dateFormat = perLocale({ dateStyle: 'long' });
+const shortDateFormat = perLocale({ day: 'numeric', month: 'numeric' });
 /** When a message was sent, in the kindergarten's time: `14:05`. */
-export const messageTime = (locale: string, time: number) =>
-	new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone: 'Europe/Zagreb' }).format(time);
+export const messageTime = (locale: string, time: number) => timeFormat(locale).format(time);
 /** The day a message was sent, for the chip above the first message of each day. */
-export const messageDate = (locale: string, time: number) =>
-	new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeZone: 'Europe/Zagreb' }).format(time);
+export const messageDate = (locale: string, time: number) => dateFormat(locale).format(time);
+/** The day a conversation last moved, for the inbox, where a day older than today shows as `4/3`. */
+export const messageShortDate = (locale: string, time: number) =>
+	shortDateFormat(locale).format(time);
 export function sealSubject(title: string, key: CryptoKey, classroom: string, id: string) {
 	return encryptData({ title }, key, { purpose: 'conversation-title', classroom, message: id });
 }

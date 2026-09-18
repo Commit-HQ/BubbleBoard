@@ -43,8 +43,10 @@ type Fields = Record<string, unknown>;
 const maxBytes = 64 * 1024;
 /** A profile holds a name and a few IDs. */
 const maxProfileBytes = 6 * 1024;
+/** A private message or its subject: far longer than a profile, far shorter than a notice. */
+const maxMessageBytes = 18000;
 
-function invalid(): never {
+export function invalid(): never {
 	error(400, 'invalid');
 }
 
@@ -99,20 +101,20 @@ export const readPhoto = (request: Request) => readSealed(request, maxPhotoBytes
 /** Reads a notice file's encrypted bytes. */
 export const readFile = (request: Request) => readSealed(request, maxFileBytes);
 
-function fields(value: unknown): Fields {
+export function fields(value: unknown): Fields {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
 		? (value as Fields)
 		: invalid();
 }
 
-function list<T>(value: unknown, item: (value: unknown) => T, max = 200): T[] {
+export function list<T>(value: unknown, item: (value: unknown) => T, max = 200): T[] {
 	return Array.isArray(value) && value.length <= max ? value.map(item) : invalid();
 }
 
-const id = (value: unknown) => (isId(value) ? value : invalid());
-const ids = (value: unknown, max?: number) => [...new Set(list(value, id, max))];
-const flag = (value: unknown) => (typeof value === 'boolean' ? value : invalid());
-const revision = (value: unknown) =>
+export const id = (value: unknown) => (isId(value) ? value : invalid());
+export const ids = (value: unknown, max?: number) => [...new Set(list(value, id, max))];
+export const flag = (value: unknown) => (typeof value === 'boolean' ? value : invalid());
+export const revision = (value: unknown) =>
 	Number.isSafeInteger(value) && (value as number) >= 0 ? (value as number) : invalid();
 
 export const authToken = (value: unknown) =>
@@ -124,12 +126,21 @@ const wrappedKey = (value: unknown) =>
 	envelopeSize(value) === KEY_BYTES ? (value as string) : invalid();
 
 /** A value in envelope form that holds at most `max` bytes. */
-const envelope = (max: number) => (value: unknown) => {
+export const envelope = (max: number) => (value: unknown) => {
 	const size = envelopeSize(value);
 	return size !== undefined && size <= max ? (value as string) : invalid();
 };
 
 export const profile = envelope(maxProfileBytes);
+
+/**
+ * A sealed message, subject, or invitation label: an envelope that holds something, and at most `max` bytes
+ * before it was encrypted. Unlike `envelope`, an empty one is refused — nothing the app seals is empty.
+ */
+export function sealed(value: unknown, max = maxMessageBytes): string {
+	const size = envelopeSize(value);
+	return size !== undefined && size > 0 && size <= max ? (value as string) : invalid();
+}
 
 function credential(value: unknown): NewCredential {
 	const body = fields(value);

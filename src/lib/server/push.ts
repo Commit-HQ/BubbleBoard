@@ -93,8 +93,16 @@ export function vapidPublicKey(secret: string) {
 	return toBase64Url(point);
 }
 
-/** The installation's VAPID key, from its secret: the key's x, y, and d in base64url, joined by dots. */
-export async function vapidKey(secret: string): Promise<VapidKey> {
+/**
+ * The installation's VAPID key, from its secret: the key's x, y, and d in base64url, joined by dots. It's
+ * the same key on every push, so it's imported once and kept for as long as the Worker lives.
+ */
+let imported: { secret: string; key: Promise<VapidKey> } | undefined;
+export function vapidKey(secret: string): Promise<VapidKey> {
+	if (imported?.secret !== secret) imported = { secret, key: importVapidKey(secret) };
+	return imported.key;
+}
+async function importVapidKey(secret: string): Promise<VapidKey> {
 	const publicKey = vapidPublicKey(secret);
 	const [x, y, d] = secret.split('.');
 	const privateKey = await crypto.subtle.importKey(
@@ -386,17 +394,10 @@ export async function announceConversation(
 	await queue(event, env, devices, 'message', conversation);
 }
 
-/** Booking changes notify the child's families and the classroom's teachers; names never leave devices. */
-export async function announceMeeting(
-	event: RequestEvent,
-	offer: string,
-	child: string,
-	poster?: string
-) {
-	return announceMeetingChanges(event, [{ offer, child }], poster);
-}
-
-/** One notification per device, even when a whole day cancels several reservations. */
+/**
+ * Booking changes notify the child's families and the classroom's teachers; names never leave devices. One
+ * notification per device, even when a whole day cancels several reservations.
+ */
 export async function announceMeetingChanges(
 	event: RequestEvent,
 	changes: { offer: string; child: string }[],

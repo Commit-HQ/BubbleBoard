@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import { page } from '$app/state';
 import type { Paper } from '$lib/notices';
+import { onMount } from 'svelte';
 
 // Class names and small helpers shared by the app's screens, in the landing page's style: an ink pill for
 // the main action, soft white pills for the rest.
@@ -9,6 +10,11 @@ import type { Paper } from '$lib/notices';
 // not the order of the class list.
 const pill =
 	'inline-flex min-h-11 items-center justify-center gap-2 rounded-full py-2.5 font-semibold transition disabled:pointer-events-none disabled:opacity-50';
+/** A round button the size of a tap target, holding one icon and nothing else. */
+const iconPill = 'grid size-11 shrink-0 place-items-center rounded-full transition';
+/** The look a list's view-pickers share, whether each is a button or they're all one menu. */
+const chipLook =
+	'min-h-9 rounded-full bg-white/60 text-sm font-semibold ring-1 ring-ink/10 transition';
 
 export const button = {
 	primary: `${pill} bg-ink px-5 text-white shadow-lg shadow-ink/20 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0`,
@@ -19,9 +25,13 @@ export const button = {
 	/** Over a picture, such as Save in the picture viewer. */
 	frosted: `${pill} frosted px-5 text-ink`,
 	/** A small icon beside what it changes, such as a pencil beside a name. Give it an `aria-label`. */
-	icon: 'grid size-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-ink/5 hover:text-ink',
+	icon: `${iconPill} text-muted hover:bg-ink/5 hover:text-ink`,
+	/** The main action as one icon, such as Send beside the box a message is written in. */
+	iconPrimary: `${iconPill} bg-ink text-white shadow-lg shadow-ink/20 disabled:pointer-events-none disabled:opacity-40`,
 	/** A small pill that picks one view of a list. Mark the chosen one with `aria-pressed`. */
-	chip: 'inline-flex min-h-9 items-center justify-center rounded-full bg-white/60 px-4 text-sm font-semibold ring-1 ring-ink/10 transition hover:bg-white aria-pressed:bg-ink aria-pressed:text-white aria-pressed:ring-ink'
+	chip: `${chipLook} inline-flex items-center justify-center px-4 hover:bg-white aria-pressed:bg-ink aria-pressed:text-white aria-pressed:ring-ink`,
+	/** The same picker as a menu, for when there are too many views to line up as chips. */
+	chipSelect: `${chipLook} px-3 text-ink`
 };
 
 /** The focus ring of a label whose input is hidden inside it. */
@@ -52,16 +62,28 @@ export const choice = {
 	option: `cursor-pointer border border-ink/10 bg-white/60 transition hover:bg-white has-checked:border-ink has-checked:bg-ink has-checked:text-white ${labelFocus}`
 };
 
+/** What every field is made of; each kind below sets only its own size and corners. */
+const inputLook =
+	'border border-ink/15 bg-white/80 text-base text-ink placeholder:text-muted/60 focus-visible:border-accent focus-visible:outline-offset-0';
+
 export const field = {
 	label: 'grid gap-1.5',
 	name: 'font-semibold',
 	hint: 'text-sm text-muted',
-	input:
-		'block min-h-12 w-full rounded-2xl border border-ink/15 bg-white/80 px-4 py-3 text-base text-ink placeholder:text-muted/60 focus-visible:border-accent focus-visible:outline-offset-0'
+	input: `block min-h-12 w-full rounded-2xl px-4 py-3 ${inputLook}`,
+	/** A time on one line of the week, narrower than a field of its own with a label above it. */
+	time: `min-h-11 rounded-xl px-2 py-1.5 ${inputLook}`
 };
 
 /** A panel for a form or a group of actions. */
 export const surface = 'rounded-4xl glass p-6 sm:p-8';
+
+/**
+ * A row in a list of records, linking to its page: the same shell whatever it holds, so an inbox lines up
+ * with every other list (ListLink.svelte, InquiryLink.svelte).
+ */
+export const listRow =
+	'flex items-center gap-4 rounded-3xl glass px-5 py-4 transition hover:bg-white/75';
 
 /** A dialog in the middle of the screen, over the dimmed page. Each sets its own padding. */
 export const modal =
@@ -81,6 +103,17 @@ export function formText(form: FormData, name: string) {
 /** A query parameter of the current page, such as a record ID. Prerendered pages have no query. */
 export function queryParam(name: string) {
 	return browser ? page.url.searchParams.get(name) : null;
+}
+
+/**
+ * Moves a screen's clock on every half minute for as long as it's up, saying whether anyone is looking, so
+ * that screens which count minutes down also ask for fresh records — but only while they're on show.
+ */
+export function everyHalfMinute(tick: (visible: boolean) => void) {
+	onMount(() => {
+		const timer = setInterval(() => tick(document.visibilityState === 'visible'), 30000);
+		return () => clearInterval(timer);
+	});
 }
 
 /**

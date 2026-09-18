@@ -1,11 +1,9 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { request } from '$lib/api';
 	import Icon from '$lib/components/Icon.svelte';
-	import { errorCode } from '$lib/errors';
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import { defaultSchedule, type MessageSettings } from '$lib/messages';
-	import { getApp } from './state.svelte';
+	import { getApp, Task } from './state.svelte';
 	import { alert, button, choice, field, labelFocus, surface } from './ui';
 
 	// What an admin decides about a classroom's parent messaging: whether families may write at all, how many
@@ -18,23 +16,16 @@
 	}: { locale: Locale; settings: MessageSettings; onclose: () => void } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.messaging);
+	/** The week as the form holds it: every day has times, and a switch saying whether it's open. */
+	const weekOf = ({ schedule }: MessageSettings) =>
+		schedule.map((day, index) => ({ active: !!day, ...(day ?? defaultSchedule()[index]!) }));
+
 	let enabled = $state(untrack(() => settings.enabled));
 	let limit = $state(untrack(() => settings.monthlyLimit));
-	let schedule = $state(
-		untrack(() =>
-			settings.schedule.map((day, index) => ({
-				active: !!day,
-				...(day ?? defaultSchedule()[index]!)
-			}))
-		)
-	);
+	let schedule = $state(untrack(() => weekOf(settings)));
 	let revision = $state(untrack(() => settings.revision));
-	let busy = $state(false);
-	let failure = $state<string>();
+	const task = new Task();
 	let saved = $state(false);
-	/** A time on one line of the week, narrower than a field of its own with a label above it. */
-	const timeField =
-		'min-h-11 rounded-xl border border-ink/15 bg-white/80 px-2 py-1.5 text-base text-ink focus-visible:border-accent focus-visible:outline-offset-0';
 
 	async function save(event: SubmitEvent) {
 		event.preventDefault();
@@ -42,13 +33,12 @@
 		// A time field lets the same time stand at both ends of a day, which is no interval at all: the server
 		// refuses it, so the form says which way round it goes instead of sending it.
 		if (schedule.some((day) => day.active && day.start >= day.end)) {
-			failure = 'messages-schedule';
+			task.error = 'messages-schedule';
 			return;
 		}
-		busy = true;
-		failure = undefined;
-		try {
-			await request('PUT', `/api/classrooms/${settings.classroom}/messages`, {
+		await task.run(async () => {
+			await app.saveMessageSettings({
+				classroom: settings.classroom,
 				enabled,
 				monthlyLimit: limit,
 				revision,
@@ -56,30 +46,20 @@
 			});
 			revision++;
 			saved = true;
-			await app.loadMessages();
-		} catch (cause) {
-			failure = errorCode(cause);
-			if (failure === 'stale') {
-				await app.loadMessages();
-				const latest = app.messagePolicies.find((item) => item.classroom === settings.classroom);
-				if (latest) {
-					enabled = latest.enabled;
-					limit = latest.monthlyLimit;
-					revision = latest.revision;
-					schedule = latest.schedule.map((day, index) => ({
-						active: !!day,
-						...(day ?? defaultSchedule()[index]!)
-					}));
-				}
-			}
-		} finally {
-			busy = false;
+		});
+		// Another admin got there first: the reload above brought their week in through `settings`, so the
+		// form shows it and can be saved again.
+		if (task.error === 'stale') {
+			enabled = settings.enabled;
+			limit = settings.monthlyLimit;
+			revision = settings.revision;
+			schedule = weekOf(settings);
 		}
 	}
 </script>
 
 <form class="{surface} grid gap-5" onsubmit={save}>
-	<fieldset disabled={busy} class="grid gap-5">
+	<fieldset disabled={task.busy} class="grid gap-5">
 		<label class={choice.card}>
 			<input class="sr-only" type="checkbox" bind:checked={enabled} />
 			<span class={choice.box}><Icon name="check" class={choice.check} /></span>
@@ -120,7 +100,7 @@
 							<div class="flex items-center gap-1.5">
 								<input
 									aria-label={`${t.days[index]} ${t.fromTime}`}
-									class={timeField}
+									class={field.time}
 									type="time"
 									required
 									bind:value={day.start}
@@ -128,7 +108,7 @@
 								<span class="text-muted" aria-hidden="true">–</span>
 								<input
 									aria-label={`${t.days[index]} ${t.toTime}`}
-									class={timeField}
+									class={field.time}
 									type="time"
 									required
 									min={day.start}
@@ -145,6 +125,6 @@
 			<button class={button.quiet} type="button" onclick={onclose}>{t.done}</button>
 		</div>
 	</fieldset>
-	{#if failure}<p class={alert} role="alert">{errorMessage(locale, failure)}</p>{/if}
+	{#if task.error}<p class={alert} role="alert">{errorMessage(locale, task.error)}</p>{/if}
 	{#if saved}<p class="font-semibold text-muted" role="status">{t.saved}</p>{/if}
 </form>

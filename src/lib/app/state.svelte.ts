@@ -13,7 +13,19 @@ import {
 	type PollAnswer,
 	type StaffInfo
 } from '$lib/api';
-import { type Inbox, type MessagePolicy, type Conversation, openConversation } from '$lib/messages';
+import {
+	openConversation,
+	openMessage,
+	sealMessage,
+	sealSubject,
+	type Conversation,
+	type Inbox,
+	type MessageContent,
+	type MessagePolicy,
+	type MessageRecord,
+	type MessageSettings,
+	type OpenMessage
+} from '$lib/messages';
 import { readCard, type CardReading } from '$lib/card';
 import {
 	createContentKey,
@@ -207,7 +219,10 @@ export class App {
 	status = $state<Status>('loading');
 	conversations = $state.raw<Conversation[]>([]);
 	messagePolicies = $state.raw<MessagePolicy[]>([]);
-	messageFamily = $state<string | null>(null);
+	/** The family a device writes as, which is simply whose card it holds; staff write as no family. */
+	get messageFamily() {
+		return this.#familyCard?.family ?? null;
+	}
 	messagesError = $state<string>();
 	messagesVersion = $state(0);
 	get unreadConversations() {
@@ -239,7 +254,6 @@ export class App {
 				result.status === 'fulfilled' ? [result.value] : []
 			);
 			this.messagePolicies = data.policies;
-			this.messageFamily = data.family;
 			this.messagesError = opened.some((result) => result.status === 'rejected')
 				? 'unreadable-messages'
 				: undefined;
@@ -252,11 +266,106 @@ export class App {
 		}
 	}
 
+	/** One conversation's messages, newest last, opened with the key the device holds for its family. */
+	async readConversation(conversation: Conversation, before?: number): Promise<OpenMessage[]> {
+		const records = await this.#signedIn(() =>
+			request<MessageRecord[]>(
+				'GET',
+				`/api/messages/${conversation.id}${before ? `?before=${before}` : ''}`
+			)
+		);
+		const key = await this.messageKey(conversation.family);
+		return Promise.all(
+			records.map((record) => openMessage(record, key, conversation.classroom, conversation.id))
+		);
+	}
+
+	/** Marks a conversation read up to `sequence`, and shows it as read without waiting for the inbox. */
+	async markConversationRead(conversation: string, sequence: number) {
+		await this.#signedIn(() =>
+			request('PUT', `/api/messages/${conversation}`, { action: 'read', sequence })
+		);
+		this.conversations = this.conversations.map((row) =>
+			row.id === conversation ? { ...row, readSequence: Math.max(row.readSequence, sequence) } : row
+		);
+	}
+
+	/**
+	 * Seals a message for a conversation, and the subject too when it starts one. The sealed payload is
+	 * handed back so a send that failed can go again as the same message rather than a second one.
+	 */
+	async sealFor(
+		classroom: string,
+		family: string,
+		conversation: string,
+		content: MessageContent,
+		subject?: string
+	): Promise<Record<string, string>> {
+		const key = await this.messageKey(family);
+		const message = createId();
+		const sealed = await sealMessage(content, key, classroom, message, conversation);
+		return subject === undefined
+			? { id: message, content: sealed }
+			: {
+					id: conversation,
+					classroom,
+					family,
+					title: await sealSubject(subject, key, classroom, conversation),
+					message,
+					content: sealed
+				};
+	}
+
+	/** Sends a sealed message: `conversation` says which one it answers, or nothing when it starts one. */
+	async sendMessage(payload: Record<string, string>, conversation?: string) {
+		try {
+			await this.#signedIn(() =>
+				request('POST', conversation ? `/api/messages/${conversation}` : '/api/messages', payload)
+			);
+		} finally {
+			await this.loadMessages();
+		}
+	}
+
+	async closeConversation(conversation: string) {
+		await this.#signedIn(() =>
+			request('PUT', `/api/messages/${conversation}`, { action: 'close' })
+		);
+		await this.loadMessages();
+	}
+
+	/**
+	 * Saves what an admin decided about a classroom's messaging. The policy is loaded again either way, so a
+	 * save refused as stale leaves the form showing what the other admin settled.
+	 */
+	async saveMessageSettings(settings: MessageSettings) {
+		try {
+			await this.#signedIn(() =>
+				request('PUT', `/api/classrooms/${settings.classroom}/messages`, {
+					enabled: settings.enabled,
+					monthlyLimit: settings.monthlyLimit,
+					revision: settings.revision,
+					schedule: settings.schedule
+				})
+			);
+		} finally {
+			await this.loadMessages();
+		}
+	}
+
 	meetings = $state.raw<MeetingSlot[]>([]);
 	meetingChildren = $state.raw<MeetingChild[]>([]);
 	meetingsError = $state<string>();
 	meetingsLoaded = $state(false);
 	#meetingLoad = 0;
+	/** Puts the meetings back as they were before any card opened them, ignoring a load still on its way. */
+	#clearMeetings() {
+		this.#meetingLoad++;
+		this.meetings = [];
+		this.meetingChildren = [];
+		this.meetingsLoaded = false;
+		this.meetingsError = undefined;
+	}
 	async loadMeetings() {
 		const load = ++this.#meetingLoad,
 			card = this.#card;
@@ -546,13 +655,7 @@ export class App {
 	}
 
 	async #open(access: Access, card: DeviceCard, { resend = true } = {}) {
-		if (this.#card?.credential !== card.credential) {
-			this.#meetingLoad++;
-			this.meetings = [];
-			this.meetingChildren = [];
-			this.meetingsLoaded = false;
-			this.meetingsError = undefined;
-		}
+		if (this.#card?.credential !== card.credential) this.#clearMeetings();
 		// A session or card that doesn't match the stored card means connecting again with a card.
 		if (access.credential !== card.credential) throw new UnreadableError();
 		let classrooms: FamilyClassroom[];
@@ -726,13 +829,9 @@ export class App {
 		this.#infoKeyForStaff = undefined;
 		this.#infoPageIds = [];
 		this.#familyKeys.clear();
-		this.meetings = [];
-		this.meetingChildren = [];
-		this.meetingsLoaded = false;
-		this.meetingsError = undefined;
+		this.#clearMeetings();
 		this.conversations = [];
 		this.messagePolicies = [];
-		this.messageFamily = null;
 		this.messagesError = undefined;
 		this.me = undefined;
 		this.catalog = emptyCatalog;
