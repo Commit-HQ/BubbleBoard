@@ -235,7 +235,6 @@ describe('private inquiries', () => {
 		expect(policies.find((policy) => policy.classroom === f.otherClassroom)).toMatchObject({
 			enabled: false,
 			monthlyLimit: 3,
-			allowed: false,
 			used: 0
 		});
 	});

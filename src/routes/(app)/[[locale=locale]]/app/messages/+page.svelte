@@ -16,6 +16,7 @@
 	import {
 		byTeacher,
 		chargesAllowance,
+		closingSoon,
 		messageClock,
 		messageDate,
 		messageTime,
@@ -23,6 +24,7 @@
 		remainingMessages,
 		sealMessage,
 		sealSubject,
+		sendingLeft,
 		type MessageRecord,
 		type OpenMessage
 	} from '$lib/messages';
@@ -56,6 +58,8 @@
 	let closing = $state(false);
 	let confirming = $state(false);
 	let end = $state<HTMLOListElement>();
+	/** The clock the sending window is measured against, moved on with every look for new messages. */
+	let now = $state(Date.now());
 	let scrolledTo = 0;
 	let generation = 0;
 	let pending: { fingerprint: string; payload: Record<string, string> } | undefined;
@@ -71,7 +75,11 @@
 		!staff && (creating || chargesAllowance(rows.at(-1)?.author ?? thread?.author))
 	);
 	const remaining = $derived(policy ? remainingMessages(policy) : 0);
-	const canSend = $derived(staff || (!!policy?.allowed && (!charged || remaining > 0)));
+	/** Minutes left in today's window, and whether it's short enough to say so in red. */
+	const left = $derived(policy && sendingLeft(policy, now));
+	const allowed = $derived(left !== undefined);
+	const closingIn = $derived(left !== undefined && left <= closingSoon ? left : undefined);
+	const canSend = $derived(staff || (allowed && (!charged || remaining > 0)));
 	const filtered = $derived(
 		app.conversations.filter(
 			(item) =>
@@ -165,6 +173,7 @@
 	});
 	onMount(() => {
 		const interval = setInterval(() => {
+			now = Date.now();
 			if (document.visibilityState === 'visible' && app.connected && !busy) void app.loadMessages();
 		}, 30000);
 		return () => {
@@ -333,7 +342,13 @@
 				{:else}
 					<form class="sticky bottom-4 mt-5 grid gap-2" onsubmit={submit}>
 						{#if !staff && policy}
-							<MessagePolicy locale={data.locale} {policy} {charged} />
+							<MessagePolicy
+								locale={data.locale}
+								{policy}
+								{charged}
+								{allowed}
+								closing={closingIn}
+							/>
 						{/if}
 						<div class="flex items-end gap-2 rounded-3xl frosted p-2">
 							<label class="min-w-0 grow">
@@ -345,7 +360,7 @@
 									maxlength="4000"
 									placeholder={t.write}
 									bind:value={text}
-									disabled={busy}></textarea>
+									disabled={busy || !canSend}></textarea>
 							</label>
 							<button
 								class="grid size-11 shrink-0 place-items-center rounded-full bg-ink text-white shadow-lg shadow-ink/20 transition disabled:pointer-events-none disabled:opacity-40"
@@ -384,17 +399,21 @@
 					</label>
 				{/if}
 				{#if !staff && policy}
-					<MessagePolicy locale={data.locale} {policy} charged full />
+					<MessagePolicy locale={data.locale} {policy} charged {allowed} closing={closingIn} full />
 				{/if}
-				<label class={field.label}>
-					<span class={field.name}>{t.subject}</span>
-					<input class={field.input} required maxlength="120" bind:value={subject} />
-				</label>
-				<label class={field.label}>
-					<span class={field.name}>{t.body}</span>
-					<textarea class={field.input} rows="6" required maxlength="4000" bind:value={text}
-					></textarea>
-				</label>
+				<!-- Nothing to write in while nothing can be sent, but the classroom above stays open: it's what
+				decides which hours and which allowance apply. -->
+				<fieldset class="grid gap-5" disabled={!!classroom && !canSend}>
+					<label class={field.label}>
+						<span class={field.name}>{t.subject}</span>
+						<input class={field.input} required maxlength="120" bind:value={subject} />
+					</label>
+					<label class={field.label}>
+						<span class={field.name}>{t.body}</span>
+						<textarea class={field.input} rows="6" required maxlength="4000" bind:value={text}
+						></textarea>
+					</label>
+				</fieldset>
 				<button
 					class="{button.primary} justify-self-start"
 					disabled={!canSend || !classroom || (staff && !family) || !subject.trim() || !text.trim()}

@@ -173,10 +173,10 @@ export async function inbox(db: D1Database, who: Identity, now = Date.now()): Pr
 					.all<{ classroom: string; n: number }>()
 			: { results: [] };
 	const spentIn = new Map(spending.results.map(({ classroom, n }) => [classroom, n]));
-	const policies = classrooms.results.map(({ id }) => {
-		const policy = settingsOf(id, rows.get(id));
-		return { ...policy, used: spentIn.get(id) ?? 0, allowed: sendingAllowed(policy, now) };
-	});
+	const policies = classrooms.results.map(({ id }) => ({
+		...settingsOf(id, rows.get(id)),
+		used: spentIn.get(id) ?? 0
+	}));
 	const { results } = await db
 		.prepare(
 			`SELECT c.id,c.family_id AS family,c.classroom_id AS classroom,c.title,c.closed,c.created_at AS createdAt,

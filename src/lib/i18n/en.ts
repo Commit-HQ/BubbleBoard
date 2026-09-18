@@ -712,6 +712,8 @@ export const en = {
 			disabled: 'Parent messaging is turned off for this classroom.',
 			outside: 'Sending is available during the classroom’s hours.',
 			holiday: 'On public holidays and other non-working days, an answer may take longer.',
+			closingSoon: (minutes: number) =>
+				`Today’s sending window closes in ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}.`,
 			charged: 'This message uses one inquiry.',
 			free: 'Answering a teacher doesn’t use an inquiry.',
 			noQuota:

@@ -7,7 +7,8 @@ export type MessageSettings = {
 	schedule: ({ start: string; end: string } | null)[];
 	revision: number;
 };
-export type MessagePolicy = MessageSettings & { used: number; allowed: boolean };
+/** A classroom's settings with what this family has spent of them; when it may send, its device works out. */
+export type MessagePolicy = MessageSettings & { used: number };
 export type ConversationRecord = {
 	id: string;
 	family: string;
@@ -61,11 +62,22 @@ export function messageClock(now = Date.now()) {
 		time: `${value('hour')}:${value('minute')}`
 	};
 }
-export function sendingAllowed(settings: MessageSettings, now = Date.now()) {
+const clockMinutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+/**
+ * How many minutes a family may still send for today, or nothing at all when this classroom isn't taking
+ * messages at this moment. Families' devices work it out as the clock runs, so a window closes when it
+ * closes rather than at the next refresh; the server decides every send for itself.
+ */
+export function sendingLeft(settings: MessageSettings, now = Date.now()) {
 	const { day, time } = messageClock(now);
 	const hours = settings.schedule[day];
-	return settings.enabled && !!hours && time >= hours.start && time < hours.end;
+	if (!settings.enabled || !hours || time < hours.start || time >= hours.end) return undefined;
+	return clockMinutes(hours.end) - clockMinutes(time);
 }
+export const sendingAllowed = (settings: MessageSettings, now = Date.now()) =>
+	sendingLeft(settings, now) !== undefined;
+/** How close to the end of a window a family is told that it's about to close. */
+export const closingSoon = 30;
 /** Who wrote a message: `teacher:<id>` or `family:<id>`, as the server keeps it. */
 export const byTeacher = (author: string) => author.startsWith('teacher:');
 /** How many messages a family may still send this month before a teacher answers. */

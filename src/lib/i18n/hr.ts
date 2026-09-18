@@ -690,6 +690,8 @@ export const hr = {
 			disabled: 'Slanje poruka roditelja isključeno je za ovu skupinu.',
 			outside: 'Slanje je moguće u terminima skupine.',
 			holiday: 'Na blagdane i druge neradne dane odgovor može kasniti.',
+			closingSoon: (minutes: number) =>
+				`Termin za slanje zatvara se za ${count(minutes, 'minutu', 'minute', 'minuta')}.`,
 			charged: 'Ova poruka troši jedan upit.',
 			free: 'Odgovor na tetinu poruku ne troši upit.',
 			noQuota: 'Iskoristili ste upite za ovaj mjesec. Kad se teta javi, odgovor je opet besplatan.',

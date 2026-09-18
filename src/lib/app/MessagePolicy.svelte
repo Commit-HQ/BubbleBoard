@@ -5,13 +5,25 @@
 
 	// What a family may send right now, above the box it writes in: whether its classroom takes messages at
 	// this hour, whether this one spends an inquiry, and how many are left this month. The hours are spelled
-	// out when they're in the way, and while a new inquiry is being written. Teachers never see any of it.
+	// out when they're in the way, and while a new inquiry is being written; as today's window runs out, a
+	// red line counts it down. Teachers never see any of it.
 	let {
 		locale,
 		policy,
 		charged,
+		allowed,
+		closing,
 		full = false
-	}: { locale: Locale; policy: MessagePolicy; charged: boolean; full?: boolean } = $props();
+	}: {
+		locale: Locale;
+		policy: MessagePolicy;
+		charged: boolean;
+		/** Whether this classroom is taking messages at this moment, by the device's clock. */
+		allowed: boolean;
+		/** Minutes until today's window closes, while that's soon enough to say. */
+		closing?: number;
+		full?: boolean;
+	} = $props();
 	const t = $derived(messages[locale].app.messaging);
 	const remaining = $derived(remainingMessages(policy));
 </script>
@@ -22,7 +34,7 @@
 			<Icon name="lock" class="size-4 shrink-0 text-muted" /><span class="font-semibold"
 				>{t.disabled}</span
 			>
-		{:else if !policy.allowed}
+		{:else if !allowed}
 			<Icon name="clock" class="size-4 shrink-0 text-muted" /><span class="font-semibold"
 				>{t.outside}</span
 			>
@@ -41,7 +53,12 @@
 			>
 		{/if}
 	</p>
-	{#if policy.enabled && (full || !policy.allowed)}
+	{#if closing !== undefined}
+		<p class="flex min-h-9 items-center gap-2 font-semibold text-red-800" role="status">
+			<Icon name="clock" class="size-4 shrink-0" />{t.closingSoon(closing)}
+		</p>
+	{/if}
+	{#if policy.enabled && (full || !allowed)}
 		<details>
 			<summary class="flex min-h-9 cursor-pointer items-center font-semibold text-muted">
 				{t.schedule}
