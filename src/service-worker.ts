@@ -57,15 +57,29 @@ worker.addEventListener('push', (event) => {
 	);
 });
 
+/** A tap brings a window forward on the page the notification is about, or opens one there. */
+async function openPage(path: string) {
+	const [open] = await appWindows();
+	if (!open) {
+		await worker.clients.openWindow(path);
+		return;
+	}
+	await open.focus();
+	// A window is wherever it was last left, which is rarely the page the notification is about, so it's
+	// sent there and loads the board on the way. A window already on that page loads the board again
+	// instead, as does one this worker doesn't control yet and so can't send: asleep, it may have missed
+	// the push.
+	const elsewhere = new URL(open.url).pathname !== path;
+	const sent =
+		elsewhere &&
+		(await open
+			.navigate(path)
+			.then(() => true)
+			.catch(() => false));
+	if (!sent) open.postMessage('board');
+}
+
 worker.addEventListener('notificationclick', (event) => {
 	event.notification.close();
-	const path: string = event.notification.data?.path ?? appPath(defaultLocale);
-	event.waitUntil(
-		appWindows().then(([open]) => {
-			if (!open) return worker.clients.openWindow(path);
-			// A window that was asleep may have missed the push.
-			open.postMessage('board');
-			return open.focus();
-		})
-	);
+	event.waitUntil(openPage(event.notification.data?.path ?? appPath(defaultLocale)));
 });
