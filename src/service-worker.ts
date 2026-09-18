@@ -16,6 +16,14 @@ import { pushKind, type PushKind } from '$lib/push';
 
 const worker = self as unknown as ServiceWorkerGlobalScope;
 
+// A new worker takes over the moment it arrives, rather than waiting for every window to close first. This
+// one serves no page and caches nothing, so there is no half-old copy of the app it could leave behind; and a
+// phone that keeps the app open, even only in the background, is a window that never closes, which would
+// leave that device on the worker it installed with for as long as it goes on using the app. Claiming the
+// windows that are already open is the other half: a tap can only send a window the worker controls.
+worker.addEventListener('install', () => worker.skipWaiting());
+worker.addEventListener('activate', (event) => event.waitUntil(worker.clients.claim()));
+
 /** The page a tap opens, by what happened. A notice or board photo is on the board, which is home. */
 const pages: Record<PushKind, AppPage | undefined> = {
 	notice: undefined,
