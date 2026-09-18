@@ -265,7 +265,7 @@ export const en = {
 			cancelled: 'Meeting cancelled.',
 			removed: 'Time removed.',
 			onePerChild:
-				'One time per child in each offer. To change your time, cancel your current reservation first.',
+				'You can reserve one time for each child. To change it, cancel your current reservation first.',
 			already: 'A time is already reserved for this child in this offer.',
 			noInvite: 'No invitation for your child in this offer. Please contact your teacher.',
 			refresh: 'Refresh',

@@ -250,7 +250,7 @@ export const hr = {
 			cancelled: 'Razgovor je otkazan.',
 			removed: 'Termin je uklonjen.',
 			onePerChild:
-				'Jedan termin po djetetu u svakoj ponudi. Za promjenu termina prvo otkažite postojeću rezervaciju.',
+				'Za svako dijete možete rezervirati po jedan termin. Za promjenu najprije otkažite postojeću rezervaciju.',
 			already: 'Za ovo dijete već je rezerviran termin u ovoj ponudi.',
 			noInvite: 'Za vaše dijete nema pozivnice u ovoj ponudi. Javite se odgojiteljici.',
 			refresh: 'Osvježi',
