@@ -40,6 +40,7 @@ type KeyContext =
 
 /** The record encrypted data belongs to. */
 type DataContext =
+	| { purpose: 'meeting-invite'; classroom: string; child: string }
 	| { purpose: 'conversation-title' | 'private-message'; classroom: string; message: string }
 	| { purpose: 'classroom-profile'; classroom: string }
 	| { purpose: 'teacher-profile'; teacher: string }

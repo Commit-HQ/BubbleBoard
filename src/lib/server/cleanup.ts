@@ -12,6 +12,11 @@ const day = 24 * 60 * 60 * 1000;
 export async function cleanUp({ DB: db, FILES: bucket }: CleanupEnv, now = Date.now()) {
 	await db.batch([
 		db.prepare('DELETE FROM notices WHERE expires_at <= ?').bind(now),
+		db
+			.prepare(
+				'DELETE FROM meeting_offers WHERE NOT EXISTS (SELECT 1 FROM meeting_slots WHERE offer_id=meeting_offers.id AND ends_at>?)'
+			)
+			.bind(now - 90 * day),
 		db.prepare('DELETE FROM sessions WHERE expires_at <= ?').bind(now),
 		// Printed cards have no end, so they never match.
 		db

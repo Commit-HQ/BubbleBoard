@@ -46,7 +46,11 @@ export type FamilyLinks = {
 	removeFamilies: string[];
 };
 
-export type ChildChange = FamilyLinks & { classroom: string; profile: string };
+export type ChildChange = FamilyLinks & {
+	classroom: string;
+	profile: string;
+	meetingFamilies?: string[];
+};
 export type NewChild = ChildChange & { id: string };
 
 /** The first setup: the admin's card and the recovery card, both admins. */

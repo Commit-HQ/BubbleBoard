@@ -1,3 +1,5 @@
+import { encryptData, decryptData } from '$lib/crypto';
+import type { MeetingSlot, MeetingChild, MeetingData, NewMeetingOffer } from '$lib/meetings';
 import { replaceState } from '$app/navigation';
 import { page } from '$app/state';
 import {
@@ -250,6 +252,87 @@ export class App {
 		}
 	}
 
+	meetings = $state.raw<MeetingSlot[]>([]);
+	meetingChildren = $state.raw<MeetingChild[]>([]);
+	meetingsError = $state<string>();
+	meetingsLoaded = $state(false);
+	#meetingLoad = 0;
+	async loadMeetings() {
+		const load = ++this.#meetingLoad,
+			card = this.#card;
+		try {
+			const data = await request<MeetingData>('GET', '/api/meetings');
+			const children = await Promise.all(
+				data.invites.map(async (invite) => {
+					const key = await this.messageKey(invite.family);
+					const content = (await decryptData(invite.label, key, {
+						purpose: 'meeting-invite',
+						classroom: invite.offer,
+						child: invite.child
+					})) as { name?: unknown };
+					if (typeof content.name !== 'string') throw new UnreadableError();
+					return { ...invite, name: content.name };
+				})
+			);
+			if (card !== this.#card || load !== this.#meetingLoad) return;
+			this.meetings = data.slots;
+			this.meetingChildren = children;
+			this.meetingsError = undefined;
+			this.meetingsLoaded = true;
+		} catch (cause) {
+			if (card === this.#card && load === this.#meetingLoad) this.meetingsError = errorCode(cause);
+		}
+	}
+	async publishMeetings(classroom: string, slots: { start: number; end: number }[]) {
+		const id = createId();
+		const children = this.catalog.children.filter((child) => child.classroom === classroom);
+		const invites = await Promise.all(
+			children.flatMap((child) =>
+				child.families.map(async (family) => ({
+					child: child.id,
+					family,
+					label: await encryptData({ name: child.name }, await this.messageKey(family), {
+						purpose: 'meeting-invite',
+						classroom: id,
+						child: child.id
+					})
+				}))
+			)
+		);
+		const offer: NewMeetingOffer = {
+			id,
+			classroom,
+			revision: this.catalog.revision,
+			slots: slots.map((slot) => ({ ...slot, id: createId() })),
+			invites
+		};
+		await this.#signedIn(() => request('POST', '/api/meetings', offer));
+		await this.loadMeetings();
+	}
+	async removeMeetingDay(classroom: string, date: string, slots: MeetingSlot[]) {
+		try {
+			await this.#signedIn(() =>
+				request('POST', '/api/meetings/day', {
+					classroom,
+					date,
+					slots: slots.map(({ id, version }) => ({ id, version }))
+				})
+			);
+		} finally {
+			await this.loadMeetings();
+		}
+	}
+
+	async changeMeeting(slot: MeetingSlot, action: 'book' | 'cancel' | 'remove', child?: string) {
+		try {
+			await this.#signedIn(() =>
+				request('PUT', `/api/meetings/${slot.id}`, { action, version: slot.version, child })
+			);
+		} finally {
+			await this.loadMeetings();
+		}
+	}
+
 	/** Why this device was disconnected, when it wasn't signed out on purpose. */
 	notice = $state<string>();
 	/** The steps installing BubbleBoard takes on this device, when it's a phone or tablet outside the app. */
@@ -463,6 +546,13 @@ export class App {
 	}
 
 	async #open(access: Access, card: DeviceCard, { resend = true } = {}) {
+		if (this.#card?.credential !== card.credential) {
+			this.#meetingLoad++;
+			this.meetings = [];
+			this.meetingChildren = [];
+			this.meetingsLoaded = false;
+			this.meetingsError = undefined;
+		}
 		// A session or card that doesn't match the stored card means connecting again with a card.
 		if (access.credential !== card.credential) throw new UnreadableError();
 		let classrooms: FamilyClassroom[];
@@ -496,6 +586,7 @@ export class App {
 		// The inbox grows with every conversation the kindergarten has ever had, so the board doesn't wait for
 		// it: it fills in beside the rest, and the pages that show it follow `messagesVersion`.
 		void this.loadMessages();
+		void this.loadMeetings();
 		void this.#keepNotifications(resend);
 	}
 
@@ -635,6 +726,10 @@ export class App {
 		this.#infoKeyForStaff = undefined;
 		this.#infoPageIds = [];
 		this.#familyKeys.clear();
+		this.meetings = [];
+		this.meetingChildren = [];
+		this.meetingsLoaded = false;
+		this.meetingsError = undefined;
 		this.conversations = [];
 		this.messagePolicies = [];
 		this.messageFamily = null;
@@ -847,6 +942,7 @@ export class App {
 		const body = {
 			...links,
 			classroom: child.classroom,
+			meetingFamilies: child.families,
 			profile: await childProfile(staffKey, child)
 		};
 		if (previous) await this.#change('PUT', `/api/children/${child.id}`, body);

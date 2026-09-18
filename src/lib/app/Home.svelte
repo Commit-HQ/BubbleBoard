@@ -4,6 +4,7 @@
 	import { messages, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
 	import Board from './Board.svelte';
+	import MeetingsCard from './MeetingsCard.svelte';
 	import NotificationCard from './NotificationCard.svelte';
 	import PullToRefresh from './PullToRefresh.svelte';
 	import { getApp } from './state.svelte';
@@ -47,6 +48,8 @@
 	</div>
 
 	<NotificationCard {locale} />
+
+	{#if classrooms.length}<MeetingsCard {locale} />{/if}
 
 	{#if staff && !classrooms.length}
 		<div class="grid justify-items-start gap-4">

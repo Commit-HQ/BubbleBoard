@@ -264,7 +264,12 @@ export function familyLinks(body: Fields, classroom?: string): FamilyLinks {
 
 export function childChange(body: Fields): ChildChange {
 	const classroom = id(body.classroom);
-	return { classroom, profile: profile(body.profile), ...familyLinks(body, classroom) };
+	return {
+		classroom,
+		profile: profile(body.profile),
+		...familyLinks(body, classroom),
+		meetingFamilies: body.meetingFamilies === undefined ? undefined : ids(body.meetingFamilies)
+	};
 }
 
 export const newChild = (body: Fields): NewChild => ({ id: id(body.id), ...childChange(body) });

@@ -282,3 +282,39 @@ export async function announceConversation(
 		} satisfies PushMessage);
 	}
 }
+
+/** Booking changes notify the child's families and the classroom's teachers; names never leave devices. */
+export async function announceMeeting(
+	event: RequestEvent,
+	offer: string,
+	child: string,
+	poster?: string
+) {
+	return announceMeetingChanges(event, [{ offer, child }], poster);
+}
+
+/** One notification per device, even when a whole day cancels several reservations. */
+export async function announceMeetingChanges(
+	event: RequestEvent,
+	changes: { offer: string; child: string }[],
+	poster?: string
+) {
+	if (!changes.length) return;
+	const env = event.platform?.env;
+	if (!env?.NOTIFICATIONS) return;
+	const { results } = await env.DB.prepare(
+		`SELECT DISTINCT p.endpoint FROM push_subscriptions p
+ JOIN sessions s ON s.token_hash=p.session_hash JOIN credentials c ON c.id=s.credential_id
+ JOIN json_each(?) changed JOIN meeting_offers o ON o.id=json_extract(changed.value,'$.offer') WHERE s.expires_at>? AND p.session_hash<>? AND (
+ c.family_id IN(SELECT i.family_id FROM meeting_invites i JOIN family_classrooms f ON f.family_id=i.family_id AND f.classroom_id=o.classroom_id WHERE i.offer_id=o.id AND i.child_id=json_extract(changed.value,'$.child'))
+ OR c.teacher_id IN(SELECT teacher_id FROM teacher_classrooms WHERE classroom_id=o.classroom_id))`
+	)
+		.bind(JSON.stringify(changes), Date.now(), poster ?? '')
+		.all<{ endpoint: string }>();
+	for (let offset = 0; offset < results.length; offset += groupSize)
+		await env.NOTIFICATIONS.send({
+			endpoints: results.slice(offset, offset + groupSize).map((r) => r.endpoint),
+			subject: event.url.origin,
+			attempt: 0
+		} satisfies PushMessage);
+}

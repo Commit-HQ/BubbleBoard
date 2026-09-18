@@ -169,7 +169,7 @@ export const en = {
 		points: [
 			{
 				title: 'What’s stored',
-				copy: 'Names, inquiry subjects and messages, notices, info pages, polls, photos, and files are encrypted on the device before they’re sent. The server can’t read them, and keeps only what it needs to work, without names, such as when a notice was posted.'
+				copy: 'Names, inquiry subjects and messages, notices, info pages, polls, photos, and files are encrypted on the device before they’re sent. The server can’t read them, and keeps only what it needs to work, without names, such as when a notice was posted. Individual meeting times, reservations, and which child and family IDs may book are scheduling metadata; children’s names remain encrypted.'
 			},
 			{
 				title: 'Where',
@@ -177,7 +177,7 @@ export const en = {
 			},
 			{
 				title: 'How long',
-				copy: 'Notices stay up for the 1 to 90 days a teacher chooses, a notice board photo until it’s replaced, info pages until an admin changes or deletes them, conversations until the family leaves their classroom, names until an admin removes them, and a device’s login until it goes unused for 90 days. Deleted records stay in the database’s backup history for up to 30 days.'
+				copy: 'Notices stay up for the 1 to 90 days a teacher chooses, a notice board photo until it’s replaced, info pages until an admin changes or deletes them, conversations until the family leaves their classroom, names until an admin removes them, and a device’s login until it goes unused for 90 days. Individual meeting offers and reservations are removed 90 days after the last time in the offer. Deleted records stay in the database’s backup history for up to 30 days.'
 			},
 			{
 				title: 'Notifications',
@@ -211,6 +211,66 @@ export const en = {
 	},
 	// In the app, what cards are and do is called a QR code: parents found "card" confusing (2026-09-13).
 	app: {
+		meetings: {
+			removeDay: 'Remove all times for this day',
+			dayRemoved: 'The day’s times have been removed.',
+			removeDayCopy: (count: number, booked: number) =>
+				`All your upcoming times for this classroom on this day will be removed (${count}). Reservations to cancel: ${booked}. Parents with a reservation will be notified if notifications are enabled.`,
+
+			title: 'Individual meetings',
+			offer: 'Offer times',
+			open: 'Open meetings',
+			choose: 'Choose a time',
+			emptyStaff: 'No meeting times offered yet.',
+			emptyFamily: 'There are no meeting times available yet.',
+			hint: 'Offer a day of conversations with parents.',
+			date: 'Date',
+			start: 'From',
+			end: 'Until',
+			duration: 'Meeting length',
+			minutes: 'minutes',
+			classroom: 'Classroom',
+			preview: 'Offered times',
+			previewHint: 'Uncheck any time you want to keep for a break.',
+			publish: 'Publish times',
+			publishing: 'Publishing…',
+			cancel: 'Cancel',
+			free: 'Available',
+			booked: 'Booked',
+			mine: 'Your meeting',
+			reserve: 'Reserve',
+			reservation: 'Confirm reservation',
+			confirmCopy: 'Reserve this time for your child?',
+			cancelBooking: 'Cancel meeting',
+			cancelCopy: 'Cancel this meeting? The time will become available again.',
+			remove: 'Remove time',
+			removeCopy: 'Remove this available time from the offer?',
+			past: 'Past meetings',
+			upcoming: 'Upcoming meetings',
+			child: 'Child',
+			loading: 'Loading times…',
+			retry: 'Try again',
+			noChildren: 'No children have been added to this classroom yet.',
+			invalidRange: 'Choose a future date and a time range that fits at least one full meeting.',
+			success: 'Meeting times published.',
+			reserved: 'Your meeting is reserved.',
+			cancelled: 'Meeting cancelled.',
+			removed: 'Time removed.',
+			onePerChild:
+				'One time per child in each offer. To change your time, cancel your current reservation first.',
+			already: 'A time is already reserved for this child in this offer.',
+			noInvite: 'No invitation for your child in this offer. Please contact your teacher.',
+			teacher: 'Teacher',
+			refresh: 'Refresh',
+			closed: 'Past',
+			summary: 'View available times and your reservations.',
+			staffSummary: 'Offer times and see who has booked.',
+			freeCount: 'available',
+			bookedCount: 'booked',
+			remaining: 'Any minutes left at the end are not offered.',
+			keep: 'Keep meeting',
+			cancelForm: 'Close form'
+		},
 		// When a notice or board photo went up (formatDateTime).
 		dateTime: (day: string, month: string, year: number, time: string) =>
 			`${day}/${month}/${year} at ${time}`,
@@ -707,7 +767,7 @@ export const en = {
 			daysShort: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
 			save: 'Save settings',
 			saved: 'Settings saved.',
-			schedule: 'Sending hours · Europe/Zagreb',
+			schedule: 'Sending hours',
 			offDay: 'Closed',
 			disabled: 'Parent messaging is turned off for this classroom.',
 			outside: 'Sending is available during the classroom’s hours.',
@@ -724,6 +784,13 @@ export const en = {
 				`No teacher has answered your last message yet, so this one uses an inquiry. ${left} will be left this month.`
 		},
 		errors: {
+			'meeting-day-changed':
+				'The day’s times have changed. The list has been refreshed; close this confirmation and review the times again.',
+			'meeting-overlap':
+				'These times overlap an existing offer for this classroom or teacher. Choose another time.',
+			'meeting-changed':
+				'This time has changed or was just booked. The list has been refreshed; choose an available time.',
+			'meeting-already-booked': 'This child already has a meeting in this offer.',
 			'unreadable-messages': 'Some inquiries could not be opened on this device.',
 			'messages-disabled': 'Parent messaging is turned off for this classroom.',
 			'messages-hours': 'Sending is outside the classroom’s hours. Your text has been kept.',

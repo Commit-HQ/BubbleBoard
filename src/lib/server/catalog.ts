@@ -290,7 +290,8 @@ async function changeChildren(
 	db: D1Database,
 	admin: Admin,
 	links: FamilyLinks,
-	child: D1PreparedStatement
+	child: D1PreparedStatement,
+	after: D1PreparedStatement[] = []
 ) {
 	await transaction(db, [
 		nextRevision(db, links.revision),
@@ -308,6 +309,7 @@ async function changeChildren(
 				.prepare('DELETE FROM family_classrooms WHERE family_id = ? AND classroom_id = ?')
 				.bind(family, classroom)
 		),
+		...after,
 		// With their cards, sessions, and remaining classrooms.
 		...links.removeFamilies.map((family) =>
 			db.prepare('DELETE FROM families WHERE id = ?').bind(family)
@@ -335,7 +337,14 @@ export async function changeChild(db: D1Database, admin: Admin, id: string, chan
 		change,
 		db
 			.prepare('UPDATE children SET classroom_id = ?, profile = ? WHERE id = ?')
-			.bind(change.classroom, change.profile, id)
+			.bind(change.classroom, change.profile, id),
+		[
+			db
+				.prepare(
+					'DELETE FROM meeting_invites WHERE child_id=? AND family_id NOT IN (SELECT value FROM json_each(?))'
+				)
+				.bind(id, JSON.stringify(change.meetingFamilies ?? []))
+		]
 	);
 }
 

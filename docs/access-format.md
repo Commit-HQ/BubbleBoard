@@ -109,7 +109,7 @@ A poll's answer names the option chosen by the ID the poll gives it. Its subject
 
 A file's name, from a fixed list of document and picture kinds, decides the type a device saves it as; its bytes never do, so a file can't open as a page with the app's origin, whoever wrote it. A picture shows on the board only when its bytes are a JPEG, PNG, or WebP image, as a board photo does, and a device saves WebP as PNG.
 
-A wrapped key is its 32 raw bytes, encrypted like data; data records hold JSON. Record IDs are 128 random bits in base64url (22 characters) and encode nothing. The browser generates them, because it binds them into envelopes before the server stores anything. Names, such as "Ivana (mum)" on a family card, and which families a child belongs to live only inside these records.
+A wrapped key is its 32 raw bytes, encrypted like data; data records hold JSON. Record IDs are 128 random bits in base64url (22 characters) and encode nothing. The browser generates them, because it binds them into envelopes before the server stores anything. Names, such as "Ivana (mum)" on a family card, live only inside these encrypted records. A child’s family links also live in their encrypted profile; individual meeting invitations additionally expose the IDs of invited children and families to the server so it can authorize and share per-child bookings.
 
 ## Keys in the browser
 
@@ -150,3 +150,13 @@ Opaque IDs, timestamps, hashes of auth and session tokens, envelopes, and a coun
 `conversation-title` envelopes use the Family Key, the classroom ID, and the conversation ID as subject. Their JSON is `{ title }`. `private-message` envelopes use the same Family Key and classroom, with the message ID as subject. Their JSON is `{ text, name, conversation }`; readers also check the enclosed conversation ID. Existing envelope formats and card formats do not change. Family devices share their family key, while staff open it from `family_key_for_staff` through the existing kindergarten Staff Key.
 
 The server authorizes every conversation read and write by current family membership and teacher classroom access (admins retain access to all classrooms). That authorization is an API boundary; the existing shared Staff Key is not a cryptographic isolation boundary between staff members. Only opaque routing/author IDs, the month a message spent from the family's allowance, timestamps, closed state, policy settings and read sequences are stored in plaintext. Notifications contain no subject or message text.
+
+## Individual meetings
+
+`meeting_offers` associates a teacher and classroom with an offer. `meeting_slots` stores UTC start/end timestamps, an optional reserved child ID, and a version for conditional writes. The kindergarten clock is Europe/Zagreb. An atomic conditional update claims a free, future slot; a unique `(offer_id, child_id)` index permits one booking per child per offer. SQLite rejects overlapping times for the same classroom or teacher, including concurrent publications.
+
+`meeting_invites` associates a child and each invited family with an offer. These ID relationships are scheduling metadata visible to the server. Each invitation's `{ name }` is encrypted with that family's Family Key, using purpose `meeting-invite`, the **offer ID** in the additional-data classroom position, and the child ID as subject. Staff resolve booked child IDs using their encrypted catalog. Family responses omit other children's IDs and every other family's invitation; only booked/free status is shared.
+
+Invitations are a snapshot of children and family cards at publication. New children or newly linked family cards are included in the next offer. Child changes revoke invitations for removed family cards, including when they still belong to the classroom through another child. Moving/deleting a child releases their bookings; removing classroom membership revokes its invitations. When the final invitation for a child goes, their reservation is released. Past offers and their invitations are deleted by daily cleanup 90 days after their last slot.
+
+Publishing notifies the classroom. Booking and cancellation notify the child's invited families and assigned classroom teachers. Pushes keep the existing payload-free, generic notification and open home, where the meetings card leads to the schedule. The schedule also refreshes every 30 seconds while visible; atomic server checks remain authoritative between refreshes.

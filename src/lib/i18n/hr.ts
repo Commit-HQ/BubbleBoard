@@ -161,7 +161,7 @@ export const hr = {
 		points: [
 			{
 				title: 'Što se čuva',
-				copy: 'Imena, naslovi upita i poruke, obavijesti, stranice s informacijama, ankete, fotografije i datoteke šifriraju se na uređaju prije slanja. Poslužitelj ih ne može pročitati, a čuva samo ono što mu treba za rad, bez imena, na primjer kad je obavijest objavljena.'
+				copy: 'Imena, naslovi upita i poruke, obavijesti, stranice s informacijama, ankete, fotografije i datoteke šifriraju se na uređaju prije slanja. Poslužitelj ih ne može pročitati, a čuva samo ono što mu treba za rad, bez imena, na primjer kad je obavijest objavljena. Termini individualnih razgovora, rezervacije te poveznice između identifikatora djece i obitelji služe organizaciji termina; imena djece ostaju šifrirana.'
 			},
 			{
 				title: 'Gdje',
@@ -169,7 +169,7 @@ export const hr = {
 			},
 			{
 				title: 'Koliko dugo',
-				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojitelj, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, stranice s informacijama dok ih administrator ne promijeni ili obriše, imena dok ih administrator ne ukloni, a prijava uređaja do 90 dana bez korištenja. Razgovori se čuvaju dok je obitelj član skupine. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
+				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojitelj, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, stranice s informacijama dok ih administrator ne promijeni ili obriše, imena dok ih administrator ne ukloni, a prijava uređaja do 90 dana bez korištenja. Razgovori se čuvaju dok je obitelj član skupine. Ponude individualnih razgovora i rezervacije brišu se 90 dana nakon posljednjeg termina u ponudi. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
 			},
 			{
 				title: 'Obavijesti na uređaju',
@@ -200,6 +200,66 @@ export const hr = {
 		app: 'Otvori BubbleBoard'
 	},
 	app: {
+		meetings: {
+			removeDay: 'Ukloni sve termine za ovaj dan',
+			dayRemoved: 'Termini dana su uklonjeni.',
+			removeDayCopy: (count: number, booked: number) =>
+				`Uklonit će se svi vaši nadolazeći termini za ovu skupinu tog dana (${count}). Broj rezervacija koje će biti otkazane: ${booked}. Roditelji s rezervacijom dobit će obavijest ako su je uključili.`,
+
+			title: 'Individualni razgovori',
+			offer: 'Ponudi termine',
+			open: 'Otvori razgovore',
+			choose: 'Odaberi termin',
+			emptyStaff: 'Još nemate ponuđenih termina.',
+			emptyFamily: 'Trenutačno nema ponuđenih termina.',
+			hint: 'Ponudite dan za razgovore s roditeljima.',
+			date: 'Datum',
+			start: 'Od',
+			end: 'Do',
+			duration: 'Trajanje razgovora',
+			minutes: 'minuta',
+			classroom: 'Skupina',
+			preview: 'Ponuđeni termini',
+			previewHint: 'Isključite termine koje želite ostaviti za pauzu.',
+			publish: 'Objavi termine',
+			publishing: 'Objavljivanje…',
+			cancel: 'Odustani',
+			free: 'Slobodno',
+			booked: 'Zauzeto',
+			mine: 'Vaš razgovor',
+			reserve: 'Rezerviraj',
+			reservation: 'Potvrdi rezervaciju',
+			confirmCopy: 'Želite li rezervirati ovaj termin za svoje dijete?',
+			cancelBooking: 'Otkaži razgovor',
+			cancelCopy: 'Želite li otkazati razgovor? Termin će ponovno biti slobodan.',
+			remove: 'Ukloni termin',
+			removeCopy: 'Želite li ukloniti ovaj slobodan termin iz ponude?',
+			past: 'Prošli razgovori',
+			upcoming: 'Nadolazeći razgovori',
+			child: 'Dijete',
+			loading: 'Učitavanje termina…',
+			retry: 'Pokušaj ponovno',
+			noChildren: 'U ovu skupinu još nisu dodana djeca.',
+			invalidRange: 'Odaberite budući datum i raspon u koji stane barem jedan cijeli razgovor.',
+			success: 'Termini su objavljeni.',
+			reserved: 'Vaš razgovor je rezerviran.',
+			cancelled: 'Razgovor je otkazan.',
+			removed: 'Termin je uklonjen.',
+			onePerChild:
+				'Jedan termin po djetetu u svakoj ponudi. Za promjenu termina prvo otkažite postojeću rezervaciju.',
+			already: 'Za ovo dijete već je rezerviran termin u ovoj ponudi.',
+			noInvite: 'Za vaše dijete nema pozivnice u ovoj ponudi. Javite se odgojiteljici.',
+			teacher: 'Odgojitelj',
+			refresh: 'Osvježi',
+			closed: 'Prošlo',
+			summary: 'Pogledajte slobodne termine i svoje rezervacije.',
+			staffSummary: 'Ponudite termine i pratite prijave roditelja.',
+			freeCount: 'slobodno',
+			bookedCount: 'rezervirano',
+			remaining: 'Preostale minute na kraju raspona neće biti ponuđene.',
+			keep: 'Zadrži razgovor',
+			cancelForm: 'Zatvori obrazac'
+		},
 		dateTime: (day: string, month: string, year: number, time: string) =>
 			`${day}.${month}.${year} u ${time}`,
 		loading: 'Otvaramo BubbleBoard…',
@@ -685,7 +745,7 @@ export const hr = {
 			daysShort: ['Pon', 'Uto', 'Sri', 'Čet', 'Pet'],
 			save: 'Spremi postavke',
 			saved: 'Postavke su spremljene.',
-			schedule: 'Termini slanja · Europe/Zagreb',
+			schedule: 'Termini slanja',
 			offDay: 'Zatvoreno',
 			disabled: 'Slanje poruka roditelja isključeno je za ovu skupinu.',
 			outside: 'Slanje je moguće u terminima skupine.',
@@ -702,6 +762,13 @@ export const hr = {
 				`Teta još nije odgovorila na vašu zadnju poruku, pa ova troši jedan upit. Ovaj mjesec ostat će vam ${count(left, 'upit', 'upita', 'upita')}.`
 		},
 		errors: {
+			'meeting-day-changed':
+				'Termini dana su promijenjeni. Popis je osvježen; zatvorite potvrdu i ponovno provjerite termine.',
+			'meeting-overlap':
+				'Termini se preklapaju s postojećom ponudom ove skupine ili odgojitelja. Odaberite drugo vrijeme.',
+			'meeting-changed':
+				'Termin je promijenjen ili upravo rezerviran. Popis je osvježen; odaberite slobodan termin.',
+			'meeting-already-booked': 'Za ovo dijete već postoji rezervacija u ovoj ponudi.',
 			'unreadable-messages': 'Neki se upiti nisu mogli otvoriti na ovom uređaju.',
 			'messages-disabled': 'Slanje poruka roditelja isključeno je za ovu skupinu.',
 			'messages-hours': 'Slanje nije unutar termina skupine. Vaš je tekst sačuvan.',
