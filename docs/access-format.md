@@ -16,15 +16,15 @@ Cards and encrypted records are versioned separately, because they age different
 
 Every key is 256 random bits from `crypto.getRandomValues`, generated in the browser and used with AES-256-GCM.
 
-| Key        | One for each                                | Opens                                                                                                                                                                 |
-| ---------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Staff Key  | kindergarten                                | every Group Key and Family Key, the Info Key, and the teacher, child, and family records                                                                              |
-| Group Key  | classroom                                   | the classroom profile (its name), the Notice Key of each of its notices, the Info Key, and the photo of its board with its details; later roster and classroom photos |
-| Family Key | family                                      | the Group Key of each classroom its children are in, and its answers to polls whose counts families don't see; later its private messages and photo reveals           |
-| Notice Key | notice, new at every save                   | the notice's text, paper colour, author name, and poll with any Poll Key, and the name and File Key of each of its files                                              |
-| Info Key   | kindergarten, made with its first info page | each info page's text and paper colour, and the name and File Key of each of its files                                                                                |
-| File Key   | file on a notice or an info page            | the file's bytes                                                                                                                                                      |
-| Poll Key   | poll whose counts families see              | every family's answer to that poll                                                                                                                                    |
+| Key        | One for each                                | Opens                                                                                                                                                                             |
+| ---------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Staff Key  | kindergarten                                | every Group Key and Family Key, the Info Key, and the teacher, child, and family records                                                                                          |
+| Group Key  | classroom                                   | the classroom profile (its name), the Notice Key of each of its notices, the Info Key, and the photo of its board with its details; later roster and classroom photos             |
+| Family Key | family                                      | the Group Key of each classroom its children are in, and its answers to polls whose counts families don't see; its private inquiry subjects and messages, and later photo reveals |
+| Notice Key | notice, new at every save                   | the notice's text, paper colour, author name, and poll with any Poll Key, and the name and File Key of each of its files                                                          |
+| Info Key   | kindergarten, made with its first info page | each info page's text and paper colour, and the name and File Key of each of its files                                                                                            |
+| File Key   | file on a notice or an info page            | the file's bytes                                                                                                                                                                  |
+| Poll Key   | poll whose counts families see              | every family's answer to that poll                                                                                                                                                |
 
 Every staff card, admin or teacher, opens the same Staff Key. Which classrooms a teacher sees, and what an admin may change, is decided by server authorization, not encryption. A teacher who also holds a copy of the database, or a server bug that serves another classroom's records, could therefore decrypt that classroom, and a lost staff card together with a database copy exposes the whole kindergarten. Whoever runs the server still reads nothing, and families stay separated by encryption. Separating teachers by encryption too would take an Admin Key, a key for each teacher, and a teacher key for each classroom, re-wrapped in an admin's browser at every change of assignment.
 
@@ -144,3 +144,9 @@ Opaque IDs, timestamps, hashes of auth and session tokens, envelopes, and a coun
 - Moving a child, removing a card, or removing a teacher stops server access, not the use of keys a device already opened. Group Keys don't change when a family leaves a classroom.
 - Any device of a family can add more of the family's devices with one-time cards, and the kindergarten doesn't see how many, as with a printed family card shared at home. Whoever holds a family device unlocked can add a device of their own. Replacing the family's card, or removing the family, signs out every device, those added with one-time cards too.
 - No signatures, no forward secrecy, and no key rotation short of resetting the installation (§12). Replacing a card changes the card, not the Family Key.
+
+## Private inquiries
+
+`conversation-title` envelopes use the Family Key, the classroom ID, and the conversation ID as subject. Their JSON is `{ title }`. `private-message` envelopes use the same Family Key and classroom, with the message ID as subject. Their JSON is `{ text, name, conversation }`; readers also check the enclosed conversation ID. Existing envelope formats and card formats do not change. Family devices share their family key, while staff open it from `family_key_for_staff` through the existing kindergarten Staff Key.
+
+The server authorizes every conversation read and write by current family membership and teacher classroom access (admins retain access to all classrooms). That authorization is an API boundary; the existing shared Staff Key is not a cryptographic isolation boundary between staff members. Only opaque routing/author IDs, month, timestamps, closed state, policy settings and read sequences are stored in plaintext. Notifications contain no subject or message text.

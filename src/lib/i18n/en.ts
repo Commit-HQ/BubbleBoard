@@ -164,12 +164,12 @@ export const en = {
 	privacyPolicy: {
 		title: 'Privacy policy',
 		description: 'What BubbleBoard stores about families and children, where, and for how long.',
-		updated: 'Updated on 14 September 2026',
+		updated: 'Updated on 18 September 2026',
 		// Followed by the project's contact address, which the last point calls the address below.
 		points: [
 			{
 				title: 'What’s stored',
-				copy: 'Names, notices, info pages, polls, photos, and files are encrypted on the device before they’re sent. The server can’t read them, and keeps only what it needs to work, without names, such as when a notice was posted.'
+				copy: 'Names, inquiry subjects and messages, notices, info pages, polls, photos, and files are encrypted on the device before they’re sent. The server can’t read them, and keeps only what it needs to work, without names, such as when a notice was posted.'
 			},
 			{
 				title: 'Where',
@@ -177,7 +177,7 @@ export const en = {
 			},
 			{
 				title: 'How long',
-				copy: 'Notices stay up for the 1 to 90 days a teacher chooses, a notice board photo until it’s replaced, info pages until an admin changes or deletes them, names until an admin removes them, and a device’s login until it goes unused for 90 days. Deleted records stay in the database’s backup history for up to 30 days.'
+				copy: 'Notices stay up for the 1 to 90 days a teacher chooses, a notice board photo until it’s replaced, info pages until an admin changes or deletes them, conversations until the family leaves their classroom, names until an admin removes them, and a device’s login until it goes unused for 90 days. Deleted records stay in the database’s backup history for up to 30 days.'
 			},
 			{
 				title: 'Notifications',
@@ -651,7 +651,67 @@ export const en = {
 			close: 'Close',
 			save: 'Save'
 		},
+		messaging: {
+			openStatus: 'Open',
+			closedStatus: 'Closed',
+			more: 'More inquiries',
+			title: 'Messages',
+			new: 'New inquiry',
+			subject: 'Subject',
+			body: 'Message',
+			send: 'Send',
+			family: 'Family',
+			classroom: 'Classroom',
+			choose: 'Choose…',
+			search: 'Search subjects',
+			all: 'All inquiries',
+			open: 'Open',
+			closed: 'Closed',
+			close: 'Close inquiry',
+			closeTitle: 'Close this inquiry?',
+			closeCopy:
+				'The conversation remains available to read. For a new topic, start a new inquiry.',
+			empty: 'No inquiries match this view.',
+			unread: 'Unread',
+			older: 'Earlier messages',
+			refresh: 'Refresh',
+			loading: 'Loading…',
+			back: 'All inquiries',
+			settings: 'Parent messaging',
+			enabled: 'Allow parents to send messages',
+			limit: 'New inquiries per family each month',
+			fromTime: 'From',
+			toTime: 'To',
+			days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+			save: 'Save settings',
+			saved: 'Settings saved.',
+			schedule: 'Sending hours · Europe/Zagreb',
+			disabled: 'Parent messaging is turned off for this classroom.',
+			outside: 'Sending is currently unavailable. Check the classroom’s hours below.',
+			holiday:
+				'On public holidays and other non-working days, replies may take longer even when sending is available.',
+			quotaCopy:
+				'Only new inquiries use the monthly allowance. Replies are free. The allowance renews on the first day of each month.',
+			closedCopy: 'This inquiry is closed and remains available to read.',
+			parent: 'Family',
+			teacher: 'Teacher',
+			noFamilies: 'There are no families in this classroom.',
+			noClassrooms: 'There are no classrooms available.',
+			retention: 'Conversations are kept until the family leaves this classroom.',
+			offDay: 'Closed',
+			noQuota:
+				'You have used this month’s allowance for new inquiries. You can still reply to open inquiries during sending hours.',
+			quota: (remaining: number) => `New inquiries remaining this month: ${remaining}`
+		},
 		errors: {
+			'unreadable-messages': 'Some inquiries could not be opened on this device.',
+			'messages-disabled': 'Parent messaging is turned off for this classroom.',
+			'messages-hours': 'Sending is outside the classroom’s hours. Your text has been kept.',
+			'messages-limit': 'You have used this month’s allowance for new inquiries.',
+			'messages-closed':
+				'This inquiry has been closed. Refresh the list to see the current status.',
+			'not-found': 'This doesn’t exist anymore.',
+			forbidden: 'You don’t have access to this.',
 			'empty-notice': 'Write the notice first.',
 			'notice-too-long': 'This notice is too long. Shorten it, then try again.',
 			'info-too-long': 'This page is too long. Shorten it, then try again.',
@@ -699,8 +759,6 @@ export const en = {
 			'empty-name': 'A name can’t be left blank. Type one and try again.',
 			stale:
 				'Someone else changed this at the same time. It’s up to date now, so please try again.',
-			'not-found': 'This doesn’t exist anymore.',
-			forbidden: 'You don’t have access to this.',
 			'push-unavailable':
 				'This browser couldn’t turn on notifications: its notification service didn’t answer. Try again later, or use another browser.',
 			'push-brave':

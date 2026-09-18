@@ -157,11 +157,11 @@ export const hr = {
 	privacyPolicy: {
 		title: 'Politika privatnosti',
 		description: 'Što BubbleBoard čuva o obiteljima i djeci, gdje i koliko dugo.',
-		updated: 'Ažurirano 14. rujna 2026.',
+		updated: 'Ažurirano 18. rujna 2026.',
 		points: [
 			{
 				title: 'Što se čuva',
-				copy: 'Imena, obavijesti, stranice s informacijama, ankete, fotografije i datoteke šifriraju se na uređaju prije slanja. Poslužitelj ih ne može pročitati, a čuva samo ono što mu treba za rad, bez imena, na primjer kad je obavijest objavljena.'
+				copy: 'Imena, naslovi upita i poruke, obavijesti, stranice s informacijama, ankete, fotografije i datoteke šifriraju se na uređaju prije slanja. Poslužitelj ih ne može pročitati, a čuva samo ono što mu treba za rad, bez imena, na primjer kad je obavijest objavljena.'
 			},
 			{
 				title: 'Gdje',
@@ -169,7 +169,7 @@ export const hr = {
 			},
 			{
 				title: 'Koliko dugo',
-				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojitelj, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, stranice s informacijama dok ih administrator ne promijeni ili obriše, imena dok ih administrator ne ukloni, a prijava uređaja do 90 dana bez korištenja. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
+				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojitelj, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, stranice s informacijama dok ih administrator ne promijeni ili obriše, imena dok ih administrator ne ukloni, a prijava uređaja do 90 dana bez korištenja. Razgovori se čuvaju dok je obitelj član skupine. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
 			},
 			{
 				title: 'Obavijesti na uređaju',
@@ -630,7 +630,65 @@ export const hr = {
 			close: 'Zatvori',
 			save: 'Spremi'
 		},
+		messaging: {
+			openStatus: 'Otvoren',
+			closedStatus: 'Završen',
+			more: 'Više upita',
+			title: 'Poruke',
+			new: 'Novi upit',
+			subject: 'Naslov',
+			body: 'Poruka',
+			send: 'Pošalji',
+			family: 'Obitelj',
+			classroom: 'Skupina',
+			choose: 'Odaberite…',
+			search: 'Pretraži naslove',
+			all: 'Svi upiti',
+			open: 'Otvoreni',
+			closed: 'Završeni',
+			close: 'Završi upit',
+			closeTitle: 'Završiti ovaj upit?',
+			closeCopy: 'Razgovor ostaje dostupan za čitanje. Za novu temu otvorite novi upit.',
+			empty: 'Nema upita koji odgovaraju odabiru.',
+			unread: 'Nepročitano',
+			older: 'Ranije poruke',
+			refresh: 'Osvježi',
+			loading: 'Učitavanje…',
+			back: 'Svi upiti',
+			settings: 'Poruke roditelja',
+			enabled: 'Omogući roditeljima slanje poruka',
+			limit: 'Novi upiti po obitelji mjesečno',
+			fromTime: 'Od',
+			toTime: 'Do',
+			days: ['Ponedjeljak', 'Utorak', 'Srijeda', 'Četvrtak', 'Petak'],
+			save: 'Spremi postavke',
+			saved: 'Postavke su spremljene.',
+			schedule: 'Termini slanja · Europe/Zagreb',
+			disabled: 'Slanje poruka roditelja isključeno je za ovu skupinu.',
+			outside: 'Slanje trenutačno nije dostupno. Provjerite termine skupine u nastavku.',
+			holiday:
+				'Na blagdane i druge neradne dane odgovor može kasniti, iako je slanje poruka omogućeno.',
+			quotaCopy:
+				'Samo novi upiti troše mjesečni limit. Odgovori su besplatni. Limit se obnavlja prvog dana u mjesecu.',
+			closedCopy: 'Ovaj je upit završen i ostaje dostupan za čitanje.',
+			parent: 'Obitelj',
+			teacher: 'Teta',
+			noFamilies: 'U ovoj skupini nema obitelji.',
+			noClassrooms: 'Nema dostupnih skupina.',
+			retention: 'Razgovori se čuvaju dok je obitelj član ove skupine.',
+			offDay: 'Zatvoreno',
+			noQuota:
+				'Iskoristili ste mjesečni limit novih upita. I dalje možete odgovarati u otvorenim upitima tijekom termina slanja.',
+			quota: (remaining: number) => `Preostalo novih upita ovaj mjesec: ${remaining}`
+		},
 		errors: {
+			'unreadable-messages': 'Neki se upiti nisu mogli otvoriti na ovom uređaju.',
+			'messages-disabled': 'Slanje poruka roditelja isključeno je za ovu skupinu.',
+			'messages-hours': 'Slanje nije unutar termina skupine. Vaš je tekst sačuvan.',
+			'messages-limit': 'Iskoristili ste mjesečni limit novih upita.',
+			'messages-closed': 'Ovaj je upit završen. Osvježite popis za trenutačno stanje.',
+			'not-found': 'Ovo više ne postoji.',
+			forbidden: 'Nemate pristup ovome.',
 			'empty-notice': 'Najprije napišite obavijest.',
 			'notice-too-long': 'Obavijest je predugačka. Skratite je i pokušajte ponovno.',
 			'info-too-long': 'Stranica je predugačka. Skratite je i pokušajte ponovno.',
@@ -679,8 +737,6 @@ export const hr = {
 			'empty-name': 'Ime ne može ostati prazno. Upišite ga i pokušajte ponovno.',
 			stale:
 				'Netko je upravo promijenio iste podatke. Sada vidite najnovije, pa pokušajte ponovno.',
-			'not-found': 'Ovo više ne postoji.',
-			forbidden: 'Nemate pristup ovome.',
 			'push-unavailable':
 				'Ovaj preglednik nije mogao uključiti obavijesti jer mu se usluga za obavijesti nije javila. Pokušajte kasnije ili u drugom pregledniku.',
 			'push-brave':

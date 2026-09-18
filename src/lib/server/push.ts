@@ -8,7 +8,12 @@ import { fromBase64Url, toBase64Url } from '../base64url';
 // sends them (worker/index.js). Imports stay relative: Wrangler bundles this for that handler without SvelteKit.
 
 /** A queue message: the devices to notify, and how many times this group was tried before. */
-export type PushMessage = { endpoints: string[]; subject: string; attempt: number };
+export type PushMessage = {
+	endpoints: string[];
+	subject: string;
+	attempt: number;
+	conversation?: string;
+};
 export type PushEnv = { DB: D1Database; NOTIFICATIONS: Queue; VAPID_KEY: string };
 type VapidKey = { privateKey: CryptoKey; publicKey: string };
 
@@ -201,7 +206,15 @@ export async function deliver(
 ) {
 	const key = await vapidKey(env.VAPID_KEY);
 	for (const message of batch.messages) {
-		const { endpoints, subject, attempt } = message.body;
+		const eligible = new Set(
+			message.body.conversation
+				? await conversationRecipients(env.DB, message.body.conversation)
+				: []
+		);
+		const { subject, attempt, conversation } = message.body;
+		const endpoints = conversation
+			? message.body.endpoints.filter((endpoint) => eligible.has(endpoint))
+			: message.body.endpoints;
 		const signed = new Map<string, Promise<string>>();
 		const outcomes = await Promise.all(
 			endpoints.map(async (endpoint) => {
@@ -221,9 +234,51 @@ export async function deliver(
 				.run();
 		}
 		if (again.length && attempt + 1 < attempts) {
-			const next: PushMessage = { endpoints: again, subject, attempt: attempt + 1 };
+			const next: PushMessage = {
+				endpoints: again,
+				subject,
+				attempt: attempt + 1,
+				...(conversation ? { conversation } : {})
+			};
 			await env.NOTIFICATIONS.send(next, { delaySeconds: 60 * 2 ** attempt });
 		}
 		message.ack();
+	}
+}
+
+/** Private conversations notify only their family and assigned teachers, never other families. */
+export async function conversationRecipients(
+	db: D1Database,
+	conversation: string,
+	poster = '',
+	now = Date.now()
+) {
+	const { results } = await db
+		.prepare(
+			`SELECT p.endpoint FROM push_subscriptions p
+ JOIN sessions s ON s.token_hash=p.session_hash JOIN credentials c ON c.id=s.credential_id
+ JOIN conversations t ON t.id=?
+ WHERE s.expires_at>? AND p.session_hash<>? AND (
+ c.family_id=t.family_id OR c.teacher_id IN (SELECT teacher_id FROM teacher_classrooms WHERE classroom_id=t.classroom_id))`
+		)
+		.bind(conversation, now, poster)
+		.all<{ endpoint: string }>();
+	return results.map(({ endpoint }) => endpoint);
+}
+export async function announceConversation(
+	event: RequestEvent,
+	conversation: string,
+	poster: string | undefined
+) {
+	const env = event.platform?.env;
+	if (!env?.NOTIFICATIONS) return;
+	const endpoints = await conversationRecipients(env.DB, conversation, poster);
+	for (let offset = 0; offset < endpoints.length; offset += groupSize) {
+		await env.NOTIFICATIONS.send({
+			endpoints: endpoints.slice(offset, offset + groupSize),
+			subject: event.url.origin,
+			attempt: 0,
+			conversation
+		} satisfies PushMessage);
 	}
 }

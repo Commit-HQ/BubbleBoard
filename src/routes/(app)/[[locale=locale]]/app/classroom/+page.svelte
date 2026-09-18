@@ -3,6 +3,7 @@
 	import CardSheet, { type PrintableCard } from '$lib/app/CardSheet.svelte';
 	import Checklist from '$lib/app/Checklist.svelte';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
+	import MessageSettings from '$lib/app/MessageSettings.svelte';
 	import ListLink from '$lib/app/ListLink.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp } from '$lib/app/state.svelte';
@@ -142,6 +143,11 @@
 				</form>
 			{/if}
 
+			{#if app.admin}
+				{#each app.messagePolicies.filter((policy) => policy.classroom === id) as settings (settings.classroom)}
+					<MessageSettings locale={data.locale} {settings} />
+				{/each}
+			{/if}
 			<section class="grid gap-3" aria-labelledby="children-title">
 				<h2 id="children-title" class="text-2xl">{t.classroom.children}</h2>
 				{#if children.length}

@@ -33,6 +33,7 @@
 		return () => container.removeEventListener('message', reload);
 	});
 
+	const inbox = $derived(appPath(data.locale, 'messages'));
 	const manage = $derived(appPath(data.locale, 'manage'));
 	const info = $derived(appPath(data.locale, 'info'));
 	const options = $derived(appPath(data.locale, 'options'));
@@ -65,12 +66,18 @@
 </svelte:head>
 
 <div class="mx-auto flex min-h-dvh max-w-2xl flex-col px-4 sm:px-8 print:max-w-none print:px-0">
-	<SiteHeader href={appPath(data.locale)} compact={app.status === 'staff'} class="print:hidden">
+	<SiteHeader href={appPath(data.locale)} compact={settings} class="print:hidden">
 		{#if settings}
 			<!-- Staff manage the kindergarten from here, and the kindergarten's info and Settings are here on every
 			page. On phones, Manage and Info show only their icons, and with all three, the narrowest phones show
 			only the logo beside them. -->
 			<nav class="flex items-center gap-1.5" aria-label={t.nav.label}>
+				<a class="{headerLink} relative px-3 sm:px-4" href={inbox} aria-current={current(inbox)}>
+					<Icon name="message" /><span class="max-sm:sr-only">{t.app.messaging.title}</span>
+					{#if app.unreadConversations}<span class="rounded-full bg-ink px-1.5 text-xs text-white"
+							>{app.unreadConversations}</span
+						>{/if}
+				</a>
 				{#if app.status === 'staff'}
 					<a class="{headerLink} px-3 sm:px-4" href={manage} aria-current={current(manage)}>
 						<Icon name="dashboard" />

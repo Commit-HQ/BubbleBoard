@@ -40,6 +40,7 @@ type KeyContext =
 
 /** The record encrypted data belongs to. */
 type DataContext =
+	| { purpose: 'conversation-title' | 'private-message'; classroom: string; message: string }
 	| { purpose: 'classroom-profile'; classroom: string }
 	| { purpose: 'teacher-profile'; teacher: string }
 	| { purpose: 'child-profile'; child: string }
@@ -373,6 +374,7 @@ function additionalData(context: KeyContext | DataContext) {
 		photo?: string;
 		file?: string;
 		page?: string;
+		message?: string;
 	} = context;
 	const subject =
 		ids.credential ??
@@ -383,6 +385,7 @@ function additionalData(context: KeyContext | DataContext) {
 		ids.photo ??
 		ids.file ??
 		ids.page ??
+		ids.message ??
 		null;
 	return encoder.encode(
 		JSON.stringify([

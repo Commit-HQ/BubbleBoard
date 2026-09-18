@@ -11,6 +11,7 @@ import {
 	type PollAnswer,
 	type StaffInfo
 } from '$lib/api';
+import { type Inbox, type MessagePolicy, type Conversation, openConversation } from '$lib/messages';
 import { readCard, type CardReading } from '$lib/card';
 import {
 	createContentKey,
@@ -202,6 +203,52 @@ function takeFragment(): { card?: CardReading; token?: string } {
 
 export class App {
 	status = $state<Status>('loading');
+	conversations = $state.raw<Conversation[]>([]);
+	messagePolicies = $state.raw<MessagePolicy[]>([]);
+	messageFamily = $state<string | null>(null);
+	messagesError = $state<string>();
+	messagesVersion = $state(0);
+	get unreadConversations() {
+		return this.conversations.filter((item) => item.lastSequence > item.readSequence).length;
+	}
+	async messageKey(family: string) {
+		if (this.#familyCard) {
+			if (this.#familyCard.family !== family) throw new UnreadableError();
+			return this.#familyCard.familyKey;
+		}
+		const record = this.catalog.families.find((item) => item.id === family);
+		if (!record) throw new UnreadableError();
+		return openFamilyKeyForStaff(this.#staff.staffKey, record);
+	}
+	#messageLoad = 0;
+	async loadMessages() {
+		const load = ++this.#messageLoad;
+		const card = this.#card;
+		try {
+			const data = await request<Inbox>('GET', '/api/messages');
+			const opened = await Promise.allSettled(
+				data.conversations.map(async (record) =>
+					openConversation(record, await this.messageKey(record.family))
+				)
+			);
+			if (this.#card !== card || load !== this.#messageLoad) return;
+			this.conversations = opened.flatMap((result) =>
+				result.status === 'fulfilled' ? [result.value] : []
+			);
+			this.messagePolicies = data.policies;
+			this.messageFamily = data.family;
+			this.messagesError = opened.some((result) => result.status === 'rejected')
+				? 'unreadable-messages'
+				: undefined;
+			this.messagesVersion++;
+		} catch (cause) {
+			if (this.#card !== card || load !== this.#messageLoad) return;
+			this.conversations = [];
+			this.messagePolicies = [];
+			this.messagesError = errorCode(cause);
+		}
+	}
+
 	/** Why this device was disconnected, when it wasn't signed out on purpose. */
 	notice = $state<string>();
 	/** The steps installing BubbleBoard takes on this device, when it's a phone or tablet outside the app. */
@@ -445,6 +492,7 @@ export class App {
 		this.#familyKeyEnvelope = access.kind === 'family' ? access.wrappedKey : undefined;
 		this.#loadedAt = Date.now();
 		this.status = this.install === 'android' ? 'install' : access.kind;
+		await this.loadMessages();
 		void this.#keepNotifications(resend);
 	}
 
@@ -577,6 +625,10 @@ export class App {
 		this.#infoKeyForStaff = undefined;
 		this.#infoPageIds = [];
 		this.#familyKeys.clear();
+		this.conversations = [];
+		this.messagePolicies = [];
+		this.messageFamily = null;
+		this.messagesError = undefined;
 		this.me = undefined;
 		this.catalog = emptyCatalog;
 		this.familyClassrooms = [];
