@@ -21,6 +21,7 @@
 		messageDate,
 		messageShortDate,
 		messageTime,
+		mergeRecentMessages,
 		remainingMessages,
 		sendingLeft,
 		type OpenMessage
@@ -189,10 +190,7 @@
 			);
 			if (ticket !== generation || id !== selected) return;
 			if (older) rows = [...opened, ...rows];
-			else {
-				const oldest = opened[0]?.sequence ?? Infinity;
-				rows = [...rows.filter((row) => row.sequence < oldest), ...opened];
-			}
+			else rows = mergeRecentMessages(rows, opened);
 			if (older || rows.length <= 50) more = opened.length === 50;
 			// Only a message the family hasn't seen yet is worth a write; the look for new ones comes round
 			// every half minute, and nearly always finds the conversation where it left it.

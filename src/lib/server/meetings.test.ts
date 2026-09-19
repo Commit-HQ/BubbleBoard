@@ -1,8 +1,9 @@
+import { localDatabase } from './test-database';
+import { changeChild } from './catalog';
+import { childChange } from './validate';
 import { announceMeetingChanges, type PushMessage } from './push';
 import { meetingTimestamp } from '$lib/meetings';
 import { messageClock } from '$lib/messages';
-import { readdirSync, readFileSync } from 'node:fs';
-import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
 import type { Identity, Staff } from '$lib/api';
 import { createId, createContentKey, encryptData } from '$lib/crypto';
@@ -13,46 +14,6 @@ import {
 	parseOffer,
 	removeMeetingDay
 } from './meetings';
-type Statement = { sql: string; params: SQLInputValue[] };
-
-/** The part of D1's API the server uses, over an in-memory SQLite database with the migrations applied. */
-function localDatabase() {
-	const sqlite = new DatabaseSync(':memory:');
-	sqlite.exec('PRAGMA foreign_keys = ON');
-	// Every migration, in order, as D1 applies them.
-	for (const file of readdirSync('migrations')
-		.filter((name) => name.endsWith('.sql'))
-		.sort()) {
-		sqlite.exec(readFileSync(`migrations/${file}`, 'utf8'));
-	}
-	const execute = ({ sql, params }: Statement) => {
-		const prepared = sqlite.prepare(sql);
-		if (prepared.columns().length) {
-			return { results: prepared.all(...params), meta: { changes: 0 } };
-		}
-		return { results: [], meta: { changes: Number(prepared.run(...params).changes) } };
-	};
-	const statement = (sql: string, params: SQLInputValue[] = []) => ({
-		sql,
-		params,
-		bind: (...values: SQLInputValue[]) => statement(sql, values),
-		first: async () => sqlite.prepare(sql).get(...params) ?? null,
-		all: async () => execute({ sql, params }),
-		run: async () => execute({ sql, params })
-	});
-	const batch = async (statements: Statement[]) => {
-		sqlite.exec('BEGIN');
-		try {
-			const results = statements.map(execute);
-			sqlite.exec('COMMIT');
-			return results;
-		} catch (cause) {
-			sqlite.exec('ROLLBACK');
-			throw cause;
-		}
-	};
-	return { prepare: (sql: string) => statement(sql), batch } as unknown as D1Database;
-}
 
 async function fixture() {
 	const db = localDatabase();
@@ -109,6 +70,29 @@ async function fixture() {
 	return { db, staff, parent, second, other, offer, child, otherChild, otherClassroom };
 }
 describe('meeting reservations', () => {
+	it('rejects child edits without family links and preserves their reservations', async () => {
+		const { db, staff, parent, second, offer, child } = await fixture();
+		await changeMeeting(db, parent, offer.slots[0].id, { action: 'book', version: 0, child });
+		const edit = {
+			classroom: offer.classroom,
+			profile: offer.invites[0].label,
+			revision: 0,
+			newFamilies: [],
+			addMemberships: [],
+			removeMemberships: [],
+			removeFamilies: []
+		};
+		// This is the same parse-then-save boundary as the child update endpoint, including older clients.
+		const save = async (body: Record<string, unknown>) =>
+			changeChild(db, { ...staff, admin: true }, child, childChange(body));
+		await expect(save(edit)).rejects.toMatchObject({ status: 400 });
+		expect((await meetingData(db, parent)).slots[0]).toMatchObject({ mine: true, version: 1 });
+		await save({ ...edit, meetingFamilies: [parent.family, second.family] });
+		expect((await meetingData(db, parent)).slots[0]).toMatchObject({ mine: true, version: 1 });
+		// An explicit removal still revokes invitations and releases the now-unmanageable reservation.
+		await save({ ...edit, revision: 1, meetingFamilies: [] });
+		expect((await meetingData(db, parent)).slots[0]).toMatchObject({ booked: false, version: 2 });
+	});
 	it('lets only one simultaneous claimant reserve a time and hides other children', async () => {
 		const { db, parent, other, staff, offer, child, otherChild } = await fixture();
 		const result = await Promise.allSettled([

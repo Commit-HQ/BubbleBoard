@@ -18,8 +18,8 @@ export const PUT: RequestHandler = async (event) => {
 	await requireIdentity(event);
 	const { endpoint, p256dh, auth } = await readJson(event.request);
 	if (!isPushEndpoint(endpoint)) error(400, 'invalid');
-	// Keys a browser didn't give, or gave in a length they don't come in, leave that device's pushes empty.
-	const device = { endpoint, p256dh: pushKey(p256dh, 65), auth: pushKey(auth, 16) };
+	// Missing or invalid keys leave that device's pushes empty.
+	const device = { endpoint, p256dh: await pushKey(p256dh, 65), auth: await pushKey(auth, 16) };
 	await subscribe(database(event), device, (await sessionHash(event))!);
 	return new Response(null, { status: 204 });
 };

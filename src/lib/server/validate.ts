@@ -279,7 +279,7 @@ export function childChange(body: Fields): ChildChange {
 		classroom,
 		profile: profile(body.profile),
 		...familyLinks(body, classroom),
-		meetingFamilies: body.meetingFamilies === undefined ? undefined : ids(body.meetingFamilies)
+		meetingFamilies: ids(body.meetingFamilies)
 	};
 }
 

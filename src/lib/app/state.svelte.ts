@@ -239,17 +239,28 @@ export class App {
 		return opening;
 	}
 	#messageLoad = 0;
+	#conversationCache = new Map<string, { key: CryptoKey; conversation: Conversation }>();
 	async loadMessages() {
 		const load = ++this.#messageLoad;
 		const card = this.#card;
 		try {
 			const data = await request<Inbox>('GET', '/api/messages');
+			const cache = new Map<string, { key: CryptoKey; conversation: Conversation }>();
 			const opened = await Promise.allSettled(
-				data.conversations.map(async (record) =>
-					openConversation(record, await this.messageKey(record.family))
-				)
+				data.conversations.map(async (record) => {
+					const key = await this.messageKey(record.family);
+					const conversation = await openConversation(
+						record,
+						key,
+						this.#conversationCache.get(record.id)
+					);
+					cache.set(record.id, { key, conversation });
+					return conversation;
+				})
 			);
 			if (this.#card !== card || load !== this.#messageLoad) return;
+			// Replace the cache with this inbox only, dropping deleted or no-longer-readable conversations.
+			this.#conversationCache = cache;
 			this.conversations = opened.flatMap((result) =>
 				result.status === 'fulfilled' ? [result.value] : []
 			);
@@ -835,6 +846,7 @@ export class App {
 		this.#infoKeyForStaff = undefined;
 		this.#infoPageIds = [];
 		this.#familyKeys.clear();
+		this.#conversationCache.clear();
 		this.#clearMeetings();
 		this.conversations = [];
 		this.messagePolicies = [];

@@ -33,6 +33,12 @@ export type MessageRecord = {
 export type MessageContent = { text: string; name: string };
 export type Conversation = ConversationRecord & { subject: string; preview: string };
 export type OpenMessage = MessageRecord & MessageContent;
+/** Keep history only when the pages overlap; otherwise restart pagination from the new page. */
+export function mergeRecentMessages<T extends MessageRecord>(rows: T[], opened: T[]): T[] {
+	if (!opened.some((fresh) => rows.some((row) => row.sequence === fresh.sequence))) return opened;
+	const oldest = opened[0]?.sequence ?? Infinity;
+	return [...rows.filter((row) => row.sequence < oldest), ...opened];
+}
 export type Inbox = {
 	conversations: ConversationRecord[];
 	policies: MessagePolicy[];
@@ -151,28 +157,42 @@ export async function openMessage(
 }
 export async function openConversation(
 	record: ConversationRecord,
-	key: CryptoKey
+	key: CryptoKey,
+	previous?: { key: CryptoKey; conversation: Conversation }
 ): Promise<Conversation> {
-	const data = fields(
-		await decryptData(record.title, key, {
-			purpose: 'conversation-title',
-			classroom: record.classroom,
-			message: record.id
-		})
-	);
+	const cached =
+		previous?.key === key &&
+		previous.conversation.id === record.id &&
+		previous.conversation.family === record.family &&
+		previous.conversation.classroom === record.classroom
+			? previous.conversation
+			: undefined;
+	const data =
+		cached?.title === record.title
+			? { title: cached.subject }
+			: fields(
+					await decryptData(record.title, key, {
+						purpose: 'conversation-title',
+						classroom: record.classroom,
+						message: record.id
+					})
+				);
 	if (typeof data.title !== 'string' || !data.title.trim() || data.title.length > 120)
 		throw new UnreadableError();
-	const latest = await openMessage(
-		{
-			id: record.messageId,
-			content: record.content,
-			author: record.author,
-			sequence: record.lastSequence,
-			postedAt: record.postedAt
-		},
-		key,
-		record.classroom,
-		record.id
-	);
+	const latest =
+		cached?.content === record.content && cached.messageId === record.messageId
+			? { text: cached.preview }
+			: await openMessage(
+					{
+						id: record.messageId,
+						content: record.content,
+						author: record.author,
+						sequence: record.lastSequence,
+						postedAt: record.postedAt
+					},
+					key,
+					record.classroom,
+					record.id
+				);
 	return { ...record, subject: data.title, preview: latest.text };
 }

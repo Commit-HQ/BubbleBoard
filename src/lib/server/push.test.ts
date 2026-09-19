@@ -9,6 +9,7 @@ import {
 	vapidAuthorization,
 	vapidKey
 } from './push';
+import { deliver, type PushMessage, type PushEnv } from './push';
 
 // Signing pushes, what they carry, and choosing where they may go. Delivery against the database is in
 // catalog.test.ts.
@@ -107,12 +108,63 @@ it('reads as a notice on a device that hasn’t sent the keys to encrypt to', as
 	expect(pushKind(undefined)).toBe('notice');
 });
 
-it('keeps only subscription keys of the length a browser makes them', () => {
-	expect(pushKey(toBase64Url(new Uint8Array(65)), 65)).toBe(toBase64Url(new Uint8Array(65)));
-	expect(pushKey(toBase64Url(new Uint8Array(64)), 65)).toBe(null);
-	expect(pushKey('not base64url!', 16)).toBe(null);
-	expect(pushKey(undefined, 16)).toBe(null);
-	expect(pushKey(42, 16)).toBe(null);
+it('keeps valid browser keys and refuses invalid curve points of the right length', async () => {
+	const device = await newDevice();
+	expect(await pushKey(device.p256dh, 65)).toBe(device.p256dh);
+	expect(await pushKey(device.auth, 16)).toBe(device.auth);
+	expect(await pushKey(toBase64Url(new Uint8Array(65)), 65)).toBe(null);
+	const offCurve = new Uint8Array(65);
+	offCurve[0] = 4;
+	expect(await pushKey(toBase64Url(offCurve), 65)).toBe(null);
+	expect(await pushKey(toBase64Url(new Uint8Array(64)), 65)).toBe(null);
+	expect(await pushKey('not base64url!', 16)).toBe(null);
+	expect(await pushKey(undefined, 16)).toBe(null);
+	expect(await pushKey(42, 16)).toBe(null);
+});
+
+it('isolates a stored invalid key while delivering and acknowledging the rest of the batch', async () => {
+	const good = await newDevice();
+	const bad = {
+		...good,
+		endpoint: 'https://web.push.apple.com/bad',
+		p256dh: toBase64Url(new Uint8Array(65))
+	};
+	let acknowledged = false;
+	const sent: string[] = [];
+	const retries: unknown[] = [];
+	const body: PushMessage = {
+		devices: [bad, good],
+		kind: 'message',
+		subject: 'https://example.com',
+		attempt: 0
+	};
+	await deliver(
+		{
+			messages: [
+				{
+					body,
+					ack: () => {
+						acknowledged = true;
+					}
+				}
+			]
+		} as unknown as MessageBatch<PushMessage>,
+		{
+			VAPID_KEY: await createVapidSecret(),
+			NOTIFICATIONS: {
+				send: async (value: unknown) => {
+					retries.push(value);
+				}
+			}
+		} as unknown as PushEnv,
+		(async (url: string) => {
+			sent.push(url);
+			return new Response(null, { status: 201 });
+		}) as typeof fetch
+	);
+	expect(acknowledged).toBe(true);
+	expect(sent).toEqual([good.endpoint]);
+	expect(retries).toEqual([]);
 });
 
 it('signs a push service’s authorization for its origin, verifiable with the key devices subscribe with', async () => {

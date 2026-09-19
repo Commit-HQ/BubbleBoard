@@ -343,7 +343,7 @@ export async function changeChild(db: D1Database, admin: Admin, id: string, chan
 				.prepare(
 					'DELETE FROM meeting_invites WHERE child_id=? AND family_id NOT IN (SELECT value FROM json_each(?))'
 				)
-				.bind(id, JSON.stringify(change.meetingFamilies ?? []))
+				.bind(id, JSON.stringify(change.meetingFamilies))
 		]
 	);
 }

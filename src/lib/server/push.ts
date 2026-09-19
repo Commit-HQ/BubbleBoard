@@ -44,10 +44,19 @@ export function isPushEndpoint(value: unknown): value is string {
 	);
 }
 
-/** A subscription key of the length its browser makes it, or nothing, which leaves that device's pushes empty. */
-export function pushKey(value: unknown, bytes: number) {
+/** Validate browser keys, including the public key's curve point; invalid keys leave pushes empty. */
+export async function pushKey(value: unknown, bytes: number) {
 	if (typeof value !== 'string') return null;
-	return fromBase64Url(value)?.length === bytes ? value : null;
+	const raw = fromBase64Url(value);
+	if (raw?.length !== bytes) return null;
+	if (bytes === 65) {
+		try {
+			await crypto.subtle.importKey('raw', raw, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+		} catch {
+			return null;
+		}
+	}
+	return value;
 }
 
 /** Keeps a device's subscription with the session that sent it, moving it from an earlier session. */
@@ -285,7 +294,13 @@ async function push(
 	authorization: string,
 	fetcher: typeof fetch
 ): Promise<Outcome> {
-	const body = await encryptKind(device, kind);
+	let body: Bytes;
+	try {
+		body = await encryptKind(device, kind);
+	} catch {
+		// A bad key already stored or queued must not retry successful deliveries to other devices.
+		return 'refused';
+	}
 	try {
 		const response = await fetcher(device.endpoint, {
 			method: 'POST',

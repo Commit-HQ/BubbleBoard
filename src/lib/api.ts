@@ -49,7 +49,7 @@ export type FamilyLinks = {
 export type ChildChange = FamilyLinks & {
 	classroom: string;
 	profile: string;
-	meetingFamilies?: string[];
+	meetingFamilies: string[];
 };
 export type NewChild = ChildChange & { id: string };
 

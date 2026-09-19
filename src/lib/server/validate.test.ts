@@ -44,6 +44,7 @@ it('refuses a new family card that wouldn’t reach its child’s classroom', ()
 		classroom,
 		profile: envelope(20),
 		newFamilies: [family],
+		meetingFamilies: [family.id],
 		removeMemberships: [],
 		removeFamilies: []
 	};
