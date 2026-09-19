@@ -502,6 +502,8 @@ export class App {
 	/** Every info page's ID, in order, as the server last sent them to a staff device, pages that didn't open too. */
 	#infoPageIds: string[] = [];
 	#loadedAt = 0;
+	/** Invalidates asynchronous work when the device signs out or starts connecting another card. */
+	#connectionVersion = 0;
 	/** The load of the records and board under way, which a refresh meanwhile waits for. */
 	#reloading?: Promise<void>;
 	/** Whether something new came since the last load started, so the board loads again. */
@@ -641,14 +643,20 @@ export class App {
 	}
 
 	async #reload() {
+		const version = this.#connectionVersion;
 		do {
 			this.#stale = false;
 			const card = this.#card;
 			if (!this.connected || !card) return;
 			try {
 				// The session is the one the app opened with, so its subscription isn't sent again.
-				await this.#open(await request<Access>('GET', '/api/session'), card, { resend: false });
+				await this.#open(await request<Access>('GET', '/api/session'), card, {
+					resend: false,
+					version
+				});
+				if (version !== this.#connectionVersion) return;
 			} catch (cause) {
+				if (version !== this.#connectionVersion) return;
 				if (isDisconnection(cause)) await this.#disconnect('signed-out');
 				// A load that failed, such as while a phone's connection wakes up, is tried again the next time
 				// the app comes into view, without waiting out `refreshAfter`.
@@ -658,29 +666,40 @@ export class App {
 	}
 
 	async #resume() {
+		const version = this.#connectionVersion;
 		const card = this.#card;
 		if (!card) {
 			this.status = 'disconnected';
 			return;
 		}
 		try {
-			await this.#open(await request<Access>('GET', '/api/session'), card);
+			await this.#open(await request<Access>('GET', '/api/session'), card, { version });
 		} catch (cause) {
+			if (version !== this.#connectionVersion) return;
 			if (isDisconnection(cause)) await this.#disconnect('signed-out');
 			else this.status = errorCode(cause) === 'unreadable-records' ? 'unreadable' : 'offline';
 		}
 	}
 
-	async #open(access: Access, card: DeviceCard, { resend = true } = {}) {
+	async #open(
+		access: Access,
+		card: DeviceCard,
+		{ resend = true, version = this.#connectionVersion } = {}
+	) {
+		if (version !== this.#connectionVersion) return;
 		if (this.#card?.credential !== card.credential) this.#clearMeetings();
 		// A session or card that doesn't match the stored card means connecting again with a card.
 		if (access.credential !== card.credential) throw new UnreadableError();
 		let classrooms: FamilyClassroom[];
 		if (access.kind === 'staff' && card.kind === 'staff') {
-			this.#keys = await openStaffKeys(access, card.unlockKey);
+			const keys = await openStaffKeys(access, card.unlockKey);
+			if (version !== this.#connectionVersion) return;
+			this.#keys = keys;
 			await this.#load(access.kindergarten, access.teacher);
+			if (version !== this.#connectionVersion) return;
 			classrooms = this.catalog.classrooms;
 			await this.#openBoard(access.notices, classrooms);
+			if (version !== this.#connectionVersion) return;
 			await this.#showStaffInfo(access.info);
 		} else if (
 			access.kind === 'family' &&
@@ -689,16 +708,22 @@ export class App {
 		) {
 			const opening = openFamily(access, card.familyKey);
 			classrooms = await readable(opening, 'unreadable-records');
+			if (version !== this.#connectionVersion) return;
 			this.familyClassrooms = classrooms;
 			await this.#openBoard(access.notices, classrooms, card);
+			if (version !== this.#connectionVersion) return;
 			const groupKeys = new Map(classrooms.map(({ id, groupKey }) => [id, groupKey]));
 			this.#infoKeyForStaff = undefined;
 			this.#infoPageIds = [];
-			this.#showInfo(await openInfoForFamily(access.info.pages, access.classrooms, groupKeys));
+			const info = await openInfoForFamily(access.info.pages, access.classrooms, groupKeys);
+			if (version !== this.#connectionVersion) return;
+			this.#showInfo(info);
 		} else {
 			throw new UnreadableError();
 		}
+		if (version !== this.#connectionVersion) return;
 		await this.#showPhotos(access.photos, classrooms);
+		if (version !== this.#connectionVersion) return;
 		this.#card = card;
 		this.#familyKeyEnvelope = access.kind === 'family' ? access.wrappedKey : undefined;
 		this.#loadedAt = Date.now();
@@ -715,22 +740,27 @@ export class App {
 	 * sends the subscription, which keeps it with the current session and renews one made with an earlier key.
 	 */
 	async #keepNotifications(resend: boolean) {
+		const version = this.#connectionVersion;
 		const [state, hidden] = await Promise.all([
 			notificationState().catch(() => 'unsupported' as const),
 			homeCardHidden().catch(() => false)
 		]);
+		if (version !== this.#connectionVersion) return;
 		this.notifications = state;
 		this.notificationCardHidden = hidden;
 		if (resend && state === 'on') {
 			const sent = await sendSubscription().catch(() => state);
 			// Unless notifications were turned on or off in the meantime.
-			if (this.notifications === state) this.notifications = sent;
+			if (version === this.#connectionVersion && this.notifications === state)
+				this.notifications = sent;
 		}
 	}
 
 	async #load(records: Kindergarten, teacher = this.me?.id) {
+		const version = this.#connectionVersion;
 		const opening = openCatalog(this.#staff.staffKey, records);
 		const catalog = await readable(opening, 'unreadable-records');
+		if (version !== this.#connectionVersion) return;
 		this.catalog = catalog;
 		this.me = catalog.teachers.find((candidate) => candidate.id === teacher);
 	}
@@ -759,11 +789,13 @@ export class App {
 		classrooms: { id: string; groupKey: CryptoKey }[],
 		familyCard?: Extract<DeviceCard, { kind: 'family' }>
 	) {
+		const version = this.#connectionVersion;
 		const groupKeys = new Map(classrooms.map(({ id, groupKey }) => [id, groupKey]));
 		const familyKeys: FamilyKeys = familyCard
 			? async (family) => (family === familyCard.family ? familyCard.familyKey : undefined)
 			: async (family) => this.#familyKeyForStaff(family);
 		const { notices, unreadable } = await openBoard(records, groupKeys, familyKeys);
+		if (version !== this.#connectionVersion) return;
 		this.board = notices;
 		this.unreadableNotices = unreadable;
 		this.#keepPictures();
@@ -781,17 +813,22 @@ export class App {
 	 * classrooms take, and every page's place, which moving one takes.
 	 */
 	async #showStaffInfo(info: StaffInfo) {
+		const version = this.#connectionVersion;
+		const opened = await openInfoForStaff(info, this.#staff.staffKey);
+		if (version !== this.#connectionVersion) return;
 		this.#infoKeyForStaff = info.infoKeyForStaff ?? undefined;
 		this.#infoPageIds = info.pages.map(({ id }) => id);
-		this.#showInfo(await openInfoForStaff(info, this.#staff.staffKey));
+		this.#showInfo(opened);
 	}
 
 	/** Runs a request made on purpose. A device whose session ended disconnects: only its card connects it again. */
 	async #signedIn<T>(work: () => Promise<T>) {
+		const version = this.#connectionVersion;
 		try {
 			return await work();
 		} catch (cause) {
-			if (cause instanceof ApiError && cause.status === 401) await this.#disconnect('signed-out');
+			if (version === this.#connectionVersion && cause instanceof ApiError && cause.status === 401)
+				await this.#disconnect('signed-out');
 			throw cause;
 		}
 	}
@@ -807,9 +844,14 @@ export class App {
 		open: (response: T) => Promise<void>,
 		headers?: Record<string, string>
 	) {
+		const version = this.#connectionVersion;
 		try {
-			await this.#signedIn(async () => open(await request<T>(method, path, body, headers)));
+			await this.#signedIn(async () => {
+				const response = await request<T>(method, path, body, headers);
+				if (version === this.#connectionVersion) await open(response);
+			});
 		} catch (cause) {
+			if (version !== this.#connectionVersion) throw cause;
 			if (errorCode(cause) === 'unreadable-records') this.status = 'unreadable';
 			else if (cause instanceof ApiError && ['stale', 'not-found'].includes(cause.code)) {
 				await this.#resume();
@@ -836,9 +878,9 @@ export class App {
 	}
 
 	async #disconnect(notice?: string) {
+		this.#connectionVersion++;
 		// Notifications end with the session, whose subscription the server forgets: after connecting again,
 		// the device turns them on again.
-		await Promise.all([forgetCard(), forgetSubscription()].map((done) => done.catch(() => {})));
 		this.notifications = 'off';
 		this.#card = undefined;
 		this.#keys = undefined;
@@ -862,6 +904,7 @@ export class App {
 		this.#keepPictures();
 		this.notice = notice;
 		this.status = 'disconnected';
+		await Promise.all([forgetCard(), forgetSubscription()].map((done) => done.catch(() => {})));
 	}
 
 	/** Uses a card read from a link, a photo, or a typed code. A device with a card asks first. */
@@ -882,13 +925,16 @@ export class App {
 	}
 
 	async connect(secret: Uint8Array<ArrayBuffer>) {
+		const version = ++this.#connectionVersion;
 		this.pendingCard = undefined;
 		this.cardError = undefined;
 		this.connecting = true;
 		let connected = false;
 		try {
 			const { authToken, unlockKey } = await deriveCredential(secret);
+			if (version !== this.#connectionVersion) return;
 			const access = await request<Access>('POST', '/api/connect', { authToken });
+			if (version !== this.#connectionVersion) return;
 			connected = true;
 			const known = { credential: access.credential, cardHash: await hashAuthToken(authToken) };
 			const card: DeviceCard =
@@ -901,10 +947,13 @@ export class App {
 							familyKey: await openFamilyKey(access, unlockKey),
 							unlockKey
 						};
-			await this.#open(access, card);
+			await this.#open(access, card, { version });
+			if (version !== this.#connectionVersion) return;
 			await saveCard(card);
+			if (version !== this.#connectionVersion) return;
 			this.notice = undefined;
 		} catch (cause) {
+			if (version !== this.#connectionVersion) return;
 			this.cardError = errorCode(cause);
 			// The server already moved this browser's session to the new card.
 			if (connected) await this.#disconnect();
@@ -1313,6 +1362,7 @@ export class App {
 	 * `#open` sets last.
 	 */
 	async #showPhotos(records: PhotoRecord[], classrooms: { id: string; groupKey: CryptoKey }[]) {
+		const version = this.#connectionVersion;
 		const photos = await Promise.all(
 			records.map(async (record): Promise<Photo> => {
 				const groupKey = classrooms.find(({ id }) => id === record.classroom)?.groupKey;
@@ -1321,6 +1371,7 @@ export class App {
 				return { ...record, ...(await opening.catch(() => ({}))) };
 			})
 		);
+		if (version !== this.#connectionVersion) return;
 		this.photos = photos;
 		this.#keepPictures();
 	}

@@ -61,6 +61,7 @@
 	let now = $state(Date.now());
 	let scrolledTo = 0;
 	let generation = 0;
+	let viewVersion = 0;
 	let pending: { fingerprint: string; payload: Record<string, string> } | undefined;
 
 	const policy = $derived(
@@ -143,6 +144,8 @@
 		id;
 		creating;
 		untrack(() => {
+			viewVersion++;
+			busy = false;
 			text = '';
 			subject = '';
 			pending = undefined;
@@ -171,7 +174,10 @@
 		if (visible && app.connected && !busy) void app.loadMessages();
 	});
 	// A conversation left behind stops taking what its last load brings back.
-	onMount(() => () => void generation++);
+	onMount(() => () => {
+		generation++;
+		viewVersion++;
+	});
 
 	async function load(selected: string, older = false) {
 		const item = app.conversations.find((item) => item.id === selected);
@@ -213,35 +219,42 @@
 	}
 
 	async function send() {
+		const selected = id;
+		const isNew = creating;
+		const version = viewVersion;
+		const sameView = () => version === viewVersion && id === selected && creating === isNew;
 		const targetClassroom = thread?.classroom ?? classroom;
 		const targetFamily = thread?.family ?? app.messageFamily ?? family;
 		if (!targetClassroom || !targetFamily) return;
 		busy = true;
 		failure = undefined;
 		try {
-			const fingerprint = JSON.stringify([id, targetClassroom, targetFamily, subject, text]);
-			if (pending?.fingerprint !== fingerprint) {
-				const conversation = creating ? createId() : id!;
-				pending = {
+			const fingerprint = JSON.stringify([selected, targetClassroom, targetFamily, subject, text]);
+			let attempt = pending;
+			if (attempt?.fingerprint !== fingerprint) {
+				const conversation = isNew ? createId() : selected!;
+				attempt = {
 					fingerprint,
 					payload: await app.sealFor(
 						targetClassroom,
 						targetFamily,
 						conversation,
 						{ text: text.trim(), name: staff ? (app.myName ?? t.teacher) : '' },
-						creating ? subject.trim() : undefined
+						isNew ? subject.trim() : undefined
 					)
 				};
 			}
-			const savedId = creating ? pending.payload.id : id!;
-			await app.sendMessage(pending.payload, creating ? undefined : id!);
+			if (sameView()) pending = attempt;
+			const savedId = isNew ? attempt.payload.id : selected!;
+			await app.sendMessage(attempt.payload, isNew ? undefined : selected!);
+			if (!sameView()) return;
 			text = '';
 			pending = undefined;
-			if (creating) await goto(appPath(data.locale, 'messages', { id: savedId }));
+			if (isNew) await goto(appPath(data.locale, 'messages', { id: savedId }));
 		} catch (cause) {
-			failure = errorCode(cause);
+			if (sameView()) failure = errorCode(cause);
 		} finally {
-			busy = false;
+			if (sameView()) busy = false;
 		}
 	}
 
