@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
 	import type { OpenEvent } from '$lib/events/types';
-	import { savePicture } from '$lib/files';
+	import { savePicture, savePictures } from '$lib/files';
 	import { errorMessage, formatDay, messages, type Locale } from '$lib/i18n';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import NoticeBody from './NoticeBody.svelte';
@@ -21,6 +21,7 @@
 	const p = $derived(messages[locale].app.eventEditor);
 	let index = $state(0),
 		picture = $state.raw<Picture>(),
+		prepared = $state(0),
 		loading = $state(false),
 		failed = $state(false),
 		retry = $state(0),
@@ -62,6 +63,21 @@
 	function save() {
 		const saving = picture;
 		if (saving) task.run(() => savePicture(saving.blob, name(index)));
+	}
+	/** Every photo of the gallery, composed on this device one after another, then saved together. */
+	function saveAll() {
+		task.run(async () => {
+			const all: Blob[] = [];
+			try {
+				for (const photo of photos) {
+					all.push(await app.eventPicture(event, photo.id));
+					prepared = all.length;
+				}
+				await savePictures(all, event.value.title);
+			} finally {
+				prepared = 0;
+			}
+		});
 	}
 	/** What a saved photo is called on the device: the event and which photo of it this is. */
 	function name(position: number) {
@@ -116,6 +132,11 @@
 	{/if}
 
 	{#if task.error}<p class={alert} role="alert">{errorMessage(locale, task.error)}</p>{/if}
+	{#if prepared}
+		<p class="font-semibold text-muted" role="status">
+			{t.preparingPhoto(prepared, photos.length)}
+		</p>
+	{/if}
 	<div class="flex flex-wrap gap-3">
 		<button
 			type="button"
@@ -125,6 +146,11 @@
 		>
 			<Icon name="download" class="size-4" />{t.download}
 		</button>
+		{#if photos.length > 1}
+			<button type="button" class={button.secondary} disabled={task.busy} onclick={() => saveAll()}>
+				<Icon name="download" class="size-4" />{t.downloadAll}
+			</button>
+		{/if}
 		{#if app.canDeleteEvent(event)}
 			<button type="button" class={button.danger} onclick={() => (confirming = true)}>
 				<Icon name="trash" class="size-4" />{t.remove}

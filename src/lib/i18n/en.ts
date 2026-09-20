@@ -252,6 +252,8 @@ export const en = {
 			noChildren: 'The list of children is not ready yet. A teacher needs to open the app.',
 			child: 'Child',
 			download: 'Save photo',
+			downloadAll: 'Save all photos',
+			preparingPhoto: (n: number, total: number) => `Preparing photo ${n} of ${total}…`,
 			remove: 'Remove event',
 			removeHint: 'This event and its photos will no longer be available to families.',
 			open: 'Open gallery',

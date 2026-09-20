@@ -237,6 +237,8 @@ export const hr = {
 			noChildren: 'Popis djece još nije pripremljen. Odgojitelj treba otvoriti aplikaciju.',
 			child: 'Dijete',
 			download: 'Spremi fotografiju',
+			downloadAll: 'Spremi sve fotografije',
+			preparingPhoto: (n: number, total: number) => `Pripremam fotografiju ${n} od ${total}…`,
 			remove: 'Ukloni događaj',
 			removeHint: 'Događaj i njegove fotografije više neće biti dostupni obiteljima.',
 			open: 'Otvori galeriju',

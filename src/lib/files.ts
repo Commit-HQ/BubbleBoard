@@ -8,6 +8,7 @@ import {
 import { CodedError } from '$lib/errors';
 import { isAppleTouch } from '$lib/install';
 import { imageBlob, pictureToSave, preparePhoto } from '$lib/photos';
+import { zipFiles } from '$lib/zip';
 
 // Files attached to notices and info pages (docs/access-format.md): documents and pictures a teacher adds to a
 // notice, or an admin to an info page. The browser encrypts each with a key of its own, which goes inside the
@@ -184,4 +185,37 @@ export async function savePicture(picture: Blob, name: string) {
 		}
 	}
 	saveFile(file, file.name);
+}
+
+/**
+ * Saves a set of pictures at once, numbered after the set they belong to: the share sheet on iPhone and
+ * iPad, whose Save Images puts them all in Photos, and otherwise one zip file holding them, since a gallery
+ * is not worth one download per photo. Every name is built from the same one, so no two entries collide.
+ */
+export async function savePictures(pictures: Blob[], set: string) {
+	const files: File[] = [];
+	for (const [position, picture] of pictures.entries()) {
+		const saved = await pictureToSave(picture);
+		const name = nameWith(set, pictureExtension(saved.type));
+		const dot = name.lastIndexOf('.');
+		files.push(
+			new File([saved], `${name.slice(0, dot)}-${position + 1}${name.slice(dot)}`, {
+				type: saved.type
+			})
+		);
+	}
+	if (
+		isAppleTouch(navigator.userAgent, navigator.maxTouchPoints) &&
+		navigator.canShare?.({ files })
+	) {
+		try {
+			return await navigator.share({ files });
+		} catch (cause) {
+			// Closing the share sheet saves nothing, as it should.
+			if (cause instanceof DOMException && cause.name === 'AbortError') return;
+			// A share sheet only opens while the tap that asked for it is still recent, and composing a
+			// gallery takes longer than that, so a file to keep is what is left when it is too late.
+		}
+	}
+	saveFile(await zipFiles(files), nameWith(set, 'zip'));
 }
