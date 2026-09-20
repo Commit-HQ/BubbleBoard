@@ -206,6 +206,21 @@ export const hr = {
 		app: 'Otvori BubbleBoard'
 	},
 	app: {
+		eventEditor: {
+			title: 'Editor fotografija događaja', open: 'Pripremi fotografije događaja', intro: 'Pripremi i pregledaj fotografije na ovom uređaju. Objavljivanje događaja i roditeljske postavke vidljivosti slijede u idućem koraku; ovdje se fotografije ne šalju.',
+			local: 'Nacrt ostaje na ovoj otvorenoj stranici. Zatvaranjem ili ponovnim učitavanjem aplikacije gubi se.', classroom: 'Skupina', add: 'Dodaj fotografije', limit: 'Odaberi do 20 fotografija, svaku do 50 MB.',
+			loading: 'Pripremam fotografije…', detecting: 'Tražim lica…', failed: 'Detekcija lica nije dostupna. Dodaj pokrove ručno i pregledaj cijelu fotografiju.', retry: 'Ponovi detekciju', manual: 'Nastavi ručno', noFaces: 'Nisu pronađena lica. Pregledaj cijelu fotografiju i dodaj pokrove koji nedostaju.',
+			photo: (n: number, total: number) => `Fotografija ${n} od ${total}`, face: (n: number) => `Lice ${n}`, remaining: (n: number) => `Još ${n} lica treba označiti ili ostaviti prekrivenima.`,
+			addCover: 'Dodaj pokrov', original: 'Prikaži original', covers: 'Vrati pokrove', originalHint: 'Original — samo za uređivanje',
+			who: 'Tko je na slici?', crop: 'Izrez originala — vidljiv samo tijekom uređivanja', search: 'Pronađi dijete', already: 'Već na slici', empty: 'Nema djece koja odgovaraju pretrazi.', covered: 'Ostavi prekriveno', unknown: 'Odaberi dijete', removeCover: 'Nije lice — ukloni pokrov',
+			undo: 'Poništi', redo: 'Vrati poništeno', zoom: 'Povećanje fotografije', width: 'Širina pokrova', height: 'Visina pokrova', left: 'Pomakni lijevo', right: 'Pomakni desno', up: 'Pomakni gore', down: 'Pomakni dolje',
+			assigned: (name: string) => `Označeno: ${name}`, coveredDone: 'Ovo lice ostaje prekriveno.', check: 'Pregledaj cijelu fotografiju, uključujući lica koja detekcija možda nije pronašla.', reviewed: 'Pregledano', review: 'Pregledano, sljedeća fotografija', reviewNeeded: 'Potreban pregled',
+			overlap: 'Neki se pokrovi preklapaju. Pažljivo provjeri rubove. U ovom pregledu sva lica ostaju prekrivena.', removePhoto: 'Ukloni fotografiju',
+			preview: 'Pregledaj prekrivene fotografije', back: 'Natrag na uređivanje', previewHint: 'U ovom sastavljenom pregledu sva označena lica ostaju prekrivena. Otkrivanje prema obitelji i objava još nisu povezani.', previewFailed: 'Pregled nije moguće pripremiti. Vrati se na uređivanje i pokušaj ponovno.',
+			unusable: 'Fotografiju nije moguće otvoriti. Odaberi JPEG, PNG, WebP ili HEIC fotografiju.', leave: 'Napustiti stranicu i odbaciti nacrt fotografija?', allReviewed: 'Sve su fotografije pregledane. U nastavku možeš provjeriti prekrivene rezultate.',
+			gesture: 'Odaberi pokrov pa povuci njega ili njegov kut. Za detalje povećaj fotografiju i povuci njezinu pozadinu. Tipke sa strelicama pomiču odabrani pokrov.', tooManyFaces: 'Na fotografiji je previše pokrova. Odaberi drugu fotografiju ili ukloni pogrešne detekcije.', rosterChanged: 'Popis djece u skupini se promijenio. Ponovno provjeri oznake.',
+		},
+
 		meetings: {
 			removeDay: 'Ukloni sve termine za ovaj dan',
 			dayRemoved: 'Termini dana su uklonjeni.',
