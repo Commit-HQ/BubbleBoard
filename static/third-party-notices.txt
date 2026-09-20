@@ -342,3 +342,19 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+
+LOCAL FACE DETECTION
+--------------------
+
+MediaPipe Tasks Vision 0.10.32 and the BlazeFace short-range float16 model
+(version 1), by Google, are distributed under the Apache License, Version 2.0.
+Runtime source: https://github.com/google-ai-edge/mediapipe
+Package: https://www.npmjs.com/package/@mediapipe/tasks-vision/v/0.10.32
+Model: https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite
+Model documentation: https://ai.google.dev/edge/mediapipe/solutions/vision/face_detector
+The license is included at /licenses/mediapipe-apache-2.0.txt.
+The runtime is copied unchanged with a .js extension for browser loading.
+The model and WASM runtime are served by this installation. Photos are never
+sent to Google or another detection service. Detection locates faces; it does
+not identify children.

@@ -10,7 +10,9 @@ export async function prepareEditorImage(file: Blob) {
 		if (!ctx) throw new Error('Canvas unavailable');
 		const blob = await ctx.canvas.convertToBlob({ type: 'image/jpeg', quality: 0.94 });
 		return { blob, width: ctx.canvas.width, height: ctx.canvas.height };
-	} finally { if (image instanceof ImageBitmap) image.close(); }
+	} finally {
+		if (image instanceof ImageBitmap) image.close();
+	}
 }
 
 /** Actual flattened safe raster, not a CSS overlay. It deliberately reveals no faces in this first slice. */
@@ -22,10 +24,24 @@ export async function safePreview(blob: Blob, regions: Rect[]) {
 		if (!ctx) throw new Error('Canvas unavailable');
 		ctx.drawImage(image, 0, 0);
 		const original = ctx.getImageData(0, 0, image.width, image.height);
-		ctx.putImageData(new ImageData(coverPixels(original.data, image.width, image.height, regions), image.width, image.height), 0, 0);
+		ctx.putImageData(
+			new ImageData(
+				coverPixels(original.data, image.width, image.height, regions),
+				image.width,
+				image.height
+			),
+			0,
+			0
+		);
 		const sticker = await openImage(await (await fetch(stickerUrl)).blob());
-		try { for (const region of regions) ctx.drawImage(sticker, region.x, region.y, region.width, region.height); }
-		finally { if (sticker instanceof ImageBitmap) sticker.close(); }
+		try {
+			for (const region of regions)
+				ctx.drawImage(sticker, region.x, region.y, region.width, region.height);
+		} finally {
+			if (sticker instanceof ImageBitmap) sticker.close();
+		}
 		return await canvas.convertToBlob({ type: 'image/png' });
-	} finally { image.close(); }
+	} finally {
+		image.close();
+	}
 }

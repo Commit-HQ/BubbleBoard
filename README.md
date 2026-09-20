@@ -183,6 +183,12 @@ See the [architecture notes](docs/architecture.md), the [access format](docs/acc
 
 ## Next slices
 
+The first event-photo editor is available to staff from **Prepare event photos** on the board (`/app/event/new`, or `/en/app/event/new`). It opens up to 20 photos locally, detects faces on the device, lets teachers add missed covers, assign children with automatic advance, move and resize covers, undo/redo, and review flattened images with every marked face covered. It supports HEIC through the existing decoder. Detection is assistive; each photo needs a teacher's review. The model and runtime are self-hosted and load only when needed.
+
+This is the editor slice, not event publishing: no photo is uploaded, no family-specific reveal is issued, and the draft lasts only while its page remains open. Parent visibility settings, encrypted reveal packages, event storage/publishing and parent galleries remain to be implemented. See [event decisions](docs/events-plan.md) and [editor behavior](docs/events-editor.md).
+
+For local UI checks, `/editor-check` uses fictional children and a bundled stock photo without connecting a card. That fixture is available only in development and returns 404 in production.
+
 1. Kindergarten setup, classrooms, teachers, children with family cards, and connecting devices. Implemented and deployed; card links work on real iPhone and Android phones, and a few checks remain.
 2. Encrypted notices for chosen classrooms, with a rich editor, polls, files, notifications, and installing on phones and tablets, tried on real iOS and Android devices ([plan](docs/next-step-plan.md)).
 3. Manual photo regions, consent lookup, private reveals, and exact audience previews.

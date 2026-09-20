@@ -16,6 +16,8 @@ Za prvu verziju predlaže se jedna skupina po događaju. Tako dopuštenje „obi
 
 Detaljnija razrada interakcija i stanja nalazi se u [prijedlogu editora](events-editor.md).
 
+Potvrđeno 2026-09-19: nakon dodjele djeteta automatski se odabire sljedeće neriješeno lice; teta uvijek može ručno birati redoslijed. Ručno dodavanje pokrova preko propuštenih lica obavezan je dio prve verzije. Prvi lokalni editor implementiran je 2026-09-20; objavljivanje i roditeljska dopuštenja ostaju sljedeće faze.
+
 1. Odabere „Novi događaj”, skupinu, datum, naslov i opis.
 2. Odabere više fotografija. Datoteke se prvo otvaraju lokalno; mrežni prijenos slijedi tek nakon obrade i enkripcije.
 3. Aplikacija normalizira orijentaciju, pripremi radnu rezoluciju i lokalno potraži lica. Svako pronađeno lice dobije sticker s dovoljno velikim neprozirnim područjem.

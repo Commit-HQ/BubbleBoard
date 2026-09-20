@@ -27,3 +27,5 @@ vite.config.ts.timestamp-*
 .dev.vars.*
 .sites-runtime/
 worker-configuration.d.ts
+# Generated from the pinned MediaPipe dependency during install/dev/build.
+/static/face-detector/

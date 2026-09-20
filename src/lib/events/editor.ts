@@ -35,13 +35,39 @@ export function detectionRegion(id: string, box: Rect, width: number, height: nu
 	const top = Math.max(0, Math.floor(box.y - box.height * 0.35));
 	const right = Math.min(width, Math.ceil(box.x + box.width * 1.25));
 	const bottom = Math.min(height, Math.ceil(box.y + box.height * 1.2));
-	const rect = boundedRect({ x: left, y: top, width: right - left, height: bottom - top }, width, height);
-	return { ...rect, id, child: null, covered: false, source: 'detected', minWidth: rect.width, minHeight: rect.height };
+	const rect = boundedRect(
+		{ x: left, y: top, width: right - left, height: bottom - top },
+		width,
+		height
+	);
+	return {
+		...rect,
+		id,
+		child: null,
+		covered: false,
+		source: 'detected',
+		minWidth: Math.min(4, width),
+		minHeight: Math.min(4, height)
+	};
 }
 
-export function manualRegion(id: string, width: number, height: number, x = width / 2, y = height / 2): Region {
+export function manualRegion(
+	id: string,
+	width: number,
+	height: number,
+	x = width / 2,
+	y = height / 2
+): Region {
 	const size = Math.max(24, Math.round(Math.min(width, height) * 0.18));
-	return { ...boundedRect({ x: x - size / 2, y: y - size / 2, width: size, height: size }, width, height), id, child: null, covered: false, source: 'manual', minWidth: Math.min(16, width), minHeight: Math.min(16, height) };
+	return {
+		...boundedRect({ x: x - size / 2, y: y - size / 2, width: size, height: size }, width, height),
+		id,
+		child: null,
+		covered: false,
+		source: 'manual',
+		minWidth: Math.min(4, width),
+		minHeight: Math.min(4, height)
+	};
 }
 
 export function unresolved(edit: Edit) {
@@ -49,12 +75,22 @@ export function unresolved(edit: Edit) {
 }
 
 /** A data change always invalidates review. Selection alone does not. */
-export function commit(history: History, regions: Region[], selected = history.present.selected): History {
-	return { past: [...history.past.slice(-49), history.present], present: { regions, selected, reviewed: false }, future: [] };
+export function commit(
+	history: History,
+	regions: Region[],
+	selected = history.present.selected
+): History {
+	return {
+		past: [...history.past.slice(-49), history.present],
+		present: { regions, selected, reviewed: false },
+		future: []
+	};
 }
 
 export function assign(history: History, id: string, child: string | null): History {
-	const regions = history.present.regions.map((region) => region.id === id ? { ...region, child, covered: child === null } : region);
+	const regions = history.present.regions.map((region) =>
+		region.id === id ? { ...region, child, covered: child === null } : region
+	);
 	const index = regions.findIndex((region) => region.id === id);
 	const ordered = [...regions.slice(index + 1), ...regions.slice(0, index)];
 	const next = ordered.find((region) => !region.child && !region.covered);
@@ -63,12 +99,24 @@ export function assign(history: History, id: string, child: string | null): Hist
 
 export function undo(history: History): History {
 	const previous = history.past.at(-1);
-	return previous ? { past: history.past.slice(0, -1), present: { ...previous, reviewed: false }, future: [history.present, ...history.future] } : history;
+	return previous
+		? {
+				past: history.past.slice(0, -1),
+				present: { ...previous, reviewed: false },
+				future: [history.present, ...history.future]
+			}
+		: history;
 }
 
 export function redo(history: History): History {
 	const next = history.future[0];
-	return next ? { past: [...history.past, history.present], present: { ...next, reviewed: false }, future: history.future.slice(1) } : history;
+	return next
+		? {
+				past: [...history.past, history.present],
+				present: { ...next, reviewed: false },
+				future: history.future.slice(1)
+			}
+		: history;
 }
 
 export function overlaps(a: Rect, b: Rect) {
@@ -76,17 +124,37 @@ export function overlaps(a: Rect, b: Rect) {
 }
 
 /** Base pixels for a safe preview/export. Overwrite all RGBA channels; no hidden source pixels remain. */
-export function coverPixels(source: Uint8ClampedArray, width: number, height: number, regions: Rect[]) {
-	if (source.length !== width * height * 4 || !Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1) throw new Error('Invalid raster');
+export function coverPixels(
+	source: Uint8ClampedArray,
+	width: number,
+	height: number,
+	regions: Rect[]
+) {
+	if (
+		source.length !== width * height * 4 ||
+		!Number.isInteger(width) ||
+		!Number.isInteger(height) ||
+		width < 1 ||
+		height < 1
+	)
+		throw new Error('Invalid raster');
 	const pixels = source.slice();
 	for (const region of regions) {
-		if (![region.x, region.y, region.width, region.height].every(Number.isFinite)) throw new Error('Invalid region');
-		const x0 = Math.max(0, Math.floor(region.x)), y0 = Math.max(0, Math.floor(region.y));
-		const x1 = Math.min(width, Math.ceil(region.x + region.width)), y1 = Math.min(height, Math.ceil(region.y + region.height));
-		for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-			const offset = (y * width + x) * 4;
-			pixels.set([247, 212, 112, 255], offset);
-		}
+		if (
+			![region.x, region.y, region.width, region.height].every(Number.isFinite) ||
+			region.width <= 0 ||
+			region.height <= 0
+		)
+			throw new Error('Invalid region');
+		const x0 = Math.max(0, Math.floor(region.x)),
+			y0 = Math.max(0, Math.floor(region.y));
+		const x1 = Math.min(width, Math.ceil(region.x + region.width)),
+			y1 = Math.min(height, Math.ceil(region.y + region.height));
+		for (let y = y0; y < y1; y++)
+			for (let x = x0; x < x1; x++) {
+				const offset = (y * width + x) * 4;
+				pixels.set([247, 212, 112, 255], offset);
+			}
 	}
 	return pixels;
 }

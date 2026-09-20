@@ -1,6 +1,8 @@
 # Editor fotografija događaja
 
-Status: prijedlog UX-a za raspravu, 2026-09-19. Nadovezuje se na [plan Događaja](events-plan.md); ne predstavlja implementirani editor.
+Status: prvi lokalni editor implementiran, 2026-09-20. Nadovezuje se na [plan Događaja](events-plan.md). Automatski prelazak nakon dodjele, slobodan odabir redoslijeda i ručno dodavanje propuštenih lica potvrđeni su s korisnikom. Opis cjelovitog toka ispod ostaje cilj za iduće faze.
+
+Implementirani rez: `/app/event/new` za osoblje, odabir skupine i do 20 fotografija, lokalna MediaPipe detekcija, ručno dodavanje, dodjela djeteta, pomicanje, promjena veličine, povećanje/pomicanje fotografije, prikaz originala i lokalnog izreza, undo/redo, obavezan pregled i stvarni spljošteni raster sa svim označenim licima prekrivenima. Nema mrežnog prijenosa fotografija. Roditeljska dopuštenja, personalizirani isječci i objavljivanje još nisu povezani. Nacrti ostaju u otvorenoj sesiji.
 
 ## Osnovni tok
 
@@ -29,19 +31,19 @@ Teta uvijek može dodirnuti bilo koji sticker i promijeniti ime. Uz ime prikazuj
 Alternativne odluke za detektirani okvir:
 
 - **Ostavi prekriveno:** lice ostaje zaštićeno svima, bez vezivanja na dijete.
-- **Nije lice — ukloni pokrov:** uklanja pogrešnu detekciju; dostupno kao sporedna radnja uz mogućnost poništavanja. Ne označavati je nejasnim „Obriši”.
+- **Ukloni pokrov** (ikona kantice): uklanja pogrešnu detekciju; dostupno kao sporedna radnja uz mogućnost poništavanja. Ne označavati je nejasnim „Obriši”.
 
 Neriješena lica blokiraju završetak fotografije. Ne nuditi automatsku dodjelu djeteta ni automatsko odobravanje prema pouzdanosti detektora.
 
 ## Pomicanje, veličina i original
 
-Prvi dodir bira sticker. Povlačenje već odabranog stickera pomiče ga; kutne ručke mijenjaju veličinu. Oblik ostaje isti, s minimalnom veličinom i jasnim okvirom pokrivenog područja. Nije moguće smanjiti automatski pokrov ispod početnog područja detekcije bez izričite korekcije pogrešne detekcije. Samo označavanje djeteta ne mijenja veličinu.
+Prvi dodir bira sticker. Povlačenje već odabranog stickera pomiče ga; kutne ručke mijenjaju veličinu. Oblik ostaje isti, s minimalnom veličinom i jasnim okvirom pokrivenog područja. Automatski i ručni pokrovi mogu se smanjiti do 4 piksela po osi izvorne radne slike. Samo označavanje djeteta ne mijenja veličinu.
 
-Za precizne korekcije ponuditi „Prilagodi pokrov” s većim prikazom, veličinom i dostupnim kontrolama pomaka. Tipkovnica i jednostavni gumbi moraju omogućiti iste radnje kao povlačenje. Rotaciju i slobodno crtanje maski ne uključivati u prvi rez.
+Fotografija zauzima punu širinu editora. Dodavanje pokrova, original, ikone poništi/vrati i zumiranje stoje iznad, a dodjela djeteta odmah ispod fotografije. Nema zasebnih klizača veličine ni gumba pomaka. Strelice tipkovnice pomiču pokrov; Alt + strelice mijenjaju veličinu. Zeleni obrub označava dodijeljeno dijete, crveni trajno prekrivanje, a bijeli neriješen pokrov. Rotaciju i slobodno crtanje maski ne uključivati u prvi rez.
 
 Pomicanje fotografije radi se izvan odabranog stickera; dva prsta zumiraju sliku, nikad sticker. Kad se pokrene gesta s dva prsta, prekinuti aktivno pomicanje stickera. Promjena prikaza i zuma ne mijenja koordinate zaštite u slici.
 
-**Prikaži original** privremeno skriva pokrove samo u prikazu tete. Gumb se mijenja u **Vrati pokrove**, a vidljiv je natpis „Original — samo za uređivanje”. Povratak pokrova obavezan je pri promjeni fotografije, odlasku iz editora, gubitku fokusa aplikacije i otvaranju pregleda. Tipka mora raditi i dodirom i tipkovnicom; držanje gumba nije jedini način pristupa. Nikad ne mijenja pravila izvoza.
+**Prikaži original** privremeno skriva pokrove samo u prikazu tete. Gumb se mijenja u **Vrati pokrove**, bez dodatnog natpisa koji bi pomicao fotografiju. Povratak pokrova obavezan je pri promjeni fotografije, odlasku iz editora, gubitku fokusa aplikacije i otvaranju pregleda. Tipka mora raditi i dodirom i tipkovnicom; držanje gumba nije jedini način pristupa. Nikad ne mijenja pravila izvoza.
 
 **Dodaj pokrov** postavi dovoljno velik početni sticker u središte trenutačnog pogleda i odmah ga odabere za pomicanje i dodjelu. Zumiranje na propušteno lice prije dodavanja olakšava rad. Gost ili odrasla osoba mogu ostati prekriveni.
 
