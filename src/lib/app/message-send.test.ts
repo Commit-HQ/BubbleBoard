@@ -24,7 +24,8 @@ function harness(app: object, creating = false) {
 	const body = `
  let id = ${creating ? 'null' : "'A'"}, creating = ${creating}, viewVersion = 0;
  let thread = {classroom:'room', family:'family'}, classroom='', family='', subject='Subject', text='Message for A';
- let staff=true, busy=false, failure, pending;
+ let staff=true, busy=false, failure, pending, files=[], attaching=false;
+ const filesTask={busy:false};
  const t={teacher:'Teacher'}, data={locale:'en'}, errorCode=String;
  const createId=()=> 'new-A', appPath=(_locale,_page,params)=>params.id;
  ${send.getText(parsed)}
@@ -52,7 +53,12 @@ it.each([false, true])(
 			myName: 'Teacher',
 			sealFor: vi.fn(async (_room, _family, conversation) => {
 				await sealing.promise;
-				return { id: conversation, content: 'sealed-for-' + conversation };
+				return {
+					conversation,
+					message: 'message-' + conversation,
+					start: creating,
+					payload: { id: conversation, content: 'sealed-for-' + conversation }
+				};
 			}),
 			sendMessage
 		};
@@ -61,9 +67,15 @@ it.each([false, true])(
 		view.navigate('B');
 		sealing.resolve();
 		await sending;
+		const conversation = creating ? 'new-A' : 'A';
 		expect(sendMessage).toHaveBeenCalledWith(
-			{ id: creating ? 'new-A' : 'A', content: 'sealed-for-' + (creating ? 'new-A' : 'A') },
-			creating ? undefined : 'A'
+			{
+				conversation,
+				message: 'message-' + conversation,
+				start: creating,
+				payload: { id: conversation, content: 'sealed-for-' + conversation }
+			},
+			[]
 		);
 		expect(view.state().text).toBe('Draft for B');
 		expect(view.goto).not.toHaveBeenCalled();
@@ -76,7 +88,12 @@ it.each([false, true])(
 		const started = deferred();
 		const view = harness({
 			myName: 'Teacher',
-			sealFor: async () => ({ id: 'message', content: 'sealed' }),
+			sealFor: async () => ({
+				conversation: 'A',
+				message: 'message',
+				start: false,
+				payload: { id: 'message', content: 'sealed' }
+			}),
 			sendMessage: async () => {
 				started.resolve();
 				await response.promise;

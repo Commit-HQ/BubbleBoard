@@ -45,6 +45,8 @@ Existing application access belongs to a family, not an individual parent. Devic
 
 Parents can save a change without waiting for teacher approval. The server stores encrypted consent and advances its revision. Teachers read and apply it when preparing publication. Parents neither need nor receive the Staff Key.
 
+Implemented 2026-09-21: because the paper consent form is what a kindergarten actually holds, an admin also sets this choice — when a child is added, and afterwards on the child's page — for every family card linked to the child, since sharing needs all of them. The write names the row revision the device read, so a change a parent made meanwhile is refused rather than overwritten, and the parent's own setting explains that the kindergarten may have entered the form's answer.
+
 Before this feature, parent devices had no list of their own children: names and child–family links were in Staff-Key-encrypted records. This feature therefore adds a projection of each family's children encrypted with its Family Key. The server allows edits only to that family's consent records. The teacher's client accepts choices only for children actually linked to that family in the catalog. Injecting another child's ID must have no effect. The catalog revision also covers changes to these links.
 
 Read current consent when preparing publication. Final publication atomically checks the consent and catalog revisions used by preparation. A concurrent change requires preparing permissions again. Values remain encrypted; checking revisions does not require the server to know the choices.

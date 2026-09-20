@@ -10,10 +10,13 @@ import {
 	markRead,
 	parseSettings,
 	readMessages,
+	messageFileBytes,
 	reply,
 	saveSettings,
-	startConversation
+	startConversation,
+	uploadMessageFile
 } from './messages';
+import type { ObjectStore } from './storage';
 import { conversationRecipients, deliver, createVapidSecret } from './push';
 import type { PushEnv, PushMessage } from './push';
 import type { Admin } from './session';
@@ -85,6 +88,23 @@ async function fixture() {
 		otherFamily
 	};
 }
+/** R2 in memory, as the events tests use, with room for a few small files. */
+function objectStore() {
+	const objects = new Map<string, Uint8Array<ArrayBuffer>>();
+	const store: ObjectStore = {
+		limits: { bytes: 1e6, uploads: 100, downloads: 100 },
+		bucket: {
+			put: async (k: string, v: Uint8Array<ArrayBuffer>) => objects.set(k, v),
+			head: async (k: string) => (objects.has(k) ? {} : null),
+			get: async (k: string) =>
+				objects.has(k) ? { body: new Response(objects.get(k)).body } : null,
+			delete: async (keys: string | string[]) => {
+				for (const key of [keys].flat()) objects.delete(key);
+			}
+		} as unknown as R2Bucket
+	};
+	return { objects, store };
+}
 describe('private inquiries', () => {
 	it('charges every family message a teacher hasn’t answered yet, and nothing else', async () => {
 		const f = await fixture(),
@@ -95,34 +115,36 @@ describe('private inquiries', () => {
 		// before an answer goes through.
 		for (const blocked of [
 			startConversation(f.db, f.parent, f.inquiry(), monday),
-			reply(f.db, f.parent, first.id, createId(), 'anyone there?', monday)
+			reply(f.db, f.parent, first.id, createId(), 'anyone there?', [], monday)
 		])
 			await expect(blocked).rejects.toMatchObject({
 				status: 409,
 				body: { message: 'messages-limit' }
 			});
-		await reply(f.db, f.staff, first.id, createId(), 'teacher reply', monday);
+		await reply(f.db, f.staff, first.id, createId(), 'teacher reply', [], monday);
 		const answer = createId();
-		expect(await reply(f.db, f.parent, first.id, answer, 'family answer', monday)).toBe(true);
-		expect(await reply(f.db, f.parent, first.id, answer, 'family answer', monday)).toBe(false);
+		expect(await reply(f.db, f.parent, first.id, answer, 'family answer', [], monday)).toBe(true);
+		expect(await reply(f.db, f.parent, first.id, answer, 'family answer', [], monday)).toBe(false);
 		expect((await inbox(f.db, f.parent, monday)).policies[0].used).toBe(1);
 		// Writing again before the next answer charges again, once the allowance allows it.
 		await expect(
-			reply(f.db, f.parent, first.id, createId(), 'one more thing', monday)
+			reply(f.db, f.parent, first.id, createId(), 'one more thing', [], monday)
 		).rejects.toMatchObject({ body: { message: 'messages-limit' } });
 		await saveSettings(f.db, f.admin, { ...f.settings, monthlyLimit: 3, revision: 1 });
-		expect(await reply(f.db, f.parent, first.id, createId(), 'one more thing', monday)).toBe(true);
+		expect(await reply(f.db, f.parent, first.id, createId(), 'one more thing', [], monday)).toBe(
+			true
+		);
 		expect((await inbox(f.db, f.parent, monday)).policies[0].used).toBe(2);
 		// Teachers are never charged, and a family answers an inquiry a teacher started for free.
 		const theirs = f.inquiry();
 		await startConversation(f.db, f.staff, theirs, monday);
-		await reply(f.db, f.parent, theirs.id, createId(), 'thank you', monday);
+		await reply(f.db, f.parent, theirs.id, createId(), 'thank you', [], monday);
 		expect((await inbox(f.db, f.parent, monday)).policies[0].used).toBe(2);
 		await closeConversation(f.db, f.staff, first.id);
 		expect((await inbox(f.db, f.parent, monday)).policies[0].used).toBe(2);
-		await expect(reply(f.db, f.parent, first.id, createId(), 'late', monday)).rejects.toMatchObject(
-			{ status: 409, body: { message: 'messages-closed' } }
-		);
+		await expect(
+			reply(f.db, f.parent, first.id, createId(), 'late', [], monday)
+		).rejects.toMatchObject({ status: 409, body: { message: 'messages-closed' } });
 		await expect(closeConversation(f.db, f.parent, first.id)).rejects.toMatchObject({
 			status: 403
 		});
@@ -137,7 +159,7 @@ describe('private inquiries', () => {
 		for (const who of [other, f.stranger]) {
 			await expect(readMessages(f.db, who, first.id)).rejects.toMatchObject({ status: 404 });
 			await expect(
-				reply(f.db, who, first.id, createId(), 'intrusion', monday)
+				reply(f.db, who, first.id, createId(), 'intrusion', [], monday)
 			).rejects.toMatchObject({ status: 404 });
 			await expect(
 				startConversation(f.db, who, { ...f.inquiry(), family: f.family }, monday)
@@ -152,18 +174,24 @@ describe('private inquiries', () => {
 		await markRead(f.db, f.staff, first.id, 1);
 		expect((await inbox(f.db, f.parent, monday)).policies[0].used).toBe(1);
 		// Closing it is the deliberate first step: an open one can't be taken from a family mid-conversation.
-		await expect(deleteConversation(f.db, f.staff, first.id)).rejects.toMatchObject({
+		await expect(
+			deleteConversation(f.db, objectStore().store, f.staff, first.id)
+		).rejects.toMatchObject({
 			status: 409,
 			body: { message: 'stale' }
 		});
 		await closeConversation(f.db, f.staff, first.id);
-		await expect(deleteConversation(f.db, f.parent, first.id)).rejects.toMatchObject({
+		await expect(
+			deleteConversation(f.db, objectStore().store, f.parent, first.id)
+		).rejects.toMatchObject({
 			status: 403
 		});
-		await expect(deleteConversation(f.db, f.stranger, first.id)).rejects.toMatchObject({
+		await expect(
+			deleteConversation(f.db, objectStore().store, f.stranger, first.id)
+		).rejects.toMatchObject({
 			status: 404
 		});
-		await deleteConversation(f.db, f.staff, first.id);
+		await deleteConversation(f.db, objectStore().store, f.staff, first.id);
 		// Gone on both sides, with the messages and read marks the schema carries out with it.
 		expect((await inbox(f.db, f.parent, monday)).conversations).toHaveLength(0);
 		expect((await inbox(f.db, f.staff, monday)).conversations).toHaveLength(0);
@@ -181,12 +209,12 @@ describe('private inquiries', () => {
 		await startConversation(f.db, f.staff, first, monday);
 		const saturday = Date.parse('2026-09-19T08:00Z');
 		await expect(
-			reply(f.db, f.parent, first.id, createId(), 'weekend', saturday)
+			reply(f.db, f.parent, first.id, createId(), 'weekend', [], saturday)
 		).rejects.toMatchObject({ body: { message: 'messages-hours' } });
-		await reply(f.db, f.staff, first.id, createId(), 'staff weekend', saturday);
+		await reply(f.db, f.staff, first.id, createId(), 'staff weekend', [], saturday);
 		await saveSettings(f.db, f.admin, { ...f.settings, enabled: false, revision: 1 });
 		await expect(
-			reply(f.db, f.parent, first.id, createId(), 'disabled', monday)
+			reply(f.db, f.parent, first.id, createId(), 'disabled', [], monday)
 		).rejects.toMatchObject({ body: { message: 'messages-disabled' } });
 		await expect(startConversation(f.db, f.parent, f.inquiry(), monday)).rejects.toMatchObject({
 			body: { message: 'messages-disabled' }
@@ -249,7 +277,7 @@ describe('private inquiries', () => {
 			first = f.inquiry();
 		await startConversation(f.db, f.staff, first, monday);
 		for (let index = 0; index < 52; index++)
-			await reply(f.db, f.staff, first.id, createId(), `message ${index}`, monday);
+			await reply(f.db, f.staff, first.id, createId(), `message ${index}`, [], monday);
 		const recent = await readMessages(f.db, f.parent, first.id);
 		expect(recent).toHaveLength(50);
 		expect(await readMessages(f.db, f.parent, first.id, recent[0].sequence)).toHaveLength(3);
@@ -349,6 +377,46 @@ describe('private inquiries', () => {
 			}) as typeof fetch
 		);
 		expect(sent).toEqual(['https://web.push.apple.com/0']);
+	});
+});
+describe('files on inquiries', () => {
+	it('lets only staff attach, shows the family the bytes, and takes them away with the inquiry', async () => {
+		const f = await fixture();
+		const { objects, store } = objectStore();
+		const first = f.inquiry();
+		await startConversation(f.db, f.parent, first, monday);
+		const file = createId();
+		const message = createId();
+		// A family attaches nothing, and neither does a teacher of another classroom.
+		await expect(
+			uploadMessageFile(f.db, store, f.parent, first.id, message, file, new Uint8Array([1]))
+		).rejects.toMatchObject({ status: 403 });
+		await expect(
+			uploadMessageFile(f.db, store, f.stranger, first.id, message, file, new Uint8Array([1]))
+		).rejects.toMatchObject({ status: 404 });
+		await expect(
+			reply(f.db, f.parent, first.id, createId(), 'sealed', [file], monday)
+		).rejects.toMatchObject({ status: 403 });
+		// A message naming a file nobody uploaded is refused, and nothing of it is written.
+		await expect(
+			reply(f.db, f.staff, first.id, message, 'sealed', [file], monday)
+		).rejects.toMatchObject({ status: 409 });
+		expect(await readMessages(f.db, f.staff, first.id)).toHaveLength(1);
+		await uploadMessageFile(f.db, store, f.staff, first.id, message, file, new Uint8Array([7]));
+		expect(await reply(f.db, f.staff, first.id, message, 'sealed', [file], monday)).toBe(true);
+		// The family reads the bytes; a teacher of another classroom doesn't, and neither does another family.
+		const response = await messageFileBytes(f.db, store, f.parent, first.id, message, file);
+		expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([7]));
+		for (const who of [f.stranger, { ...f.parent, family: f.otherFamily }])
+			await expect(
+				messageFileBytes(f.db, store, who, first.id, message, file)
+			).rejects.toMatchObject({ status: 404 });
+		// An identical retry sends nothing twice and leaves the file named once.
+		expect(await reply(f.db, f.staff, first.id, message, 'sealed', [file], monday)).toBe(false);
+		expect((await f.db.prepare('SELECT * FROM message_files').all()).results).toHaveLength(1);
+		await closeConversation(f.db, f.staff, first.id);
+		await deleteConversation(f.db, store, f.staff, first.id);
+		expect(objects.size).toBe(0);
 	});
 });
 describe('sending schedule', () => {

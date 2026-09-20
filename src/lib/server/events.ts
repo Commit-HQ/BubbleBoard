@@ -28,10 +28,16 @@ export async function consents(db: D1Database, viewer: Identity, classroom?: str
 	};
 }
 
+/**
+ * The child's name for each linked family, and, for a row staff also set a choice on, that choice. A choice
+ * is written only over the row revision the device read, so a parent's change made meanwhile empties the
+ * revision instead, which fails the whole transaction as stale (database.ts). A row that staff expect to be
+ * new takes revision -1, which no stored row has.
+ */
 export function projectionStatements(
 	db: D1Database,
 	child: string,
-	rows: { family: string; label: string }[]
+	rows: { family: string; label: string; choice?: string; revision?: number }[]
 ) {
 	return [
 		db
@@ -40,11 +46,20 @@ export function projectionStatements(
 			)
 			.bind(child, JSON.stringify(rows.map((r) => r.family))),
 		...rows.map((r) =>
-			db
-				.prepare(
-					'INSERT INTO photo_families(child_id,family_id,label) VALUES(?,?,?) ON CONFLICT(child_id,family_id) DO UPDATE SET label=excluded.label'
-				)
-				.bind(child, r.family, r.label)
+			r.choice === undefined
+				? db
+						.prepare(
+							'INSERT INTO photo_families(child_id,family_id,label) VALUES(?,?,?) ON CONFLICT(child_id,family_id) DO UPDATE SET label=excluded.label'
+						)
+						.bind(child, r.family, r.label)
+				: db
+						.prepare(
+							`INSERT INTO photo_families(child_id,family_id,label,choice) VALUES(?1,?2,?3,?4)
+							ON CONFLICT(child_id,family_id) DO UPDATE SET label=excluded.label,
+							choice=CASE WHEN photo_families.revision=?5 THEN excluded.choice ELSE NULL END,
+							revision=CASE WHEN photo_families.revision=?5 THEN photo_families.revision+1 ELSE NULL END`
+						)
+						.bind(child, r.family, r.label, r.choice, r.revision ?? -1)
 		)
 	];
 }

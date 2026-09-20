@@ -18,7 +18,6 @@ export const hr = {
 	skip: 'Preskoči na sadržaj',
 	home: 'BubbleBoard početna',
 	language: 'Jezik',
-	soon: 'Uskoro',
 	nav: {
 		label: 'Glavna',
 		sections: {
@@ -51,11 +50,11 @@ export const hr = {
 		},
 		photos: {
 			title: 'Fotografije dana',
-			copy: 'Trenuci iz skupine, podijeljeni s pažnjom, koji se nakon zadanog vremena uklanjaju iz aplikacije.'
+			copy: 'Galerije s događaja u skupini: svoje dijete vidite jasno, a druga lica ostaju prekrivena osim ako njihovi roditelji dopuste dijeljenje.'
 		},
 		messages: {
 			title: 'Izravno s odgojiteljima',
-			copy: 'Privatni razgovori između vaše obitelji i odgojitelja vašeg djeteta.'
+			copy: 'Pitajte odgojitelje svojeg djeteta nešto privatno, a svako pitanje ima svoj razgovor.'
 		},
 		documents: {
 			title: 'Zajednički dokumenti',
@@ -92,7 +91,7 @@ export const hr = {
 		photoAlt: 'Djeca slikaju vodenim bojama za stolom, pogled odozgo',
 		facts: [
 			'Bez korisničkih imena i lozinki',
-			'Lica zamućena za druge obitelji, ako tako želite',
+			'Lica prekrivena za druge obitelji, osim ako dopustite više',
 			'Fotografije se uklanjaju iz aplikacije nakon zadanog vremena'
 		]
 	},
@@ -120,17 +119,17 @@ export const hr = {
 			title: 'Pregled prije objave',
 			copy: 'Vidite točno ono što će vidjeti druge obitelji prije nego što objavite fotografiju.'
 		},
-		remove: {
-			title: 'Brisanje odmah',
-			copy: 'Uklonite objavu iz aplikacije istog trena ako nešto promakne.'
+		meetings: {
+			title: 'Individualni razgovori',
+			copy: 'Ponudite termine kad ste slobodni, a obitelji rezerviraju termin za svoje dijete i ne vide tko je rezervirao ostale.'
 		},
 		retention: {
 			title: 'Vi birate koliko dugo',
 			copy: 'Fotografije se uklanjaju iz aplikacije nakon vremena koje odaberete, od jednog dana do tri mjeseca.'
 		},
-		access: {
-			title: 'Pristup pod vašom kontrolom',
-			copy: 'Dajte zamjeni privremeni pristup ili zamijenite izgubljeni QR kod u nekoliko koraka.'
+		seen: {
+			title: 'Vidite tko je pročitao',
+			copy: 'Obitelji jednim dodirom potvrde da su pročitale obavijest, a anketa vam brzo donosi odgovore.'
 		}
 	},
 	kindergartens: {
@@ -163,15 +162,15 @@ export const hr = {
 	privacyPolicy: {
 		title: 'Politika privatnosti',
 		description: 'Što BubbleBoard čuva o obiteljima i djeci, gdje i koliko dugo.',
-		updated: 'Ažurirano 20. rujna 2026.',
+		updated: 'Ažurirano 21. rujna 2026.',
 		points: [
 			{
 				title: 'Fotografije događaja',
-				copy: 'Lica se traže i označavaju na uređaju odgojitelja. Šalje se šifrirana prekrivena fotografija s odvojenim šifriranim isječcima, bez izvornika. Obitelji vide vlastitu djecu i lica za koja je dopušteno dijeljenje. Dopuštenja su šifrirana i promjene vrijede samo za buduće objave. Događaji i njihove fotografije dostupni su od 1 do 90 dana prema izboru odgojitelja, zatim se brišu. Nema skrivene arhive za godišnji album.'
+				copy: 'Lica se traže i označavaju na uređaju odgojitelja. Šalje se šifrirana prekrivena fotografija s odvojenim šifriranim isječcima, bez izvornika. Obitelji vide vlastitu djecu i lica za koja je dopušteno dijeljenje. Vrtić može unijeti ono što piše u vašoj izjavi o privoli, a vi to u aplikaciji možete promijeniti u svakom trenutku. Dopuštenja su šifrirana i promjene vrijede samo za buduće objave. Događaji i njihove fotografije dostupni su od 1 do 90 dana prema izboru odgojitelja, zatim se brišu. Nema skrivene arhive za godišnji album.'
 			},
 			{
 				title: 'Što se čuva',
-				copy: 'Imena, naslovi upita i poruke, obavijesti, stranice s informacijama, ankete, fotografije i datoteke šifriraju se na uređaju prije slanja. Poslužitelj ih ne može pročitati, a čuva samo ono što mu treba za rad, bez imena, na primjer kad je obavijest objavljena. Termini individualnih razgovora, rezervacije te poveznice između identifikatora djece i obitelji služe organizaciji termina; imena djece ostaju šifrirana.'
+				copy: 'Imena, naslovi upita i poruke, obavijesti, stranice s informacijama, ankete, fotografije i datoteke priložene bilo čemu od toga šifriraju se na uređaju prije slanja. Poslužitelj ih ne može pročitati, a čuva samo ono što mu treba za rad, bez imena, na primjer kad je obavijest objavljena. Termini individualnih razgovora, rezervacije te poveznice između identifikatora djece i obitelji služe organizaciji termina; imena djece ostaju šifrirana.'
 			},
 			{
 				title: 'Gdje',
@@ -179,7 +178,7 @@ export const hr = {
 			},
 			{
 				title: 'Koliko dugo',
-				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojitelj, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, stranice s informacijama dok ih administrator ne promijeni ili obriše, imena dok ih administrator ne ukloni, a prijava uređaja do 90 dana bez korištenja. Razgovori se čuvaju dok je obitelj član skupine. Ponude individualnih razgovora i rezervacije brišu se 90 dana nakon posljednjeg termina u ponudi. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
+				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojitelj, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, stranice s informacijama dok ih administrator ne promijeni ili obriše, imena dok ih administrator ne ukloni, a prijava uređaja do 90 dana bez korištenja. Razgovori se, sa svojim datotekama, čuvaju dok je obitelj član skupine ili dok odgojitelj ne obriše zatvoreni razgovor. Ponude individualnih razgovora i rezervacije brišu se 90 dana nakon posljednjeg termina u ponudi. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
 			},
 			{
 				title: 'Obavijesti na uređaju',
@@ -228,7 +227,7 @@ export const hr = {
 			base: 'Svi pokrovi',
 			consentTitle: 'Vidljivost lica mog djeteta',
 			consentHint:
-				'Odabir vrijedi za fotografije objavljene od sada. Vlastito dijete uvijek vidite. Ako dijete ima više obiteljskih QR kodova, skupini to mora dopustiti svaka povezana obitelj.',
+				'Vrtić je ovo možda postavio prema vašoj izjavi o privoli, a vi to ovdje možete promijeniti u svakom trenutku. Odabir vrijedi za fotografije objavljene od tada i vlastito dijete uvijek vidite. Ako dijete ima više obiteljskih QR kodova, skupini to mora dopustiti svaka povezana obitelj.',
 			private: 'Samo naša obitelj',
 			privateHint: 'Druge obitelji u skupini vide naljepnicu preko lica vašeg djeteta.',
 			group: 'I druge obitelji naše skupine',
@@ -562,6 +561,16 @@ export const hr = {
 				'Novi QR kodovi vidljivi su samo na ovoj stranici. Za kasniji ispis zamijenite ih u skupini.',
 			leave: 'Otiđi',
 			stay: 'Ostani'
+		},
+		sharing: {
+			title: 'Lice na fotografijama događaja',
+			hint: 'Postavite prema obiteljskoj izjavi o privoli. Roditelji to mogu promijeniti sami u aplikaciji, a vrijedi za fotografije objavljene od tada.',
+			covered: 'Prekriveno za druge obitelji',
+			coveredHint: 'Druge obitelji u skupini vide naljepnicu preko lica djeteta.',
+			shared: 'Obitelji skupine smiju vidjeti lice',
+			sharedHint:
+				'Svi obiteljski QR kodovi ovog djeteta to dopuštaju, kako piše u izjavi o privoli.',
+			saved: 'Spremljeno.'
 		},
 		child: {
 			cards: 'Obiteljski QR kodovi',

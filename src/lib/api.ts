@@ -50,7 +50,12 @@ export type ChildChange = FamilyLinks & {
 	classroom: string;
 	profile: string;
 	meetingFamilies: string[];
-	photoFamilies?: { family: string; label: string }[];
+	/**
+	 * The child's name for each linked family, and, when staff record what a family's consent form says,
+	 * that family's choice with the row `revision` it was read from, so a parent's later choice is never
+	 * quietly overwritten.
+	 */
+	photoFamilies?: { family: string; label: string; choice?: string; revision?: number }[];
 };
 export type NewChild = ChildChange & { id: string };
 

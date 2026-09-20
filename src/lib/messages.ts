@@ -1,4 +1,6 @@
 import { decryptData, encryptData, fields, UnreadableError } from '$lib/crypto';
+import type { NoticeFile } from '$lib/files';
+import { readFiles } from '$lib/notices';
 
 export type MessageSettings = {
 	classroom: string;
@@ -30,7 +32,11 @@ export type MessageRecord = {
 	content: string;
 	postedAt: number;
 };
-export type MessageContent = { text: string; name: string };
+/**
+ * A message as its envelope holds it: its words, the name of the teacher who wrote it, and the files a
+ * teacher attached, each with its name and its own key, as a notice holds its files (src/lib/files.ts).
+ */
+export type MessageContent = { text: string; name: string; files?: NoticeFile[] };
 export type Conversation = ConversationRecord & { subject: string; preview: string };
 export type OpenMessage = MessageRecord & MessageContent;
 /** Keep history only when the pages overlap; otherwise restart pagination from the new page. */
@@ -153,7 +159,8 @@ export async function openMessage(
 		data.conversation !== conversation
 	)
 		throw new UnreadableError();
-	return { ...record, text: data.text, name: data.name };
+	const files = data.files === undefined ? undefined : readFiles(data.files);
+	return { ...record, text: data.text, name: data.name, ...(files?.length ? { files } : {}) };
 }
 export async function openConversation(
 	record: ConversationRecord,

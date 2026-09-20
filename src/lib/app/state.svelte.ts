@@ -1,5 +1,11 @@
 import { openEvent, preparePackage, renderPackage, sharing } from '$lib/events/package';
-import type { ConsentSnapshot, EventRecord, OpenEvent, EventContent } from '$lib/events/types';
+import type {
+	ConsentRow,
+	ConsentSnapshot,
+	EventRecord,
+	OpenEvent,
+	EventContent
+} from '$lib/events/types';
 import { maxEventBytes } from '$lib/events/limits';
 import { maxEventContentBytes, maxEventFileBytes } from '$lib/events/types';
 import type { EventDraft } from '$lib/events/publishing';
@@ -134,10 +140,27 @@ type Status =
 	| 'staff'
 	| 'family';
 export type NewKindergarten = Awaited<ReturnType<typeof createKindergarten>>;
+/**
+ * A message sealed and ready to send, kept by the form so a send that failed goes again as the same message
+ * rather than a second one. `start` says it begins a conversation, which the server takes on another path.
+ */
+export type SealedMessage = {
+	conversation: string;
+	message: string;
+	start: boolean;
+	payload: Record<string, unknown>;
+};
 export type TeacherValues = { name: string; admin: boolean; classrooms: string[] };
-export type ChildValues = { name: string; classroom: string } & (
+export type ChildValues = { name: string; classroom: string; share: boolean } & (
 	{ cardName: string } | { sibling: string }
 );
+/**
+ * What staff record from a family's consent form: whether the classroom's other families may see the
+ * child's face, for every family card linked to the child. `rows` are the consent records the device just
+ * read, so the write fails as stale rather than overwriting a choice a parent made meanwhile; without them,
+ * the child's records are expected to be new.
+ */
+type PhotoChoice = { share: boolean; rows?: ConsentRow[] };
 /**
  * A notice as its form fills it in. `announce` puts a changed notice back on top and notifies again. Its
  * files are those it carries already, and files attached in the form, sealed already. Its poll says whether
@@ -204,6 +227,11 @@ function noticeFilePath(notice: string, file: string) {
 /** Where the encrypted bytes of an info page's file are kept. */
 function infoFilePath(page: string, file: string) {
 	return `/api/info/pages/${page}/files/${file}`;
+}
+
+/** Where the encrypted bytes of a file a teacher attached to an inquiry's message are kept. */
+function messageFilePath(conversation: string, message: string, file: string) {
+	return `/api/messages/${conversation}/files/${message}/${file}`;
 }
 
 /**
@@ -451,9 +479,17 @@ export class App {
 			)
 		);
 		const key = await this.messageKey(conversation.family);
-		return Promise.all(
+		const opened = await Promise.all(
 			records.map((record) => openMessage(record, key, conversation.classroom, conversation.id))
 		);
+		// A page of older messages adds to what's open; a fresh look at a conversation replaces it, which
+		// lets go of the pictures of the one left behind.
+		if (!before) this.#messagePictures.clear();
+		for (const message of opened)
+			for (const file of message.files ?? [])
+				this.#messagePictures.add(messageFilePath(conversation.id, message.id, file.id));
+		this.#keepPictures();
+		return opened;
 	}
 
 	/** Marks a conversation read up to `sequence`, and shows it as read without waiting for the inbox. */
@@ -476,31 +512,67 @@ export class App {
 		conversation: string,
 		content: MessageContent,
 		subject?: string
-	): Promise<Record<string, string>> {
+	): Promise<SealedMessage> {
 		const key = await this.messageKey(family);
 		const message = createId();
-		const sealed = await sealMessage(content, key, classroom, message, conversation);
-		return subject === undefined
-			? { id: message, content: sealed }
-			: {
-					id: conversation,
-					classroom,
-					family,
-					title: await sealSubject(subject, key, classroom, conversation),
-					message,
-					content: sealed
-				};
+		// Files attached in the form were sealed then; their names and keys go inside the message.
+		const files = this.#contentFiles(content.files ?? []);
+		const sealed = await sealMessage(
+			{ ...content, ...(files.length ? { files } : {}) },
+			key,
+			classroom,
+			message,
+			conversation
+		);
+		const named = files.map((file) => file.id);
+		return {
+			conversation,
+			message,
+			start: subject !== undefined,
+			payload:
+				subject === undefined
+					? { id: message, content: sealed, files: named }
+					: {
+							id: conversation,
+							classroom,
+							family,
+							title: await sealSubject(subject, key, classroom, conversation),
+							message,
+							content: sealed,
+							files: named
+						}
+		};
 	}
 
-	/** Sends a sealed message: `conversation` says which one it answers, or nothing when it starts one. */
-	async sendMessage(payload: Record<string, string>, conversation?: string) {
+	/**
+	 * Sends a sealed message, with the bytes of the files a teacher attached, which go up first, as a notice's
+	 * do: the message names them once they're there, and bytes an earlier try stored are left as they are.
+	 */
+	async sendMessage(sealed: SealedMessage, files: NewFile[] = []) {
 		try {
+			for (const file of files) {
+				await this.#uploadFile(messageFilePath(sealed.conversation, sealed.message, file.id), file);
+			}
 			await this.#signedIn(() =>
-				request('POST', conversation ? `/api/messages/${conversation}` : '/api/messages', payload)
+				request(
+					'POST',
+					sealed.start ? '/api/messages' : `/api/messages/${sealed.conversation}`,
+					sealed.payload
+				)
 			);
 		} finally {
 			await this.loadMessages();
 		}
+	}
+
+	/** Fetches and decrypts one of a message's documents, and saves it on this device under its name. */
+	saveMessageFile(conversation: string, message: OpenMessage, file: NoticeFile) {
+		return this.#saveFile(messageFilePath(conversation, message.id, file.id), file);
+	}
+
+	/** One of a message's pictures, opened with the key its message holds (`#picture`). */
+	messagePicture(conversation: string, message: OpenMessage, file: NoticeFile) {
+		return this.#filePicture(messageFilePath(conversation, message.id, file.id), file);
 	}
 
 	async closeConversation(conversation: string) {
@@ -678,6 +750,8 @@ export class App {
 	 * while they're up.
 	 */
 	#pictures = new Map<string, Promise<Picture>>();
+	/** The paths of the open conversation's pictures, which `#keepPictures` keeps while it's open. */
+	#messagePictures = new Set<string>();
 	/** The Family Keys a staff device has opened, by the envelope each came from, until it disconnects. */
 	#familyKeys = new Map<string, Promise<CryptoKey>>();
 
@@ -1060,6 +1134,7 @@ export class App {
 		this.events = [];
 		this.eventsError = undefined;
 		this.#conversationCache.clear();
+		this.#messagePictures.clear();
 		this.#clearMeetings();
 		this.conversations = [];
 		this.messagePolicies = [];
@@ -1244,7 +1319,7 @@ export class App {
 				? byId(this.catalog.children, values.sibling).families
 				: created.map(({ family }) => family.id);
 		const child = { id: createId(), name: values.name, classroom: values.classroom, families };
-		await this.#saveChild(child, undefined, created);
+		await this.#saveChild(child, undefined, created, { share: values.share });
 		return created[0]?.secret;
 	}
 
@@ -1269,8 +1344,36 @@ export class App {
 		return this.#saveChild({ ...child, families }, child);
 	}
 
+	/**
+	 * Whether each of a classroom's children may be seen by its other families, as staff and families have
+	 * left it: the consent records as they are now, so a change can name the revision it was made over.
+	 */
+	async photoSharing(classroom: string) {
+		const { rows } = await request<ConsentSnapshot>(
+			'GET',
+			`/api/photo-consent?classroom=${classroom}`
+		);
+		const children = this.catalog.children.filter((c) => c.classroom === classroom);
+		return { rows, shared: await sharing(children, rows, (f) => this.messageKey(f)) };
+	}
+
+	/**
+	 * Records what a child's consent form says, for every family card linked to the child. Families change
+	 * the same choice themselves in the app, so this reads the records first and fails as stale if one
+	 * changed meanwhile.
+	 */
+	async setPhotoSharing(child: Child, share: boolean) {
+		const { rows } = await this.photoSharing(child.classroom);
+		await this.#saveChild(child, child, [], { share, rows });
+	}
+
 	/** Saves a new child, or a change to `previous`, with the family links that follow from it. */
-	async #saveChild(child: Child, previous?: Child, created: CreatedFamily[] = []) {
+	async #saveChild(
+		child: Child,
+		previous?: Child,
+		created: CreatedFamily[] = [],
+		consent?: PhotoChoice
+	) {
 		const { staffKey } = this.#staff;
 		const { catalog } = this;
 		const others = catalog.children.filter(({ id }) => id !== child.id);
@@ -1281,15 +1384,29 @@ export class App {
 			classroom: child.classroom,
 			meetingFamilies: child.families,
 			photoFamilies: await Promise.all(
-				child.families.map(async (family) => ({
-					family,
-					label: await encryptData(
-						{ name: child.name },
+				child.families.map(async (family) => {
+					const key =
 						created.find((c) => c.family.id === family)?.familyKey ??
-							(await this.messageKey(family)),
-						{ purpose: 'photo-label', event: child.id, part: family }
-					)
-				}))
+						(await this.messageKey(family));
+					const context = { event: child.id, part: family };
+					const row = consent?.rows?.find((r) => r.child === child.id && r.family === family);
+					return {
+						family,
+						label: await encryptData({ name: child.name }, key, {
+							purpose: 'photo-label',
+							...context
+						}),
+						...(consent === undefined
+							? {}
+							: {
+									choice: await encryptData({ share: consent.share }, key, {
+										purpose: 'photo-choice',
+										...context
+									}),
+									...(row === undefined ? {} : { revision: row.revision })
+								})
+					};
+				})
 			),
 			profile: await childProfile(staffKey, child)
 		};
@@ -1525,7 +1642,8 @@ export class App {
 			),
 			...this.infoPages.flatMap(({ id, files = [] }) =>
 				files.map((file) => infoFilePath(id, file.id))
-			)
+			),
+			...this.#messagePictures
 		]);
 		for (const [path, picture] of this.#pictures) {
 			if (up.has(path)) continue;

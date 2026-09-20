@@ -11,8 +11,9 @@ import {
 	type MessageRecord,
 	type MessageSettings
 } from '$lib/messages';
-import { visibleClassrooms } from './database';
+import { transaction, visibleClassrooms } from './database';
 import type { Admin } from './session';
+import { deleteMarked, getObject, putObject, type ObjectStore } from './storage';
 import { fields, flag, invalid, list, revision } from './validate';
 
 export const actor = (who: Identity) =>
@@ -210,6 +211,76 @@ function guard(
 	}
 	return { condition, values };
 }
+/** Where R2 keeps a file attached to a message, as named_objects names it (migrations/). */
+const fileKey = (message: string, file: string) => `messages/${message}/${file}`;
+
+/**
+ * Names the files a message carries, once the message itself is there: a send the policy refused, or an
+ * identical retry, names none. The database refuses a file that wasn't uploaded for the message or is on its
+ * way out (migrations/0020_message_files.sql), which fails the whole send as stale. Each file comes once
+ * (validate.ts). Files no message names are deleted in the daily cleanup a day later.
+ */
+function insertFiles(db: D1Database, message: string, files: string[]) {
+	return files.map((file) =>
+		db
+			.prepare(
+				`INSERT INTO message_files(message_id,id) SELECT ?,? WHERE EXISTS(SELECT 1 FROM messages WHERE id=?)
+ ON CONFLICT DO NOTHING`
+			)
+			.bind(message, file, message)
+	);
+}
+
+/** Only staff attach files; a family's inquiry carries its words alone. */
+function checkAttaching(who: Identity, files: string[]) {
+	if (files.length && who.kind !== 'staff') error(403, 'forbidden');
+}
+
+/**
+ * Stores the encrypted bytes of a file a teacher attaches, before the message naming it is sent, for staff
+ * who may write in the conversation. A message that exists already must be that staff member's own in it, so
+ * a send that lost its answer can upload the same bytes again, which `putObject` then refuses as `stored`.
+ */
+export async function uploadMessageFile(
+	db: D1Database,
+	store: ObjectStore,
+	who: Identity,
+	conversation: string,
+	message: string,
+	file: string,
+	bytes: Uint8Array<ArrayBuffer>
+) {
+	if (who.kind !== 'staff') error(403, 'forbidden');
+	await conversationFor(db, who, conversation);
+	const row = await db
+		.prepare('SELECT conversation_id AS conversation,author FROM messages WHERE id=?')
+		.bind(message)
+		.first<{ conversation: string; author: string }>();
+	if (row && (row.conversation !== conversation || row.author !== actor(who)))
+		error(403, 'forbidden');
+	await putObject(db, store, fileKey(message, file), bytes);
+}
+
+/** A file's encrypted bytes, for a device that may read the conversation whose message carries it. */
+export async function messageFileBytes(
+	db: D1Database,
+	store: ObjectStore,
+	who: Identity,
+	conversation: string,
+	message: string,
+	file: string
+) {
+	await conversationFor(db, who, conversation);
+	const named = await db
+		.prepare(
+			`SELECT 1 FROM message_files f JOIN messages m ON m.id=f.message_id
+ WHERE f.message_id=? AND f.id=? AND m.conversation_id=?`
+		)
+		.bind(message, file, conversation)
+		.first();
+	if (!named) error(404, 'not-found');
+	return getObject(db, store, fileKey(message, file));
+}
 export type NewConversation = {
 	id: string;
 	classroom: string;
@@ -217,6 +288,8 @@ export type NewConversation = {
 	title: string;
 	message: string;
 	content: string;
+	/** The files the first message carries; only a teacher may attach any. */
+	files?: string[];
 };
 export async function startConversation(
 	db: D1Database,
@@ -225,6 +298,7 @@ export async function startConversation(
 	now = Date.now()
 ) {
 	await checkAudience(db, who, value.classroom, value.family);
+	checkAttaching(who, value.files ?? []);
 	const existing = await db
 		.prepare('SELECT title FROM conversations WHERE id=?')
 		.bind(value.id)
@@ -249,7 +323,7 @@ export async function startConversation(
 		return false;
 	}
 	const { condition, values } = guard(who, value.classroom, value.family, now);
-	const results = await db.batch([
+	const results = await transaction(db, [
 		db
 			.prepare(
 				`INSERT INTO conversations(id,family_id,classroom_id,title,created_at)
@@ -269,7 +343,8 @@ export async function startConversation(
 				now,
 				// Starting a conversation always spends one of the family's allowance.
 				who.kind === 'family' ? messageClock(now).month : null
-			)
+			),
+		...insertFiles(db, value.message, value.files ?? [])
 	]);
 	if (!results[0].meta.changes) {
 		// An identical retry may have committed while this request checked. Verify it rather than charge again.
@@ -315,9 +390,11 @@ export async function reply(
 	id: string,
 	message: string,
 	content: string,
+	files: string[] = [],
 	now = Date.now()
 ) {
 	const thread = await conversationFor(db, who, id);
+	checkAttaching(who, files);
 	const existing = await db
 		.prepare('SELECT conversation_id AS conversation,author,content FROM messages WHERE id=?')
 		.bind(message)
@@ -337,17 +414,19 @@ export async function reply(
 	const charge = fromFamily ? `CASE WHEN ${answered} THEN NULL ELSE ? END` : 'NULL';
 	const month = fromFamily ? [id, messageClock(now).month] : [];
 	const { condition, values } = guard(who, thread.classroom, thread.family, now, id);
-	const result = await db
-		.prepare(
-			`INSERT INTO messages(id,conversation_id,author,content,posted_at,charged)
+	const [result] = await transaction(db, [
+		db
+			.prepare(
+				`INSERT INTO messages(id,conversation_id,author,content,posted_at,charged)
  SELECT ?,?,?,?,?,${charge} WHERE EXISTS(SELECT 1 FROM conversations WHERE id=? AND closed=0) AND ${condition}
  ON CONFLICT(id) DO NOTHING`
-		)
-		.bind(message, id, actor(who), content, now, ...month, id, ...values)
-		.run();
+			)
+			.bind(message, id, actor(who), content, now, ...month, id, ...values),
+		...insertFiles(db, message, files)
+	]);
 	if (!result.meta.changes) {
 		if (await db.prepare('SELECT id FROM messages WHERE id=?').bind(message).first())
-			return reply(db, who, id, message, content, now);
+			return reply(db, who, id, message, content, files, now);
 		const closed = await db
 			.prepare('SELECT closed FROM conversations WHERE id=? AND closed=1')
 			.bind(id)
@@ -398,7 +477,12 @@ export async function closeConversation(db: D1Database, who: Identity, id: strin
  * closed one, so a conversation can't disappear under a family still writing in it. What the family spent on
  * it returns to that month's allowance, which is what the messages it spent them on no longer being there means.
  */
-export async function deleteConversation(db: D1Database, who: Identity, id: string) {
+export async function deleteConversation(
+	db: D1Database,
+	store: ObjectStore,
+	who: Identity,
+	id: string
+) {
 	if (who.kind !== 'staff') error(403, 'forbidden');
 	await conversationFor(db, who, id);
 	const [sql, params] = visibleClassrooms(who);
@@ -409,4 +493,6 @@ export async function deleteConversation(db: D1Database, who: Identity, id: stri
 	// It's there and this device may see it, so nothing deleted means it isn't closed: the device asked from
 	// a page written before someone reopened the question, and loading the inbox again shows what's there now.
 	if (!result.meta.changes) error(409, 'stale');
+	// Its messages went with it, so the bytes of the files they carried are on their way out.
+	await deleteMarked(db, store.bucket);
 }

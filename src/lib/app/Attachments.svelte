@@ -14,11 +14,14 @@
 	let {
 		locale,
 		files,
+		compact = false,
 		openPicture,
 		saveDocument
 	}: {
 		locale: Locale;
 		files: NoticeFile[];
+		/** Fewer, larger pictures across, for the narrow width of a message's bubble. */
+		compact?: boolean;
 		/** One of the pictures, fetched and opened. */
 		openPicture: (file: NoticeFile) => Promise<Picture>;
 		/** Fetches and opens one of the documents, and saves it on this device. */
@@ -54,7 +57,11 @@
 
 <div class="grid gap-3">
 	{#if pictureFiles.length}
-		<ul class="grid grid-cols-3 gap-2 sm:grid-cols-4" aria-label={t.pictures} {@attach nearScreen}>
+		<ul
+			class="grid gap-2 {compact ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-3 sm:grid-cols-4'}"
+			aria-label={t.pictures}
+			{@attach nearScreen}
+		>
 			{#each pictureFiles as file, index (file.id)}
 				<li class="aspect-square overflow-hidden rounded-2xl bg-white/60 ring-1 ring-ink/10">
 					{#await pictures[index]}

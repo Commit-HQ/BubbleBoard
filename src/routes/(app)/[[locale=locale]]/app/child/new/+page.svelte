@@ -3,6 +3,7 @@
 	import CardSheet, { type PrintableCard } from '$lib/app/CardSheet.svelte';
 	import ChoiceTile from '$lib/app/ChoiceTile.svelte';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
+	import FaceSharing from '$lib/app/FaceSharing.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp, Task, type ChildValues } from '$lib/app/state.svelte';
 	import { alert, button, field, formText, queryParam, surface } from '$lib/app/ui';
@@ -24,6 +25,8 @@
 	);
 	const task = new Task();
 	let cardFor = $state<'new' | 'sibling'>('new');
+	/** Covered until a consent form says otherwise. */
+	let share = $state(false);
 	// The kindergarten's first child has no brother or sister to share a card with.
 	const newCard = $derived(cardFor === 'new' || !app.catalog.children.length);
 	/** The child added last, to confirm it. */
@@ -53,7 +56,7 @@
 		event.preventDefault();
 		if (!classroom) return;
 		const form = new FormData(event.currentTarget);
-		const child = { name: formText(form, 'name'), classroom: classroom.id };
+		const child = { name: formText(form, 'name'), classroom: classroom.id, share };
 		const values: ChildValues = newCard
 			? { ...child, cardName: formText(form, 'cardName') }
 			: { ...child, sibling: formText(form, 'sibling') };
@@ -66,7 +69,8 @@
 				unprinted = [...unprinted, { ...card, child: values.name }];
 			}
 			added = values.name;
-			// The next child is usually in the same classroom, so only the names start over.
+			// The next child is usually in the same classroom, so only the names and the consent start over.
+			share = false;
 			if (nameInput) nameInput.value = '';
 			if (cardNameInput) cardNameInput.value = '';
 			nameInput?.focus();
@@ -154,6 +158,8 @@
 						</label>
 					{/if}
 				</fieldset>
+
+				<FaceSharing locale={data.locale} name="share" bind:share />
 
 				{#if task.error}
 					<p class={alert} role="alert">{errorMessage(data.locale, task.error)}</p>

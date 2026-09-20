@@ -287,7 +287,13 @@ export function childChange(body: Fields): ChildChange {
 						body.photoFamilies,
 						(value) => {
 							const row = fields(value);
-							return { family: id(row.family), label: profile(row.label) };
+							return {
+								family: id(row.family),
+								label: profile(row.label),
+								// Staff recording a consent form send the choice and the row they read it over.
+								...(row.choice === undefined ? {} : { choice: sealed(row.choice, 256) }),
+								...(row.revision === undefined ? {} : { revision: revision(row.revision) })
+							};
 						},
 						20
 					)

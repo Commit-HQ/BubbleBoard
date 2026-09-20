@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { localDatabase } from './test-database';
+import { transaction } from './database';
 import {
 	consents,
+	projectionStatements,
 	saveConsent,
 	syncProjections,
 	startEvent,
@@ -102,6 +104,44 @@ describe('events publication', () => {
 		await publishEvent(db, store, staff, 'next', 'content', 'key', ['file'], 30);
 		await saveConsent(db, family('a'), 'child', 1, 'changed');
 		expect((await events(db, family('a')))[0].content).toBe('content');
+	});
+	it('records a consent form for every family card, only over the revision it read', async () => {
+		const { db, staff, family } = await setup();
+		// A second family card for the same child, as parents living apart have.
+		await db.prepare("INSERT INTO family_classrooms VALUES('b','group','key')").run();
+		const both = (choice?: string, revision?: number) =>
+			['a', 'b'].map((f) => ({
+				family: f,
+				label: 'label',
+				...(choice === undefined ? {} : { choice }),
+				...(revision === undefined || f === 'b' ? {} : { revision })
+			}));
+		await transaction(db, projectionStatements(db, 'child', both('form', 0)));
+		const stored = async () =>
+			(await consents(db, staff)).rows.map((row) => [row.family, row.choice, row.revision]);
+		expect(await stored()).toEqual([
+			['a', 'form', 1],
+			['b', 'form', 0]
+		]);
+		// A parent changes their own choice, so the same write made again is refused.
+		await saveConsent(db, family('a'), 'child', 1, 'parent');
+		await expect(
+			transaction(db, projectionStatements(db, 'child', both('form', 1)))
+		).rejects.toMatchObject({ status: 409 });
+		// A row staff expect to be new, but which a parent already has, is refused too.
+		await expect(
+			transaction(db, projectionStatements(db, 'child', both('form')))
+		).rejects.toMatchObject({ status: 409 });
+		expect(await stored()).toEqual([
+			['a', 'parent', 2],
+			['b', 'form', 0]
+		]);
+		// Renaming the child leaves every choice as it is.
+		await transaction(db, projectionStatements(db, 'child', both()));
+		expect(await stored()).toEqual([
+			['a', 'parent', 2],
+			['b', 'form', 0]
+		]);
 	});
 	it('rejects catalog races and missing R2 bytes; expires staged and published data', async () => {
 		const { db, staff, family, store, objects } = await setup();

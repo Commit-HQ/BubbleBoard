@@ -41,19 +41,8 @@
 	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
-<!-- A small tag after the title of what BubbleBoard can't do yet. -->
-{#snippet soon()}
-	<span
-		class="ml-1.5 inline-block rounded-full bg-accent/10 px-2.5 py-0.5 align-middle font-sans text-xs font-bold tracking-normal whitespace-nowrap text-indigo-700"
-		>{t.soon}</span
-	>
-{/snippet}
-
-{#snippet intro(id: string, title: string, copy: string, upcoming = false)}
-	<h2 id="{id}-title" class="mb-4 max-w-2xl text-4xl sm:text-5xl">
-		{title}
-		{#if upcoming}{@render soon()}{/if}
-	</h2>
+{#snippet intro(id: string, title: string, copy: string)}
+	<h2 id="{id}-title" class="mb-4 max-w-2xl text-4xl sm:text-5xl">{title}</h2>
 	<p class="max-w-md text-lg text-muted">{copy}</p>
 {/snippet}
 
@@ -69,13 +58,10 @@
 	</a>
 {/snippet}
 
-{#snippet feature(icon: IconName, item: Item, upcoming = false)}
+{#snippet feature(icon: IconName, item: Item)}
 	<li class="rounded-3xl glass p-6">
 		<IconTile {icon} />
-		<h3 class="mt-5 font-bold">
-			{item.title}
-			{#if upcoming}{@render soon()}{/if}
-		</h3>
+		<h3 class="mt-5 font-bold">{item.title}</h3>
 		<p class="mt-1 text-muted">{item.copy}</p>
 	</li>
 {/snippet}
@@ -147,8 +133,8 @@
 		{@render intro('features', t.features.title, t.features.copy)}
 		<ul class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			{@render feature('megaphone', t.features.notices)}
-			{@render feature('image', t.features.photos, true)}
-			{@render feature('message', t.features.messages, true)}
+			{@render feature('image', t.features.photos)}
+			{@render feature('message', t.features.messages)}
 			{@render feature('file', t.features.documents)}
 			{@render feature('bell', t.features.notifications)}
 			{@render feature('phone', t.features.devices)}
@@ -185,7 +171,7 @@
 		aria-labelledby="privacy-title"
 	>
 		<div>
-			{@render intro('privacy', t.privacy.title, t.privacy.copy, true)}
+			{@render intro('privacy', t.privacy.title, t.privacy.copy)}
 			<ul class="mt-8 grid gap-3.5">
 				{#each t.privacy.facts as fact (fact)}
 					<li class="flex gap-3 font-semibold">
@@ -212,10 +198,10 @@
 			{@render intro('teachers', t.teachers.title, t.teachers.copy)}
 		</div>
 		<ul class="grid gap-4 sm:grid-cols-2">
-			{@render feature('eye', t.teachers.preview, true)}
-			{@render feature('trash', t.teachers.remove)}
+			{@render feature('eye', t.teachers.preview)}
+			{@render feature('users', t.teachers.meetings)}
 			{@render feature('clock', t.teachers.retention)}
-			{@render feature('key', t.teachers.access)}
+			{@render feature('check', t.teachers.seen)}
 		</ul>
 	</section>
 

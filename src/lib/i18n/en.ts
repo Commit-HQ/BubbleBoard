@@ -20,8 +20,6 @@ export const en = {
 	skip: 'Skip to content',
 	home: 'BubbleBoard home',
 	language: 'Language',
-	// The tag after the title of something on the landing page that BubbleBoard can't do yet.
-	soon: 'Coming soon',
 	nav: {
 		label: 'Main',
 		sections: {
@@ -55,11 +53,11 @@ export const en = {
 		},
 		photos: {
 			title: 'Photos from the day',
-			copy: 'Moments from the classroom, shared with care and removed from the app after a set time.'
+			copy: 'Galleries from the day: your own child clearly, and other faces covered unless their parents allow sharing.'
 		},
 		messages: {
 			title: 'A direct line to teachers',
-			copy: 'Private conversations between your family and your child’s teachers.'
+			copy: 'Ask your child’s teachers something privately, with each question in its own conversation.'
 		},
 		documents: {
 			title: 'Shared documents',
@@ -99,7 +97,7 @@ export const en = {
 		photoAlt: 'Children painting with watercolours around a table, seen from above',
 		facts: [
 			'No usernames or passwords',
-			'Faces blurred for other families, if you prefer',
+			'Faces covered for other families, unless you allow more',
 			'Photos removed from the app after a set time'
 		]
 	},
@@ -127,17 +125,17 @@ export const en = {
 			title: 'Preview before posting',
 			copy: 'See exactly what other families will see before a photo goes out.'
 		},
-		remove: {
-			title: 'Delete right away',
-			copy: 'Remove a post from the app instantly if something slips through.'
+		meetings: {
+			title: 'Individual meetings',
+			copy: 'Offer the times you’re free, and families book one for their child without seeing who else has.'
 		},
 		retention: {
 			title: 'You choose how long',
 			copy: 'Photos are removed from the app after the time you choose, from one day to three months.'
 		},
-		access: {
-			title: 'Access you control',
-			copy: 'Give a substitute temporary access or replace a lost QR code in a few taps.'
+		seen: {
+			title: 'You see who’s read it',
+			copy: 'Families tap once to say they’ve read a notice, and a poll brings quick answers back.'
 		}
 	},
 	kindergartens: {
@@ -174,16 +172,16 @@ export const en = {
 	privacyPolicy: {
 		title: 'Privacy policy',
 		description: 'What BubbleBoard stores about families and children, where, and for how long.',
-		updated: 'Updated on 20 September 2026',
+		updated: 'Updated on 21 September 2026',
 		// Followed by the project's contact address, which the last point calls the address below.
 		points: [
 			{
 				title: 'Event photos',
-				copy: 'Faces are detected and labelled on the teacher’s device. A covered photo and separate face patches are encrypted before upload; the original is not uploaded. Families see their own children and faces permitted for classroom sharing. Consent is encrypted and changes apply only to future publications. Events and their photos remain available for the 1 to 90 days chosen by the teacher, then are deleted. There is no hidden archive for a yearly album.'
+				copy: 'Faces are detected and labelled on the teacher’s device. A covered photo and separate face patches are encrypted before upload; the original is not uploaded. Families see their own children and faces permitted for classroom sharing. Your kindergarten may enter what your consent form says, and you can change it in the app at any time. Consent is encrypted and changes apply only to future publications. Events and their photos remain available for the 1 to 90 days chosen by the teacher, then are deleted. There is no hidden archive for a yearly album.'
 			},
 			{
 				title: 'What’s stored',
-				copy: 'Names, inquiry subjects and messages, notices, info pages, polls, photos, and files are encrypted on the device before they’re sent. The server can’t read them, and keeps only what it needs to work, without names, such as when a notice was posted. Individual meeting times, reservations, and which child and family IDs may book are scheduling metadata; children’s names remain encrypted.'
+				copy: 'Names, inquiry subjects and messages, notices, info pages, polls, photos, and the files attached to any of them are encrypted on the device before they’re sent. The server can’t read them, and keeps only what it needs to work, without names, such as when a notice was posted. Individual meeting times, reservations, and which child and family IDs may book are scheduling metadata; children’s names remain encrypted.'
 			},
 			{
 				title: 'Where',
@@ -191,7 +189,7 @@ export const en = {
 			},
 			{
 				title: 'How long',
-				copy: 'Notices stay up for the 1 to 90 days a teacher chooses, a notice board photo until it’s replaced, info pages until an admin changes or deletes them, conversations until the family leaves their classroom, names until an admin removes them, and a device’s login until it goes unused for 90 days. Individual meeting offers and reservations are removed 90 days after the last time in the offer. Deleted records stay in the database’s backup history for up to 30 days.'
+				copy: 'Notices stay up for the 1 to 90 days a teacher chooses, a notice board photo until it’s replaced, info pages until an admin changes or deletes them, conversations with their files until the family leaves their classroom or a teacher deletes the closed conversation, names until an admin removes them, and a device’s login until it goes unused for 90 days. Individual meeting offers and reservations are removed 90 days after the last time in the offer. Deleted records stay in the database’s backup history for up to 30 days.'
 			},
 			{
 				title: 'Notifications',
@@ -243,7 +241,7 @@ export const en = {
 			base: 'All covers',
 			consentTitle: 'My child’s face visibility',
 			consentHint:
-				'Your choice applies to photos published from now on. You always see your own child. If a child has several family QR codes, every linked family has to allow the classroom to see them.',
+				'Your kindergarten may have set this from your consent form, and you can change it here at any time. Your choice applies to photos published from then on, and you always see your own child. If a child has several family QR codes, every linked family has to allow the classroom to see them.',
 			private: 'Only our family',
 			privateHint: 'Other families in the classroom see a sticker over your child’s face.',
 			group: 'Families in our classroom too',
@@ -579,6 +577,17 @@ export const en = {
 				'The new QR codes are shown only on this page. To print them later, replace them from the classroom.',
 			leave: 'Leave',
 			stay: 'Stay'
+		},
+		// What staff record from a family's consent form, when a child is added and on the child's page.
+		// Families change the same choice themselves in Settings (app.events.consentTitle).
+		sharing: {
+			title: 'Face in event photos',
+			hint: 'Set this from the family’s consent form. Parents can change it themselves in the app, and it counts for photos published from then on.',
+			covered: 'Covered for other families',
+			coveredHint: 'Other families in the classroom see a sticker over the child’s face.',
+			shared: 'Classroom families may see the face',
+			sharedHint: 'Every family QR code of this child allows it, as the consent form says.',
+			saved: 'Saved.'
 		},
 		child: {
 			cards: 'Family QR codes',

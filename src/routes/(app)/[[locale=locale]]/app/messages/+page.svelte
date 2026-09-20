@@ -1,17 +1,19 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import AttachFiles from '$lib/app/AttachFiles.svelte';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
 	import InquiryLink from '$lib/app/InquiryLink.svelte';
 	import MessageBubble from '$lib/app/MessageBubble.svelte';
 	import MessagePolicy from '$lib/app/MessagePolicy.svelte';
 	import RefreshButton from '$lib/app/RefreshButton.svelte';
 	import Screen from '$lib/app/Screen.svelte';
-	import { getApp } from '$lib/app/state.svelte';
+	import { getApp, Task, type SealedMessage } from '$lib/app/state.svelte';
 	import { alert, button, everyHalfMinute, field, queryParam, surface } from '$lib/app/ui';
 	import Icon from '$lib/components/Icon.svelte';
 	import IconTile from '$lib/components/IconTile.svelte';
 	import { createId } from '$lib/crypto';
 	import { errorCode } from '$lib/errors';
+	import type { NewFile, NoticeFile } from '$lib/files';
 	import { errorMessage, messages } from '$lib/i18n';
 	import {
 		byTeacher,
@@ -56,13 +58,17 @@
 	let closing = $state(false);
 	let removing = $state(false);
 	let confirming = $state(false);
+	/** The files a teacher attaches to the message being written, sealed as each was attached. */
+	let files = $state.raw<(NoticeFile | NewFile)[]>([]);
+	let attaching = $state(false);
+	const filesTask = new Task();
 	let end = $state<HTMLOListElement>();
 	/** The clock the sending window is measured against, moved on with every look for new messages. */
 	let now = $state(Date.now());
 	let scrolledTo = 0;
 	let generation = 0;
 	let viewVersion = 0;
-	let pending: { fingerprint: string; payload: Record<string, string> } | undefined;
+	let pending: { fingerprint: string; sealed: SealedMessage; files: NewFile[] } | undefined;
 
 	const policy = $derived(
 		app.messagePolicies.find((item) => item.classroom === (thread?.classroom ?? classroom))
@@ -213,7 +219,7 @@
 	/** Families are asked once more when a message spends an inquiry, so none goes by mistake. */
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
-		if (busy || !text.trim() || !canSend || (creating && !subject.trim())) return;
+		if (busy || filesTask.busy || !text.trim() || !canSend || (creating && !subject.trim())) return;
 		if (charged && !creating) confirming = true;
 		else void send();
 	}
@@ -229,26 +235,41 @@
 		busy = true;
 		failure = undefined;
 		try {
-			const fingerprint = JSON.stringify([selected, targetClassroom, targetFamily, subject, text]);
+			const attached = files.filter((file): file is NewFile => 'sealed' in file);
+			const fingerprint = JSON.stringify([
+				selected,
+				targetClassroom,
+				targetFamily,
+				subject,
+				text,
+				attached.map((file) => file.id)
+			]);
 			let attempt = pending;
 			if (attempt?.fingerprint !== fingerprint) {
 				const conversation = isNew ? createId() : selected!;
 				attempt = {
 					fingerprint,
-					payload: await app.sealFor(
+					files: attached,
+					sealed: await app.sealFor(
 						targetClassroom,
 						targetFamily,
 						conversation,
-						{ text: text.trim(), name: staff ? (app.myName ?? t.teacher) : '' },
+						{
+							text: text.trim(),
+							name: staff ? (app.myName ?? t.teacher) : '',
+							...(attached.length ? { files: attached } : {})
+						},
 						isNew ? subject.trim() : undefined
 					)
 				};
 			}
 			if (sameView()) pending = attempt;
-			const savedId = isNew ? attempt.payload.id : selected!;
-			await app.sendMessage(attempt.payload, isNew ? undefined : selected!);
+			const savedId = attempt.sealed.conversation;
+			await app.sendMessage(attempt.sealed, attempt.files);
 			if (!sameView()) return;
 			text = '';
+			files = [];
+			attaching = false;
 			pending = undefined;
 			if (isNew) await goto(appPath(data.locale, 'messages', { id: savedId }));
 		} catch (cause) {
@@ -329,6 +350,8 @@
 							message={row}
 							mine={byTeacher(row.author) === staff}
 							name={bubbleName(row.author, row.name, thread.family)}
+							openPicture={(file) => app.messagePicture(thread.id, row, file)}
+							saveDocument={(file) => app.saveMessageFile(thread.id, row, file)}
 						/>
 					{/each}
 				</ol>
@@ -346,7 +369,23 @@
 								closing={closingIn}
 							/>
 						{/if}
+						{#if staff && (attaching || files.length)}
+							<div class="rounded-3xl frosted p-4">
+								<AttachFiles locale={data.locale} task={filesTask} bind:files disabled={busy} />
+							</div>
+						{/if}
 						<div class="flex items-end gap-2 rounded-3xl frosted p-2">
+							{#if staff && !attaching && !files.length}
+								<button
+									class={button.icon}
+									type="button"
+									aria-label={messages[data.locale].app.files.attach}
+									disabled={busy}
+									onclick={() => (attaching = true)}
+								>
+									<Icon name="plus" />
+								</button>
+							{/if}
 							<label class="min-w-0 grow">
 								<span class="sr-only">{t.body}</span>
 								<textarea
@@ -361,7 +400,7 @@
 							<button
 								class={button.iconPrimary}
 								aria-label={t.send}
-								disabled={busy || !canSend || !text.trim()}
+								disabled={busy || filesTask.busy || !canSend || !text.trim()}
 							>
 								<Icon name="arrowUp" />
 							</button>
@@ -409,11 +448,18 @@
 						<textarea class={field.input} rows="6" required maxlength="4000" bind:value={text}
 						></textarea>
 					</label>
+					{#if staff}
+						<AttachFiles locale={data.locale} task={filesTask} bind:files disabled={busy} />
+					{/if}
 				</fieldset>
 				<button
 					class="{button.primary} justify-self-start"
-					disabled={!canSend || !classroom || (staff && !family) || !subject.trim() || !text.trim()}
-					>{t.sendInquiry}</button
+					disabled={!canSend ||
+						filesTask.busy ||
+						!classroom ||
+						(staff && !family) ||
+						!subject.trim() ||
+						!text.trim()}>{t.sendInquiry}</button
 				>
 			</fieldset>
 		</form>

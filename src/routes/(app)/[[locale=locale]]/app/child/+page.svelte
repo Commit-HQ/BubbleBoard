@@ -2,13 +2,14 @@
 	import { goto } from '$app/navigation';
 	import CardSheet, { type PrintableCard } from '$lib/app/CardSheet.svelte';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
+	import FaceSharing from '$lib/app/FaceSharing.svelte';
 	import FieldForm from '$lib/app/FieldForm.svelte';
 	import Screen from '$lib/app/Screen.svelte';
-	import { getApp } from '$lib/app/state.svelte';
-	import { button, queryParam, surface } from '$lib/app/ui';
+	import { getApp, Task } from '$lib/app/state.svelte';
+	import { alert, button, queryParam, surface } from '$lib/app/ui';
 	import Icon from '$lib/components/Icon.svelte';
 	import IconTile from '$lib/components/IconTile.svelte';
-	import { listNames, messages } from '$lib/i18n';
+	import { errorMessage, listNames, messages } from '$lib/i18n';
 	import { byId, namesOf, type Child, type Family } from '$lib/kindergarten';
 	import { appPath } from '$lib/paths';
 	import type { PageProps } from './$types';
@@ -34,6 +35,32 @@
 	let editing = $state<Editing>();
 	let confirming = $state<Confirming>();
 	let printed = $state.raw<PrintableCard[]>();
+	/** The child's face visibility as the consent records have it, loaded for the child this page shows. */
+	let sharing = $state<{ child: string; share: boolean }>();
+	let sharingSaved = $state(false);
+	const sharingTask = new Task();
+
+	$effect(() => {
+		const current = child;
+		if (!current || !app.admin || sharing?.child === current.id) return;
+		void sharingTask.run(async () => {
+			const { shared } = await app.photoSharing(current.classroom);
+			sharing = { child: current.id, share: shared.has(current.id) };
+		});
+	});
+
+	/** Records the consent form's answer for every family card of the child; a conflict loads it again. */
+	async function saveSharing(share: boolean) {
+		const current = child;
+		if (!current) return;
+		sharingSaved = false;
+		await sharingTask.run(async () => {
+			await app.setPhotoSharing(current, share);
+			sharing = { child: current.id, share };
+			sharingSaved = true;
+		});
+		if (sharingTask.error) sharing = undefined;
+	}
 
 	/** The family's other children that this device can see. */
 	function siblings(family: Family) {
@@ -219,6 +246,24 @@
 			</section>
 
 			{#if app.admin}
+				<section class="{surface} grid gap-4" aria-labelledby="sharing-title">
+					<h2 id="sharing-title" class="sr-only">{t.sharing.title}</h2>
+					{#if sharing}
+						<FaceSharing
+							locale={data.locale}
+							name="sharing"
+							share={sharing.share}
+							disabled={sharingTask.busy}
+							onchange={saveSharing}
+						/>
+					{/if}
+					{#if sharingTask.error}
+						<p class={alert} role="alert">{errorMessage(data.locale, sharingTask.error)}</p>
+					{:else if sharingSaved}
+						<p class="font-semibold text-muted" role="status">{t.sharing.saved}</p>
+					{/if}
+				</section>
+
 				<section class="grid gap-4 border-t border-ink/10 pt-6">
 					<div class="flex flex-wrap gap-2">
 						{#if otherClassrooms.length}

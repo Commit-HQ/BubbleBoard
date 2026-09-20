@@ -365,21 +365,15 @@ export async function renameFamily(db: D1Database, admin: Admin, id: string, pro
 }
 
 /**
- * Replaces the cards of several families together, or of none when one isn't the staff member's to
- * replace: admins can replace any family's card, and teachers those of families in their classrooms.
+ * Replaces the cards of several families together, or of none when one of them is gone. A family card can
+ * reach every classroom the family's children are in, so only admins replace them (docs/access-format.md),
+ * and a replacement always signs the family's devices out: it is a reset, not a quieter rotation.
  */
 export async function replaceFamilyCards(db: D1Database, staff: Staff, cards: FamilyCard[]) {
 	if (!staff.admin) error(403, 'forbidden');
-	const [reachable, params]: [string, string[]] = staff.admin
-		? ['SELECT id FROM families', []]
-		: [
-				`SELECT fc.family_id FROM family_classrooms fc
-				JOIN teacher_classrooms tc ON tc.classroom_id = fc.classroom_id WHERE tc.teacher_id = ?`,
-				[staff.teacher]
-			];
 	// Each family comes once (validate.ts).
 	const families = cards.map(({ family }) => family);
-	if (!(await includesAll(db, families, reachable, params))) error(404, 'not-found');
+	if (!(await includesAll(db, families, 'SELECT id FROM families'))) error(404, 'not-found');
 	const replacements = await Promise.all(
 		cards.map(({ family, credential }) => replaceCard(db, { family }, credential))
 	);

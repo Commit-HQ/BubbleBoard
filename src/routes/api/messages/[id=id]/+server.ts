@@ -7,8 +7,9 @@ import {
 	reply
 } from '$lib/server/messages';
 import { announceConversation } from '$lib/server/push';
-import { database, requireIdentity, sessionHash } from '$lib/server/session';
-import { id, readJson, sealed } from '$lib/server/validate';
+import { database, objectStore, requireIdentity, sessionHash } from '$lib/server/session';
+import { id, ids, readJson, sealed } from '$lib/server/validate';
+import { maxNoticeFiles } from '$lib/files';
 import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async (event) => {
 	const who = await requireIdentity(event);
@@ -26,7 +27,8 @@ export const POST: RequestHandler = async (event) => {
 		who,
 		event.params.id,
 		id(body.id),
-		sealed(body.content)
+		sealed(body.content),
+		ids(body.files ?? [], maxNoticeFiles)
 	);
 	if (inserted)
 		event.platform?.ctx.waitUntil(
@@ -50,6 +52,6 @@ export const PUT: RequestHandler = async (event) => {
 /** Takes a closed inquiry away, for the family as well as the teachers. */
 export const DELETE: RequestHandler = async (event) => {
 	const who = await requireIdentity(event);
-	await deleteConversation(database(event), who, event.params.id);
+	await deleteConversation(database(event), objectStore(event), who, event.params.id);
 	return new Response(null, { status: 204 });
 };
