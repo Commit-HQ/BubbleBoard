@@ -211,6 +211,7 @@
 			<g
 				role="button"
 				tabindex="0"
+				class="cursor-grab"
 				aria-label={regionLabel(index + 1)}
 				aria-pressed={selected === region.id}
 				data-region={region.id}
@@ -232,6 +233,17 @@
 					width={rect.width}
 					height={rect.height}
 					fill="none"
+					stroke="#29253d"
+					stroke-opacity="0.35"
+					stroke-width={selected === region.id ? 8 : 6}
+					vector-effect="non-scaling-stroke"
+				/>
+				<rect
+					x={rect.x}
+					y={rect.y}
+					width={rect.width}
+					height={rect.height}
+					fill="none"
 					stroke={region.child ? '#15803d' : region.covered ? '#dc2626' : '#fff'}
 					stroke-width={selected === region.id ? 5 : 3}
 					vector-effect="non-scaling-stroke"
@@ -246,12 +258,12 @@
 				>
 				{#if selected === region.id}
 					{@const grip = Math.min(handle, rect.width / 2, rect.height / 2)}
-					<rect
+					<circle
 						data-resize
-						x={rect.x + rect.width - grip / 2}
-						y={rect.y + rect.height - grip / 2}
-						width={grip}
-						height={grip}
+						class="cursor-nwse-resize"
+						cx={rect.x + rect.width}
+						cy={rect.y + rect.height}
+						r={grip / 2}
 						fill="#29253d"
 						stroke="#fff"
 						stroke-width="2"

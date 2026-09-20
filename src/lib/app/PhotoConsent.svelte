@@ -4,6 +4,8 @@
 	import { fields, decryptData, encryptData } from '$lib/crypto';
 	import type { ConsentSnapshot, ConsentRow } from '$lib/events/types';
 	import { messages, errorMessage, type Locale } from '$lib/i18n';
+	import Icon from '$lib/components/Icon.svelte';
+	import IconTile from '$lib/components/IconTile.svelte';
 	import { getApp, Task } from './state.svelte';
 	import { surface, button, alert, field } from './ui';
 	let { locale }: { locale: Locale } = $props();
@@ -66,26 +68,29 @@
 	}
 </script>
 
-<section class="{surface} grid gap-4">
-	<h2 class="text-3xl">{t.consentTitle}</h2>
-	<p class="text-muted">{t.consentHint}</p>
-	{#if task.error}<p role="alert" class={alert}>{errorMessage(locale, task.error)}</p>{/if}
-	{#if loaded && !rows.length}<p>{t.noChildren}</p>{/if}
-	{#each rows as row (row.child)}
-		<label class={field.label}
-			><span class="font-semibold">{row.name}</span><select
-				class={field.input}
-				value={String(row.share)}
-				disabled={task.busy}
-				onchange={(event) => save(row, event.currentTarget.value === 'true')}
-				><option value="false">{t.private}</option><option value="true">{t.group}</option></select
-			></label
+<section class={surface} aria-labelledby="consent-title">
+	<IconTile icon="smile" tone="ink" />
+	<h2 id="consent-title" class="mt-5 text-3xl">{t.consentTitle}</h2>
+	<p class="mt-1 text-muted">{t.consentHint}</p>
+	<div class="mt-6 grid gap-4">
+		{#if task.error}<p role="alert" class={alert}>{errorMessage(locale, task.error)}</p>{/if}
+		{#if loaded && !rows.length}<p>{t.noChildren}</p>{/if}
+		{#each rows as row (row.child)}
+			<label class={field.label}
+				><span class="font-semibold">{row.name}</span><select
+					class={field.input}
+					value={String(row.share)}
+					disabled={task.busy}
+					onchange={(event) => save(row, event.currentTarget.value === 'true')}
+					><option value="false">{t.private}</option><option value="true">{t.group}</option></select
+				></label
+			>
+		{/each}
+		<button
+			class="{button.quiet} -ml-3 justify-self-start"
+			type="button"
+			disabled={task.busy}
+			onclick={() => task.run(load)}><Icon name="refresh" class="size-4" />{t.reload}</button
 		>
-	{/each}
-	<button
-		class="{button.quiet} justify-self-start"
-		type="button"
-		disabled={task.busy}
-		onclick={() => task.run(load)}>{t.reload}</button
-	>
+	</div>
 </section>

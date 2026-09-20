@@ -1,20 +1,20 @@
 # Event photo editor
 
-Status: the first-version workflow was implemented on 2026-09-20; physical iOS/Android testing and the pilot are still outstanding. Drafts exist only in the open session.
+Status: the first-version workflow was implemented on 2026-09-20 and its three steps were brought into the rest of the app's shapes and words on 2026-09-20; physical iOS/Android testing and the pilot are still outstanding. Drafts exist only in the open session.
 
 The editor includes local detection in multiple orientations, manual covers, three stickers, child assignment, undo/redo and review. Review first shows the final raster; an optional comparison slider shows the original with labelled sides. The family-card selector also includes the names of linked children. Parent settings, encrypted patches, publication, galleries, downloads and deletion are connected. See [format and security boundaries](events-format.md).
 
 ## Basic workflow
 
-Three steps: **Event → Photos → Review and publish**. Teachers work on one photo at a time. There is no separate wizard for each face: tap a sticker, choose a child and continue. The basic view stays simple, with movement and resizing available for the selected sticker.
+Three steps: **Event → Photos → Review and publish**, with the step the teacher is on named above the page. Teachers work on one photo at a time. There is no separate wizard for each face: tap a sticker, choose a child and continue. The basic view stays simple, with movement and resizing available for the selected sticker.
 
-The teacher first enters the title, description, date, audience and duration, as with notices. Photos can be added and removed until publication. Originals open locally; “Add photos” does not mean they have been uploaded.
+The first step asks for the classroom, title, description, date and duration, in the fields and the day tiles a notice's form uses; a teacher with one classroom sees which it is rather than choosing. The classroom settles there, because it decides which children can be named, and it is locked once photos are open. Photos can be added and removed until publication. Originals open locally; “Add photos” does not mean they have been uploaded.
 
 ## Editor layout
 
 On mobile, the photo takes up most of the screen, with “Photo 2 of 8” above it and the status and selected-face panel below. The panel must not obscure the active face: the image uses the available space. Desktop follows the same full-width photo layout, with assignment below it. Do not introduce a separate, complex desktop tool.
 
-A thumbnail strip allows navigation to any photo without losing work. Each thumbnail has a number and text status; a grid overview is a possible extension for larger galleries. Replacing a photo with a new file clears its labels and review confirmation.
+A thumbnail strip allows navigation to any photo without losing work. Each thumbnail carries its number and a mark for what it still needs — a tick when reviewed, the number of faces waiting, a dot while faces are being looked for — and says the same in words to a screen reader and in its tooltip; above the strip, “2 of 8 photos reviewed” says how far the gallery has got. A grid overview is a possible extension for larger galleries. Removing a photo asks first, because its labels go with it. Replacing a photo with a new file clears its labels and review confirmation.
 
 Primary actions: **Add cover**, **Show original**, **Undo**, **Done, next photo**. Redo sits beside Undo. Descriptive metadata stays outside the photo workspace.
 
@@ -22,9 +22,9 @@ Primary actions: **Add cover**, **Show original**, **Undo**, **Done, next photo*
 
 Detection places numbered, opaque stickers. The first unresolved face is initially selected. Selecting a face shows a small local crop of the original in the panel, so the teacher can identify it without repeatedly hiding every sticker. The original crop is only for editing on the teacher's device.
 
-The panel asks **“Who is in the photo?”** and lists the classroom's children, with name search for longer lists. Children already labelled in the photo have an “Already in photo” marker but remain selectable: a child may also appear in a mirror. Do not suggest identity from a face or automatically copy it from a neighbouring photo.
+The panel asks **“Who is in the photo?”** and lists the classroom's children, with name search for lists longer than eight. Children already labelled in the photo carry a small tick, and say “Already in photo” to a screen reader, but remain selectable: a child may also appear in a mirror. Do not suggest identity from a face or automatically copy it from a neighbouring photo.
 
-Choosing a name immediately saves the assignment in the draft and advances to the next unresolved face. A brief status confirms “Assigned: Ana”; Undo restores both the assignment and the previous selection. After the last face, the teacher reviews the whole photo rather than automatically moving to the next photo.
+Choosing a name immediately saves the assignment in the draft and advances to the next unresolved face. A brief status under the panel confirms “Named: Ana”, for everyone rather than only for screen readers; Undo restores both the assignment and the previous selection. After the last face, the teacher reviews the whole photo rather than automatically moving to the next photo.
 
 The teacher can always tap any sticker and change the assignment. Visibility information, when shown beside a name, describes “Classroom families” or “Linked families only”; it is not a switch. Parent consent cannot be changed in the editor.
 
@@ -51,7 +51,7 @@ Overlapping covers trigger a warning. Overlap areas become separate encrypted pa
 
 ## Photo review
 
-Once every detected and manually added face is resolved, the teacher checks the entire image for missed faces. Labelled detections do not prove that the detector found everyone. The teacher completes the photo with **“Reviewed, next”**.
+Once every detected and manually added face is resolved, the teacher checks the entire image for missed faces. Labelled detections do not prove that the detector found everyone. The teacher completes the photo with **“Reviewed, next photo”**, which is refused while a face is unresolved and says how many are left. A photo already reviewed says so and offers the next one instead.
 
 If detection finds nothing, show “No faces found — review the photo”. Manual review or adding covers is still required. Detection failure offers retry and manual labelling; it never automatically marks the photo ready.
 
@@ -59,11 +59,11 @@ Changing a child assignment, position or size, or adding or removing a cover, in
 
 ## Final event review
 
-Review uses the actual prepared raster and patches, through the same renderer used by parents. The initial **“All covers”** view checks the safe base. Teachers can also select the view of a family without its own child in the photo, a specific family, or staff. Family options include the card name and linked children's names. The selected audience applies across the gallery. The final image is shown first; comparison with the original is a separate toggle with labelled sides.
+Review uses the actual prepared raster and patches, through the same renderer used by parents. The initial **“All covers”** view checks the safe base. Teachers can also select the view of a family without its own child in the photo, a specific family, or staff. Family options include the card name and linked children's names. The selected audience applies across the gallery. Two chips pick the view: the final image first, or the comparison with the original, whose sides are labelled.
 
 Publication does not require manually checking every possible family. It requires reviewed photos, valid permissions and final gallery review. Teachers can return to editing to fix a photo; changes require its review again.
 
-The final action is **“Publish event”**, with the audience and duration available in the form. Upload shows real progress and a clear status; the event appears only when the entire publication is ready. If parent settings changed, preserve manual labels, prepare permissions again and request another review of the changed result. Do not send the teacher back to the beginning.
+The final action is **“Publish event”**, beside the way back to the photos, under a line repeating the title, date and duration entered in the first step. Preparing and uploading show a bar and a count; the event appears only when the entire publication is ready. If parent settings changed, preserve manual labels, prepare permissions again and request another review of the changed result. Do not send the teacher back to the beginning.
 
 ## States and recovery
 

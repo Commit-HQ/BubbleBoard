@@ -49,6 +49,17 @@ export function formatDateTime(locale: Locale, time: number) {
 	return messages[locale].app.dateTime(day, month, date.getFullYear(), clock);
 }
 
+/** A day on its own, such as an event's date, from its `YYYY-MM-DD` form (`app.date`). */
+export function formatDay(locale: Locale, iso: string) {
+	// Read as local time: `new Date('2026-09-20')` is UTC midnight, which is the day before in the west.
+	const date = new Date(`${iso}T00:00`);
+	if (Number.isNaN(date.getTime())) return iso;
+	const [day, month] = [date.getDate(), date.getMonth() + 1].map((part) =>
+		String(part).padStart(2, '0')
+	);
+	return messages[locale].app.date(day, month, date.getFullYear());
+}
+
 /** A file's size, such as “240 kB” or “3.4 MB”. */
 export function fileSize(locale: Locale, bytes: number) {
 	const megabytes = bytes >= 1e6;

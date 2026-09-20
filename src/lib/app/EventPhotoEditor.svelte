@@ -20,18 +20,24 @@
 		type Rect
 	} from '$lib/events/editor';
 	import { prepareEditorImage, safePreview } from '$lib/events/images';
-	import { errorMessage, messages, type Locale } from '$lib/i18n';
+	import { errorMessage, formatDay, messages, type Locale } from '$lib/i18n';
 	import type { EventDraft } from '$lib/events/publishing';
+	import type { Sticker } from '$lib/events/stickers';
 	import { appPath } from '$lib/paths';
-	import { noticeDays } from '$lib/notices';
 	import { errorCode } from '$lib/errors';
 	import Icon from '$lib/components/Icon.svelte';
-	import PhotoComparison from './PhotoComparison.svelte';
-	import { stickers, type Sticker } from '$lib/events/stickers';
+	import ConfirmDialog from './ConfirmDialog.svelte';
+	import EventDetails from './EventDetails.svelte';
+	import EventPhotoStrip from './EventPhotoStrip.svelte';
 	import FaceCanvas from './FaceCanvas.svelte';
+	import FacePanel from './FacePanel.svelte';
+	import PhotoComparison from './PhotoComparison.svelte';
 	import { getApp } from './state.svelte';
-	import { alert, button, field, filePicker } from './ui';
+	import { alert, button, field, filePicker, surface } from './ui';
 
+	// Preparing an event's gallery, in the three steps the teacher works through: the event itself, then its
+	// photos one at a time, then the review that publishes them. Photos are opened, covered and packaged on
+	// this device; the draft lives only on this page (docs/events-editor.md).
 	type Photo = {
 		id: string;
 		blob: Blob;
@@ -46,7 +52,10 @@
 	const app = getApp();
 	const t = $derived(messages[locale].app.eventEditor);
 	const e = $derived(messages[locale].app.events);
+	const a = $derived(messages[locale].app.actions);
 	const publishable = typeof app.prepareEvent === 'function';
+
+	let step = $state<'details' | 'photos' | 'review'>('details');
 	let title = $state(''),
 		description = $state(''),
 		date = $state(new Date().toLocaleDateString('en-CA')),
@@ -62,14 +71,15 @@
 	let photos = $state.raw<Photo[]>([]);
 	let current = $state('');
 	let loading = $state(false);
+	/** Which of the photos being opened this one is, so a phone full of photos says how far it's got. */
+	let opening = $state({ done: 0, total: 0 });
 	let detecting = $state('');
 	let error = $state('');
 	let feedback = $state('');
-	let search = $state('');
+	let removing = $state(false);
 	let original = $state(false);
 	let zoom = $state(1);
 	let viewCenter = $state<{ x: number; y: number }>();
-	let preview = $state(false);
 	let previewUrl = $state('');
 	let previewBusy = $state(false);
 	let previewError = $state(false);
@@ -80,16 +90,18 @@
 	const edit = $derived(photo?.history.present);
 	const selected = $derived(edit?.regions.find((r) => r.id === edit.selected));
 	const children = $derived(app.catalog.children.filter((c) => c.classroom === classroom));
-	const filtered = $derived(
-		children.filter((c) =>
-			c.name.toLocaleLowerCase(locale).includes(search.toLocaleLowerCase(locale))
-		)
-	);
+	const reviewedCount = $derived(photos.filter((p) => p.history.present.reviewed).length);
 	const allReviewed = $derived(
-		photos.length > 0 && photos.every((p) => p.history.present.reviewed) && !loading && !detecting
+		photos.length > 0 && reviewedCount === photos.length && !loading && !detecting
 	);
+	const nextUnreviewed = $derived(
+		photos.find((p) => p.id !== current && !p.history.present.reviewed)?.id
+	);
+	const ready = $derived(!!classroom && (!publishable || (!!title.trim() && !!date)));
 	const overlap = $derived(
-		edit?.regions.some((a, i) => edit.regions.slice(i + 1).some((b) => overlaps(a, b))) ?? false
+		edit?.regions.some((one, index) =>
+			edit.regions.slice(index + 1).some((two) => overlaps(one, two))
+		) ?? false
 	);
 	const roster = $derived(children.map((c) => `${c.id}:${c.name}`).join('|'));
 	let lastRoster = $state(untrack(() => roster));
@@ -113,7 +125,7 @@
 						}
 					}
 				}));
-				preview = false;
+				backToPhotos();
 				feedback = t.rosterChanged;
 			}
 		}
@@ -138,15 +150,20 @@
 	function select(id: string) {
 		if (photo)
 			setHistory({ ...photo.history, present: { ...photo.history.present, selected: id } });
-		search = '';
 	}
 	function switchPhoto(id: string) {
 		current = id;
 		original = false;
 		zoom = 1;
 		viewCenter = undefined;
-		search = '';
 		feedback = '';
+		error = '';
+	}
+	/** Back from the review: the prepared draft is no longer the photos as they are. */
+	function backToPhotos() {
+		if (step === 'review') step = 'photos';
+		draft = undefined;
+		original = false;
 	}
 	function changeRegion(id: string, rect: Rect) {
 		if (!photo) return;
@@ -174,14 +191,21 @@
 		);
 		setHistory(commit(photo.history, [...edit.regions, region], region.id));
 		original = false;
-		search = '';
 	}
 	function nameFace(child: string | null) {
 		if (!photo || !selected) return;
 		setHistory(assign(photo.history, selected.id, child));
-		search = '';
 		original = false;
 		feedback = child ? t.assigned(children.find((c) => c.id === child)?.name ?? '') : t.coveredDone;
+	}
+	function setSticker(sticker: Sticker) {
+		if (!photo || !edit || !selected) return;
+		setHistory(
+			commit(
+				photo.history,
+				edit.regions.map((r) => (r.id === selected.id ? { ...r, sticker } : r))
+			)
+		);
 	}
 	function removeCover() {
 		if (!photo || !selected) return;
@@ -268,9 +292,11 @@
 		}
 		loading = true;
 		error = '';
+		opening = { done: 0, total: files.length };
 		try {
 			for (const file of files) {
 				if (disposed) break;
+				opening = { ...opening, done: opening.done + 1 };
 				try {
 					const image = await prepareEditorImage(file);
 					if (disposed) break;
@@ -291,6 +317,7 @@
 			}
 		} finally {
 			loading = false;
+			opening = { done: 0, total: 0 };
 		}
 	}
 	function reviewPhoto() {
@@ -313,13 +340,14 @@
 		revoke(photo.url);
 		photos = photos.filter((p) => p.id !== id);
 		switchPhoto(photos[0]?.id ?? '');
-		if (!photos.length) preview = false;
+		draft = undefined;
+		removing = false;
 	}
 	$effect(() => {
 		const target = photo;
-		const ready = draft,
+		const prepared = draft,
 			recipient = viewer;
-		if (!preview || !target) {
+		if (step !== 'review' || !target) {
 			untrack(() => {
 				revoke(previewUrl);
 				previewUrl = '';
@@ -333,8 +361,8 @@
 			revoke(previewUrl);
 			previewUrl = '';
 		});
-		(ready
-			? app.eventPreview(ready, target.id, recipient)
+		(prepared
+			? app.eventPreview(prepared, target.id, recipient)
 			: safePreview(target.blob, target.history.present.regions)
 		)
 			.then((blob) => {
@@ -366,7 +394,7 @@
 				if (!allReviewed) throw new Error('stale');
 				draft = prepared;
 			}
-			preview = true;
+			step = 'review';
 		} catch (cause) {
 			publicationError = errorCode(cause);
 		} finally {
@@ -430,189 +458,146 @@
 	}}
 />
 
-<fieldset disabled={working} class="grid min-w-0 gap-5">
-	<p class="text-sm text-muted">{t.local}</p>
-	{#if publishable}<div class="grid gap-3 sm:grid-cols-2">
-			<label class={field.label}
-				><span>{e.name}</span><input
-					class={field.input}
-					maxlength="160"
-					bind:value={title}
-					required
-				/></label
-			>
-			<label class={field.label}
-				><span>{e.date}</span><input
-					class={field.input}
-					type="date"
-					bind:value={date}
-					required
-				/></label
-			>
-			<label class="{field.label} sm:col-span-2"
-				><span>{e.description}</span><textarea
-					class={field.input}
-					maxlength="5000"
-					bind:value={description}></textarea></label
-			>
-			<label class={field.label}
-				><span>{e.days}</span><select class={field.input} bind:value={days}
-					>{#each noticeDays as value}<option {value}>{value}</option>{/each}</select
-				></label
-			>
-		</div>{/if}
-	{#if working}<p role="status">
-			{sending ? e.uploading : e.preparing} ({progress}/{photos.length})
-		</p>{/if}
-	{#if publicationError}<p role="alert" class={alert}>
-			{publicationError === 'stale' ? e.stale : errorMessage(locale, publicationError)}
-		</p>{/if}
-	{#if error}<p class={alert} role="alert">{error}</p>{/if}
-	<div class="flex flex-wrap items-end gap-3">
-		<label class="{field.label} min-w-48 flex-1"
-			><span class={field.name}>{t.classroom}</span><select
-				class={field.input}
-				bind:value={classroom}
-				disabled={photos.length > 0 || loading}
-				><option value="" disabled>{t.classroom}</option>{#each app.myClassrooms as c}<option
-						value={c.id}>{c.name}</option
-					>{/each}</select
-			></label
-		>
-		{#if !preview}<label class="{button.primary} {filePicker}"
-				>{t.add}<input
-					class="sr-only"
-					type="file"
-					accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
-					multiple
-					onchange={addPhotos}
-					disabled={!classroom || loading || !!detecting || photos.length >= maxEventPhotos}
-				/></label
-			>{/if}
-	</div>
-	{#if loading}<p role="status">{t.loading}</p>{/if}
-	{#if photos.length}
-		<div class="flex flex-wrap gap-2" aria-label={t.title}>
-			{#each photos as item, i (item.id)}
-				<button
-					type="button"
-					class="{button.chip} gap-2"
-					aria-pressed={item.id === current}
-					onclick={() => switchPhoto(item.id)}
-					><img src={item.url} alt="" class="size-10 rounded-lg object-cover" /><span>{i + 1}</span
-					><span
-						>{item.history.present.reviewed
-							? t.reviewed
-							: item.detection === 'pending'
-								? t.detecting
-								: t.reviewNeeded}</span
-					></button
-				>
-			{/each}
+{#snippet steps(now: number)}
+	<ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold">
+		{#each t.steps as label, index (label)}
+			<li class="flex items-center gap-2" aria-current={index === now ? 'step' : undefined}>
+				{#if index}<Icon name="chevronRight" class="size-4 text-muted" />{/if}
+				<span class="flex items-center gap-2 {index === now ? 'text-ink' : 'text-muted'}">
+					<span
+						class="grid size-6 place-items-center rounded-full text-xs {index < now
+							? 'bg-ink text-white'
+							: index === now
+								? 'bg-accent text-white'
+								: 'bg-ink/10 text-muted'}"
+					>
+						{#if index < now}<Icon name="check" class="size-3.5" />{:else}{index + 1}{/if}
+					</span>
+					{label}
+				</span>
+			</li>
+		{/each}
+	</ol>
+{/snippet}
+
+{#snippet addButton(style: string, label: string)}
+	<label class="{style} {filePicker}">
+		<Icon name="plus" class="size-4" />{label}
+		<input
+			class="sr-only"
+			type="file"
+			accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+			multiple
+			onchange={addPhotos}
+			disabled={!classroom || loading || !!detecting || photos.length >= maxEventPhotos}
+		/>
+	</label>
+{/snippet}
+
+{#snippet busy()}
+	{#if working}
+		<div class="grid gap-2" role="status">
+			<p class="font-semibold text-muted">
+				{sending ? e.uploading : e.preparing} ({progress}/{photos.length})
+			</p>
+			<progress value={progress} max={photos.length}></progress>
 		</div>
 	{/if}
-	{#if photo && edit}
-		<div class="flex flex-wrap items-center justify-between gap-2">
-			<h2 class="text-2xl">{t.photo(photos.indexOf(photo) + 1, photos.length)}</h2>
-			{#if !preview}<button type="button" class={button.danger} onclick={removePhoto}
-					>{t.removePhoto}</button
-				>{/if}
-		</div>
-		{#if preview}
-			<p class="text-muted">{e.ready}</p>
-			{#if draft}<label class={field.label}
-					><span>{e.previewAs}</span><select class={field.input} bind:value={viewer}>
-						<option value="base">{e.base}</option><option value="">{e.groupView}</option><option
-							value="staff">{e.staffView}</option
-						>
-						{#each app.catalog.families.filter( (f) => f.classrooms.includes(classroom) ) as family}<option
-								value={family.id}
-								>{family.name} — {children
-									.filter((c) => c.families.includes(family.id))
-									.map((c) => c.name)
-									.join(', ')}</option
-							>{/each}
-					</select></label
-				>{/if}
+{/snippet}
+
+{#if !app.myClassrooms.length}
+	<p class="text-muted">{messages[locale].app.notices.noClassrooms}</p>
+{:else}
+	<fieldset disabled={working} class="grid min-w-0 gap-5">
+		{@render steps(step === 'details' ? 0 : step === 'photos' ? 1 : 2)}
+
+		{#if error}<p class={alert} role="alert">{error}</p>{/if}
+		{#if publicationError}<p role="alert" class={alert}>
+				{publicationError === 'stale' ? e.stale : errorMessage(locale, publicationError)}
+			</p>{/if}
+
+		{#if step === 'details'}
+			<EventDetails
+				{locale}
+				classrooms={app.myClassrooms}
+				{publishable}
+				locked={photos.length > 0}
+				bind:classroom
+				bind:title
+				bind:date
+				bind:description
+				bind:days
+			/>
 			<button
 				type="button"
-				class="{button.secondary} justify-self-start"
-				aria-pressed={compare}
-				onclick={() => (compare = !compare)}>{compare ? e.finalView : e.compareView}</button
+				class="{button.primary} justify-self-start"
+				disabled={!ready}
+				onclick={() => (step = 'photos')}
 			>
-			{#if previewBusy}<p role="status">{t.loading}</p>{:else if previewError}<p
-					class={alert}
-					role="alert"
-				>
-					{t.previewFailed}
-				</p>{:else if previewUrl}{#if compare}<PhotoComparison
-						original={photo.url}
-						covered={previewUrl}
-						width={photo.width}
-						height={photo.height}
-						label={t.compare}
-						beforeLabel={e.before}
-						afterLabel={e.after}
-					/>{:else}<img src={previewUrl} alt={e.finalView} class="w-full rounded-2xl" />{/if}{/if}
-			<button
-				type="button"
-				class="{button.secondary} justify-self-start"
-				onclick={() => {
-					preview = false;
-					draft = undefined;
-					original = false;
-				}}>{t.back}</button
-			>
-			{#if draft}<button
-					type="button"
-					class={button.primary}
-					disabled={!title.trim() ||
-						!date ||
-						previewBusy ||
-						previewError ||
-						publicationError === 'stale'}
-					onclick={publish}>{e.publish}</button
-				>{/if}
-		{:else}
-			{#if photo.detection === 'pending'}<div
-					class="flex flex-wrap items-center gap-3"
-					role="status"
-				>
-					<span>{t.detecting}</span><button type="button" class={button.secondary} onclick={manual}
-						>{t.manual}</button
-					>
+				{t.continue}<Icon name="arrowRight" class="size-4" />
+			</button>
+		{:else if step === 'photos'}
+			<p class="flex items-start gap-2 text-sm text-muted">
+				<Icon name="info" class="mt-0.5 size-4 shrink-0" />{t.local}
+			</p>
+
+			{#if !photos.length}
+				<div class="{surface} grid justify-items-start gap-4">
+					<p class="text-muted">{t.none}</p>
+					{@render addButton(button.primary, t.add)}
+					<p class={field.hint}>{t.limit}</p>
 				</div>
-			{:else if photo.detection === 'failed'}<p class={alert} role="status">{t.failed}</p>
-				<button
-					class="{button.secondary} justify-self-start"
-					type="button"
-					disabled={!!detecting || loading}
-					onclick={() => detect(photo!.id)}>{t.retry}</button
-				>
-			{:else if photo.detection === 'ready' && !edit.regions.length}<p class="text-muted">
-					{t.noFaces}
-				</p>{/if}
-			<div class="grid min-w-0 gap-3">
-				<div class="grid min-w-0 gap-3" inert={working}>
-					<div class="flex flex-wrap items-center gap-2">
+			{:else}
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<p class="font-semibold" role="status">{t.progress(reviewedCount, photos.length)}</p>
+					{@render addButton(button.secondary, t.addMore)}
+				</div>
+				<EventPhotoStrip {locale} {photos} {current} onpick={switchPhoto} />
+			{/if}
+
+			{#if loading}
+				<p class="font-semibold text-muted" role="status">
+					{opening.total > 1 ? t.adding(opening.done, opening.total) : t.loading}
+				</p>
+			{/if}
+
+			{#if photo && edit}
+				<div class="flex flex-wrap items-center justify-between gap-2">
+					<h2 class="text-2xl">{t.photo(photos.indexOf(photo) + 1, photos.length)}</h2>
+					<button type="button" class={button.danger} onclick={() => (removing = true)}>
+						<Icon name="trash" class="size-4" />{t.removePhoto}
+					</button>
+				</div>
+
+				<div class="overflow-hidden rounded-3xl bg-white/50 ring-1 ring-ink/15">
+					<div
+						class="flex flex-wrap items-center gap-1 border-b border-ink/10 bg-white/50 p-1.5"
+						role="toolbar"
+						aria-label={t.tools}
+					>
 						<button
 							type="button"
-							class={button.primary}
+							class={button.secondary}
 							onclick={addCover}
-							disabled={edit.regions.length >= maxRegions}>{t.addCover}</button
-						><button
+							disabled={edit.regions.length >= maxRegions}
+						>
+							<Icon name="plus" class="size-4" />{t.addCover}
+						</button>
+						<button
 							type="button"
-							class="{button.secondary} aria-pressed:ring-2 aria-pressed:ring-ink"
+							class="{button.secondary} aria-pressed:bg-ink aria-pressed:text-white aria-pressed:ring-ink aria-pressed:hover:bg-ink"
 							aria-pressed={original}
 							onclick={() => (original = !original)}>{original ? t.covers : t.original}</button
-						><button
+						>
+						<button
 							type="button"
 							class="{button.icon} disabled:opacity-40"
 							aria-label={t.undo}
 							title={t.undo}
 							disabled={!photo.history.past.length}
 							onclick={() => setHistory(undo(photo!.history))}><Icon name="undo" /></button
-						><button
+						>
+						<button
 							type="button"
 							class="{button.icon} disabled:opacity-40"
 							aria-label={t.redo}
@@ -620,18 +605,21 @@
 							disabled={!photo.history.future.length}
 							onclick={() => setHistory(redo(photo!.history))}><Icon name="redo" /></button
 						>
-						<label class="ml-auto flex min-h-11 items-center gap-3"
-							><span class="text-sm whitespace-nowrap">{t.zoom}: {zoom}×</span><input
+						<label class="ml-auto flex min-h-11 items-center gap-2 pr-2 text-sm">
+							<span class="whitespace-nowrap">{t.zoom}</span>
+							<input
 								type="range"
-								class="w-28 sm:w-40"
+								class="w-24 sm:w-36"
 								min="1"
 								max="4"
 								step="0.25"
 								bind:value={zoom}
-							/></label
-						>
+							/>
+							<span class="w-9 text-right text-muted tabular-nums">{zoom}×</span>
+						</label>
 					</div>
-					{#key photo.id}<FaceCanvas
+					{#key photo.id}
+						<FaceCanvas
 							url={photo.url}
 							width={photo.width}
 							height={photo.height}
@@ -645,100 +633,186 @@
 							onselect={select}
 							onchange={changeRegion}
 							onviewchange={(center) => (viewCenter = center)}
-						/>{/key}
+						/>
+					{/key}
 				</div>
-				<div class="grid gap-3">
-					{#if selected}
-						<div class="flex items-center gap-3">
-							<svg
-								viewBox={`${selected.x} ${selected.y} ${selected.width} ${selected.height}`}
-								class="size-20 shrink-0 rounded-xl bg-ink/5"
-								role="img"
-								aria-label={t.crop}
-								><image
-									href={photo.url}
-									x="0"
-									y="0"
-									width={photo.width}
-									height={photo.height}
-								/></svg
-							>
-							<div>
-								<h3 class="font-sans text-lg font-semibold">{t.who}</h3>
-							</div>
-						</div>
-						<label class={field.label}
-							><span class="sr-only">{t.search}</span><input
-								class={field.input}
-								type="search"
-								bind:value={search}
-								placeholder={t.search}
-							/></label
+				<p class={field.hint}>{t.gesture}</p>
+
+				{#if photo.detection === 'pending'}
+					<p class="flex flex-wrap items-center gap-3" role="status">
+						<span class="font-semibold text-muted">{t.detecting}</span>
+						<button type="button" class={button.quiet} onclick={manual}>{t.manual}</button>
+					</p>
+				{:else if photo.detection === 'failed'}
+					<div class="grid justify-items-start gap-3">
+						<p class={alert} role="status">{t.failed}</p>
+						<button
+							type="button"
+							class={button.secondary}
+							disabled={!!detecting || loading}
+							onclick={() => detect(photo!.id)}
 						>
-						<div class="flex max-h-56 flex-wrap gap-2 overflow-y-auto">
-							{#each filtered as child}<button
-									type="button"
-									class={button.chip}
-									aria-pressed={selected.child === child.id}
-									onclick={() => nameFace(child.id)}
-									>{child.name}{#if edit.regions.some((r) => r.id !== selected.id && r.child === child.id)}<span
-											class="sr-only"
-										>
-											— {t.already}</span
-										>{/if}</button
-								>{/each}
-							{#if !filtered.length}<p class="text-muted">{t.empty}</p>{/if}
-						</div>
-						<div class="flex flex-wrap gap-2" aria-label={t.stickers}>
-							{#each Object.entries(stickers) as [name, url]}
-								<button
-									type="button"
-									class={button.chip}
-									aria-label={t.stickerNames[name as Sticker]}
-									aria-pressed={(selected.sticker ?? 'smile') === name}
-									onclick={() =>
-										setHistory(
-											commit(
-												photo!.history,
-												edit.regions.map((r) =>
-													r.id === selected!.id ? { ...r, sticker: name as Sticker } : r
-												)
-											)
-										)}><img src={url} alt="" class="size-10 rounded-lg" /></button
-								>
-							{/each}
-						</div>
-						<div class="flex flex-wrap gap-2">
+							<Icon name="refresh" class="size-4" />{t.retry}
+						</button>
+					</div>
+				{:else if !edit.regions.length}
+					<p class="text-muted">{photo.detection === 'ready' ? t.noFaces : t.noCovers}</p>
+				{/if}
+
+				<FacePanel
+					{locale}
+					url={photo.url}
+					width={photo.width}
+					height={photo.height}
+					regions={edit.regions}
+					{selected}
+					{children}
+					{feedback}
+					onassign={nameFace}
+					onremove={removeCover}
+					onsticker={setSticker}
+				/>
+
+				{#if overlap}<p class="rounded-2xl bg-apricot/20 p-3 text-sm">{t.overlap}</p>{/if}
+
+				<div class="flex flex-wrap items-center gap-3">
+					{#if edit.reviewed}
+						<p class="flex items-center gap-2 font-semibold text-green-800">
+							<Icon name="check" class="size-4" />{t.reviewed}
+						</p>
+						{#if nextUnreviewed}
 							<button
 								type="button"
 								class={button.secondary}
-								aria-pressed={selected.covered}
-								onclick={() => nameFace(null)}>{t.covered}</button
+								onclick={() => switchPhoto(nextUnreviewed)}
 							>
-							<button type="button" class={button.danger} onclick={removeCover}
-								><Icon name="trash" />{t.removeCover}</button
-							>
-						</div>
-					{:else}<h3 class="font-sans text-lg font-semibold">{t.who}</h3>{/if}
-					{#if unresolved(edit)}<p role="status">{t.remaining(unresolved(edit))}</p>{/if}
-					<p role="status" class="sr-only">{feedback}</p>
+								{t.nextPhoto}<Icon name="arrowRight" class="size-4" />
+							</button>
+						{/if}
+					{:else}
+						<button
+							type="button"
+							class={button.primary}
+							disabled={unresolved(edit) > 0 || photo.detection === 'pending'}
+							onclick={reviewPhoto}
+						>
+							<Icon name="check" class="size-4" />{t.review}
+						</button>
+						<p class="text-sm font-semibold text-muted" role="status">
+							{unresolved(edit) ? t.remaining(unresolved(edit)) : t.checkHint}
+						</p>
+					{/if}
 				</div>
+			{/if}
+
+			{@render busy()}
+
+			<div class="flex flex-wrap gap-3 border-t border-ink/10 pt-5">
+				<button type="button" class={button.primary} disabled={!allReviewed} onclick={startPreview}>
+					{publishable ? e.review : t.preview}<Icon name="arrowRight" class="size-4" />
+				</button>
+				<button type="button" class={button.secondary} onclick={() => (step = 'details')}>
+					<Icon name="chevronLeft" class="size-4" />{t.backToDetails}
+				</button>
 			</div>
-			{#if overlap}<p class="rounded-2xl bg-apricot/20 p-3 text-sm">{t.overlap}</p>{/if}
-			<div class="flex flex-wrap gap-3">
+		{:else}
+			<div>
+				<h2 class="text-3xl">{e.review}</h2>
+				<p class="mt-2 text-muted">{e.ready}</p>
+				{#if publishable}
+					<p class="mt-2 text-sm text-muted">
+						{title} · {formatDay(locale, date)} · {messages[locale].app.notices.dayCount(days)}
+					</p>
+				{/if}
+			</div>
+
+			{#if photos.length > 1}
+				<EventPhotoStrip {locale} {photos} {current} onpick={switchPhoto} />
+			{/if}
+
+			{#if draft}
+				<label class={field.label}>
+					<span class={field.name}>{e.previewAs}</span>
+					<select class={field.input} bind:value={viewer}>
+						<option value="base">{e.base}</option>
+						<option value="">{e.groupView}</option>
+						<option value="staff">{e.staffView}</option>
+						{#each app.catalog.families.filter( (f) => f.classrooms.includes(classroom) ) as family (family.id)}
+							<option value={family.id}
+								>{family.name} — {children
+									.filter((c) => c.families.includes(family.id))
+									.map((c) => c.name)
+									.join(', ')}</option
+							>
+						{/each}
+					</select>
+				</label>
+			{/if}
+
+			<div class="flex flex-wrap gap-2">
 				<button
 					type="button"
-					class={button.primary}
-					disabled={unresolved(edit) > 0 || photo.detection === 'pending'}
-					onclick={reviewPhoto}>{edit.reviewed ? t.reviewed : t.review}</button
+					class={button.chip}
+					aria-pressed={!compare}
+					onclick={() => (compare = false)}>{e.finalView}</button
+				>
+				<button
+					type="button"
+					class={button.chip}
+					aria-pressed={compare}
+					onclick={() => (compare = true)}>{e.compareView}</button
 				>
 			</div>
-			<button
-				type="button"
-				class="{button.secondary} justify-self-start"
-				disabled={!allReviewed}
-				onclick={startPreview}>{publishable ? e.review : t.preview}</button
-			>
+
+			{#if previewBusy}
+				<p class="font-semibold text-muted" role="status">{e.loading}</p>
+			{:else if previewError}
+				<p class={alert} role="alert">{t.previewFailed}</p>
+			{:else if previewUrl && photo}
+				{#if compare}
+					<PhotoComparison
+						original={photo.url}
+						covered={previewUrl}
+						width={photo.width}
+						height={photo.height}
+						label={t.compare}
+						beforeLabel={e.before}
+						afterLabel={e.after}
+					/>
+				{:else}
+					<img src={previewUrl} alt={e.finalView} class="w-full rounded-2xl" />
+				{/if}
+			{/if}
+
+			{@render busy()}
+
+			<div class="flex flex-wrap gap-3 border-t border-ink/10 pt-5">
+				{#if draft}
+					<button
+						type="button"
+						class={button.primary}
+						disabled={previewBusy || previewError || publicationError === 'stale'}
+						onclick={publish}
+					>
+						<Icon name="check" class="size-4" />{sending ? a.working : e.publish}
+					</button>
+				{/if}
+				<button type="button" class={button.secondary} onclick={backToPhotos}>
+					<Icon name="chevronLeft" class="size-4" />{t.back}
+				</button>
+			</div>
 		{/if}
+	</fieldset>
+
+	{#if removing}
+		<ConfirmDialog
+			{locale}
+			title={t.removePhoto}
+			copy={t.removePhotoCopy}
+			confirmLabel={t.removePhoto}
+			danger
+			onconfirm={async () => removePhoto()}
+			onclose={() => (removing = false)}
+		/>
 	{/if}
-</fieldset>
+{/if}

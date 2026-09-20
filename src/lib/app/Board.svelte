@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { messages, type Locale } from '$lib/i18n';
+	import Icon from '$lib/components/Icon.svelte';
+	import { formatDay, messages, type Locale } from '$lib/i18n';
 	import type { Notice } from '$lib/notices';
 	import BoardPhoto from './BoardPhoto.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
@@ -74,14 +75,15 @@
 	{#if app.eventsError}<p role="status" class="text-sm text-muted">{t.events.failed}</p>{/if}
 	{#each app.events.filter((e) => !shown || e.classroom === shown) as event (event.id)}
 		<article class="{surface} grid gap-3">
-			<p class="text-sm text-muted">{t.events.title} · {event.value.date}</p>
+			<p class="text-sm text-muted">{t.events.title} · {formatDay(locale, event.value.date)}</p>
 			<h2 class="text-3xl">{event.value.title}</h2>
 			<p class="line-clamp-3 whitespace-pre-wrap">{event.value.description}</p>
 			<a
 				class="{button.secondary} justify-self-start"
 				href={`${appPath(locale, 'event')}?id=${event.id}`}
-				>{t.events.open} ({event.value.photos.length})</a
 			>
+				<Icon name="image" class="size-4" />{t.events.open} ({event.value.photos.length})
+			</a>
 		</article>
 	{/each}
 	{#if app.unreadableNotices}

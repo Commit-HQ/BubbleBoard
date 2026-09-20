@@ -6,6 +6,6 @@
 	let { data }: PageProps = $props();
 </script>
 
-<Screen locale={data.locale} title={messages[data.locale].app.eventEditor.title}>
+<Screen locale={data.locale} title={messages[data.locale].app.events.new}>
 	<EventPhotoEditor locale={data.locale} />
 </Screen>

@@ -9,7 +9,6 @@
 		maxOptionLength,
 		maxPollOptions,
 		minPollOptions,
-		noticeDays,
 		type Notice,
 		type Paper,
 		type PollOption
@@ -18,9 +17,10 @@
 	import AttachFiles from './AttachFiles.svelte';
 	import CheckCard from './CheckCard.svelte';
 	import Checklist from './Checklist.svelte';
+	import DaysChoice from './DaysChoice.svelte';
 	import NoticeEditor from './NoticeEditor.svelte';
 	import { getApp, Task } from './state.svelte';
-	import { alert, button, choice, field, surface } from './ui';
+	import { alert, button, field, surface } from './ui';
 
 	// A notice's text on its paper, poll, files, classrooms, and days, to post or change. Teachers post to their
 	// own classrooms and admins to any. The editor's toolbar chooses the paper, which it shows the text on.
@@ -76,12 +76,6 @@
 	let editor = $state<ReturnType<typeof NoticeEditor>>();
 	let ready = $state(false);
 
-	/** When the notice comes down: its days count from when it was first posted. */
-	const until = $derived(
-		new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(
-			(notice?.postedAt ?? Date.now()) + days * day
-		)
-	);
 	/** Whether saving clears the answers given: families would see the counts, or stop seeing them. */
 	const clearsAnswers = $derived(
 		start.answered && start.polling && polling && counting !== start.counting
@@ -192,29 +186,7 @@
 			bind:chosen
 		/>
 
-		<fieldset>
-			<legend class="mb-3 font-semibold">{t.notices.days}</legend>
-			<div class="grid grid-cols-4 gap-2 sm:grid-cols-7">
-				{#each noticeDays as count (count)}
-					<!-- Forced colours drop the dark fill, so the chosen number is underlined there instead. -->
-					<label
-						class="{choice.option} group grid justify-items-center gap-1 rounded-2xl px-1 py-3"
-					>
-						<input class="sr-only" type="radio" name="{id}-days" value={count} bind:group={days} />
-						<span class="sr-only">{t.notices.dayCount(count)}</span>
-						<span
-							class="font-display text-3xl leading-none forced-colors:group-has-checked:underline"
-							aria-hidden="true">{count}</span
-						>
-						<span
-							class="text-xs font-semibold text-muted group-has-checked:text-white/80"
-							aria-hidden="true">{t.notices.dayUnit(count)}</span
-						>
-					</label>
-				{/each}
-			</div>
-			<p class="mt-3 text-sm text-muted">{t.notices.until(until)}</p>
-		</fieldset>
+		<DaysChoice {locale} legend={t.notices.days} from={notice?.postedAt} bind:days />
 
 		{#if notice}
 			<CheckCard label={t.notices.announce} hint={t.notices.announceHint} bind:checked={announce} />
