@@ -16,12 +16,14 @@ import {
 import type { Region, Rect } from './editor';
 import {
 	maxEventPhotoText,
+	mostEventPhotos,
 	type ConsentRow,
 	type EventPhoto,
 	type EventRecord,
 	type OpenEvent
 } from './types';
 import { readDocument, type NoticeDocument } from '$lib/notices';
+import { writesWebp } from '$lib/photos';
 import { safePreview } from './images';
 
 const bytes = async (blob: Blob) => new Uint8Array(await blob.arrayBuffer());
@@ -91,9 +93,12 @@ type Package = {
 	width: number;
 	height: number;
 	base: string;
+	/** How the safe raster is encoded, which carries no faces and so needn't be lossless. */
+	type: (typeof baseTypes)[number];
 	patches: Patch[];
 	staff: string;
 };
+const baseTypes = ['image/webp', 'image/jpeg', 'image/png'] as const;
 export type PreparedPhoto = {
 	id: string;
 	width: number;
@@ -208,12 +213,15 @@ export async function preparePackage(
 			});
 			staffKeys[part] = face.raw;
 		}
-		const base = toBase64Url(await bytes(await safePreview(blob, regions)));
+		const safe = await safePreview(blob, regions);
+		const type = baseTypes.find((known) => known === safe.type);
+		if (!type) throw new Error(`Unusable encoding: ${safe.type}`);
+		const base = toBase64Url(await bytes(safe));
 		const staff = await encryptData({ regions, keys: staffKeys }, staffKey, {
 			purpose: 'event-staff',
 			...context(event, id)
 		});
-		const value: Package = { version: 1, width, height, base, patches, staff };
+		const value: Package = { version: 1, width, height, base, type, patches, staff };
 		const sealed = await encryptBytes(new TextEncoder().encode(JSON.stringify(value)), key, {
 			purpose: 'event-photo',
 			...context(event, id)
@@ -223,10 +231,10 @@ export async function preparePackage(
 		bitmap.close();
 	}
 }
-function png(data: string) {
+function raster(data: string, type: string) {
 	const value = fromBase64Url(data);
 	if (!value) throw new UnreadableError();
-	return new Blob([value], { type: 'image/png' });
+	return new Blob([value], { type });
 }
 export async function renderPackage(
 	event: string,
@@ -249,11 +257,12 @@ export async function renderPackage(
 		Number(p.width) > 1920 ||
 		Number(p.height) > 1920 ||
 		typeof p.base !== 'string' ||
+		!baseTypes.some((known) => known === p.type) ||
 		!Array.isArray(p.patches) ||
 		p.patches.length > 400
 	)
 		throw new UnreadableError();
-	const base = await createImageBitmap(png(p.base));
+	const base = await createImageBitmap(raster(p.base, p.type as string));
 	const canvas = new OffscreenCanvas(p.width as number, p.height as number),
 		ctx = canvas.getContext('2d')!;
 	try {
@@ -337,7 +346,13 @@ export async function renderPackage(
 			/* Unreadable patches leave the safe base in place. */
 		}
 	}
-	return canvas.convertToBlob({ type: 'image/png' });
+	// What this device shows and saves, put together from the base and the patches it could open. It is
+	// never uploaded, and the pixels it holds have been through an encoder already, so it is compressed too:
+	// a lossless copy of them would be several megabytes for a family to keep.
+	return canvas.convertToBlob({
+		type: (await writesWebp()) ? 'image/webp' : 'image/jpeg',
+		quality: 0.9
+	});
 }
 export async function openEvent(record: EventRecord, groupKey: CryptoKey): Promise<OpenEvent> {
 	const raw = fields(
@@ -356,7 +371,7 @@ export async function openEvent(record: EventRecord, groupKey: CryptoKey): Promi
 		!/^\d{4}-\d{2}-\d{2}$/.test(value.date) ||
 		!Array.isArray(value.photos) ||
 		!value.photos.length ||
-		value.photos.length > 20
+		value.photos.length > mostEventPhotos
 	)
 		throw new UnreadableError();
 	const photos: EventPhoto[] = value.photos.map((photo) => {

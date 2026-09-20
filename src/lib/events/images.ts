@@ -1,4 +1,4 @@
-import { drawSmaller, openImage } from '$lib/photos';
+import { drawSmaller, openImage, writesWebp } from '$lib/photos';
 import { stickerUrl } from './stickers';
 import { coverPixels, type Region } from './editor';
 
@@ -15,7 +15,12 @@ export async function prepareEditorImage(file: Blob) {
 	}
 }
 
-/** Actual flattened safe raster, not a CSS overlay. It deliberately reveals no faces in this first slice. */
+/**
+ * Actual flattened safe raster, not a CSS overlay. It deliberately reveals no faces in this first slice.
+ * Every pixel of a cover is replaced with a flat colour and its sticker drawn over it before anything is
+ * encoded, so no face reaches the encoder: this raster is compressed like a board photo, and only the face
+ * patches, which do carry faces and their see-through edges, are kept lossless (docs/events-format.md).
+ */
 export async function safePreview(blob: Blob, regions: Region[]) {
 	const image = await createImageBitmap(blob);
 	try {
@@ -41,7 +46,11 @@ export async function safePreview(blob: Blob, regions: Region[]) {
 				if (sticker instanceof ImageBitmap) sticker.close();
 			}
 		}
-		return await canvas.convertToBlob({ type: 'image/png' });
+		// A photo with opaque covers on it has no see-through pixels, so JPEG serves where WebP can't be written.
+		return await canvas.convertToBlob({
+			type: (await writesWebp()) ? 'image/webp' : 'image/jpeg',
+			quality: 0.85
+		});
 	} finally {
 		image.close();
 	}

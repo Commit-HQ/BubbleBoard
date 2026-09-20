@@ -97,7 +97,7 @@ Cloudflare’s free allowances may suit a small kindergarten, but usage limits a
 | `STORAGE_UPLOADS_PER_MONTH`   | 900000  | Photos and files put up in a month, across R2 |
 | `STORAGE_DOWNLOADS_PER_MONTH` | 9000000 | Photos and files opened in a month, across R2 |
 
-An event's photos are the heaviest thing an installation keeps. Each one is made smaller on the phone, but it is then packaged losslessly, so that a cover can never bleed into the pixels beside it, which leaves around 5 MB for a photo: an event of thirty takes roughly 150 MB of the allowance above. Two more settings say how much of an event a teacher may prepare, and are read when you build, as the address is:
+An event's photos are the heaviest thing an installation keeps. Each one is made smaller and compressed on the phone, and the faces it covers travel beside it as small lossless patches, which comes to roughly a megabyte for a photo: an event of thirty takes something like 20 MB of the allowance above, more when its photos are full of children. Two more settings say how much of an event a teacher may prepare, and are read when you build, as the address is:
 
 | Setting                 | Default | Limits                                   |
 | ----------------------- | ------- | ---------------------------------------- |

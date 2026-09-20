@@ -1,4 +1,5 @@
 import * as publicEnv from '$env/static/public';
+import { mostEventPhotos } from './types';
 
 // How much of an event a teacher may prepare, set at build time in `.env` (see `.env.example`). The editor in
 // the browser and the route that publishes hold to the same numbers, so these are PUBLIC_ variables, which the
@@ -25,15 +26,15 @@ function setting(name: keyof Settings, fallback: number, most: number) {
 }
 
 /** How many photos one event may hold, which the server holds a publication to as well. */
-export const maxEventPhotos = setting('PUBLIC_EVENT_PHOTOS', 30, 60);
+export const maxEventPhotos = setting('PUBLIC_EVENT_PHOTOS', 30, mostEventPhotos);
 
 /** The largest photo a teacher may choose, before this device prepares a smaller one for the event. */
 export const maxEventPhotoBytes = setting('PUBLIC_EVENT_PHOTO_MB', 10, 50) * 1024 * 1024;
 
 /**
  * The most a whole prepared gallery may take, in memory while it's being prepared and in storage afterwards.
- * A photo is packaged losslessly, so that a cover can never bleed into the pixels beside it, which leaves
- * around 5 MB for a photo of the size the editor works at: the room a gallery needs follows how many photos
- * it may hold, with enough left over for a detailed one.
+ * A photo of the size the editor works at packages to well under a megabyte, so this leaves room for a
+ * crowded one, whose lossless face patches are the part that grows, and follows how many photos an event
+ * may hold. A single photo is capped on its own (`maxEventFileBytes`).
  */
-export const maxEventBytes = maxEventPhotos * 8 * 1024 * 1024;
+export const maxEventBytes = maxEventPhotos * 4 * 1024 * 1024;

@@ -8,6 +8,7 @@ import {
 	decryptBytes
 } from '$lib/crypto';
 import { sharing, facePixels, openEvent } from './package';
+import { mostEventPhotos } from './types';
 import type { EventRecord } from './types';
 
 describe('event privacy', () => {
@@ -128,6 +129,21 @@ describe('event privacy', () => {
 					{ type: 'paragraph', content: [{ type: 'text', text: 'Another.' }] }
 				]
 			});
+		});
+
+		it('refuses a gallery larger than any installation may publish', async () => {
+			const many = (count: number) =>
+				Array.from({ length: count }, () => ({ id: createId(), width: 10, height: 10 }));
+			const words = { type: 'doc', content: [] };
+			const { value } = await sealed({
+				...base,
+				description: words,
+				photos: many(mostEventPhotos)
+			});
+			expect(value.photos).toHaveLength(mostEventPhotos);
+			await expect(
+				sealed({ ...base, description: words, photos: many(mostEventPhotos + 1) })
+			).rejects.toThrow();
 		});
 
 		it('refuses words it can’t show and a photo’s words beyond the limit', async () => {

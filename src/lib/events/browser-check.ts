@@ -62,8 +62,14 @@ export async function checkEventPixels() {
 		ctx.clearRect(0, 0, 80, 40);
 		ctx.drawImage(image, 0, 0);
 		image.close();
-		return [...ctx.getImageData(x, y, 1, 1).data].join(',');
+		return [...ctx.getImageData(x, y, 1, 1).data];
 	};
+	// What a device shows is compressed (`renderPackage`), so two renderings of the same pixels land close
+	// together rather than exactly on each other, while a face that leaked would be nowhere near.
+	const near = (a: number[], b: number[]) => a.every((value, i) => Math.abs(value - b[i]) <= 16);
+	const far = (a: number[], b: number[]) => a.some((value, i) => Math.abs(value - b[i]) > 64);
+	const red = [255, 0, 0, 255],
+		blue = [0, 0, 255, 255];
 	const assert = (ok: boolean, name: string) => {
 		if (!ok) throw new Error(name);
 	};
@@ -75,12 +81,18 @@ export async function checkEventPixels() {
 		family: familyB.key
 	});
 	const outsider = await renderPackage(event, photo, prepared.sealed, eventKey.key);
-	assert((await pixel(left, 10, 15)) === '255,0,0,255', 'Family A own face');
-	assert((await pixel(right, 45, 15)) === '0,0,255,255', 'Family B own face');
-	assert((await pixel(left, 45, 15)) === (await pixel(base, 45, 15)), 'Family A cannot see B');
-	assert((await pixel(right, 10, 15)) === (await pixel(base, 10, 15)), 'Family B cannot see A');
-	assert((await pixel(left, 28, 15)) === (await pixel(base, 28, 15)), 'Overlap stays covered');
-	assert((await pixel(outsider, 10, 15)) === (await pixel(base, 10, 15)), 'Outsider sees base');
+	assert(near(await pixel(left, 10, 15), red), 'Family A own face');
+	assert(near(await pixel(right, 45, 15), blue), 'Family B own face');
+	// Each covered face must stay as the base has it, and nowhere near the face underneath it.
+	for (const [view, x, hidden, name] of [
+		[left, 45, blue, 'Family A cannot see B'],
+		[right, 10, red, 'Family B cannot see A'],
+		[left, 28, blue, 'Overlap stays covered'],
+		[outsider, 10, red, 'Outsider sees base']
+	] as const) {
+		const shown = await pixel(view, x, 15);
+		assert(near(shown, await pixel(base, x, 15)) && far(shown, hidden), name);
+	}
 	const decoded = JSON.parse(
 		new TextDecoder().decode(
 			await decryptBytes(prepared.sealed, eventKey.key, { purpose: 'event-photo', event, photo })
@@ -100,8 +112,9 @@ export async function checkEventPixels() {
 		await openContentKey(grant.key as string),
 		{ purpose: 'event-face', event, photo, part: a }
 	);
+	// The patches themselves stay lossless, so this one is exact: the zeroes are the boundary.
 	assert(
-		(await pixel(new Blob([raw], { type: 'image/png' }), 23, 10)) === '0,0,0,0',
+		(await pixel(new Blob([raw], { type: 'image/png' }), 23, 10)).join(',') === '0,0,0,0',
 		'Decrypted overlap has zero RGB and alpha'
 	);
 	const common = await preparePackage(
@@ -122,7 +135,7 @@ export async function checkEventPixels() {
 		family: familyA.key
 	});
 	assert(
-		(await pixel(commonView, 28, 15)) === '0,0,255,255',
+		near(await pixel(commonView, 28, 15), blue),
 		'Family allowed both faces sees intact overlap'
 	);
 	return 'PASS: family A, family B, outsider, overlap, decoded patch pixels';

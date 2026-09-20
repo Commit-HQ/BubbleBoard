@@ -112,7 +112,8 @@ export function drawSmaller(image: HTMLImageElement | ImageBitmap, side: number)
  * Whether the browser writes WebP. Safari writes PNG when asked for it, so a single pixel tells, and no photo
  * is encoded twice.
  */
-async function writesWebp() {
+/** Whether this browser's canvas writes WebP, which older Safari doesn't. */
+export async function writesWebp() {
 	const canvas = new OffscreenCanvas(1, 1);
 	canvas.getContext('2d');
 	const { type } = await canvas.convertToBlob({ type: 'image/webp' });

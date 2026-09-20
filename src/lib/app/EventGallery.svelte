@@ -65,7 +65,7 @@
 	}
 	/** What a saved photo is called on the device: the event and which photo of it this is. */
 	function name(position: number) {
-		return `${event.value.title}-${position + 1}.png`;
+		return `${event.value.title}-${position + 1}`;
 	}
 </script>
 
