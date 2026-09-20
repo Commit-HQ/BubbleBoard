@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import { stickerUrl } from '$lib/events/stickers';
 	import { boundedRect, type Rect, type Region } from '$lib/events/editor';
+	import FaceNames from './FaceNames.svelte';
 	let {
 		url,
 		width,
@@ -12,6 +13,7 @@
 		zoom = $bindable(1),
 		label,
 		regionLabel,
+		name,
 		onselect,
 		onchange,
 		onviewchange
@@ -25,6 +27,8 @@
 		zoom: number;
 		label: string;
 		regionLabel: (n: number) => string;
+		/** What the classroom calls a child, by its ID, written under the cover it belongs to. */
+		name: (child: string) => string;
 		onselect: (id: string) => void;
 		onchange: (id: string, rect: Rect) => void;
 		onviewchange: (center: { x: number; y: number }) => void;
@@ -49,6 +53,12 @@
 		y: Math.max(0, Math.min(height - view.height, center.y - view.height / 2))
 	});
 	const handle = $derived(Math.max(width, height) / (24 * zoom));
+	/** The covers where they are drawn, so a name follows the one being moved or resized. */
+	const drawn = $derived(
+		regions.map((region) =>
+			drag?.region?.id === region.id && draft ? { ...region, ...draft } : region
+		)
+	);
 	$effect(() => onviewchange({ x: origin.x + view.width / 2, y: origin.y + view.height / 2 }));
 	$effect(() => {
 		if (original) cancel();
@@ -193,7 +203,7 @@
 <svg
 	bind:this={svg}
 	viewBox={`${origin.x} ${origin.y} ${view.width} ${view.height}`}
-	class="block w-full touch-none rounded-2xl bg-ink/5 select-none"
+	class="block w-full touch-none bg-ink/5 select-none"
 	role="group"
 	aria-label={label}
 	onpointerdown={down}
@@ -272,5 +282,6 @@
 				{/if}
 			</g>
 		{/each}
+		<FaceNames regions={drawn} {name} />
 	{/if}
 </svg>

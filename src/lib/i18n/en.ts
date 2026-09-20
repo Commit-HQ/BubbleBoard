@@ -226,10 +226,9 @@ export const en = {
 	// In the app, what cards are and do is called a QR code: parents found "card" confusing (2026-09-13).
 	app: {
 		events: {
-			before: 'Original · staff only',
-			after: 'Selected view',
+			view: 'Photo view',
 			finalView: 'Final photo',
-			compareView: 'Compare with original',
+			originalView: 'Original photo',
 			title: 'Event',
 			new: 'New event',
 			name: 'Event title',
@@ -276,14 +275,14 @@ export const en = {
 			tools: 'Photo tools',
 			add: 'Add photos',
 			addMore: 'Add more',
-			limit: 'Choose up to 20 photos, each no larger than 50 MB.',
+			limit: (photos: number, mb: number) =>
+				`Choose up to ${photos} photos, each no larger than ${mb} MB.`,
 			none: 'Add the photos of the event. They open on this device only; nothing is sent yet.',
 			loading: 'Preparing photos…',
 			adding: (n: number, total: number) => `Preparing photo ${n} of ${total}…`,
 			photos: 'Photos',
 			caption: 'A few words about this photo',
 			captionPlaceholder: 'Optional',
-			captionHint: 'Everyone who opens the event reads these under the photo.',
 			progress: (done: number, total: number) => `${done} of ${total} photos reviewed`,
 			detecting: 'Looking for faces…',
 			failed: 'Face detection is unavailable. Add covers manually and check the whole photo.',
@@ -298,8 +297,6 @@ export const en = {
 					? '1 face still needs a name or a cover decision.'
 					: `${n} faces still need a name or a cover decision.`,
 			addCover: 'Add cover',
-			original: 'Show original',
-			covers: 'Restore covers',
 			who: 'Who is in this photo?',
 			pick: 'Tap a face on the photo to say who it is.',
 			crop: 'Original crop — visible only while editing',
@@ -314,14 +311,10 @@ export const en = {
 			redo: 'Redo',
 			zoom: 'Zoom',
 			assigned: (name: string) => `Named: ${name}`,
-			coveredDone: 'This face stays covered.',
 			reviewed: 'Reviewed',
 			review: 'Reviewed, next photo',
 			nextPhoto: 'Next photo',
 			reviewNeeded: 'Needs review',
-			checkHint: 'Check the whole photo, including faces the detector may have missed.',
-			gesture:
-				'Tap a cover to select it, then drag it or its corner. Zoom in and drag the photo to look closer.',
 			overlap:
 				'Some covers overlap. The shared area is revealed only to a family allowed to see every face there. Check the edges.',
 			removePhoto: 'Remove photo',
@@ -329,7 +322,6 @@ export const en = {
 			preview: 'Review covered photos',
 			back: 'Back to the photos',
 			previewFailed: 'Could not prepare the preview. Return to the photos and try again.',
-			compare: 'Before / after',
 			unusable: 'This photo could not be opened. Choose a JPEG, PNG, WebP or HEIC photo.',
 			leave: 'Leave this page and discard the event draft?',
 			allReviewed: 'Every photo is reviewed.',

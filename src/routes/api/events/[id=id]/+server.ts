@@ -3,19 +3,21 @@ import { publishEvent, removeEvent } from '$lib/server/events';
 import { database, objectStore, requireStaff, sessionHash } from '$lib/server/session';
 import { readJson, ids, sealed, invalid } from '$lib/server/validate';
 import { noticeDays } from '$lib/notices';
+import { maxEventPhotos } from '$lib/events/limits';
+import { maxEventContentBytes } from '$lib/events/types';
 import { announce } from '$lib/server/push';
 import type { RequestHandler } from './$types';
 export const PUT: RequestHandler = async (event) => {
 	const staff = await requireStaff(event),
 		b = await readJson(event.request);
-	const files = ids(b.files, 20);
+	const files = ids(b.files, maxEventPhotos);
 	if (!files.length || !noticeDays.includes(b.days as 30)) invalid();
 	const result = await publishEvent(
 		database(event),
 		objectStore(event),
 		staff,
 		event.params.id,
-		sealed(b.content, 32000),
+		sealed(b.content, maxEventContentBytes),
 		sealed(b.key, 256),
 		files,
 		b.days as number

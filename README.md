@@ -97,7 +97,16 @@ Cloudflare’s free allowances may suit a small kindergarten, but usage limits a
 | `STORAGE_UPLOADS_PER_MONTH`   | 900000  | Photos and files put up in a month, across R2 |
 | `STORAGE_DOWNLOADS_PER_MONTH` | 9000000 | Photos and files opened in a month, across R2 |
 
-The defaults stay a tenth below the free allowance; `0` stops uploads or downloads altogether. Months are counted in UTC. Teachers make room by taking down photos and deleting notices with files, and admins by taking files off info pages or deleting pages, which deletes their bytes right away; notices past their days leave with their files in the daily cleanup. Change a limit in `.env`, then run `npm run deploy`.
+An event's photos are the heaviest thing an installation keeps. Each one is made smaller on the phone, but it is then packaged losslessly, so that a cover can never bleed into the pixels beside it, which leaves around 5 MB for a photo: an event of thirty takes roughly 150 MB of the allowance above. Two more settings say how much of an event a teacher may prepare, and are read when you build, as the address is:
+
+| Setting                 | Default | Limits                                   |
+| ----------------------- | ------- | ---------------------------------------- |
+| `PUBLIC_EVENT_PHOTOS`   | 30      | Photos in one event                      |
+| `PUBLIC_EVENT_PHOTO_MB` | 10      | The size of a photo a teacher may choose |
+
+More photos also means more for a phone to hold while a teacher marks them, so raise these with the pilot's phones in mind.
+
+The storage defaults stay a tenth below the free allowance; `0` stops uploads or downloads altogether. Months are counted in UTC. Teachers make room by taking down photos and deleting notices with files, and admins by taking files off info pages or deleting pages, which deletes their bytes right away; notices past their days leave with their files in the daily cleanup. Change a limit in `.env`, then run `npm run deploy`.
 
 ### Backup and restore
 
@@ -183,9 +192,9 @@ See the [architecture notes](docs/architecture.md), the [access format](docs/acc
 
 ## Next slices
 
-The first event-photo editor is available to staff from **New event** on the board (`/app/event/new`, or `/en/app/event/new`). It walks through three named steps — the event, its photos, then the review that publishes them — in the same fields, day tiles, cards and buttons as the rest of the app. It opens up to 20 photos locally, detects faces on the device, lets teachers add missed covers, assign children with automatic advance, move and resize covers, undo/redo, and review flattened images with every marked face covered. It supports HEIC through the existing decoder. Detection is assistive; each photo needs a teacher's review. The model and runtime are self-hosted and load only when needed.
+The first event-photo editor is available to staff from **New event** on the board (`/app/event/new`, or `/en/app/event/new`). It walks through three named steps — the event, its photos, then the review that publishes them — in the same fields, day tiles, cards and buttons as the rest of the app. It opens up to 30 photos of at most 10 MB each locally, both set in `.env`, detects faces on the device, lets teachers add missed covers, assign children with automatic advance, move and resize covers, undo/redo, and review flattened images with every marked face covered. It supports HEIC through the existing decoder. Detection is assistive; each photo needs a teacher's review. The model and runtime are self-hosted and load only when needed.
 
-Events now include title/date/description, duration, parent consent settings, encrypted photo packages, immutable staging uploads, atomic publication, board cards, family galleries, downloads and deletion/expiry. Consent applies to future publications; every linked family must opt in for group sharing. An event's description is written with the notice editor, and every photo takes a few optional words of its own. Families open a photo on the whole screen, where a swipe moves through the gallery and Save keeps it. The editor offers three opaque stickers and a before/after comparison beside the final view. A thumbnail strip says what each photo still needs, and preparing and uploading show a bar with a count. Drafts remain only on the open page. Apply migration `0019_events.sql` before running the feature; physical phone and pilot testing remain necessary. See [event decisions](docs/events-plan.md) and [editor behavior](docs/events-editor.md).
+Events now include title/date/description, duration, parent consent settings, encrypted photo packages, immutable staging uploads, atomic publication, board cards, family galleries, downloads and deletion/expiry. Consent applies to future publications; every linked family must opt in for group sharing. An event's description is written with the notice editor, and every photo takes a few optional words of its own. Families open a photo on the whole screen, where a swipe moves through the gallery and Save keeps it. The editor offers three opaque stickers, writes each named child's name on their cover while a teacher works and reviews, and switches between the final photo and the original in both steps. A thumbnail strip says what each photo still needs, and preparing and uploading show a bar with a count. Drafts remain only on the open page. Apply migration `0019_events.sql` before running the feature; physical phone and pilot testing remain necessary. See [event decisions](docs/events-plan.md) and [editor behavior](docs/events-editor.md).
 
 For local UI checks, `/editor-check` uses fictional children and a bundled stock photo without connecting a card. That fixture is available only in development and returns 404 in production.
 

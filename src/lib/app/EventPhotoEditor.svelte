@@ -10,7 +10,6 @@
 		detectionRegion,
 		emptyEdit,
 		manualRegion,
-		maxEventPhotos,
 		maxRegions,
 		overlaps,
 		redo,
@@ -21,6 +20,7 @@
 	} from '$lib/events/editor';
 	import { prepareEditorImage, safePreview } from '$lib/events/images';
 	import { errorMessage, formatDay, messages, type Locale } from '$lib/i18n';
+	import { maxEventPhotoBytes, maxEventPhotos } from '$lib/events/limits';
 	import { maxEventPhotoText } from '$lib/events/types';
 	import type { NoticeDocument } from '$lib/notices';
 	import type { EventDraft } from '$lib/events/publishing';
@@ -32,10 +32,10 @@
 	import EventDetails from './EventDetails.svelte';
 	import EventPhotoStrip from './EventPhotoStrip.svelte';
 	import FaceCanvas from './FaceCanvas.svelte';
+	import FaceNames from './FaceNames.svelte';
 	import FacePanel from './FacePanel.svelte';
-	import PhotoComparison from './PhotoComparison.svelte';
 	import { getApp } from './state.svelte';
-	import { alert, button, field, filePicker, surface } from './ui';
+	import { alert, button, field, filePicker, segment, surface } from './ui';
 
 	// Preparing an event's gallery, in the three steps the teacher works through: the event itself, then its
 	// photos one at a time, then the review that publishes them. Photos are opened, covered and packaged on
@@ -58,6 +58,7 @@
 	const e = $derived(messages[locale].app.events);
 	const a = $derived(messages[locale].app.actions);
 	const publishable = typeof app.prepareEvent === 'function';
+	const limit = $derived(t.limit(maxEventPhotos, maxEventPhotoBytes / (1024 * 1024)));
 
 	let step = $state<'details' | 'photos' | 'review'>('details');
 	let title = $state(''),
@@ -72,7 +73,6 @@
 		progress = $state(0),
 		sending = $state(false);
 	let viewer = $state('base');
-	let compare = $state(false);
 	let publicationError = $state('');
 	let classroom = $state(app.myClassrooms.length === 1 ? app.myClassrooms[0].id : '');
 	let photos = $state.raw<Photo[]>([]);
@@ -97,6 +97,7 @@
 	const edit = $derived(photo?.history.present);
 	const selected = $derived(edit?.regions.find((r) => r.id === edit.selected));
 	const children = $derived(app.catalog.children.filter((c) => c.classroom === classroom));
+	const nameOf = (child: string) => children.find((c) => c.id === child)?.name ?? '';
 	const reviewedCount = $derived(photos.filter((p) => p.history.present.reviewed).length);
 	const allReviewed = $derived(
 		photos.length > 0 && reviewedCount === photos.length && !loading && !detecting
@@ -216,7 +217,7 @@
 		if (!photo || !selected) return;
 		setHistory(assign(photo.history, selected.id, child));
 		original = false;
-		feedback = child ? t.assigned(children.find((c) => c.id === child)?.name ?? '') : t.coveredDone;
+		feedback = child ? t.assigned(nameOf(child)) : '';
 	}
 	function setSticker(sticker: Sticker) {
 		if (!photo || !edit || !selected) return;
@@ -305,9 +306,9 @@
 		if (!files.length) return;
 		if (
 			files.length + photos.length > maxEventPhotos ||
-			files.some((f) => f.size > 50 * 1024 * 1024)
+			files.some((f) => f.size > maxEventPhotoBytes)
 		) {
-			error = t.limit;
+			error = limit;
 			return;
 		}
 		loading = true;
@@ -520,6 +521,37 @@
 	</label>
 {/snippet}
 
+{#snippet viewSwitch()}
+	<div class="{segment.group} justify-self-start" role="group" aria-label={e.view}>
+		<button
+			type="button"
+			class={segment.option}
+			aria-pressed={!original}
+			onclick={() => (original = false)}>{e.finalView}</button
+		>
+		<button
+			type="button"
+			class={segment.option}
+			aria-pressed={original}
+			onclick={() => (original = true)}>{e.originalView}</button
+		>
+	</div>
+{/snippet}
+
+{#snippet photoView(source: string, label: string)}
+	{#if photo && edit}
+		<svg
+			viewBox={`0 0 ${photo.width} ${photo.height}`}
+			class="block w-full bg-ink/5"
+			role="img"
+			aria-label={label}
+		>
+			<image href={source} x="0" y="0" width={photo.width} height={photo.height} />
+			{#if !original}<FaceNames regions={edit.regions} name={nameOf} />{/if}
+		</svg>
+	{/if}
+{/snippet}
+
 {#snippet busy()}
 	{#if working}
 		<div class="grid gap-2" role="status">
@@ -573,7 +605,7 @@
 				<div class="{surface} grid justify-items-start gap-4">
 					<p class="text-muted">{t.none}</p>
 					{@render addButton(button.primary, t.add)}
-					<p class={field.hint}>{t.limit}</p>
+					<p class={field.hint}>{limit}</p>
 				</div>
 			{:else}
 				<div class="flex flex-wrap items-center justify-between gap-3">
@@ -597,9 +629,10 @@
 					</button>
 				</div>
 
-				<div class="overflow-hidden rounded-3xl bg-white/50 ring-1 ring-ink/15">
+				<!-- The tools are a card of their own, so the photo itself keeps its own square edges. -->
+				<div class="grid gap-3">
 					<div
-						class="flex flex-wrap items-center gap-1 border-b border-ink/10 bg-white/50 p-1.5"
+						class="flex flex-wrap items-center gap-1 rounded-2xl bg-white/60 p-1.5 ring-1 ring-ink/15"
 						role="toolbar"
 						aria-label={t.tools}
 					>
@@ -611,12 +644,6 @@
 						>
 							<Icon name="plus" class="size-4" />{t.addCover}
 						</button>
-						<button
-							type="button"
-							class="{button.secondary} aria-pressed:bg-ink aria-pressed:text-white aria-pressed:ring-ink aria-pressed:hover:bg-ink"
-							aria-pressed={original}
-							onclick={() => (original = !original)}>{original ? t.covers : t.original}</button
-						>
 						<button
 							type="button"
 							class="{button.icon} disabled:opacity-40"
@@ -658,13 +685,14 @@
 							label={t.photo(photos.indexOf(photo) + 1, photos.length)}
 							regionLabel={(n) =>
 								`${t.face(n)}: ${children.find((c) => c.id === edit.regions[n - 1].child)?.name ?? (edit.regions[n - 1].covered ? t.covered : t.who)}`}
+							name={nameOf}
 							onselect={select}
 							onchange={changeRegion}
 							onviewchange={(center) => (viewCenter = center)}
 						/>
 					{/key}
 				</div>
-				<p class={field.hint}>{t.gesture}</p>
+				{@render viewSwitch()}
 
 				{#if photo.detection === 'pending'}
 					<p class="flex flex-wrap items-center gap-3" role="status">
@@ -715,7 +743,6 @@
 							update(photo!.id, (p) => ({ ...p, text: written }));
 						}}
 					/>
-					<span class={field.hint}>{t.captionHint}</span>
 				</label>
 
 				<div class="flex flex-wrap items-center gap-3">
@@ -741,9 +768,11 @@
 						>
 							<Icon name="check" class="size-4" />{t.review}
 						</button>
-						<p class="text-sm font-semibold text-muted" role="status">
-							{unresolved(edit) ? t.remaining(unresolved(edit)) : t.checkHint}
-						</p>
+						{#if unresolved(edit)}
+							<p class="text-sm font-semibold text-muted" role="status">
+								{t.remaining(unresolved(edit))}
+							</p>
+						{/if}
 					{/if}
 				</div>
 			{/if}
@@ -790,39 +819,16 @@
 				</label>
 			{/if}
 
-			<div class="flex flex-wrap gap-2">
-				<button
-					type="button"
-					class={button.chip}
-					aria-pressed={!compare}
-					onclick={() => (compare = false)}>{e.finalView}</button
-				>
-				<button
-					type="button"
-					class={button.chip}
-					aria-pressed={compare}
-					onclick={() => (compare = true)}>{e.compareView}</button
-				>
-			</div>
+			{@render viewSwitch()}
 
-			{#if previewBusy}
+			{#if original && photo}
+				{@render photoView(photo.url, e.originalView)}
+			{:else if previewBusy}
 				<p class="font-semibold text-muted" role="status">{e.loading}</p>
 			{:else if previewError}
 				<p class={alert} role="alert">{t.previewFailed}</p>
-			{:else if previewUrl && photo}
-				{#if compare}
-					<PhotoComparison
-						original={photo.url}
-						covered={previewUrl}
-						width={photo.width}
-						height={photo.height}
-						label={t.compare}
-						beforeLabel={e.before}
-						afterLabel={e.after}
-					/>
-				{:else}
-					<img src={previewUrl} alt={e.finalView} class="w-full rounded-2xl" />
-				{/if}
+			{:else if previewUrl}
+				{@render photoView(previewUrl, e.finalView)}
 			{/if}
 
 			{@render busy()}

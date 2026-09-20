@@ -29,4 +29,6 @@ export type EventContent = {
 /** The longest a photo's own words may be, in characters. */
 export const maxEventPhotoText = 300;
 export type OpenEvent = EventRecord & { value: EventContent; key: CryptoKey };
+/** The most an event's manifest may take, in bytes, measured as the server measures it. */
+export const maxEventContentBytes = 32000;
 export const maxEventFileBytes = 32 * 1024 * 1024;

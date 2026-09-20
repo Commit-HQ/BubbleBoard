@@ -30,7 +30,7 @@ Confirmed on 2026-09-19: assigning a child automatically selects the next unreso
 
 On mobile, use a large photo, thumbnail strip, child-selection panel below the photo and comfortable touch targets. Tap selects, drag moves and handles resize; zooming must not accidentally move a sticker. Each sticker has a textual status as well as a colour.
 
-The initial limit is 20 photos per event, subject to memory and processing-time measurements on phones. Process images sequentially rather than holding every original as a decoded bitmap.
+The limit is 30 photos per event, each file at most 10 MB, set in `.env` per installation and subject to memory and processing-time measurements on phones. Process images sequentially rather than holding every original as a decoded bitmap.
 
 ## 3. Parent settings
 

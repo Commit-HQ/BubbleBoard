@@ -81,8 +81,6 @@
 					<p class="flex items-center gap-1.5 text-sm font-semibold text-green-800">
 						<Icon name="check" class="size-4 shrink-0" />{named}
 					</p>
-				{:else if selected.covered}
-					<p class="text-sm font-semibold text-muted">{t.coveredDone}</p>
 				{:else}
 					<p class="text-sm text-muted">{t.face(number)}</p>
 				{/if}

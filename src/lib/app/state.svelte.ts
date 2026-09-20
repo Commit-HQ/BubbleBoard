@@ -1,9 +1,10 @@
 import { openEvent, preparePackage, renderPackage, sharing } from '$lib/events/package';
 import type { ConsentSnapshot, EventRecord, OpenEvent, EventContent } from '$lib/events/types';
-import { maxEventFileBytes } from '$lib/events/types';
+import { maxEventBytes } from '$lib/events/limits';
+import { maxEventContentBytes, maxEventFileBytes } from '$lib/events/types';
 import type { EventDraft } from '$lib/events/publishing';
 import type { Region } from '$lib/events/editor';
-import { encryptData, decryptData } from '$lib/crypto';
+import { encryptData, decryptData, envelopeSize } from '$lib/crypto';
 import type { MeetingSlot, MeetingChild, MeetingData, NewMeetingOffer } from '$lib/meetings';
 import { replaceState } from '$app/navigation';
 import { page } from '$app/state';
@@ -298,7 +299,7 @@ export class App {
 				(f) => this.messageKey(f)
 			);
 			total += file.sealed.length;
-			if (file.sealed.length > maxEventFileBytes || total > 128 * 1024 * 1024)
+			if (file.sealed.length > maxEventFileBytes || total > maxEventBytes)
 				throw new ApiError(413, 'too-large');
 			files.push(file);
 			progress(files.length);
@@ -329,6 +330,13 @@ export class App {
 		days: number,
 		progress: (n: number) => void
 	) {
+		// Sealed before anything is sent: words too long for the manifest are refused here rather than after
+		// every photo has been uploaded.
+		const content = await encryptData(value, draft.key, {
+			purpose: 'event-content',
+			event: draft.id
+		});
+		if (envelopeSize(content)! > maxEventContentBytes) throw new CodedError('event-too-long');
 		// Retry the same immutable draft after a lost response. A new consent revision requires a new preview.
 		await this.#signedIn(() =>
 			request('POST', '/api/events', {
@@ -347,10 +355,6 @@ export class App {
 			});
 			progress(index + 1);
 		}
-		const content = await encryptData(value, draft.key, {
-			purpose: 'event-content',
-			event: draft.id
-		});
 		await this.#signedIn(() =>
 			request('PUT', `/api/events/${draft.id}`, {
 				content,

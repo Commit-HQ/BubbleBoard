@@ -34,6 +34,16 @@ export const button = {
 	chipSelect: `${chipLook} px-3 text-ink`
 };
 
+/**
+ * Two ways of looking at the same thing, side by side in one pill, such as an event photo with its covers or
+ * without them. Mark the one being looked at with `aria-pressed`.
+ */
+export const segment = {
+	group: 'inline-flex flex-wrap items-center gap-1 rounded-full bg-ink/5 p-1 ring-1 ring-ink/10',
+	option:
+		'inline-flex min-h-9 items-center justify-center rounded-full px-4 text-sm font-semibold text-muted transition hover:text-ink aria-pressed:bg-ink aria-pressed:text-white'
+};
+
 /** The focus ring of a label whose input is hidden inside it. */
 export const labelFocus =
 	'has-focus-visible:outline-3 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent';

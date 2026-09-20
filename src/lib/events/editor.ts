@@ -12,7 +12,6 @@ export type Region = Rect & {
 };
 export type Edit = { regions: Region[]; selected: string | null; reviewed: boolean };
 export type History = { past: Edit[]; present: Edit; future: Edit[] };
-export const maxEventPhotos = 20;
 export const maxRegions = 100;
 
 export function emptyEdit(): History {
