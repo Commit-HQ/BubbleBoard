@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import stickerUrl from '$lib/assets/face-sticker.svg';
+	import { stickerUrl } from '$lib/events/stickers';
 	import { boundedRect, type Rect, type Region } from '$lib/events/editor';
 	let {
 		url,
@@ -219,7 +219,7 @@
 			>
 				<rect x={rect.x} y={rect.y} width={rect.width} height={rect.height} fill="#f7d470" />
 				<image
-					href={stickerUrl}
+					href={stickerUrl(region.sticker)}
 					x={rect.x}
 					y={rect.y}
 					width={rect.width}

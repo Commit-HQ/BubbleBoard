@@ -108,7 +108,7 @@
 							<Icon name="plus" class="size-4" />{t.classroom.addChild}
 						</a>
 					{/if}
-					{#if families.length}
+					{#if app.admin && families.length}
 						<button
 							class={button.secondary}
 							type="button"

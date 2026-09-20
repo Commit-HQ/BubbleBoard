@@ -1,3 +1,8 @@
+import { openEvent, preparePackage, renderPackage, sharing } from '$lib/events/package';
+import type { ConsentSnapshot, EventRecord, OpenEvent, EventContent } from '$lib/events/types';
+import { maxEventFileBytes } from '$lib/events/types';
+import type { EventDraft } from '$lib/events/publishing';
+import type { Region } from '$lib/events/editor';
 import { encryptData, decryptData } from '$lib/crypto';
 import type { MeetingSlot, MeetingChild, MeetingData, NewMeetingOffer } from '$lib/meetings';
 import { replaceState } from '$app/navigation';
@@ -217,6 +222,168 @@ function takeFragment(): { card?: CardReading; token?: string } {
 
 export class App {
 	status = $state<Status>('loading');
+	events = $state.raw<OpenEvent[]>([]);
+	eventsError = $state<string>();
+	async syncPhotoChildren(classroom: string) {
+		const rows = [];
+		for (const child of this.catalog.children.filter((c) => c.classroom === classroom))
+			for (const family of child.families) {
+				rows.push({
+					child: child.id,
+					family,
+					label: await encryptData({ name: child.name }, await this.messageKey(family), {
+						purpose: 'photo-label',
+						event: child.id,
+						part: family
+					})
+				});
+			}
+		// Bound each body; a classroom's catalog version guards every batch.
+		for (let start = 0; start < rows.length; start += 40)
+			await request('POST', '/api/photo-consent/sync', {
+				classroom,
+				revision: this.catalog.revision,
+				rows: rows.slice(start, start + 40)
+			});
+	}
+	async loadEvents() {
+		const version = this.#connectionVersion;
+		try {
+			const records = await request<EventRecord[]>('GET', '/api/events');
+			const opened = await Promise.allSettled(
+				records.map((r) => openEvent(r, byId(this.myClassrooms, r.classroom).groupKey))
+			);
+			if (version !== this.#connectionVersion) return;
+			this.events = opened.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
+			this.eventsError = opened.some((r) => r.status === 'rejected')
+				? 'unreadable-photo'
+				: undefined;
+		} catch (cause) {
+			if (version === this.#connectionVersion) this.eventsError = errorCode(cause);
+		}
+	}
+	async prepareEvent(
+		classroom: string,
+		photos: { id: string; blob: Blob; regions: Region[] }[],
+		progress: (n: number) => void
+	): Promise<EventDraft> {
+		await this.refresh({ now: true });
+		await this.syncPhotoChildren(classroom);
+		const snapshot = await request<ConsentSnapshot>(
+			'GET',
+			`/api/photo-consent?classroom=${classroom}`
+		);
+		if (snapshot.catalog !== this.catalog.revision) throw new ApiError(409, 'stale');
+		const children = this.catalog.children.filter((c) => c.classroom === classroom);
+		const shared = await sharing(children, snapshot.rows, (f) => this.messageKey(f));
+		const id = createId(),
+			key = await createContentKey();
+		const envelope = await encryptData(
+			{ key: key.raw },
+			byId(this.myClassrooms, classroom).groupKey,
+			{ purpose: 'event-key', event: id }
+		);
+		const files = [];
+		let total = 0;
+		for (const photo of photos) {
+			const file = await preparePackage(
+				id,
+				photo.id,
+				photo.blob,
+				photo.regions,
+				key.key,
+				this.#staff.staffKey,
+				children,
+				shared,
+				(f) => this.messageKey(f)
+			);
+			total += file.sealed.length;
+			if (file.sealed.length > maxEventFileBytes || total > 128 * 1024 * 1024)
+				throw new ApiError(413, 'too-large');
+			files.push(file);
+			progress(files.length);
+		}
+		return {
+			id,
+			key: key.key,
+			envelope,
+			catalog: snapshot.catalog,
+			consent: snapshot.revision,
+			classroom,
+			files
+		};
+	}
+	async eventPreview(draft: EventDraft, photo: string, viewer: string) {
+		const file = byId(draft.files, photo);
+		return renderPackage(
+			draft.id,
+			photo,
+			file.sealed,
+			draft.key,
+			viewer === 'base'
+				? { covered: true }
+				: viewer === 'staff'
+					? { staff: this.#staff.staffKey }
+					: viewer
+						? { family: await this.messageKey(viewer) }
+						: {}
+		);
+	}
+	async publishEvent(
+		draft: EventDraft,
+		value: EventContent,
+		days: number,
+		progress: (n: number) => void
+	) {
+		// Retry the same immutable draft after a lost response. A new consent revision requires a new preview.
+		await this.#signedIn(() =>
+			request('POST', '/api/events', {
+				id: draft.id,
+				classroom: draft.classroom,
+				catalog: draft.catalog,
+				consent: draft.consent
+			})
+		);
+		for (const [index, file] of draft.files.entries()) {
+			await this.#signedIn(() =>
+				request('PUT', `/api/events/${draft.id}/files/${file.id}`, file.sealed)
+			).catch((cause) => {
+				if (!(cause instanceof ApiError && (cause.code === 'stored' || cause.code === 'stale')))
+					throw cause;
+			});
+			progress(index + 1);
+		}
+		const content = await encryptData(value, draft.key, {
+			purpose: 'event-content',
+			event: draft.id
+		});
+		await this.#signedIn(() =>
+			request('PUT', `/api/events/${draft.id}`, {
+				content,
+				key: draft.envelope,
+				files: draft.files.map((f) => f.id),
+				days
+			})
+		);
+		await this.loadEvents();
+	}
+	async eventPicture(event: OpenEvent, photo: string) {
+		const sealed = await this.#signedIn(() =>
+			requestBytes(`/api/events/${event.id}/files/${photo}`)
+		);
+		const viewer = this.#familyCard
+			? { family: this.#familyCard.familyKey }
+			: { staff: this.#staff.staffKey };
+		return renderPackage(event.id, photo, sealed, event.key, viewer);
+	}
+	canDeleteEvent(event: OpenEvent) {
+		return this.status === 'staff' && (this.admin || event.teacher === this.me?.id);
+	}
+	async deleteEvent(event: OpenEvent) {
+		await this.#signedIn(() => request('DELETE', `/api/events/${event.id}`));
+		await this.loadEvents();
+	}
+
 	conversations = $state.raw<Conversation[]>([]);
 	messagePolicies = $state.raw<MessagePolicy[]>([]);
 	/** The family a device writes as, which is simply whose card it holds; staff write as no family. */
@@ -730,6 +897,10 @@ export class App {
 		this.status = this.install === 'android' ? 'install' : access.kind;
 		// The inbox grows with every conversation the kindergarten has ever had, so the board doesn't wait for
 		// it: it fills in beside the rest, and the pages that show it follow `messagesVersion`.
+		void this.loadEvents();
+		if (this.status === 'staff')
+			for (const classroom of this.myClassrooms)
+				void this.syncPhotoChildren(classroom.id).catch(() => {});
 		void this.loadMessages();
 		void this.loadMeetings();
 		void this.#keepNotifications(resend);
@@ -888,6 +1059,8 @@ export class App {
 		this.#infoKeyForStaff = undefined;
 		this.#infoPageIds = [];
 		this.#familyKeys.clear();
+		this.events = [];
+		this.eventsError = undefined;
 		this.#conversationCache.clear();
 		this.#clearMeetings();
 		this.conversations = [];
@@ -1109,6 +1282,17 @@ export class App {
 			...links,
 			classroom: child.classroom,
 			meetingFamilies: child.families,
+			photoFamilies: await Promise.all(
+				child.families.map(async (family) => ({
+					family,
+					label: await encryptData(
+						{ name: child.name },
+						created.find((c) => c.family.id === family)?.familyKey ??
+							(await this.messageKey(family)),
+						{ purpose: 'photo-label', event: child.id, part: family }
+					)
+				}))
+			),
 			profile: await childProfile(staffKey, child)
 		};
 		if (previous) await this.#change('PUT', `/api/children/${child.id}`, body);

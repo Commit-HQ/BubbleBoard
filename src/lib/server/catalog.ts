@@ -1,3 +1,4 @@
+import { projectionStatements } from './events';
 import { error } from '@sveltejs/kit';
 import type {
 	Access,
@@ -325,7 +326,8 @@ export function addChild(db: D1Database, admin: Admin, child: NewChild) {
 		child,
 		db
 			.prepare('INSERT INTO children (id, classroom_id, profile) VALUES (?, ?, ?)')
-			.bind(child.id, child.classroom, child.profile)
+			.bind(child.id, child.classroom, child.profile),
+		child.photoFamilies ? projectionStatements(db, child.id, child.photoFamilies) : []
 	);
 }
 
@@ -343,7 +345,8 @@ export async function changeChild(db: D1Database, admin: Admin, id: string, chan
 				.prepare(
 					'DELETE FROM meeting_invites WHERE child_id=? AND family_id NOT IN (SELECT value FROM json_each(?))'
 				)
-				.bind(id, JSON.stringify(change.meetingFamilies))
+				.bind(id, JSON.stringify(change.meetingFamilies)),
+			...(change.photoFamilies ? projectionStatements(db, id, change.photoFamilies) : [])
 		]
 	);
 }
@@ -366,6 +369,7 @@ export async function renameFamily(db: D1Database, admin: Admin, id: string, pro
  * replace: admins can replace any family's card, and teachers those of families in their classrooms.
  */
 export async function replaceFamilyCards(db: D1Database, staff: Staff, cards: FamilyCard[]) {
+	if (!staff.admin) error(403, 'forbidden');
 	const [reachable, params]: [string, string[]] = staff.admin
 		? ['SELECT id FROM families', []]
 		: [

@@ -39,7 +39,23 @@ type KeyContext =
 	| { purpose: 'info-key-for-classroom'; classroom: string };
 
 /** The record encrypted data belongs to. */
+type EventContext = {
+	purpose:
+		| 'event-content'
+		| 'event-photo'
+		| 'event-face'
+		| 'event-grant'
+		| 'event-staff'
+		| 'event-key'
+		| 'photo-label'
+		| 'photo-choice';
+	event: string;
+	photo?: string;
+	part?: string;
+};
+
 type DataContext =
+	| EventContext
 	| { purpose: 'meeting-invite'; classroom: string; child: string }
 	| { purpose: 'conversation-title' | 'private-message'; classroom: string; message: string }
 	| { purpose: 'classroom-profile'; classroom: string }
@@ -364,6 +380,17 @@ async function open(envelope: string, key: CryptoKey, context: KeyContext | Data
 // credential, family, teacher, child, notice, photo, file, or info page it belongs to. Moved to any other
 // record, even one encrypted with the same key, it doesn't open.
 function additionalData(context: KeyContext | DataContext) {
+	if ('event' in context)
+		return encoder.encode(
+			JSON.stringify([
+				'BubbleBoard',
+				ENVELOPE_FORMAT,
+				context.purpose,
+				context.event,
+				context.photo ?? null,
+				context.part ?? null
+			])
+		);
 	const ids: {
 		purpose: string;
 		classroom?: string;

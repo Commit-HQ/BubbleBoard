@@ -5,7 +5,8 @@
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import NoticeCard from './NoticeCard.svelte';
 	import { getApp } from './state.svelte';
-	import { choice } from './ui';
+	import { choice, surface, button } from './ui';
+	import { appPath } from '$lib/paths';
 
 	// Home's board, as on the kindergarten's corkboard: the photos of its classrooms' boards, then the notices,
 	// newest on top. With several classrooms, a filter shows one classroom's; it starts on all of them.
@@ -70,6 +71,19 @@
 		</ul>
 	{/if}
 
+	{#if app.eventsError}<p role="status" class="text-sm text-muted">{t.events.failed}</p>{/if}
+	{#each app.events.filter((e) => !shown || e.classroom === shown) as event (event.id)}
+		<article class="{surface} grid gap-3">
+			<p class="text-sm text-muted">{t.events.title} · {event.value.date}</p>
+			<h2 class="text-3xl">{event.value.title}</h2>
+			<p class="line-clamp-3 whitespace-pre-wrap">{event.value.description}</p>
+			<a
+				class="{button.secondary} justify-self-start"
+				href={`${appPath(locale, 'event')}?id=${event.id}`}
+				>{t.events.open} ({event.value.photos.length})</a
+			>
+		</article>
+	{/each}
 	{#if app.unreadableNotices}
 		<p class="text-sm font-semibold text-muted">{t.notices.unreadable}</p>
 	{/if}

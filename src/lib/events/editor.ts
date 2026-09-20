@@ -3,6 +3,7 @@
 export type Rect = { x: number; y: number; width: number; height: number };
 export type Region = Rect & {
 	id: string;
+	sticker?: import('./stickers').Sticker;
 	child: string | null;
 	covered: boolean;
 	source: 'manual' | 'detected';

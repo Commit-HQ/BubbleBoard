@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { checkEventPixels } from '$lib/events/browser-check';
+	let result = $state('');
 	import EventPhotoEditor from '$lib/app/EventPhotoEditor.svelte';
 	import { setApp, type App } from '$lib/app/state.svelte';
 	import sample from '$lib/assets/photos/classroom-800.webp';
@@ -18,6 +20,17 @@
 </script>
 
 <main class="mx-auto max-w-6xl p-6">
+	<button
+		onclick={async () => {
+			result = 'Running…';
+			try {
+				result = await checkEventPixels();
+			} catch (error) {
+				result = String(error);
+			}
+		}}>Test: encrypted pixels</button
+	>
+	<p role="status">{result}</p>
 	<button onclick={addSample}>Test: učitaj stock fotografiju</button><EventPhotoEditor
 		locale="hr"
 	/>

@@ -11,6 +11,7 @@ const day = 24 * 60 * 60 * 1000;
 
 export async function cleanUp({ DB: db, FILES: bucket }: CleanupEnv, now = Date.now()) {
 	await db.batch([
+		db.prepare('DELETE FROM events WHERE expires_at <= ?').bind(now),
 		db.prepare('DELETE FROM notices WHERE expires_at <= ?').bind(now),
 		db
 			.prepare(

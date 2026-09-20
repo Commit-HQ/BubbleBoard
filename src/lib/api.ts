@@ -50,6 +50,7 @@ export type ChildChange = FamilyLinks & {
 	classroom: string;
 	profile: string;
 	meetingFamilies: string[];
+	photoFamilies?: { family: string; label: string }[];
 };
 export type NewChild = ChildChange & { id: string };
 

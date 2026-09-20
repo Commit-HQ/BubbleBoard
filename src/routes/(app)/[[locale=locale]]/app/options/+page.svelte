@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import PhotoConsent from '$lib/app/PhotoConsent.svelte';
 	import AddDevice from '$lib/app/AddDevice.svelte';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
 	import NotificationSwitch from '$lib/app/NotificationSwitch.svelte';
@@ -49,6 +50,7 @@
 	</section>
 
 	{#if app.status === 'family'}
+		<PhotoConsent locale={data.locale} />
 		<AddDevice locale={data.locale} />
 	{/if}
 

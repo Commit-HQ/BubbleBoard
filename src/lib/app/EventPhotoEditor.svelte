@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { beforeNavigate } from '$app/navigation';
+	import { goto, beforeNavigate } from '$app/navigation';
 	import { onDestroy, untrack } from 'svelte';
 	import { createId } from '$lib/crypto';
 	import { LocalFaceDetector } from '$lib/events/detector';
@@ -20,8 +20,14 @@
 		type Rect
 	} from '$lib/events/editor';
 	import { prepareEditorImage, safePreview } from '$lib/events/images';
-	import { messages, type Locale } from '$lib/i18n';
+	import { errorMessage, messages, type Locale } from '$lib/i18n';
+	import type { EventDraft } from '$lib/events/publishing';
+	import { appPath } from '$lib/paths';
+	import { noticeDays } from '$lib/notices';
+	import { errorCode } from '$lib/errors';
 	import Icon from '$lib/components/Icon.svelte';
+	import PhotoComparison from './PhotoComparison.svelte';
+	import { stickers, type Sticker } from '$lib/events/stickers';
 	import FaceCanvas from './FaceCanvas.svelte';
 	import { getApp } from './state.svelte';
 	import { alert, button, field, filePicker } from './ui';
@@ -39,6 +45,18 @@
 	let { locale }: { locale: Locale } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.eventEditor);
+	const e = $derived(messages[locale].app.events);
+	const publishable = typeof app.prepareEvent === 'function';
+	let title = $state(''),
+		description = $state(''),
+		date = $state(new Date().toLocaleDateString('en-CA')),
+		days = $state(30);
+	let draft = $state.raw<EventDraft>();
+	let working = $state(false),
+		progress = $state(0),
+		sending = $state(false);
+	let viewer = $state('base');
+	let publicationError = $state('');
 	let classroom = $state(app.myClassrooms.length === 1 ? app.myClassrooms[0].id : '');
 	let photos = $state.raw<Photo[]>([]);
 	let current = $state('');
@@ -298,6 +316,8 @@
 	}
 	$effect(() => {
 		const target = photo;
+		const ready = draft,
+			recipient = viewer;
 		if (!preview || !target) {
 			untrack(() => {
 				revoke(previewUrl);
@@ -312,7 +332,10 @@
 			revoke(previewUrl);
 			previewUrl = '';
 		});
-		safePreview(target.blob, target.history.present.regions)
+		(ready
+			? app.eventPreview(ready, target.id, recipient)
+			: safePreview(target.blob, target.history.present.regions)
+		)
 			.then((blob) => {
 				if (!cancelled && !disposed) previewUrl = url(blob);
 			})
@@ -326,6 +349,60 @@
 			cancelled = true;
 		};
 	});
+	async function startPreview() {
+		original = false;
+		publicationError = '';
+		progress = 0;
+		working = true;
+		try {
+			if (publishable) {
+				const prepared = await app.prepareEvent(
+					classroom,
+					photos.map((p) => ({ id: p.id, blob: p.blob, regions: p.history.present.regions })),
+					(n) => (progress = n)
+				);
+				if (disposed) return;
+				if (!allReviewed) throw new Error('stale');
+				draft = prepared;
+			}
+			preview = true;
+		} catch (cause) {
+			publicationError = errorCode(cause);
+		} finally {
+			working = false;
+		}
+	}
+	async function publish() {
+		if (!draft || working || !title.trim() || !date) return;
+		working = true;
+		sending = true;
+		progress = 0;
+		publicationError = '';
+		try {
+			await app.publishEvent(
+				draft,
+				{
+					version: 1,
+					title: title.trim(),
+					description: description.trim(),
+					date,
+					photos: draft.files.map(({ id, width, height }) => ({ id, width, height }))
+				},
+				days,
+				(n) => (progress = n)
+			);
+			if (disposed) return;
+			for (const p of photos) revoke(p.url);
+			photos = [];
+			draft = undefined;
+			await goto(appPath(locale));
+		} catch (cause) {
+			publicationError = errorCode(cause);
+		} finally {
+			working = false;
+			sending = false;
+		}
+	}
 	beforeNavigate(({ cancel, type }) => {
 		if (photos.length && type !== 'leave' && !window.confirm(t.leave)) cancel();
 	});
@@ -352,8 +429,43 @@
 	}}
 />
 
-<div class="grid gap-5">
+<fieldset disabled={working} class="grid min-w-0 gap-5">
 	<p class="text-sm text-muted">{t.local}</p>
+	{#if publishable}<div class="grid gap-3 sm:grid-cols-2">
+			<label class={field.label}
+				><span>{e.name}</span><input
+					class={field.input}
+					maxlength="160"
+					bind:value={title}
+					required
+				/></label
+			>
+			<label class={field.label}
+				><span>{e.date}</span><input
+					class={field.input}
+					type="date"
+					bind:value={date}
+					required
+				/></label
+			>
+			<label class="{field.label} sm:col-span-2"
+				><span>{e.description}</span><textarea
+					class={field.input}
+					maxlength="5000"
+					bind:value={description}></textarea></label
+			>
+			<label class={field.label}
+				><span>{e.days}</span><select class={field.input} bind:value={days}
+					>{#each noticeDays as value}<option {value}>{value}</option>{/each}</select
+				></label
+			>
+		</div>{/if}
+	{#if working}<p role="status">
+			{sending ? e.uploading : e.preparing} ({progress}/{photos.length})
+		</p>{/if}
+	{#if publicationError}<p role="alert" class={alert}>
+			{publicationError === 'stale' ? e.stale : errorMessage(locale, publicationError)}
+		</p>{/if}
 	{#if error}<p class={alert} role="alert">{error}</p>{/if}
 	<div class="flex flex-wrap items-end gap-3">
 		<label class="{field.label} min-w-48 flex-1"
@@ -406,25 +518,48 @@
 				>{/if}
 		</div>
 		{#if preview}
-			<p class="text-muted">{t.previewHint}</p>
+			<p class="text-muted">{e.ready}</p>
+			{#if draft}<label class={field.label}
+					><span>{e.previewAs}</span><select class={field.input} bind:value={viewer}>
+						<option value="base">{e.base}</option><option value="">{e.groupView}</option><option
+							value="staff">{e.staffView}</option
+						>
+						{#each app.catalog.families.filter( (f) => f.classrooms.includes(classroom) ) as family}<option
+								value={family.id}>{family.name}</option
+							>{/each}
+					</select></label
+				>{/if}
 			{#if previewBusy}<p role="status">{t.loading}</p>{:else if previewError}<p
 					class={alert}
 					role="alert"
 				>
 					{t.previewFailed}
-				</p>{:else if previewUrl}<img
-					src={previewUrl}
-					alt={t.photo(photos.indexOf(photo) + 1, photos.length)}
-					class="max-h-[70dvh] w-full rounded-2xl object-contain"
+				</p>{:else if previewUrl}<PhotoComparison
+					original={photo.url}
+					covered={previewUrl}
+					width={photo.width}
+					height={photo.height}
+					label={t.compare}
 				/>{/if}
 			<button
 				type="button"
 				class="{button.secondary} justify-self-start"
 				onclick={() => {
 					preview = false;
+					draft = undefined;
 					original = false;
 				}}>{t.back}</button
 			>
+			{#if draft}<button
+					type="button"
+					class={button.primary}
+					disabled={!title.trim() ||
+						!date ||
+						previewBusy ||
+						previewError ||
+						publicationError === 'stale'}
+					onclick={publish}>{e.publish}</button
+				>{/if}
 		{:else}
 			{#if photo.detection === 'pending'}<div
 					class="flex flex-wrap items-center gap-3"
@@ -445,7 +580,7 @@
 					{t.noFaces}
 				</p>{/if}
 			<div class="grid min-w-0 gap-3">
-				<div class="grid min-w-0 gap-3">
+				<div class="grid min-w-0 gap-3" inert={working}>
 					<div class="flex flex-wrap items-center gap-2">
 						<button
 							type="button"
@@ -492,7 +627,8 @@
 							{original}
 							bind:zoom
 							label={t.photo(photos.indexOf(photo) + 1, photos.length)}
-							regionLabel={t.face}
+							regionLabel={(n) =>
+								`${t.face(n)}: ${children.find((c) => c.id === edit.regions[n - 1].child)?.name ?? (edit.regions[n - 1].covered ? t.covered : t.who)}`}
 							onselect={select}
 							onchange={changeRegion}
 							onviewchange={(center) => (viewCenter = center)}
@@ -540,6 +676,25 @@
 								>{/each}
 							{#if !filtered.length}<p class="text-muted">{t.empty}</p>{/if}
 						</div>
+						<div class="flex flex-wrap gap-2" aria-label={t.stickers}>
+							{#each Object.entries(stickers) as [name, url]}
+								<button
+									type="button"
+									class={button.chip}
+									aria-label={t.stickerNames[name as Sticker]}
+									aria-pressed={(selected.sticker ?? 'smile') === name}
+									onclick={() =>
+										setHistory(
+											commit(
+												photo!.history,
+												edit.regions.map((r) =>
+													r.id === selected!.id ? { ...r, sticker: name as Sticker } : r
+												)
+											)
+										)}><img src={url} alt="" class="size-10 rounded-lg" /></button
+								>
+							{/each}
+						</div>
 						<div class="flex flex-wrap gap-2">
 							<button
 								type="button"
@@ -569,11 +724,8 @@
 				type="button"
 				class="{button.secondary} justify-self-start"
 				disabled={!allReviewed}
-				onclick={() => {
-					original = false;
-					preview = true;
-				}}>{t.preview}</button
+				onclick={startPreview}>{publishable ? e.review : t.preview}</button
 			>
 		{/if}
 	{/if}
-</div>
+</fieldset>

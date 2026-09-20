@@ -1,6 +1,6 @@
 import { drawSmaller, openImage } from '$lib/photos';
-import stickerUrl from '$lib/assets/face-sticker.svg';
-import { coverPixels, type Rect } from './editor';
+import { stickerUrl } from './stickers';
+import { coverPixels, type Region } from './editor';
 
 /** Normalized, bounded working image; original files and camera metadata never leave this device. */
 export async function prepareEditorImage(file: Blob) {
@@ -16,7 +16,7 @@ export async function prepareEditorImage(file: Blob) {
 }
 
 /** Actual flattened safe raster, not a CSS overlay. It deliberately reveals no faces in this first slice. */
-export async function safePreview(blob: Blob, regions: Rect[]) {
+export async function safePreview(blob: Blob, regions: Region[]) {
 	const image = await createImageBitmap(blob);
 	try {
 		const canvas = new OffscreenCanvas(image.width, image.height);
@@ -33,12 +33,13 @@ export async function safePreview(blob: Blob, regions: Rect[]) {
 			0,
 			0
 		);
-		const sticker = await openImage(await (await fetch(stickerUrl)).blob());
-		try {
-			for (const region of regions)
+		for (const region of regions) {
+			const sticker = await openImage(await (await fetch(stickerUrl(region.sticker))).blob());
+			try {
 				ctx.drawImage(sticker, region.x, region.y, region.width, region.height);
-		} finally {
-			if (sticker instanceof ImageBitmap) sticker.close();
+			} finally {
+				if (sticker instanceof ImageBitmap) sticker.close();
+			}
 		}
 		return await canvas.convertToBlob({ type: 'image/png' });
 	} finally {

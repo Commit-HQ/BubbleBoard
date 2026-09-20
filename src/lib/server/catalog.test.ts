@@ -270,7 +270,7 @@ describe('staff', () => {
 		expect(JSON.stringify(seen)).not.toContain(sister);
 	});
 
-	it('replace family cards together, only in their own classrooms, which ends the old cards', async () => {
+	it('only admins replace family cards, which ends the old cards', async () => {
 		const db = localDatabase();
 		const { admin } = await setUpKindergarten(db);
 		const [bubbles, owls] = [await addClassroomTo(db, admin), await addClassroomTo(db, admin)];
@@ -284,14 +284,15 @@ describe('staff', () => {
 
 		// A family outside the teacher's classrooms stops the whole change.
 		await expect(replaceFamilyCards(db, teacher, newCards(first, inOwls))).rejects.toMatchObject({
-			status: 404
+			status: 403
 		});
 		expect(await identityForCard(db, first.credential.authToken)).toMatchObject({
 			family: first.id
 		});
 
 		const cards = newCards(first, second);
-		await replaceFamilyCards(db, teacher, cards);
+		await expect(replaceFamilyCards(db, teacher, cards)).rejects.toMatchObject({ status: 403 });
+		await replaceFamilyCards(db, admin, cards);
 		for (const [index, family] of [first, second].entries()) {
 			expect(await identityForCard(db, family.credential.authToken)).toBeUndefined();
 			expect(await identityForCard(db, cards[index].credential.authToken)).toMatchObject({

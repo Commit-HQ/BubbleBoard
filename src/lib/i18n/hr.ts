@@ -206,7 +206,46 @@ export const hr = {
 		app: 'Otvori BubbleBoard'
 	},
 	app: {
+		events: {
+			title: 'Događaj',
+			new: 'Novi događaj',
+			name: 'Naslov događaja',
+			date: 'Datum događaja',
+			description: 'Opis',
+			days: 'Trajanje objave (dani)',
+			publish: 'Objavi događaj',
+			published: 'Događaj je objavljen.',
+			preparing: 'Pripremam šifrirane fotografije',
+			uploading: 'Šaljem fotografije',
+			previewAs: 'Pregled kao',
+			base: 'Svi pokrovi',
+			groupView: 'Obitelj bez vlastitog djeteta na slici',
+			staffView: 'Osoblje',
+			consentTitle: 'Vidljivost lica mog djeteta',
+			consentHint:
+				'Promjene vrijede samo za buduće objave. Ako dijete ima više obiteljskih kartica, dijeljenje sa skupinom moraju dopustiti sve povezane obitelji. Svaka obitelj vidi vlastito dijete.',
+			private: 'Samo obitelji povezane s djetetom',
+			group: 'I druge obitelji naše skupine',
+			noChildren: 'Popis djece još nije pripremljen. Odgojitelj treba otvoriti aplikaciju.',
+			child: 'Dijete',
+			reload: 'Osvježi',
+			download: 'Preuzmi fotografiju',
+			remove: 'Ukloni događaj',
+			removeHint: 'Događaj i njegove fotografije više neće biti dostupni obiteljima.',
+			open: 'Otvori galeriju',
+			back: 'Natrag na ploču',
+			expired: 'Događaj nije dostupan ili je istekao.',
+			stale:
+				'Dopuštenja ili popis djece promijenili su se. Vrati se na uređivanje i ponovno pripremi pregled.',
+			review: 'Pripremi pregled objave',
+			ready: 'Pregledaj pokrivenost svih lica i pogled odabrane obitelji prije objave.',
+			failed: 'Fotografiju nije moguće otvoriti.',
+			retry: 'Pokušaj ponovno'
+		},
 		eventEditor: {
+			compare: 'Prije / poslije',
+			stickers: 'Sticker',
+			stickerNames: { smile: 'Smješko', star: 'Zvijezda', heart: 'Srce' },
 			title: 'Editor fotografija događaja',
 			open: 'Pripremi fotografije događaja',
 			intro:

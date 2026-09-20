@@ -90,7 +90,7 @@ export async function readJson(request: Request): Promise<Fields> {
 }
 
 /** Reads encrypted bytes that hold at least one byte, and at most `max` before they were encrypted. */
-async function readSealed(request: Request, max: number) {
+export async function readSealed(request: Request, max: number) {
 	const sealed = await readBody(request, 'application/octet-stream', max + SEALED_BYTES_OVERHEAD);
 	return sealed.length > SEALED_BYTES_OVERHEAD ? sealed : invalid();
 }
@@ -279,7 +279,19 @@ export function childChange(body: Fields): ChildChange {
 		classroom,
 		profile: profile(body.profile),
 		...familyLinks(body, classroom),
-		meetingFamilies: ids(body.meetingFamilies)
+		meetingFamilies: ids(body.meetingFamilies),
+		...(body.photoFamilies === undefined
+			? {}
+			: {
+					photoFamilies: list(
+						body.photoFamilies,
+						(value) => {
+							const row = fields(value);
+							return { family: id(row.family), label: profile(row.label) };
+						},
+						20
+					)
+				})
 	};
 }
 

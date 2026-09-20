@@ -221,7 +221,46 @@ export const en = {
 	},
 	// In the app, what cards are and do is called a QR code: parents found "card" confusing (2026-09-13).
 	app: {
+		events: {
+			title: 'Event',
+			new: 'New event',
+			name: 'Event title',
+			date: 'Event date',
+			description: 'Description',
+			days: 'Publication duration (days)',
+			publish: 'Publish event',
+			published: 'Event published.',
+			preparing: 'Preparing encrypted photos',
+			uploading: 'Uploading photos',
+			previewAs: 'Preview as',
+			base: 'All covers',
+			groupView: 'Family without their child in this photo',
+			staffView: 'Staff',
+			consentTitle: 'My child’s face visibility',
+			consentHint:
+				'Changes apply only to future publications. If a child has several family cards, all linked families must allow sharing with the classroom. Every family sees their own child.',
+			private: 'Only families linked to the child',
+			group: 'Other families in our classroom too',
+			noChildren: 'The list of children is not ready yet. A teacher needs to open the app.',
+			child: 'Child',
+			reload: 'Refresh',
+			download: 'Download photo',
+			remove: 'Remove event',
+			removeHint: 'This event and its photos will no longer be available to families.',
+			open: 'Open gallery',
+			back: 'Back to board',
+			expired: 'This event is unavailable or has expired.',
+			stale:
+				'Consent or the list of children changed. Return to editing and prepare the preview again.',
+			review: 'Prepare publication preview',
+			ready: 'Check all covered faces and the selected family’s view before publishing.',
+			failed: 'Unable to open this photo.',
+			retry: 'Try again'
+		},
 		eventEditor: {
+			compare: 'Before / after',
+			stickers: 'Sticker',
+			stickerNames: { smile: 'Smile', star: 'Star', heart: 'Heart' },
 			title: 'Event photo editor',
 			open: 'Prepare event photos',
 			intro:
