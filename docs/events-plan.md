@@ -1,131 +1,131 @@
-# Događaji i privatnost fotografija — prijedlog plana
+# Events and photo privacy — feature plan
 
-Datum: 2026-09-19. Status: plan u razradi. Potvrđeno: promjene dopuštenja vrijede samo za buduće objave; trajanje događaja bira teta kao kod obavijesti; godišnji album i ponovno objavljivanje fotografija ostaju za kasnije. Ostali prijedlozi nisu time automatski potvrđeni.
+Date: 2026-09-19. Status: the first version was implemented locally on 2026-09-20; the pilot and physical-device testing are still outstanding. Current format: [events-format.md](events-format.md). Confirmed decisions: consent changes apply only to future publications; teachers choose event duration as they do for notices; annual albums and photo republication are deferred. The first version uses one classroom per event and requires consent from all linked families for broader sharing.
 
-Polazište su [izvorna specifikacija](product-spec.md), [postojeća arhitektura](architecture.md) i [format pristupa](access-format.md). Ovaj dokument opisuje novu želju proizvoda; ne mijenja postojeće implementacijske odluke bez dogovora.
+Starting points: the [original specification](product-spec.md), [current architecture](architecture.md) and [access format](access-format.md). This document records the feature plan and its decisions. The implementation format above takes precedence where the original proposals below have evolved.
 
-## 1. Ishod
+## 1. Outcome
 
-Teta jednom pripremi galeriju fotografija. Svaka obitelj vidi svoje dijete i djecu za koju je dopušteno dijeljenje unutar publike događaja. Ostala lica ostaju prekrivena. Poslužitelj pohranjuje samo šifrirani sadržaj i ne sastavlja personalizirane fotografije.
+A teacher prepares a photo gallery once. Each family sees its own child and children whose faces may be shared with the event's audience. Other faces remain covered. The server stores only encrypted content and does not compose personalised photos.
 
-Događaj je zasebna vrsta objave: naslov, datum događaja, opis i poredana galerija. Datum događaja odvojen je od vremena objave. Na zajedničkoj ploči ima karticu; otvara se detalj s galerijom. Nije obavijest s običnim privicima.
+An event is a separate publication type: title, event date, description and ordered gallery. The event date is distinct from publication time. A card on the shared board opens the gallery detail. An event is not a notice with ordinary attachments.
 
-Za prvu verziju predlaže se jedna skupina po događaju. Tako dopuštenje „obitelji naše skupine” ima jednoznačno značenje. Objave za više skupina dolaze nakon odluke vrijedi li dopuštenje i za roditelje druge skupine.
+The first version uses one classroom per event, giving “families in our classroom” a clear meaning. Multi-classroom publication requires a later decision about whether consent also covers parents in other classrooms.
 
-## 2. Tok za tetu
+## 2. Teacher workflow
 
-Detaljnija razrada interakcija i stanja nalazi se u [prijedlogu editora](events-editor.md).
+See the [editor specification](events-editor.md) for interaction details and states.
 
-Potvrđeno 2026-09-19: nakon dodjele djeteta automatski se odabire sljedeće neriješeno lice; teta uvijek može ručno birati redoslijed. Ručno dodavanje pokrova preko propuštenih lica obavezan je dio prve verzije. Prvi lokalni editor implementiran je 2026-09-20; objavljivanje i roditeljska dopuštenja ostaju sljedeće faze.
+Confirmed on 2026-09-19: assigning a child automatically selects the next unresolved face; the teacher can always choose a different order manually. Manually adding covers for missed faces is mandatory in the first release. The local editor, publication and parent consent workflows were implemented on 2026-09-20.
 
-1. Odabere „Novi događaj”, skupinu, datum, naslov i opis.
-2. Odabere više fotografija. Datoteke se prvo otvaraju lokalno; mrežni prijenos slijedi tek nakon obrade i enkripcije.
-3. Aplikacija normalizira orijentaciju, pripremi radnu rezoluciju i lokalno potraži lica. Svako pronađeno lice dobije sticker s dovoljno velikim neprozirnim područjem.
-4. Galerija pokazuje koje slike čekaju pregled. Teta otvara jednu po jednu, dodirne sticker i odabere dijete iz svoje skupine.
-5. Može pomicati i povećavati sticker, dodati propušteno lice, poništiti pogrešan potez ili označiti da detekcija nije lice. Može privremeno sakriti stickere da prepozna djecu; to nikada ne mijenja pravila objave.
-6. Svaki označeni dio mora biti pridružen djetetu ili izričito označen „Ostavi prekriveno”. Neidentificirano dijete, gost i odrasla osoba mogu ostati prekriveni bez dodavanja u katalog.
-7. Potvrdi pregled cijele fotografije, uključujući lica koja detektor nije pronašao. Detekcija nije jamstvo da su sva lica označena.
-8. Pregleda stvarni rezultat: osnovu sa svima prekrivenima, pogled obitelji bez vlastitog djeteta na slici i pogled odabrane obitelji. Pregled koristi isti renderer i iste pripremljene podatke kao roditeljski prikaz.
-9. Objavi cijeli događaj. Prijenos pokazuje napredak; prekid omogućuje ponavljanje bez duplih objava. Roditelji ne vide djelomično pripremljen događaj.
+1. Choose “New event”, classroom, date, title and description.
+2. Select multiple photos. Files open locally first; network transfer happens only after processing and encryption.
+3. The app normalises orientation, prepares a working resolution and detects faces locally. Each detected face receives a sticker with a sufficiently large opaque region.
+4. The gallery identifies photos awaiting review. Open each photo, tap a sticker and select a child from the classroom.
+5. Move or resize stickers, add missed faces, undo mistakes or remove an incorrect detection. Temporarily hiding stickers helps identify children but never changes publication rules.
+6. Assign every marked region to a child or explicitly choose “Keep covered”. Unidentified children, guests and adults can stay covered without a catalog entry.
+7. Confirm review of the entire photo, including faces the detector missed. Detection does not guarantee that every face is marked.
+8. Review the actual result: the fully covered base, a family with no child of its own in the photo, and a selected family. Review uses the same renderer and prepared data as the parent view.
+9. Publish the complete event. Transfer reports progress; retries do not duplicate publications. Parents never see a partially prepared event.
 
-Na mobitelu: velika fotografija, traka sličica, popis djece u donjem panelu, veliki dodirni ciljevi. Dodir odabire, povlačenje pomiče, ručke mijenjaju veličinu; zumiranje fotografije ne smije slučajno pomaknuti sticker. Uz svaki sticker postoji tekstualni status, ne samo boja.
+On mobile, use a large photo, thumbnail strip, child-selection panel below the photo and comfortable touch targets. Tap selects, drag moves and handles resize; zooming must not accidentally move a sticker. Each sticker has a textual status as well as a colour.
 
-Predloženi početni limit je 20 fotografija po događaju, uz konačan limit nakon mjerenja memorije i vremena na telefonima. Slike obrađivati redom, ne držati sve originale kao dekodirane bitmape.
+The initial limit is 20 photos per event, subject to memory and processing-time measurements on phones. Process images sequentially rather than holding every original as a decoded bitmap.
 
-## 3. Roditeljske postavke
+## 3. Parent settings
 
-Za svako vlastito dijete prikazati „Tko smije vidjeti lice mog djeteta?”:
+For each of a family's children, offer “Who may see my child's face?”:
 
-- Samo naše obitelji povezane s djetetom.
-- I druge obitelji naše skupine.
+- Only families linked to our child.
+- Other families in our classroom too.
 
-Zadano je samo vlastita obitelj. Nepostojeća, nečitljiva ili nedovoljno potvrđena postavka nikada ne proširuje vidljivost. Postavka vrijedi za dijete, ne za cijelu obitelj: braća i sestre mogu imati različite postavke.
+Default to linked families only. Missing, unreadable or insufficiently confirmed settings must never broaden visibility. Consent belongs to a child rather than the entire family: siblings can have different settings.
 
-Pristup u postojećoj aplikaciji pripada obitelji, ne pojedinom roditelju. Uređaji iste obitelji uređuju istu postavku uz provjeru revizije. Za dijete povezano s više odvojenih obitelji predlaže se restriktivno pravilo: šire dijeljenje vrijedi samo ako su sve povezane obitelji izričito dopustile; svaka i dalje vidi vlastito dijete. To pravilo treba potvrditi.
+Existing application access belongs to a family, not an individual parent. Devices in the same family edit the same setting with a revision check. For children linked to separate families, broader sharing requires every linked family to explicitly allow it; each linked family still sees its own child.
 
-Roditelj mora moći sam spremiti promjenu bez čekanja da je teta odobri. Poslužitelj sprema šifriranu postavku i povećava reviziju. Teta je čita i primjenjuje pri pripremi objave. Ne treba niti smije dati roditelju Staff Key.
+Parents can save a change without waiting for teacher approval. The server stores encrypted consent and advances its revision. Teachers read and apply it when preparing publication. Parents neither need nor receive the Staff Key.
 
-Postojeći roditeljski podaci nemaju vlastiti popis djece: imena i veze dijete–obitelj trenutačno su u zapisima šifriranima Staff Keyem. Zato ova faza uključuje projekciju vlastite djece šifriranu Family Keyem. Prijedlog je obiteljski zapis postavki s unutarnjim ID-ovima djece; poslužitelj dopušta uređivanje samo vlastitog obiteljskog zapisa, a klijent tete prihvaća stavke samo za djecu stvarno povezana s tom obitelji prema katalogu. Proizvoljno upisan ID drugog djeteta ne smije imati učinka. Revizija kataloga pokriva i promjene tih veza.
+Before this feature, parent devices had no list of their own children: names and child–family links were in Staff-Key-encrypted records. This feature therefore adds a projection of each family's children encrypted with its Family Key. The server allows edits only to that family's consent records. The teacher's client accepts choices only for children actually linked to that family in the catalog. Injecting another child's ID must have no effect. The catalog revision also covers changes to these links.
 
-Neposredno prije objave ponovno dohvatiti postavke. Završna objava atomski provjerava reviziju postavki i kataloga koje je priprema koristila; promjena u međuvremenu vraća pripremu dopuštenja na ponavljanje. Vrijednosti ostaju šifrirane; provjera revizije ne zahtijeva da server zna izbor.
+Read current consent when preparing publication. Final publication atomically checks the consent and catalog revisions used by preparation. A concurrent change requires preparing permissions again. Values remain encrypted; checking revisions does not require the server to know the choices.
 
-## 4. Sastavljanje fotografije i ključevi
+## 4. Photo composition and keys
 
-Predlaže se baza u kojoj su sva označena lica nepovratno zamijenjena neprozirnim pokrovom. Sticker može biti zapečen u tu bazu. Nije dovoljno sakriti original HTML/SVG slojem, zamutiti ga CSS-om ili poslati sva lica pod zajedničkim ključem pa ih uvjetno prikazivati.
+The base permanently replaces all marked faces with opaque covers. Sticker artwork can be baked into it. Hiding an original with HTML/SVG overlays or CSS blur, or sending every face under a common key and conditionally displaying it, is insufficient.
 
-Za svaku fotografiju pripremiti:
+Prepare the following for each photo:
 
-- **Sigurnu bazu:** raster bez izvornih piksela unutar pokrivenih područja, dostupan publici događaja kroz enkripciju.
-- **Isječke:** svaki s vlastitim slučajnim ključem; pripadaju samo točno određenom području. Nisu nužno zasebni R2 objekti; mogu biti zapakirani zajedno.
-- **Zajednički paket dozvola:** šifrirane omotnice s ključevima isječaka i podacima za sastavljanje. Isti paket dohvaćaju svi; nema putanja koje otkrivaju kojoj obitelji pripada skriveno lice.
-- **Podatke za osoblje:** oznake djece, geometriju i pristup ključevima isječaka, zaštićene Staff Keyem. Izvorna fotografija ne ide na poslužitelj.
+- **Safe base:** a raster with no original pixels inside covered regions, available to the event audience through encryption.
+- **Patches:** each has a fresh random key and contains only its designated region. Patches can share an R2 object rather than requiring separate objects.
+- **Shared permission package:** encrypted envelopes holding patch keys and composition data. Every viewer fetches the same package; resource paths do not reveal which family owns a hidden face.
+- **Staff data:** child labels, geometry and access to patch keys, protected by the Staff Key. The original photo is never uploaded.
 
-Event Key otvara opis, manifest galerije i osnovne slike; omotan je za Group Key odabrane skupine. Smije otvarati i isječke djece kojima je dopušteno dijeljenje s cijelom publikom. Ključevi privatnih isječaka postoje samo u omotnicama za povezane Family Keyeve i za osoblje. Roditelj koji pročita sve mrežne odgovore ne dobiva ključ nedopuštenog lica.
+The Event Key opens the description, gallery manifest and base images and is protected by the chosen classroom's Group Key. The event package may also include keys for faces shared with the whole audience. Private patch keys appear only in envelopes for linked Family Keys and staff. A parent reading every network response must not obtain a disallowed face's key.
 
-Ako dijete pripada dvjema obiteljima, isječak se šifrira jednom, a njegov ključ omota za obje obitelji. Ne generiraju se pune slike za svaku kombinaciju roditelja. Trošak raste s brojem lica i njihovih primatelja, ne s brojem svih mogućih kombinacija.
+When a child belongs to two families, encrypt the patch once and protect its key for both families. Do not generate full photos for every combination of parents. Cost should grow with the number of faces and eligible recipients, not the number of possible audience combinations.
 
-Koristiti postojeće AES-GCM primitive, svjež nonce i autentificirani kontekst: namjena, događaj, fotografija, isječak i verzija pripreme. Različite namjene dobivaju različite oznake. Premještanje isječka ili omotnice u drugi događaj mora završiti pogreškom. Konačan format zahtijeva posebnu kratku specifikaciju i testove prije implementacije UI-ja.
+Use existing AES-GCM primitives, fresh nonces and authenticated context identifying purpose, event, photo, patch and preparation. Different purposes use different labels. Moving a patch or envelope to another event must fail. The concrete format and tests are specified in [events-format.md](events-format.md).
 
-Roditeljski renderer otvara bazu, otvara samo dostupne ključeve i nacrta dopuštene isječke. Nedostajući ili oštećen isječak ostavlja sticker. Preuzimanje koristi taj isti konačni raster. Minijature također moraju poštovati ista pravila; nijedan thumbnail ne smije nastati iz nezaštićenog originala za zajedničku isporuku.
+The parent renderer opens the base, opens only accessible patch keys and draws permitted patches. Missing or damaged patches leave the sticker in place. Downloads use the same final raster. Thumbnails must follow the same rules; never create a shared thumbnail from an unprotected original.
 
-### Geometrija je dio zaštite
+### Geometry is part of the protection
 
-Dekoracija stickera i zaštitna maska nisu ista stvar. Sticker sa šupljinama, prozirnim rubovima ili uskim oblikom mora imati neprozirnu podlogu preko cijelog zaštitnog područja. Prvo napraviti siguran raster, tek zatim smanjivati i komprimirati, da filtriranje ne prenosi izvorne piksele preko granice.
+Sticker decoration and the security mask are separate concerns. Artwork with holes, transparent edges or a narrow shape still needs an opaque base across the entire protected region. Build the safe raster before resizing or compressing so filtering cannot carry original pixels across its boundary.
 
-Isječak koji otkriva dijete A ne smije sadržavati piksele lica djeteta B, ni u rubu, ni u nevidljivim RGB kanalima prozirnih piksela. To vrijedi i kad roditelj sam dekodira isječak, bez našeg renderera. Preklapanja maski treba detektirati; u prvoj verziji sporna područja ostaju trajno prekrivena ili teta popravi maske. Nije dovoljno samo nacrtati drugi sticker preko već procurjelog isječka.
+A patch revealing child A must not contain child B's face pixels, even along an edge or in invisible RGB channels under transparency. This applies when a parent decodes the patch directly without the application renderer. Face patches zero overlap pixels in every channel. Separate overlap patches are available only to recipients allowed to see every involved face. Areas involving a permanent cover stay covered. Drawing a second sticker over an already leaked patch is not sufficient.
 
-Pomicanje maske nakon objave može zahtijevati ponovno odabrati original: uklonjene piksele ne možemo izmisliti. Pogrešno označenu objavu prvo povući, a ispravljenu verziju pripremiti s novim ključevima i pregledom.
+Moving a mask after publication may require selecting the original again: removed pixels cannot be recovered. Withdraw an incorrectly labelled event first, then prepare a corrected publication with fresh keys and review.
 
-## 5. Promjena dopuštenja — potvrđena odluka
+## 5. Consent changes — confirmed decision
 
-**Dogovoreno:** promjena postavke vrijedi samo za buduće objave. Primjenjuje se stanje provjereno pri završnoj objavi, uključujući nacrte započete prije promjene. Postojeći događaji čuvaju primijenjenu verziju pravila i ne mijenjaju vidljivost retroaktivno. Teta može odmah ukloniti fotografiju ili događaj. Tekst uz roditeljsku postavku to mora jasno reći.
+**Agreed:** a setting change applies only to future publications. Use the consent snapshot validated at final publication, including drafts started before the change. Existing events keep their applied rules and do not change visibility retroactively. Teachers can remove an event immediately. Parent settings must explain this behaviour clearly.
 
-Kasnija mogućnost: teta odabere postojeće fotografije i ponovno ih objavi prema tadašnjim dopuštenjima, uz novi pregled i novu kriptografsku pripremu. To je nova objava, ne tiha promjena stare. Ponašanje prema staroj objavi definirati pri razradi te mogućnosti; ranije preuzete kopije ne mogu se povući. Nije dio prve verzije.
+Later, teachers may be able to select existing photos and republish them using current consent, a new review and fresh cryptographic preparation. This would be a new publication rather than a silent change to an old one. Decide how the old event is handled when designing that feature. Previously downloaded copies cannot be recalled. Republication is outside the first release.
 
-Dok fotografija postoji, šifrirane oznake, geometrija i podaci za osoblje trebaju omogućiti ponovnu pripremu bez ponovnog označavanja gdje sačuvani pikseli to dopuštaju. Time se ne produljuje rok čuvanja niti pohranjuje original; promjena maske može zahtijevati ponovno odabrati original.
+While a photo exists, encrypted labels, geometry and staff data should support preparing it again without repeating labelling where the retained pixels allow it. This does not extend retention or preserve the original; changing a mask may require selecting the original again.
 
-## 6. Detekcija i editor
+## 6. Detection and editor
 
-Prvi kandidat za lokalnu detekciju je MediaPipe Face Detector. Vraća položaje lica; ne prepoznaje identitet djeteta. Identitet bira teta. Ne uvoditi embeddinge, bazu biometrijskih uzoraka ili vanjski servis za prepoznavanje.
+The first local detector is MediaPipe Face Detector. It returns face positions, not a child's identity. Teachers choose identities. Do not introduce embeddings, a biometric template database or an external recognition service.
 
-Prema [službenim uputama](https://developers.google.com/edge/mediapipe/solutions/vision/face_detector/web_js), detekcija ima JavaScript API i sinkroni pozivi mogu blokirati UI, pa planirati Web Worker. Model i WASM posluživati s vlastitog origina, učitavati tek u editoru i fiksirati verzije. Prije konačnog izbora provjeriti licencu modela i runtimea, CSP, veličinu preuzimanja i rad na stvarnim iOS/Android PWA uređajima.
+The [official documentation](https://developers.google.com/edge/mediapipe/solutions/vision/face_detector/web_js) describes a JavaScript API with synchronous detection calls, so run inference in a Web Worker. Host the model and WASM on the application's origin, load them only when needed and pin versions. Check model/runtime licensing, CSP, download size and real iOS/Android PWA behaviour.
 
-Za editor prvo ispitati sliku s SVG/HTML kontrolama i canvas izvozom: treba nam mali broj jasno određenih radnji. Fabric.js je alternativa ako vlastite kontrole postanu složene; već ima [odabir, pomicanje i skaliranje objekata](https://www.fabricjs.com/docs/core-concepts/). Stara specifikacija ga predlaže, ali postojeća aplikacija ga nema. Biblioteku odabrati nakon kratke provjere dodira, zuma, memorije i pristupačnosti.
+The first editor uses SVG controls and canvas export. Its actions are sufficiently limited to implement directly. Fabric.js remains an alternative if custom controls become too complex; it provides [selection, movement and scaling](https://www.fabricjs.com/docs/core-concepts/). The original specification suggested it, but the application does not depend on it. Evaluate touch, zoom, memory and accessibility before adding an editor library.
 
-Detektor ispitati na licima izdaleka, profilu, djelomično pokrivenim licima, grupnim fotografijama, različitom osvjetljenju i orijentaciji. Ne obećavati postotak uspješnosti bez mjerenja. Ako detektor zakaže ili ne pronađe ništa, ponuditi ručno označavanje i obavezan pregled, bez automatske objave.
+Test distant faces, profiles, partially obscured faces, group photos, varied lighting and orientation. Do not promise accuracy percentages without measurements. If detection fails or finds nothing, allow manual covers and require review rather than automatically publishing.
 
-Za početak napraviti nekoliko lokalnih SVG stickera; kasniji paket mijenja dekoraciju, ne format zaštite. Proizvoljan upload SVG-a nije dio prve verzije.
+Start with locally generated SVG stickers. A later sticker pack changes decoration, not the protection format. Arbitrary SVG uploads are outside the first release.
 
-## 7. Uklapanje u postojeću aplikaciju
+## 7. Integration with the existing application
 
-- Novi modul `events` uz notices i messages, sa zasebnim tipom objave i API rutama. Ne preopteretiti `photos.ts`, koji trenutačno služi fotografijama oglasne ploče.
-- Ponovno koristiti postojeće otvaranje JPEG/PNG/HEIC fotografija i pretvorbu u raster, kriptografske primitive, ovlasti, ograničenja pohrane i galerijski pregled gdje odgovaraju.
-- D1 čuva ID događaja, skupinu, autora, datume, stanje, reviziju, istek, veze na objekte i šifrirane manifeste. Imena djece, oznake lica i vrijednosti dopuštenja ostaju šifrirani.
-- Sve R2 objekte uključiti u postojeći `named_objects`, brojanje pohrane i čišćenje. Autorizirati upload, dohvat, objavu i brisanje. Nikakvi javni URL-ovi za medije.
-- Priprema i upload imaju staging stanje. Tek završna provjera svih objekata, verzija i prava objavljuje događaj. Ponovljena završna radnja ne smije slati duple push obavijesti.
-- Brisanje i istek odmah zaustavljaju dohvat; fizičko čišćenje slijedi postojeći pouzdani mehanizam. Nema posluživanja fotografija iz javnog cachea. Postojeći service worker ništa ne cacheira.
-- Push ne nosi opis, fotografiju ili identitet djece. Hrvatski i engleski tekstovi nastaju zajedno.
-- Online rad i priprema u otvorenom editoru dovoljni su za prvi rez. Trajni nacrti s nastavkom nakon zatvaranja aplikacije zahtijevaju zaseban dizajn šifrirane lokalne pohrane; ne uvoditi ga prešutno.
+- Add a dedicated `events` module alongside notices and messages, with its own publication type and API routes. Do not overload `photos.ts`, which handles notice-board photos.
+- Reuse image decoding for JPEG/PNG/HEIC, raster conversion, cryptographic primitives, authorisation, storage limits and gallery patterns where appropriate.
+- D1 stores event ID, classroom, author, timestamps, state, revisions, expiry, object links and encrypted manifests. Child names, face labels and consent values remain encrypted.
+- Include all R2 objects in `named_objects`, storage accounting and cleanup. Authorise uploads, retrieval, publication and deletion. Media must have no public URLs.
+- Preparation and upload use staging. Final checks of objects, revisions and permissions publish the event atomically. Repeating the final action must not send duplicate push notifications.
+- Deletion and expiry immediately stop retrieval; physical cleanup follows the existing reliable mechanism. Do not serve photos from a public cache. The current service worker caches nothing.
+- Push payloads contain no description, photo or child identity. Keep Croatian and English localisation together.
+- Online editing and preparation in the open page are sufficient for the first release. Persistent drafts require a separate design for encrypted local storage and must not be introduced implicitly.
 
-Prije pilota zatvoriti već zabilježenu granicu iz `access-format.md`: teta trenutačno može zamjenom QR-a obitelji iz svoje skupine otvoriti i druge skupine te obitelji. Predlaže se zamjenu obiteljske kartice ograničiti na administratore. Širi model zajedničkog Staff Keya ostaje postojeći, dokumentirani kompromis koji treba ponovno provjeriti za dječje fotografije.
+Before the pilot, close the access boundary documented in `access-format.md`: replacing a family's card could let a teacher reach that family's other classrooms. Family-card replacement is now restricted to admins. The shared Staff Key remains an existing, documented compromise that warrants review for children's photos.
 
-## 8. Godišnji album i čuvanje
+## 8. Annual albums and retention
 
-**Dogovoreno:** teta bira trajanje događaja kao kod obavijesti: 1, 3, 7, 14, 30, 60 ili 90 dana, zadano 30. Istek uklanja pristup događaju i pokreće brisanje pripadajućih fotografija, isječaka i podataka za ponovnu pripremu kroz postojeći mehanizam čišćenja.
+**Agreed:** teachers choose event duration as for notices: 1, 3, 7, 14, 30, 60 or 90 days, defaulting to 30. Expiry removes access and schedules deletion of photos, patches and retained preparation data through the existing cleanup mechanism.
 
-Godišnji album odgađa se. Kasnije se može dodati izričita opcija „Sačuvaj za godišnji album”, s odvojenim rokom čuvanja, jasnim datumom brisanja i provjerom kapaciteta. Ne čuvati skrivenu arhivu nakon obećanog brisanja. Fotografije obrisane prije uvođenja albuma neće biti dostupne za njega.
+Annual albums are deferred. A future explicit “Save for annual album” option can have a separate retention period, a clear deletion date and storage-capacity checks. Do not keep a hidden archive beyond the promised deletion date. Photos deleted before the album feature arrives will not be available to it.
 
-U model događaja već sada uključiti datum, redoslijed fotografija, opis i verziju formata, kako bi budući album mogao koristiti isti personalizirani renderer. Ti se podaci čuvaju samo tijekom životnog vijeka događaja. Izvoz albuma, izbor uspomena i dizajn stranica nisu dio prve verzije.
+Include date, photo order, description and format version in the event model now, allowing a future album to reuse the personalised renderer. Keep those fields only for the event's lifetime. Album export, memory selection and page design are outside the first release.
 
-## 9. Redoslijed izvedbe i kriteriji završetka
+## 9. Delivery sequence and completion criteria
 
-1. **Dogovor pravila i provjera pristupa.** Potvrditi doseg publike, više povezanih obitelji i ovlasti zamjene QR-a. Učinak promjene dopuštenja i čuvanje potvrđeni su u §5 i §8. Zapisati kriptografski format i model prijetnji.
-2. **Vertikalni dokaz jedne fotografije.** Ručno označiti dva ili tri lica, napraviti sigurnu bazu i šifrirane isječke, otvoriti je kao različite obitelji i izvesti finalnu sliku. Testirati nedopuštene ključeve, preklapanje maski i neispravne pakete. Bez produkcijske objave.
-3. **Roditeljske postavke.** Projekcija vlastite djece, šifrirane postavke, restriktivna pravila, revizije i test da upis tuđeg ID-a ništa ne mijenja.
-4. **Događaj od početka do kraja.** Galerija, ručne maske, označavanje, stvarni pregledi, staging upload, atomska objava, ploča, roditeljski prikaz i download, push, brisanje i istek.
-5. **Detekcija i poliranje rada tete.** Lokalni detektor, automatski stickeri, ručna korekcija, navigacija među slikama i mjerenje na telefonima. Ovo pripada prvoj verziji proizvoda, premda dolazi nakon provjere temelja.
-6. **Pilot.** Provjeriti vrijeme obrade stvarne galerije, pogrešna označavanja, prekid mreže, promjenu postavke tijekom objave, prijenos HEIC-a, memoriju, ovlasti i sve varijante pregleda. Ažurirati opis privatnosti i implementacijsku dokumentaciju.
+1. **Rules and access review.** Settle audience scope, multiple linked families and card-replacement permissions. Consent-change and retention decisions are recorded in sections 5 and 8. Document the cryptographic format and threat model.
+2. **One-photo vertical proof.** Mark two or three faces, prepare a safe base and encrypted patches, open them as different families and export a final image. Test disallowed keys, overlaps and malformed packages before production publication.
+3. **Parent settings.** Project linked children, encrypt consent, apply restrictive defaults and revision checks, and test that another child's injected ID has no effect.
+4. **End-to-end events.** Connect galleries, manual masks, assignments, real previews, staging uploads, atomic publication, board cards, parent views, downloads, push, deletion and expiry.
+5. **Detection and teacher workflow.** Add local detection, automatic stickers, manual correction, gallery navigation and phone measurements. This belongs to the first product release even if it follows foundation checks.
+6. **Pilot.** Check real-gallery processing time, incorrect assignments, interrupted networks, consent changes during publication, HEIC input, memory, authorisation and every audience view. Update the privacy description and implementation documentation.
 
-Obavezni scenariji: samo vlastito dijete, dijete vidljivo skupini, brat/sestra s drukčijom postavkom, dijete s dvije obitelji, nepoznato lice, nula detektiranih lica, preklop maski, oštećen isječak, opozvana sesija, pristup druge skupine, istodobna promjena dopuštenja, djelomičan upload i brisanje tijekom pregledavanja. Za sigurnost isječaka testirati dekodirane piksele, ne samo izgled sučelja.
+Required scenarios: own child only, group-visible child, siblings with different settings, a child linked to two families, unknown face, no detections, overlapping masks, damaged patch, revoked session, another classroom's access, concurrent consent change, partial upload and deletion during viewing. Test decoded patch pixels rather than only the visible interface.
 
-Prva verzija završena je kad teta pripremi događaj jednom, svaka obitelj dobije ispravan pogled i download, a neovlašteno lice nije moguće izvući iz podataka koje ta obitelj prima. Detektor smanjuje ručni rad; ljudski pregled ostaje dio objave.
+The first version is complete when a teacher prepares an event once, each family receives the correct view and download, and an unauthorised face cannot be extracted from the data delivered to that family. Detection reduces manual effort; human review remains part of publication.

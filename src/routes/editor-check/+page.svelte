@@ -4,7 +4,7 @@
 	import EventPhotoEditor from '$lib/app/EventPhotoEditor.svelte';
 	import { setApp, type App } from '$lib/app/state.svelte';
 	import sample from '$lib/assets/photos/classroom-800.webp';
-	const classrooms = [{ id: 'demo', name: 'Mjehurići' }];
+	const classrooms = [{ id: 'demo', name: 'Bubbles' }];
 	const children = ['Ana', 'Luka', 'Petra', 'Marko', 'Mia', 'Ivan', 'Ema', 'Niko'].map(
 		(name, i) => ({ id: String(i), name, classroom: 'demo', families: [] })
 	);
@@ -31,7 +31,5 @@
 		}}>Test: encrypted pixels</button
 	>
 	<p role="status">{result}</p>
-	<button onclick={addSample}>Test: učitaj stock fotografiju</button><EventPhotoEditor
-		locale="hr"
-	/>
+	<button onclick={addSample}>Test: load stock photo</button><EventPhotoEditor locale="en" />
 </main>

@@ -174,9 +174,13 @@ export const en = {
 	privacyPolicy: {
 		title: 'Privacy policy',
 		description: 'What BubbleBoard stores about families and children, where, and for how long.',
-		updated: 'Updated on 18 September 2026',
+		updated: 'Updated on 20 September 2026',
 		// Followed by the project's contact address, which the last point calls the address below.
 		points: [
+			{
+				title: 'Event photos',
+				copy: 'Faces are detected and labelled on the teacher’s device. A covered photo and separate face patches are encrypted before upload; the original is not uploaded. Families see their own children and faces permitted for classroom sharing. Consent is encrypted and changes apply only to future publications. Events and their photos remain available for the 1 to 90 days chosen by the teacher, then are deleted. There is no hidden archive for a yearly album.'
+			},
 			{
 				title: 'What’s stored',
 				copy: 'Names, inquiry subjects and messages, notices, info pages, polls, photos, and files are encrypted on the device before they’re sent. The server can’t read them, and keeps only what it needs to work, without names, such as when a notice was posted. Individual meeting times, reservations, and which child and family IDs may book are scheduling metadata; children’s names remain encrypted.'
@@ -222,6 +226,10 @@ export const en = {
 	// In the app, what cards are and do is called a QR code: parents found "card" confusing (2026-09-13).
 	app: {
 		events: {
+			before: 'Original · staff only',
+			after: 'Selected view',
+			finalView: 'Final photo',
+			compareView: 'Compare with original',
 			title: 'Event',
 			new: 'New event',
 			name: 'Event title',
@@ -306,7 +314,7 @@ export const en = {
 			review: 'Reviewed, next photo',
 			reviewNeeded: 'Needs review',
 			overlap:
-				'Some covers overlap. Check their edges carefully. This preview keeps all faces covered.',
+				'Some covers overlap. The shared area is revealed only to a family allowed to see every face there. Check the edges.',
 			removePhoto: 'Remove photo',
 			preview: 'Review covered photos',
 			back: 'Back to editing',

@@ -4,8 +4,18 @@
 		covered,
 		width,
 		height,
-		label
-	}: { original: string; covered: string; width: number; height: number; label: string } = $props();
+		label,
+		beforeLabel,
+		afterLabel
+	}: {
+		original: string;
+		covered: string;
+		width: number;
+		height: number;
+		label: string;
+		beforeLabel: string;
+		afterLabel: string;
+	} = $props();
 	let position = $state(50);
 	const id = $props.id();
 	let canvas: SVGSVGElement;
@@ -23,6 +33,9 @@
 	}}
 />
 <div class="grid gap-2">
+	<div class="flex justify-between gap-3 text-sm font-semibold">
+		<span>{beforeLabel}</span><span>{afterLabel}</span>
+	</div>
 	<svg
 		bind:this={canvas}
 		viewBox={`0 0 ${width} ${height}`}

@@ -56,6 +56,7 @@
 		progress = $state(0),
 		sending = $state(false);
 	let viewer = $state('base');
+	let compare = $state(false);
 	let publicationError = $state('');
 	let classroom = $state(app.myClassrooms.length === 1 ? app.myClassrooms[0].id : '');
 	let photos = $state.raw<Photo[]>([]);
@@ -525,22 +526,34 @@
 							value="staff">{e.staffView}</option
 						>
 						{#each app.catalog.families.filter( (f) => f.classrooms.includes(classroom) ) as family}<option
-								value={family.id}>{family.name}</option
+								value={family.id}
+								>{family.name} — {children
+									.filter((c) => c.families.includes(family.id))
+									.map((c) => c.name)
+									.join(', ')}</option
 							>{/each}
 					</select></label
 				>{/if}
+			<button
+				type="button"
+				class="{button.secondary} justify-self-start"
+				aria-pressed={compare}
+				onclick={() => (compare = !compare)}>{compare ? e.finalView : e.compareView}</button
+			>
 			{#if previewBusy}<p role="status">{t.loading}</p>{:else if previewError}<p
 					class={alert}
 					role="alert"
 				>
 					{t.previewFailed}
-				</p>{:else if previewUrl}<PhotoComparison
-					original={photo.url}
-					covered={previewUrl}
-					width={photo.width}
-					height={photo.height}
-					label={t.compare}
-				/>{/if}
+				</p>{:else if previewUrl}{#if compare}<PhotoComparison
+						original={photo.url}
+						covered={previewUrl}
+						width={photo.width}
+						height={photo.height}
+						label={t.compare}
+						beforeLabel={e.before}
+						afterLabel={e.after}
+					/>{:else}<img src={previewUrl} alt={e.finalView} class="w-full rounded-2xl" />{/if}{/if}
 			<button
 				type="button"
 				class="{button.secondary} justify-self-start"

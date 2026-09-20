@@ -44,7 +44,7 @@
 					<Icon name="presentation" class="size-4" />{t.photos.new}
 				</a>
 				<a class={button.secondary} href={appPath(locale, 'event/new')}>
-					<Icon name="smile" class="size-4" />{t.eventEditor.open}
+					<Icon name="smile" class="size-4" />{t.events.new}
 				</a>
 			</div>
 		{/if}

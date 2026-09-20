@@ -1189,13 +1189,13 @@ Push notification text should remain generic.
 Recommended:
 
 ```text
-Nova obavijest iz vrtića
+New notice from your kindergarten
 ```
 
 or:
 
 ```text
-Novi sadržaj u aplikaciji
+New content in the app
 ```
 
 Avoid sensitive content in lock-screen notifications.

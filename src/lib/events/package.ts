@@ -1,6 +1,8 @@
+import { overlapAreas, overlapPixels, overlapAudience } from './overlaps';
 import { fromBase64Url, toBase64Url } from '$lib/base64url';
 import {
 	createContentKey,
+	createId,
 	decryptBytes,
 	decryptData,
 	encryptBytes,
@@ -159,6 +161,46 @@ export async function preparePackage(
 			});
 			staffKeys[region.id] = face.raw;
 		}
+		const overlaps = overlapAreas(regions);
+		if (patches.length + overlaps.length > 400) throw new Error('Too many overlapping regions');
+		for (const area of overlaps) {
+			const involved = area.members.map((r) => children.find((c) => c.id === r.child)!);
+			if (involved.some((c) => !c)) throw new UnreadableError();
+			const part = createId(),
+				face = await createContentKey();
+			const crop = new OffscreenCanvas(area.width, area.height),
+				c = crop.getContext('2d')!;
+			c.putImageData(
+				new ImageData(overlapPixels(original, width, area), area.width, area.height),
+				0,
+				0
+			);
+			const data = toBase64Url(
+				await encryptBytes(await bytes(await crop.convertToBlob({ type: 'image/png' })), face.key, {
+					purpose: 'event-face',
+					...context(event, id, part)
+				})
+			);
+			const grants = await Promise.all(
+				overlapAudience(involved, shared).map(async (family) =>
+					encryptData({ key: face.raw }, await familyKey(family), {
+						purpose: 'event-grant',
+						...context(event, id, part)
+					})
+				)
+			);
+			patches.push({
+				id: part,
+				x: area.x,
+				y: area.y,
+				width: area.width,
+				height: area.height,
+				data,
+				grants,
+				...(involved.every((c) => shared.has(c.id)) ? { shared: face.raw } : {})
+			});
+			staffKeys[part] = face.raw;
+		}
 		const base = toBase64Url(await bytes(await safePreview(blob, regions)));
 		const staff = await encryptData({ regions, keys: staffKeys }, staffKey, {
 			purpose: 'event-staff',
@@ -201,7 +243,7 @@ export async function renderPackage(
 		Number(p.height) > 1920 ||
 		typeof p.base !== 'string' ||
 		!Array.isArray(p.patches) ||
-		p.patches.length > 100
+		p.patches.length > 400
 	)
 		throw new UnreadableError();
 	const base = await createImageBitmap(png(p.base));

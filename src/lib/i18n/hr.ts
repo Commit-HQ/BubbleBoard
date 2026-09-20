@@ -163,8 +163,12 @@ export const hr = {
 	privacyPolicy: {
 		title: 'Politika privatnosti',
 		description: 'Što BubbleBoard čuva o obiteljima i djeci, gdje i koliko dugo.',
-		updated: 'Ažurirano 18. rujna 2026.',
+		updated: 'Ažurirano 20. rujna 2026.',
 		points: [
+			{
+				title: 'Fotografije događaja',
+				copy: 'Lica se traže i označavaju na uređaju odgojitelja. Šalje se šifrirana prekrivena fotografija s odvojenim šifriranim isječcima, bez izvornika. Obitelji vide vlastitu djecu i lica za koja je dopušteno dijeljenje. Dopuštenja su šifrirana i promjene vrijede samo za buduće objave. Događaji i njihove fotografije dostupni su od 1 do 90 dana prema izboru odgojitelja, zatim se brišu. Nema skrivene arhive za godišnji album.'
+			},
 			{
 				title: 'Što se čuva',
 				copy: 'Imena, naslovi upita i poruke, obavijesti, stranice s informacijama, ankete, fotografije i datoteke šifriraju se na uređaju prije slanja. Poslužitelj ih ne može pročitati, a čuva samo ono što mu treba za rad, bez imena, na primjer kad je obavijest objavljena. Termini individualnih razgovora, rezervacije te poveznice između identifikatora djece i obitelji služe organizaciji termina; imena djece ostaju šifrirana.'
@@ -207,6 +211,10 @@ export const hr = {
 	},
 	app: {
 		events: {
+			before: 'Original · samo za osoblje',
+			after: 'Odabrani prikaz',
+			finalView: 'Konačna fotografija',
+			compareView: 'Usporedi s originalom',
 			title: 'Događaj',
 			new: 'Novi događaj',
 			name: 'Naslov događaja',
@@ -292,7 +300,7 @@ export const hr = {
 			review: 'Pregledano, sljedeća fotografija',
 			reviewNeeded: 'Potreban pregled',
 			overlap:
-				'Neki se pokrovi preklapaju. Pažljivo provjeri rubove. U ovom pregledu sva lica ostaju prekrivena.',
+				'Neki se pokrovi preklapaju. Zajednički dio vidi samo obitelj koja smije vidjeti sva lica u tom dijelu. Provjeri rubove.',
 			removePhoto: 'Ukloni fotografiju',
 			preview: 'Pregledaj prekrivene fotografije',
 			back: 'Natrag na uređivanje',

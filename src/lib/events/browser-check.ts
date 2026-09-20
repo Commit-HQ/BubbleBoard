@@ -104,5 +104,26 @@ export async function checkEventPixels() {
 		(await pixel(new Blob([raw], { type: 'image/png' }), 23, 10)) === '0,0,0,0',
 		'Decrypted overlap has zero RGB and alpha'
 	);
+	const common = await preparePackage(
+		event,
+		createId(),
+		source,
+		regions,
+		eventKey.key,
+		staff.key,
+		[
+			{ id: 'a', families: ['a'] },
+			{ id: 'b', families: ['a', 'b'] }
+		],
+		new Set(),
+		async (f) => (f === 'a' ? familyA.key : familyB.key)
+	);
+	const commonView = await renderPackage(event, common.id, common.sealed, eventKey.key, {
+		family: familyA.key
+	});
+	assert(
+		(await pixel(commonView, 28, 15)) === '0,0,255,255',
+		'Family allowed both faces sees intact overlap'
+	);
 	return 'PASS: family A, family B, outsider, overlap, decoded patch pixels';
 }
