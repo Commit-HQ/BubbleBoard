@@ -320,13 +320,7 @@ export class App {
 			photo,
 			file.sealed,
 			draft.key,
-			viewer === 'base'
-				? { covered: true }
-				: viewer === 'staff'
-					? { staff: this.#staff.staffKey }
-					: viewer
-						? { family: await this.messageKey(viewer) }
-						: {}
+			viewer === 'base' ? { covered: true } : { family: await this.messageKey(viewer) }
 		);
 	}
 	async publishEvent(

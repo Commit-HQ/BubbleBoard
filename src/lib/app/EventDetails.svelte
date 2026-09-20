@@ -1,22 +1,25 @@
 <script lang="ts">
 	import { messages, type Locale } from '$lib/i18n';
+	import type { NoticeDocument } from '$lib/notices';
 	import DaysChoice from './DaysChoice.svelte';
+	import NoticeEditor from './NoticeEditor.svelte';
 	import { field, surface } from './ui';
 
-	// The first step of an event: which classroom it belongs to, what it's called, when it happened, and how
-	// long the gallery stays up — the same questions, asked the same way, as a notice's form. The photos come
-	// next, so the classroom settles here: it decides whose children can be named, and it can't change once
-	// photos are labelled.
+	// The first step of an event: which classroom it belongs to, what it's called, when it happened, what it
+	// was, and how long the gallery stays up — the same questions, fields and words as a notice's form, its
+	// text editor included. The photos come next, so the classroom settles here: it decides whose children can
+	// be named, and it can't change once photos are labelled.
 	let {
 		locale,
 		classrooms,
 		publishable,
 		locked,
+		description,
 		classroom = $bindable(),
 		title = $bindable(),
 		date = $bindable(),
-		description = $bindable(),
-		days = $bindable()
+		days = $bindable(),
+		ready = $bindable(false)
 	}: {
 		locale: Locale;
 		classrooms: { id: string; name: string }[];
@@ -24,15 +27,26 @@
 		publishable: boolean;
 		/** Whether photos are labelled already, which ties the event to its classroom. */
 		locked: boolean;
+		/** The words written so far, which come back when the teacher returns to this step. */
+		description: NoticeDocument;
 		classroom: string;
 		title: string;
 		date: string;
-		description: string;
 		days: number;
+		/** Whether the text editor has loaded, so its words can be read. */
+		ready?: boolean;
 	} = $props();
 
 	const t = $derived(messages[locale].app.eventEditor);
 	const e = $derived(messages[locale].app.events);
+	const id = $props.id();
+	let editor = $state<ReturnType<typeof NoticeEditor>>();
+
+	/** What was written, or undefined when it holds more than a gallery shows. An event may say nothing. */
+	export function text(): NoticeDocument | undefined {
+		if (!editor || editor.isEmpty()) return { type: 'doc', content: [] };
+		return editor.getDocument();
+	}
 </script>
 
 <div class="{surface} grid gap-7">
@@ -67,10 +81,16 @@
 			<input class={field.input} type="date" bind:value={date} required />
 		</label>
 
-		<label class={field.label}>
-			<span class={field.name}>{e.description}</span>
-			<textarea class={field.input} rows="4" maxlength="5000" bind:value={description}></textarea>
-		</label>
+		<div class="grid gap-1.5">
+			<span id="{id}-description" class={field.name}>{e.description}</span>
+			<NoticeEditor
+				bind:this={editor}
+				bind:ready
+				{locale}
+				content={description}
+				labelledby="{id}-description"
+			/>
+		</div>
 
 		<DaysChoice {locale} legend={e.days} bind:days />
 	{/if}

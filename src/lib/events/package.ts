@@ -14,7 +14,14 @@ import {
 	UnreadableError
 } from '$lib/crypto';
 import type { Region, Rect } from './editor';
-import type { ConsentRow, EventContent, EventRecord, OpenEvent } from './types';
+import {
+	maxEventPhotoText,
+	type ConsentRow,
+	type EventPhoto,
+	type EventRecord,
+	type OpenEvent
+} from './types';
+import { readDocument, type NoticeDocument } from '$lib/notices';
 import { safePreview } from './images';
 
 const bytes = async (blob: Blob) => new Uint8Array(await blob.arrayBuffer());
@@ -347,15 +354,13 @@ export async function openEvent(record: EventRecord, groupKey: CryptoKey): Promi
 		value.title.length > 160 ||
 		typeof value.date !== 'string' ||
 		!/^\d{4}-\d{2}-\d{2}$/.test(value.date) ||
-		typeof value.description !== 'string' ||
-		value.description.length > 5000 ||
 		!Array.isArray(value.photos) ||
 		!value.photos.length ||
 		value.photos.length > 20
 	)
 		throw new UnreadableError();
-	for (const p of value.photos) {
-		const f = fields(p);
+	const photos: EventPhoto[] = value.photos.map((photo) => {
+		const f = fields(photo);
 		if (
 			!isId(f.id) ||
 			!Number.isInteger(f.width) ||
@@ -363,9 +368,41 @@ export async function openEvent(record: EventRecord, groupKey: CryptoKey): Promi
 			Number(f.width) < 1 ||
 			Number(f.width) > 1920 ||
 			Number(f.height) < 1 ||
-			Number(f.height) > 1920
+			Number(f.height) > 1920 ||
+			(f.text !== undefined && (typeof f.text !== 'string' || f.text.length > maxEventPhotoText))
 		)
 			throw new UnreadableError();
-	}
-	return { ...record, key, value: value as EventContent };
+		const text = typeof f.text === 'string' && f.text ? f.text : undefined;
+		return { id: f.id as string, width: f.width as number, height: f.height as number, text };
+	});
+	return {
+		...record,
+		key,
+		value: {
+			version: 1,
+			title: value.title,
+			date: value.date,
+			description: readEventText(value.description),
+			photos
+		}
+	};
+}
+
+/**
+ * An event's words, read like a notice's. Events published before the editor wrote formatted text carry a
+ * plain string, whose lines become paragraphs, so those galleries still open.
+ */
+function readEventText(value: unknown): NoticeDocument {
+	if (typeof value !== 'string') return readDocument(value);
+	if (value.length > 5000) throw new UnreadableError();
+	return {
+		type: 'doc',
+		content: value
+			.split('\n')
+			.map((line) =>
+				line
+					? { type: 'paragraph', content: [{ type: 'text', text: line }] }
+					: { type: 'paragraph' }
+			)
+	};
 }

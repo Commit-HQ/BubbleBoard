@@ -4,6 +4,7 @@
 	import type { Notice } from '$lib/notices';
 	import BoardPhoto from './BoardPhoto.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
+	import NoticeBody from './NoticeBody.svelte';
 	import NoticeCard from './NoticeCard.svelte';
 	import { getApp } from './state.svelte';
 	import { choice, surface, button } from './ui';
@@ -77,7 +78,9 @@
 		<article class="{surface} grid gap-3">
 			<p class="text-sm text-muted">{t.events.title} · {formatDay(locale, event.value.date)}</p>
 			<h2 class="text-3xl">{event.value.title}</h2>
-			<p class="line-clamp-3 whitespace-pre-wrap">{event.value.description}</p>
+			{#if event.value.description.content.length}
+				<NoticeBody blocks={event.value.description.content} />
+			{/if}
 			<a
 				class="{button.secondary} justify-self-start"
 				href={`${appPath(locale, 'event')}?id=${event.id}`}

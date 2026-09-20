@@ -21,6 +21,8 @@
 	} from '$lib/events/editor';
 	import { prepareEditorImage, safePreview } from '$lib/events/images';
 	import { errorMessage, formatDay, messages, type Locale } from '$lib/i18n';
+	import { maxEventPhotoText } from '$lib/events/types';
+	import type { NoticeDocument } from '$lib/notices';
 	import type { EventDraft } from '$lib/events/publishing';
 	import type { Sticker } from '$lib/events/stickers';
 	import { appPath } from '$lib/paths';
@@ -44,6 +46,8 @@
 		url: string;
 		width: number;
 		height: number;
+		/** The few words the teacher writes under this photo, which everyone who opens the event reads. */
+		text: string;
 		history: History;
 		detection: 'pending' | 'ready' | 'failed' | 'manual';
 		generation: number;
@@ -57,9 +61,12 @@
 
 	let step = $state<'details' | 'photos' | 'review'>('details');
 	let title = $state(''),
-		description = $state(''),
 		date = $state(new Date().toLocaleDateString('en-CA')),
 		days = $state(30);
+	/** The event's words, kept here while the first step's editor is unmounted. */
+	let description = $state.raw<NoticeDocument>({ type: 'doc', content: [] });
+	let details = $state<ReturnType<typeof EventDetails>>();
+	let editorReady = $state(false);
 	let draft = $state.raw<EventDraft>();
 	let working = $state(false),
 		progress = $state(0),
@@ -97,7 +104,9 @@
 	const nextUnreviewed = $derived(
 		photos.find((p) => p.id !== current && !p.history.present.reviewed)?.id
 	);
-	const ready = $derived(!!classroom && (!publishable || (!!title.trim() && !!date)));
+	const detailsDone = $derived(
+		!!classroom && (!publishable || (!!title.trim() && !!date && editorReady))
+	);
 	const overlap = $derived(
 		edit?.regions.some((one, index) =>
 			edit.regions.slice(index + 1).some((two) => overlaps(one, two))
@@ -160,6 +169,17 @@
 		error = '';
 	}
 	/** Back from the review: the prepared draft is no longer the photos as they are. */
+	/** On to the photos, keeping the words written so far; an event's words may be more than a gallery shows. */
+	function toPhotos() {
+		const written = details?.text();
+		if (!written) {
+			error = errorMessage(locale, 'event-too-long');
+			return;
+		}
+		description = written;
+		error = '';
+		step = 'photos';
+	}
 	function backToPhotos() {
 		if (step === 'review') step = 'photos';
 		draft = undefined;
@@ -304,6 +324,7 @@
 						...image,
 						id: createId(),
 						url: url(image.blob),
+						text: '',
 						history: emptyEdit(),
 						detection: 'pending',
 						generation: 0
@@ -413,9 +434,14 @@
 				{
 					version: 1,
 					title: title.trim(),
-					description: description.trim(),
+					description,
 					date,
-					photos: draft.files.map(({ id, width, height }) => ({ id, width, height }))
+					photos: draft.files.map(({ id, width, height }) => ({
+						id,
+						width,
+						height,
+						text: photos.find((p) => p.id === id)?.text.trim() || undefined
+					}))
 				},
 				days,
 				(n) => (progress = n)
@@ -518,21 +544,23 @@
 
 		{#if step === 'details'}
 			<EventDetails
+				bind:this={details}
 				{locale}
 				classrooms={app.myClassrooms}
 				{publishable}
 				locked={photos.length > 0}
+				{description}
 				bind:classroom
 				bind:title
 				bind:date
-				bind:description
 				bind:days
+				bind:ready={editorReady}
 			/>
 			<button
 				type="button"
 				class="{button.primary} justify-self-start"
-				disabled={!ready}
-				onclick={() => (step = 'photos')}
+				disabled={!detailsDone}
+				onclick={toPhotos}
 			>
 				{t.continue}<Icon name="arrowRight" class="size-4" />
 			</button>
@@ -675,6 +703,21 @@
 
 				{#if overlap}<p class="rounded-2xl bg-apricot/20 p-3 text-sm">{t.overlap}</p>{/if}
 
+				<label class={field.label}>
+					<span class={field.name}>{t.caption}</span>
+					<input
+						class={field.input}
+						maxlength={maxEventPhotoText}
+						value={photo.text}
+						placeholder={t.captionPlaceholder}
+						oninput={(event) => {
+							const written = event.currentTarget.value;
+							update(photo!.id, (p) => ({ ...p, text: written }));
+						}}
+					/>
+					<span class={field.hint}>{t.captionHint}</span>
+				</label>
+
 				<div class="flex flex-wrap items-center gap-3">
 					{#if edit.reviewed}
 						<p class="flex items-center gap-2 font-semibold text-green-800">
@@ -735,8 +778,6 @@
 					<span class={field.name}>{e.previewAs}</span>
 					<select class={field.input} bind:value={viewer}>
 						<option value="base">{e.base}</option>
-						<option value="">{e.groupView}</option>
-						<option value="staff">{e.staffView}</option>
 						{#each app.catalog.families.filter( (f) => f.classrooms.includes(classroom) ) as family (family.id)}
 							<option value={family.id}
 								>{family.name} — {children

@@ -7,10 +7,11 @@
 	import { onMount } from 'svelte';
 	import { button, field, noticeText, paperClass } from './ui';
 
-	// The editor of notices and info pages: Tiptap 3, imported when this component mounts, so only the pages where
-	// they're written download it (next-step-plan.md, Editor). Its schema holds what boards render: paragraphs,
-	// lists, bold, and links. Its toolbar also chooses the paper, the background the text is written on. Tiptap's
-	// injected stylesheet is off for the CSP, with its rules in app.css. Emoji come from the keyboard.
+	// The editor of notices, info pages and an event's words: Tiptap 3, imported when this component mounts, so only
+	// the pages where they're written download it (next-step-plan.md, Editor). Its schema holds what boards render:
+	// paragraphs, lists, bold, and links. With a `paper`, its toolbar also chooses that background, the colour the
+	// text is written on; without one, as for an event, the text is simply written on white. Tiptap's injected
+	// stylesheet is off for the CSP, with its rules in app.css. Emoji come from the keyboard.
 	let {
 		locale,
 		content,
@@ -22,8 +23,8 @@
 		content?: NoticeDocument;
 		/** The ID of the text that names the editor. */
 		labelledby: string;
-		/** The background of the notice or page, which the toolbar chooses. */
-		paper: Paper;
+		/** The background of the notice or page, which the toolbar chooses. Left out, the text is on white. */
+		paper?: Paper;
 		ready?: boolean;
 	} = $props();
 
@@ -172,9 +173,9 @@
 {/snippet}
 
 <div
-	class="overflow-hidden rounded-3xl ring-1 ring-ink/15 transition focus-within:ring-2 focus-within:ring-accent {paperClass[
-		paper
-	]}"
+	class="overflow-hidden rounded-3xl ring-1 ring-ink/15 transition focus-within:ring-2 focus-within:ring-accent {paper
+		? paperClass[paper]
+		: 'bg-white'}"
 >
 	<div
 		class="flex flex-wrap gap-1 border-b border-ink/10 bg-white/50 p-1.5"
@@ -189,7 +190,9 @@
 			run((chain) => chain.toggleOrderedList())
 		)}
 		{@render tool('link', t.link, undefined, () => toggle('link'))}
-		{@render tool('palette', t.paper, undefined, () => toggle('paper'))}
+		{#if paper !== undefined}{@render tool('palette', t.paper, undefined, () =>
+				toggle('paper')
+			)}{/if}
 	</div>
 
 	{#if panel === 'link'}

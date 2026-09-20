@@ -7,7 +7,8 @@ import {
 	encryptBytes,
 	decryptBytes
 } from '$lib/crypto';
-import { sharing, facePixels } from './package';
+import { sharing, facePixels, openEvent } from './package';
+import type { EventRecord } from './types';
 
 describe('event privacy', () => {
 	it('requires consent from every linked family and ignores unrelated child choices', async () => {
@@ -75,5 +76,71 @@ describe('event privacy', () => {
 		expect([
 			...(await decryptBytes(encrypted, face.key, { ...context, purpose: 'event-face' }))
 		]).toEqual([1, 2, 3]);
+	});
+	describe('reading an event', () => {
+		/** An event sealed as a device publishes it, to be opened again with the classroom's key. */
+		async function sealed(value: unknown) {
+			const group = await createContentKey(),
+				content = await createContentKey();
+			const id = createId();
+			const record: EventRecord = {
+				id,
+				classroom: createId(),
+				teacher: null,
+				postedAt: 0,
+				expiresAt: 0,
+				eventKey: await encryptData({ key: content.raw }, group.key, {
+					purpose: 'event-key',
+					event: id
+				}),
+				content: await encryptData(value, content.key, { purpose: 'event-content', event: id })
+			};
+			return openEvent(record, group.key);
+		}
+		const base = {
+			version: 1,
+			title: 'Autumn walk',
+			date: '2026-09-20',
+			photos: [{ id: createId(), width: 800, height: 600 }]
+		};
+
+		it('reads formatted words and a photo’s own words, and leaves out empty ones', async () => {
+			const words = {
+				type: 'doc',
+				content: [{ type: 'paragraph', content: [{ type: 'text', text: 'We walked.' }] }]
+			};
+			const photos = [
+				{ ...base.photos[0], text: 'Ana found a chestnut.' },
+				{ id: createId(), width: 10, height: 10, text: '' }
+			];
+			const { value } = await sealed({ ...base, description: words, photos });
+			expect(value.description).toEqual(words);
+			expect(value.photos.map((photo) => photo.text)).toEqual(['Ana found a chestnut.', undefined]);
+		});
+
+		it('reads the plain words of an event published before the editor, line by line', async () => {
+			const { value } = await sealed({ ...base, description: 'One line.\n\nAnother.' });
+			expect(value.description).toEqual({
+				type: 'doc',
+				content: [
+					{ type: 'paragraph', content: [{ type: 'text', text: 'One line.' }] },
+					{ type: 'paragraph' },
+					{ type: 'paragraph', content: [{ type: 'text', text: 'Another.' }] }
+				]
+			});
+		});
+
+		it('refuses words it can’t show and a photo’s words beyond the limit', async () => {
+			await expect(
+				sealed({ ...base, description: { type: 'doc', content: [{ type: 'heading' }] } })
+			).rejects.toThrow();
+			await expect(
+				sealed({
+					...base,
+					description: { type: 'doc', content: [] },
+					photos: [{ ...base.photos[0], text: 'x'.repeat(301) }]
+				})
+			).rejects.toThrow();
+		});
 	});
 });

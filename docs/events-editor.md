@@ -8,13 +8,13 @@ The editor includes local detection in multiple orientations, manual covers, thr
 
 Three steps: **Event → Photos → Review and publish**, with the step the teacher is on named above the page. Teachers work on one photo at a time. There is no separate wizard for each face: tap a sticker, choose a child and continue. The basic view stays simple, with movement and resizing available for the selected sticker.
 
-The first step asks for the classroom, title, description, date and duration, in the fields and the day tiles a notice's form uses; a teacher with one classroom sees which it is rather than choosing. The classroom settles there, because it decides which children can be named, and it is locked once photos are open. Photos can be added and removed until publication. Originals open locally; “Add photos” does not mean they have been uploaded.
+The first step asks for the classroom, title, date, description and duration, in the fields, the text editor and the day tiles a notice's form uses — the description is written with the same toolbar, without the paper colours, and read on the board and in the gallery through the same checked document; a teacher with one classroom sees which it is rather than choosing. The classroom settles there, because it decides which children can be named, and it is locked once photos are open. Photos can be added and removed until publication. Originals open locally; “Add photos” does not mean they have been uploaded.
 
 ## Editor layout
 
 On mobile, the photo takes up most of the screen, with “Photo 2 of 8” above it and the status and selected-face panel below. The panel must not obscure the active face: the image uses the available space. Desktop follows the same full-width photo layout, with assignment below it. Do not introduce a separate, complex desktop tool.
 
-A thumbnail strip allows navigation to any photo without losing work. Each thumbnail carries its number and a mark for what it still needs — a tick when reviewed, the number of faces waiting, a dot while faces are being looked for — and says the same in words to a screen reader and in its tooltip; above the strip, “2 of 8 photos reviewed” says how far the gallery has got. A grid overview is a possible extension for larger galleries. Removing a photo asks first, because its labels go with it. Replacing a photo with a new file clears its labels and review confirmation.
+Under the faces, each photo takes a few optional words of its own, up to 300 characters, which everyone who opens the event reads under it. A thumbnail strip allows navigation to any photo without losing work. Each thumbnail carries its number and a mark for what it still needs — a tick when reviewed, the number of faces waiting, a dot while faces are being looked for — and says the same in words to a screen reader and in its tooltip; above the strip, “2 of 8 photos reviewed” says how far the gallery has got. A grid overview is a possible extension for larger galleries. Removing a photo asks first, because its labels go with it. Replacing a photo with a new file clears its labels and review confirmation.
 
 Primary actions: **Add cover**, **Show original**, **Undo**, **Done, next photo**. Redo sits beside Undo. Descriptive metadata stays outside the photo workspace.
 
@@ -59,7 +59,9 @@ Changing a child assignment, position or size, or adding or removing a cover, in
 
 ## Final event review
 
-Review uses the actual prepared raster and patches, through the same renderer used by parents. The initial **“All covers”** view checks the safe base. Teachers can also select the view of a family without its own child in the photo, a specific family, or staff. Family options include the card name and linked children's names. The selected audience applies across the gallery. Two chips pick the view: the final image first, or the comparison with the original, whose sides are labelled.
+Review uses the actual prepared raster and patches, through the same renderer used by parents. The initial **“All covers”** view checks the safe base. Teachers can also select a specific family, whose option names the card and its linked children. The selected audience applies across the gallery. Two chips pick the view: the final image first, or the comparison with the original, whose sides are labelled.
+
+The audience list holds the safe base, “All covers”, and the event's families by name; the staff and outsider views were taken out after the first teacher's use, because a teacher checks the covers and what each family sees.
 
 Publication does not require manually checking every possible family. It requires reviewed photos, valid permissions and final gallery review. Teachers can return to editing to fix a photo; changes require its review again.
 
@@ -87,3 +89,7 @@ Include detection, name assignment, a private identification crop, adding/moving
 Defer filters, freeform text on photos, sticker rotation, identity recognition, copying face positions between photos and bulk approval of unreviewed photos.
 
 During the pilot, measure gallery labelling time, incorrect assignments, returns to previous faces, accidental movement while zooming, use of the original and lost drafts. Check whether automatic advancement helps or confuses teachers. The earlier interactive conversation prototype demonstrated assignment and audience differences, not detection, secure processing or a finished editor.
+
+## The published gallery
+
+A family or teacher opens the event from its board card: the title, the day, the description as it was written, then the photos one at a time with the teacher's words under each. Tapping a photo opens it on the whole screen in the same viewer as a board photo or a notice's picture, where a swipe, the arrows or the arrow keys move through the gallery, its number and words show under it, and Save keeps it on the device. Photos are decrypted and composed for whoever holds the card, one at a time, so a swipe to a photo that isn't ready yet says it's opening.
