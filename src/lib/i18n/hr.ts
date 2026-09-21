@@ -293,6 +293,8 @@ export const hr = {
 			already: 'Već na slici',
 			empty: 'Nema djece koja odgovaraju pretrazi.',
 			covered: 'Ostavi prekriveno',
+			coverRest: (n: number) => `Ostavi preostala lica prekrivenima (${n})`,
+			coveredRest: (n: number) => `Prekriveno je još ${count(n, 'lice', 'lica', 'lica')}.`,
 			removeCover: 'Ukloni pokrov',
 			sticker: 'Naljepnica',
 			stickerNames: {
@@ -329,9 +331,14 @@ export const hr = {
 			removePhotoCopy: 'Ova fotografija i sve označeno na njoj nestaju iz nacrta.',
 			preview: 'Pregledaj prekrivene fotografije',
 			back: 'Natrag na fotografije',
+			backToGrid: 'Natrag na sve fotografije',
 			previewFailed: 'Pregled nije moguće pripremiti. Vrati se na fotografije i pokušaj ponovno.',
 			unusable: 'Fotografiju nije moguće otvoriti. Odaberi JPEG, PNG, WebP ili HEIC fotografiju.',
-			leave: 'Napustiti stranicu i odbaciti nacrt događaja?',
+			leaveTitle: 'Napustiti događaj?',
+			leaveCopy:
+				'Ovaj uređaj još nije spremio fotografije ni ono što je na njima označeno, pa bi bili izgubljeni.',
+			leave: 'Napusti i odbaci',
+			stay: 'Ostani',
 			allReviewed: 'Sve su fotografije pregledane.',
 			tooManyFaces:
 				'Na fotografiji je previše pokrova. Odaberi drugu fotografiju ili ukloni pogrešne detekcije.',

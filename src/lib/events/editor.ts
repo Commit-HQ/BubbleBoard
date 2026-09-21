@@ -106,6 +106,20 @@ export function assign(history: History, id: string, child: string | null): Hist
 	return commit(history, regions, next?.id ?? null);
 }
 
+/**
+ * Keeps every face still waiting covered, in one step. Hiding is the safe direction, so a teacher who has
+ * named the children they know may say the rest are not to be shown, and the photo still asks to be reviewed.
+ */
+export function coverRest(history: History): History {
+	return commit(
+		history,
+		history.present.regions.map((region) =>
+			!region.child && !region.covered ? { ...region, covered: true } : region
+		),
+		null
+	);
+}
+
 export function undo(history: History): History {
 	const previous = history.past.at(-1);
 	return previous

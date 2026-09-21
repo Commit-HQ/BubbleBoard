@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { goto, beforeNavigate } from '$app/navigation';
-	import { onDestroy, onMount, untrack } from 'svelte';
+	import { onDestroy, onMount, tick, untrack } from 'svelte';
 	import { createId } from '$lib/crypto';
 	import { LocalFaceDetector } from '$lib/events/detector';
 	import {
 		assign,
 		boundedRect,
 		commit,
+		coverRest,
 		detectionRegion,
 		dropMissing,
 		emptyEdit,
@@ -101,9 +102,17 @@
 	let original = $state(false);
 	let zoom = $state(1);
 	let viewCenter = $state<{ x: number; y: number }>();
-	let previewUrl = $state('');
-	let previewBusy = $state(false);
-	let previewError = $state(false);
+	/** The final render of each photo for the audience being checked, prepared one photo at a time. */
+	let previews = $state.raw<Record<string, { url?: string; failed?: boolean }>>({});
+	/** Which photo of the review grid is open large, so its covers can be read properly. */
+	let enlarged = $state('');
+	/** The photo's heading, brought back to the top of the screen whenever another photo is opened. */
+	let heading = $state<HTMLElement>();
+	/** Where someone was going when asked whether to leave work this device hasn't kept. */
+	/** The photo opened large in the review, which sits above a grid that may be several screens long. */
+	let largeView = $state<HTMLElement>();
+	let leaving = $state<URL>();
+	let leaveAnyway = false;
 	/** The card this device is connected with. Without one, as in the development fixture, nothing is kept. */
 	const credential = app.myCredential;
 	/** The unfinished event this device kept, while the teacher chooses whether to go on with it. */
@@ -123,6 +132,9 @@
 	const allReviewed = $derived(
 		photos.length > 0 && reviewedCount === photos.length && !loading && !detecting
 	);
+	const previewsPending = $derived(step === 'review' && photos.some((p) => !previews[p.id]));
+	const previewsFailed = $derived(photos.some((p) => previews[p.id]?.failed));
+	const large = $derived(photos.find((p) => p.id === enlarged));
 	const nextUnreviewed = $derived(
 		photos.find((p) => p.id !== current && !p.history.present.reviewed)?.id
 	);
@@ -251,13 +263,24 @@
 		if (photo)
 			setHistory({ ...photo.history, present: { ...photo.history.present, selected: id } });
 	}
-	function switchPhoto(id: string) {
+	function switchPhoto(id: string, scroll = true) {
 		current = id;
 		original = false;
 		zoom = 1;
 		viewCenter = undefined;
 		feedback = '';
 		error = '';
+		if (scroll) void bringUp(() => heading);
+	}
+	/** "Reviewed, next photo" sits below a long page, so the photo that follows it comes back up to the top. */
+	async function bringUp(element: () => HTMLElement | undefined) {
+		await tick();
+		element()?.scrollIntoView({
+			behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+				? 'instant'
+				: 'smooth',
+			block: 'start'
+		});
 	}
 	/** On to the photos, keeping the words written so far; an event's words may be more than a gallery shows. */
 	function toPhotos() {
@@ -274,6 +297,7 @@
 		if (step === 'review') step = 'photos';
 		draft = undefined;
 		original = false;
+		enlarged = '';
 	}
 	function changeRegion(id: string, rect: Rect) {
 		if (!photo) return;
@@ -313,6 +337,13 @@
 		setHistory(assign(photo.history, selected.id, child));
 		original = false;
 		feedback = child ? t.assigned(nameOf(child)) : '';
+	}
+	function coverTheRest() {
+		if (!photo || !edit) return;
+		const left = unresolved(edit);
+		setHistory(coverRest(photo.history));
+		original = false;
+		feedback = t.coveredRest(left);
 	}
 	function setSticker(sticker: Sticker) {
 		if (!photo || !edit || !selected) return;
@@ -432,7 +463,7 @@
 					};
 					photos = [...photos, item];
 					if (credential) void saveDraftPhoto(item.id, image.blob);
-					if (!current) switchPhoto(item.id);
+					if (!current) switchPhoto(item.id, false);
 					await detect(item.id);
 				} catch {
 					if (!disposed) error = t.unusable;
@@ -467,41 +498,38 @@
 		draft = undefined;
 		removing = false;
 	}
+	// The whole gallery as the chosen audience will see it. The renders are made one after another, because a
+	// phone that composed thirty photos at once would run out of memory, and each tile waits its turn.
 	$effect(() => {
-		const target = photo;
-		const prepared = draft,
+		const list = photos,
+			prepared = draft,
 			recipient = viewer;
-		if (step !== 'review' || !target) {
-			untrack(() => {
-				revoke(previewUrl);
-				previewUrl = '';
-			});
-			return;
-		}
+		untrack(forgetPreviews);
+		if (step !== 'review') return;
 		let cancelled = false;
-		previewBusy = true;
-		previewError = false;
-		untrack(() => {
-			revoke(previewUrl);
-			previewUrl = '';
-		});
-		(prepared
-			? app.eventPreview(prepared, target.id, recipient)
-			: safePreview(target.blob, target.history.present.regions)
-		)
-			.then((blob) => {
-				if (!cancelled && !disposed) previewUrl = url(blob);
-			})
-			.catch(() => {
-				if (!cancelled) previewError = true;
-			})
-			.finally(() => {
-				if (!cancelled) previewBusy = false;
-			});
+		void (async () => {
+			for (const item of list) {
+				if (cancelled || disposed) return;
+				try {
+					const blob = await (prepared
+						? app.eventPreview(prepared, item.id, recipient)
+						: safePreview(item.blob, item.history.present.regions));
+					if (cancelled || disposed) return;
+					previews = { ...previews, [item.id]: { url: url(blob) } };
+				} catch {
+					if (cancelled || disposed) return;
+					previews = { ...previews, [item.id]: { failed: true } };
+				}
+			}
+		})();
 		return () => {
 			cancelled = true;
 		};
 	});
+	function forgetPreviews() {
+		for (const shot of Object.values(previews)) if (shot.url) revoke(shot.url);
+		previews = {};
+	}
 	function startPreview() {
 		original = false;
 		progress = 0;
@@ -552,10 +580,22 @@
 			})
 			.finally(() => (sending = false));
 	}
-	beforeNavigate(({ cancel, type }) => {
+	beforeNavigate((navigation) => {
 		// Only work the device hasn't kept is worth a warning; a saved event waits here on the way back.
-		if (photos.length && !draftSaved && type !== 'leave' && !window.confirm(t.leave)) cancel();
+		if (!photos.length || draftSaved || leaveAnyway) return;
+		navigation.cancel();
+		// Closing the tab or leaving the site gets the browser's own question instead.
+		if (!navigation.willUnload && navigation.to) leaving = navigation.to.url;
 	});
+	async function leave() {
+		if (!leaving) return;
+		leaveAnyway = true;
+		try {
+			await goto(leaving);
+		} finally {
+			leaveAnyway = false;
+		}
+	}
 	onDestroy(() => {
 		disposed = true;
 		detector.close();
@@ -634,18 +674,17 @@
 	</div>
 {/snippet}
 
-{#snippet photoView(source: string, label: string)}
-	{#if photo && edit}
-		<svg
-			viewBox={`0 0 ${photo.width} ${photo.height}`}
-			class="block w-full bg-ink/5"
-			role="img"
-			aria-label={label}
-		>
-			<image href={source} x="0" y="0" width={photo.width} height={photo.height} />
-			{#if !original}<FaceNames regions={edit.regions} name={nameOf} />{/if}
-		</svg>
-	{/if}
+{#snippet photoView(item: Photo, source: string, label: string)}
+	<!-- Inside a tile the button carries the name, so the picture itself is left out of the reading. -->
+	<svg
+		viewBox={`0 0 ${item.width} ${item.height}`}
+		class="block w-full bg-ink/5"
+		role={label ? 'img' : 'presentation'}
+		aria-label={label || undefined}
+	>
+		<image href={source} x="0" y="0" width={item.width} height={item.height} />
+		{#if !original}<FaceNames regions={item.history.present.regions} name={nameOf} />{/if}
+	</svg>
 {/snippet}
 
 {#snippet busy()}
@@ -731,11 +770,15 @@
 			{/if}
 
 			{#if photo && edit}
-				<div class="flex flex-wrap items-center justify-between gap-2">
+				<div bind:this={heading} class="flex flex-wrap items-center justify-between gap-2">
 					<h2 class="text-2xl">{t.photo(photos.indexOf(photo) + 1, photos.length)}</h2>
-					<button type="button" class={button.danger} onclick={() => (removing = true)}>
-						<Icon name="trash" class="size-4" />{t.removePhoto}
-					</button>
+					<button
+						type="button"
+						class={button.icon}
+						aria-label={t.removePhoto}
+						title={t.removePhoto}
+						onclick={() => (removing = true)}><Icon name="trash" /></button
+					>
 				</div>
 
 				<!-- The tools are a card of their own, so the photo itself keeps its own square edges. -->
@@ -769,7 +812,10 @@
 							disabled={!photo.history.future.length}
 							onclick={() => setHistory(redo(photo!.history))}><Icon name="redo" /></button
 						>
-						<label class="ml-auto flex min-h-11 items-center gap-2 pr-2 text-sm">
+						<!-- A phone zooms with two fingers on the photo itself, so the slider is only where there's a mouse. -->
+						<label
+							class="ml-auto hidden min-h-11 items-center gap-2 pr-2 text-sm pointer-fine:flex"
+						>
 							<span class="whitespace-nowrap">{t.zoom}</span>
 							<input
 								type="range"
@@ -832,8 +878,10 @@
 					regions={edit.regions}
 					{selected}
 					{children}
+					remaining={unresolved(edit)}
 					{feedback}
 					onassign={nameFace}
+					oncoverrest={coverTheRest}
 					onremove={removeCover}
 					onsticker={setSticker}
 				/>
@@ -907,10 +955,6 @@
 				{/if}
 			</div>
 
-			{#if photos.length > 1}
-				<EventPhotoStrip {locale} {photos} {current} onpick={switchPhoto} />
-			{/if}
-
 			{#if draft}
 				<label class={field.label}>
 					<span class={field.name}>{e.previewAs}</span>
@@ -928,17 +972,64 @@
 				</label>
 			{/if}
 
-			{@render viewSwitch()}
+			{#if previewsFailed}<p class={alert} role="alert">{t.previewFailed}</p>{/if}
 
-			{#if original && photo}
-				{@render photoView(photo.url, e.originalView)}
-			{:else if previewBusy}
-				<p class="font-semibold text-muted" role="status">{e.loading}</p>
-			{:else if previewError}
-				<p class={alert} role="alert">{t.previewFailed}</p>
-			{:else if previewUrl}
-				{@render photoView(previewUrl, e.finalView)}
+			{#if large}
+				{@const shot = previews[large.id]}
+				<div bind:this={largeView} class="grid gap-3">
+					<div class="flex flex-wrap items-center justify-between gap-2">
+						{@render viewSwitch()}
+						<button type="button" class={button.secondary} onclick={() => (enlarged = '')}>
+							<Icon name="chevronLeft" class="size-4" />{t.backToGrid}
+						</button>
+					</div>
+					{#if original}
+						{@render photoView(large, large.url, e.originalView)}
+					{:else if shot?.url}
+						{@render photoView(large, shot.url, e.finalView)}
+					{:else}
+						<p class="font-semibold text-muted" role="status">
+							{shot?.failed ? e.failed : e.loading}
+						</p>
+					{/if}
+				</div>
 			{/if}
+
+			<!-- The whole gallery at once, as the chosen audience sees it, so a missed face stands out. -->
+			<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" aria-label={t.photos}>
+				{#each photos as item, index (item.id)}
+					{@const shot = previews[item.id]}
+					<li>
+						<button
+							type="button"
+							class="relative block w-full overflow-hidden rounded-2xl ring-1 ring-ink/10 transition hover:ring-ink/25 aria-pressed:ring-3 aria-pressed:ring-accent"
+							aria-label={t.photo(index + 1, photos.length)}
+							aria-pressed={item.id === enlarged}
+							onclick={() => {
+								original = false;
+								enlarged = item.id;
+								void bringUp(() => largeView);
+							}}
+						>
+							{#if shot?.url}
+								{@render photoView(item, shot.url, '')}
+							{:else}
+								<!-- Already the photo's own shape, so the grid doesn't jump as each render arrives. -->
+								<span
+									class="grid place-items-center bg-ink/5 p-3 text-center text-sm font-semibold text-muted"
+									style:aspect-ratio="{item.width} / {item.height}"
+								>
+									{shot?.failed ? e.failed : e.loading}
+								</span>
+							{/if}
+							<span
+								class="absolute top-1 left-1 rounded-full bg-ink/70 px-2 py-0.5 text-xs font-bold text-white"
+								aria-hidden="true">{index + 1}</span
+							>
+						</button>
+					</li>
+				{/each}
+			</ul>
 
 			{@render busy()}
 
@@ -947,7 +1038,7 @@
 					<button
 						type="button"
 						class={button.primary}
-						disabled={previewBusy || previewError || task.error === 'stale'}
+						disabled={previewsPending || previewsFailed || task.error === 'stale'}
 						onclick={publish}
 					>
 						<Icon name="check" class="size-4" />{sending ? a.working : e.publish}
@@ -969,6 +1060,19 @@
 			danger
 			onconfirm={async () => removePhoto()}
 			onclose={() => (removing = false)}
+		/>
+	{/if}
+
+	{#if leaving}
+		<ConfirmDialog
+			{locale}
+			title={t.leaveTitle}
+			copy={t.leaveCopy}
+			confirmLabel={t.leave}
+			cancelLabel={t.stay}
+			safe
+			onconfirm={leave}
+			onclose={() => (leaving = undefined)}
 		/>
 	{/if}
 {/if}
