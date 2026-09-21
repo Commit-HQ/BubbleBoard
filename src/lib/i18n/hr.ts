@@ -15,7 +15,7 @@ export const hr = {
 	ogLocale: 'hr_HR',
 	title: 'Malo bliže njihovom danu',
 	description:
-		'BubbleBoard je besplatna aplikacija za vrtić. Odgojitelji javljaju što ima novo, dijele fotografije i odgovaraju na pitanja roditelja. Sve je na jednom mjestu i vide ga samo oni kojima je namijenjeno.',
+		'BubbleBoard je besplatna aplikacija za vrtić. Odgojiteljice javljaju što ima novo, dijele fotografije i odgovaraju na pitanja roditelja. Sve je na jednom mjestu i vide ga samo oni kojima je namijenjeno.',
 	skip: 'Preskoči na sadržaj',
 	home: 'BubbleBoard početna',
 	language: 'Jezik',
@@ -25,7 +25,7 @@ export const hr = {
 			features: 'Što nudi',
 			how: 'Kako početi',
 			privacy: 'Privatnost',
-			teachers: 'Za odgojitelje',
+			teachers: 'Za odgojiteljice',
 			security: 'Sigurnost',
 			kindergartens: 'Za vrtiće'
 		}
@@ -33,7 +33,7 @@ export const hr = {
 	hero: {
 		heading: 'Malo bliže',
 		headingAccent: 'njihovom danu.',
-		copy: '„Što je bilo u vrtiću?“ „Ništa.“ Znamo taj odgovor. BubbleBoard vam pokaže sve ostalo: fotografije s izleta, obavijesti odgojitelja i odgovore na vaša pitanja. Besplatno, na jednom mjestu i samo za oči vaše skupine.',
+		copy: '„Što je bilo u vrtiću?“ „Ništa.“ Znamo taj odgovor. BubbleBoard vam pokaže sve ostalo: fotografije s izleta, obavijesti odgojiteljica i odgovore na vaša pitanja. Besplatno, na jednom mjestu i samo za oči vaše skupine.',
 		cta: 'Za vaš vrtić',
 		open: 'Otvori aplikaciju',
 		quiet: 'Za obitelji. Nadahnuto skupinom Bubbles.',
@@ -48,15 +48,15 @@ export const hr = {
 		copy: 'Nema više papirića koji se izgube u ruksaku ni poruka koje se zagube u grupnim razgovorima. Sve važno čeka vas na jednom mjestu.',
 		notices: {
 			title: 'Obavijesti iz skupine',
-			copy: 'Sutra je izlet? Treba donijeti rezervnu odjeću? Odgojitelji jave, a vi to vidite odmah.'
+			copy: 'Sutra je izlet? Treba donijeti rezervnu odjeću? Odgojiteljice jave, a vi to vidite odmah.'
 		},
 		photos: {
 			title: 'Fotografije dana',
 			copy: 'Zavirite kako je bilo na priredbi ili izletu. Fotografije na kojima je vaše dijete posebno su označene. Lica druge djece prekriva vesela naljepnica, osim ako njihovi roditelji dopuste da ih se vidi.'
 		},
 		messages: {
-			title: 'Pitajte odgojitelje',
-			copy: 'Imate pitanje samo za odgojitelje? Napišite ga ovdje. Drugi roditelji ga ne vide, a svako pitanje ima svoj razgovor.'
+			title: 'Pitajte odgojiteljice',
+			copy: 'Imate pitanje samo za odgojiteljice? Napišite ga ovdje. Drugi roditelji ga ne vide, a svako pitanje ima svoj razgovor.'
 		},
 		documents: {
 			title: 'Jelovnik i tjedni plan',
@@ -73,7 +73,7 @@ export const hr = {
 	},
 	how: {
 		title: 'Jedan kod i unutra ste.',
-		copy: 'Od vrtića dobijete QR kod, kvadratić sa šarom koji mobitel pročita kamerom. Jedan vrijedi za sve uređaje vaše obitelji, a svaki odgojitelj ima svoj. Ništa drugo ne trebate.',
+		copy: 'Od vrtića dobijete QR kod, kvadratić sa šarom koji mobitel pročita kamerom. Jedan vrijedi za sve uređaje vaše obitelji, a svaka odgojiteljica ima svoj. Ništa drugo ne trebate.',
 		photoAlt: 'Djeca leže u krugu na tepihu u vrtiću i smiju se, a neka drže noge u zraku',
 		steps: [
 			{
@@ -102,10 +102,10 @@ export const hr = {
 	},
 	security: {
 		title: 'Što je u skupini, ostaje u skupini.',
-		copy: 'Fotografije, poruke i imena djece zaključaju se na vašem mobitelu prije nego što se pošalju. Otključati ih mogu samo obitelji i odgojitelji vaše skupine.',
+		copy: 'Fotografije, poruke i imena djece zaključaju se na vašem mobitelu prije nego što se pošalju. Otključati ih mogu samo obitelji i odgojiteljice vaše skupine.',
 		group: {
 			title: 'Samo vaša skupina',
-			copy: 'Obavijesti i fotografije vide sve obitelji i odgojitelji vaše skupine. Privatne razgovore vidite samo vi i vaši odgojitelji.'
+			copy: 'Obavijesti i fotografije vide sve obitelji i odgojiteljice vaše skupine. Privatne razgovore vidite samo vi i vaše odgojiteljice.'
 		},
 		lock: {
 			title: 'Zaključano već na mobitelu',
@@ -117,7 +117,7 @@ export const hr = {
 		}
 	},
 	teachers: {
-		title: 'Stvoreno i za odgojitelje.',
+		title: 'Stvoreno i za odgojiteljice.',
 		copy: 'Podijelite dan u minuti, s mobitela ili računala. Aplikacija pazi na sitnice, da vi ne morate.',
 		preview: {
 			title: 'Naljepnice se lijepe same',
@@ -170,7 +170,7 @@ export const hr = {
 		points: [
 			{
 				title: 'Fotografije događaja',
-				copy: 'Lica se traže i označavaju na uređaju odgojitelja. Šalje se šifrirana prekrivena fotografija s odvojenim šifriranim isječcima, bez izvornika. Nedovršeni događaj ostaje samo na uređaju odgojitelja dok ga ne objavi ili odbaci i briše se nakon 7 dana. Obitelji vide vlastitu djecu i lica za koja je dopušteno dijeljenje. Vrtić može unijeti ono što piše u vašoj izjavi o privoli, a vi to u aplikaciji možete promijeniti u svakom trenutku. Dopuštenja su šifrirana i promjene vrijede samo za buduće objave. Događaji i njihove fotografije dostupni su od 1 do 90 dana prema izboru odgojitelja, zatim se brišu. Nema skrivene arhive za godišnji album.'
+				copy: 'Lica se traže i označavaju na uređaju odgojiteljice. Šalje se šifrirana prekrivena fotografija s odvojenim šifriranim isječcima, bez izvornika. Nedovršeni događaj ostaje samo na uređaju odgojiteljice dok ga ne objavi ili odbaci i briše se nakon 7 dana. Obitelji vide vlastitu djecu i lica za koja je dopušteno dijeljenje. Vrtić može unijeti ono što piše u vašoj izjavi o privoli, a vi to u aplikaciji možete promijeniti u svakom trenutku. Dopuštenja su šifrirana i promjene vrijede samo za buduće objave. Događaji i njihove fotografije dostupni su od 1 do 90 dana prema izboru odgojiteljice, zatim se brišu. Nema skrivene arhive za godišnji album.'
 			},
 			{
 				title: 'Što se čuva',
@@ -182,7 +182,7 @@ export const hr = {
 			},
 			{
 				title: 'Koliko dugo',
-				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojitelj, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, stranice s informacijama dok ih administrator ne promijeni ili obriše, imena dok ih administrator ne ukloni, a prijava uređaja do 90 dana bez korištenja. Razgovori se, sa svojim datotekama, čuvaju dok je obitelj član skupine ili dok odgojitelj ne obriše zatvoreni razgovor. Ponude individualnih razgovora i rezervacije brišu se 90 dana nakon posljednjeg termina u ponudi. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
+				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojiteljica, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, stranice s informacijama dok ih administrator ne promijeni ili obriše, imena dok ih administrator ne ukloni, a prijava uređaja do 90 dana bez korištenja. Razgovori se, sa svojim datotekama, čuvaju dok je obitelj član skupine ili dok odgojiteljica ne obriše zatvoreni razgovor. Ponude individualnih razgovora i rezervacije brišu se 90 dana nakon posljednjeg termina u ponudi. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
 			},
 			{
 				title: 'Obavijesti na uređaju',
@@ -194,7 +194,7 @@ export const hr = {
 			},
 			{
 				title: 'Vaša prava',
-				copy: 'Možete zatražiti kopiju svojih podataka i podataka svojeg djeteta te njihov ispravak ili brisanje. Pišite na adresu ispod ili pitajte odgojitelje svojeg djeteta. Pritužbu možete podnijeti i Agenciji za zaštitu osobnih podataka (AZOP).'
+				copy: 'Možete zatražiti kopiju svojih podataka i podataka svojeg djeteta te njihov ispravak ili brisanje. Pišite na adresu ispod ili pitajte odgojiteljice svojeg djeteta. Pritužbu možete podnijeti i Agenciji za zaštitu osobnih podataka (AZOP).'
 			}
 		]
 	},
@@ -238,7 +238,7 @@ export const hr = {
 			group: 'I druge obitelji naše skupine',
 			groupHint: 'Obitelji iz skupine vide lice vašeg djeteta na događajima skupine.',
 			consentSaved: 'Spremljeno.',
-			noChildren: 'Popis djece još nije pripremljen. Odgojitelj treba otvoriti aplikaciju.',
+			noChildren: 'Popis djece još nije pripremljen. Odgojiteljica treba otvoriti aplikaciju.',
 			child: 'Dijete',
 			download: 'Spremi fotografiju',
 			downloadAll: 'Spremi sve fotografije',
@@ -290,7 +290,7 @@ export const hr = {
 			failed: 'Detekcija lica nije dostupna. Dodaj pokrove ručno i pregledaj cijelu fotografiju.',
 			retry: 'Ponovi detekciju',
 			manual: 'Nastavi ručno',
-			noFaces: 'Nisu pronađena lica. Pregledaj cijelu fotografiju i sam prekrij svako lice.',
+			noFaces: 'Nisu pronađena lica. Pregledaj cijelu fotografiju i sama prekrij svako lice.',
 			noCovers: 'Još ništa nije prekriveno. Dodaj pokrov preko svakog lica.',
 			photo: (n: number, total: number) => `Fotografija ${n} od ${total}`,
 			face: (n: number) => `Lice ${n}`,
@@ -460,14 +460,14 @@ export const hr = {
 		},
 		counts: {
 			children: (value: number) => count(value, 'dijete', 'djeteta', 'djece'),
-			teachers: (value: number) => count(value, 'odgojitelj', 'odgojitelja', 'odgojitelja')
+			teachers: (value: number) => count(value, 'odgojiteljica', 'odgojiteljice', 'odgojiteljica')
 		},
 		unreadable: {
 			title: 'Neki se zapisi nisu otvorili',
 			copy: 'BubbleBoard na ovom uređaju nije mogao otvoriti neke zapise vašeg vrtića. Pokušajte ponovno, a ako se to ponavlja, javite administratoru.'
 		},
 		staffOnly: {
-			title: 'Ova je stranica za odgojitelje',
+			title: 'Ova je stranica za odgojiteljice',
 			copy: 'Obiteljski QR kod otvara početnu stranicu, gdje će se pojavljivati obavijesti i fotografije.'
 		},
 		connect: {
@@ -498,7 +498,7 @@ export const hr = {
 			title: 'Postavite BubbleBoard',
 			copy: 'Dobit ćete dva QR koda: svoj i QR kod za oporavak koji čuvate na sigurnom. Oba daju pristup svemu.',
 			name: 'Vaše ime',
-			nameHint: 'Vidjet će ga drugi odgojitelji, na primjer „Ana Horvat”.',
+			nameHint: 'Vidjet će ga druge odgojiteljice, na primjer „Ana Horvat”.',
 			token: 'Kod za postavljanje',
 			tokenHint:
 				'Nalazi se u poveznici za postavljanje. Pitajte osobu koja je instalirala BubbleBoard.',
@@ -521,7 +521,7 @@ export const hr = {
 			leaveFirst: 'Najprije ispišite ili spremite oba QR koda, a zatim označite kvadratić.',
 			kinds: {
 				admin: 'Administratorski QR kod',
-				teacher: 'QR kod odgojitelja',
+				teacher: 'QR kod odgojiteljice',
 				recovery: 'QR kod za oporavak',
 				family: 'Obiteljski QR kod'
 			},
@@ -530,7 +530,7 @@ export const hr = {
 			about: 'Obavijesti i fotografije iz vrtića.',
 			private: 'Ne dijelite ovaj QR kod. Ako ga izgubite, vrtić će vam dati novi.',
 			recovery:
-				'Rezervni QR kod za slučaj da se izgube svi administratorski QR kodovi: tada se samo njime mogu zamijeniti izgubljeni QR kodovi i dodavati djeca, odgojitelji i skupine. Tko ga ima, može sve što i administrator, zato ga čuvajte pod ključem u vrtiću, odvojeno od svakodnevnih QR kodova.',
+				'Rezervni QR kod za slučaj da se izgube svi administratorski QR kodovi: tada se samo njime mogu zamijeniti izgubljeni QR kodovi i dodavati djeca, odgojiteljice i skupine. Tko ga ima, može sve što i administrator, zato ga čuvajte pod ključem u vrtiću, odvojeno od svakodnevnih QR kodova.',
 			qr: (name: string) => `QR kod: ${name}`,
 			replace: 'Zamijeni QR kod',
 			replaceTitle: (name: string) => `Zamijeniti QR kod „${name}”?`,
@@ -558,7 +558,7 @@ export const hr = {
 			classrooms: 'Skupine',
 			addClassroom: 'Dodaj skupinu',
 			classroomName: 'Naziv skupine',
-			teachers: 'Odgojitelji',
+			teachers: 'Odgojiteljice',
 			teachersDetail: 'Imena, skupine i QR kodovi',
 			emptyAdmin: 'Započnite dodavanjem prve skupine.',
 			emptyTeacher: 'Još niste dodani ni u jednu skupinu. Može vas dodati administrator.'
@@ -567,8 +567,8 @@ export const hr = {
 			children: 'Djeca',
 			addChild: 'Dodaj dijete',
 			empty: 'U ovoj skupini još nema djece.',
-			teachers: (names: string[]) => `Odgojitelji: ${list(names)}`,
-			noTeachers: 'U ovoj skupini još nema odgojitelja.',
+			teachers: (names: string[]) => `Odgojiteljice: ${list(names)}`,
+			noTeachers: 'U ovoj skupini još nema odgojiteljica.',
 			delete: 'Obriši skupinu',
 			deleteTitle: (name: string) => `Obrisati skupinu „${name}”?`,
 			deleteCopy: 'To se ne može poništiti.',
@@ -642,8 +642,8 @@ export const hr = {
 					: 'To se ne može poništiti.'
 		},
 		teachers: {
-			title: 'Odgojitelji',
-			add: 'Dodaj odgojitelja',
+			title: 'Odgojiteljice',
+			add: 'Dodaj odgojiteljicu',
 			admin: 'Administrator',
 			you: 'vi',
 			noClassrooms: 'Bez skupine',
@@ -651,21 +651,21 @@ export const hr = {
 			recoveryDetail: 'Otvara sve ako se izgube svi administratorski QR kodovi.'
 		},
 		teacher: {
-			newTitle: 'Dodaj odgojitelja',
+			newTitle: 'Dodaj odgojiteljicu',
 			name: 'Ime',
 			classrooms: 'Skupine',
 			noClassrooms: 'Još nema skupina.',
 			admin: 'Administrator',
-			adminHint: 'Može dodavati skupine, odgojitelje i djecu te otvoriti svaku skupinu.',
+			adminHint: 'Može dodavati skupine, odgojiteljice i djecu te otvoriti svaku skupinu.',
 			selfAdmin: 'Ovo može promijeniti drugi administrator.',
 			create: 'Izradi QR kod',
-			remove: 'Ukloni odgojitelja',
-			removeTitle: () => 'Ukloniti odgojitelja?',
+			remove: 'Ukloni odgojiteljicu',
+			removeTitle: () => 'Ukloniti odgojiteljicu?',
 			removeCopy: (name: string) =>
 				`${name} više neće moći otvoriti BubbleBoard, a uređaji s tim QR kodom bit će odjavljeni.`,
 			self: 'Ovo ste vi. Ukloniti vas može drugi administrator.',
 			recovery:
-				'Rezervni QR kod za slučaj da se izgube svi administratorski QR kodovi. Tada se samo njime mogu zamijeniti izgubljeni QR kodovi, a bez njega nitko ne bi mogao dodavati djecu, odgojitelje ni skupine. Budući da može sve što i administrator, čuvajte ga pod ključem u vrtiću, odvojeno od svakodnevnih QR kodova, i zamijenite ga ako ga je netko drugi možda vidio.'
+				'Rezervni QR kod za slučaj da se izgube svi administratorski QR kodovi. Tada se samo njime mogu zamijeniti izgubljeni QR kodovi, a bez njega nitko ne bi mogao dodavati djecu, odgojiteljice ni skupine. Budući da može sve što i administrator, čuvajte ga pod ključem u vrtiću, odvojeno od svakodnevnih QR kodova, i zamijenite ga ako ga je netko drugi možda vidio.'
 		},
 		options: {
 			title: 'Opcije',
@@ -707,7 +707,7 @@ export const hr = {
 			moveUp: 'Pomakni gore',
 			moveDown: 'Pomakni dolje',
 			text: 'Tekst',
-			hint: 'Ovu stranicu vide obitelji i odgojitelji svih skupina dok je ne promijenite ili obrišete. Spremanje ne šalje obavijest.',
+			hint: 'Ovu stranicu vide obitelji i odgojiteljice svih skupina dok je ne promijenite ili obrišete. Spremanje ne šalje obavijest.',
 			save: 'Spremi promjene',
 			updated: (when: string) => `Ažurirano ${when}`,
 			unreadable: 'Neke se stranice nisu otvorile na ovom uređaju.'
@@ -748,7 +748,7 @@ export const hr = {
 		polls: {
 			add: 'Dodaj anketu',
 			addHint:
-				'Pitanje i opis ankete napišite u tekstu obavijesti, a ovdje dodajte odgovore. Tko je što odabrao vide samo odgojitelji.',
+				'Pitanje i opis ankete napišite u tekstu obavijesti, a ovdje dodajte odgovore. Tko je što odabrao vide samo odgojiteljice.',
 			answers: 'Odgovori',
 			answer: (number: number) => `${number}. odgovor`,
 			removeAnswer: (number: number) => `Ukloni ${number}. odgovor`,
@@ -763,8 +763,8 @@ export const hr = {
 			confirm: 'Potvrdi odgovor',
 			yours: (answer: string) => `Vaš odgovor: ${answer}`,
 			change: 'Izmijeni odgovor',
-			private: 'Vaš odgovor vide samo odgojitelji.',
-			counted: 'Broj glasova vide sve obitelji, a tko je što odabrao samo odgojitelji.',
+			private: 'Vaš odgovor vide samo odgojiteljice.',
+			counted: 'Broj glasova vide sve obitelji, a tko je što odabrao samo odgojiteljice.',
 			votes: (value: number) => count(value, 'glas', 'glasa', 'glasova'),
 			noAnswer: (names: string[]) => `Još bez odgovora: ${list(names)}`
 		},
@@ -889,7 +889,7 @@ export const hr = {
 			removeCopy: 'Razgovor se briše i kod obitelji. Ovo se ne može poništiti.',
 			empty: 'Nema upita koji odgovaraju odabiru.',
 			emptyTitle: 'Još nema poruka',
-			emptyCopy: 'Ovdje se vode privatni razgovori s tetama vaše skupine.',
+			emptyCopy: 'Ovdje se vode privatni razgovori s odgojiteljicama vaše skupine.',
 			emptyCopyStaff: 'Ovdje se vode privatni razgovori s obiteljima vaših skupina.',
 			unread: 'Nepročitano',
 			older: 'Ranije poruke',
@@ -897,7 +897,7 @@ export const hr = {
 			refresh: 'Osvježi',
 			loading: 'Učitavanje…',
 			parent: 'Obitelj',
-			teacher: 'Teta',
+			teacher: 'Odgojiteljica',
 			children: (names: string[]) =>
 				`${form(names.length, 'Dijete', 'Djeca', 'Djeca')}: ${list(names)}`,
 			today: 'Danas',
@@ -914,7 +914,7 @@ export const hr = {
 			enabled: 'Omogući roditeljima slanje poruka',
 			limit: 'Upiti po obitelji mjesečno',
 			limitHint:
-				'Novi upit i svaka poruka poslana prije nego što teta odgovori troše jedan upit. Odgovor na tetinu poruku uvijek je besplatan, a limit se obnavlja prvog dana u mjesecu.',
+				'Novi upit i svaka poruka poslana prije nego što odgojiteljica odgovori troše jedan upit. Odgovor na poruku odgojiteljice uvijek je besplatan, a limit se obnavlja prvog dana u mjesecu.',
 			fromTime: 'Od',
 			toTime: 'Do',
 			days: ['Ponedjeljak', 'Utorak', 'Srijeda', 'Četvrtak', 'Petak'],
@@ -929,19 +929,19 @@ export const hr = {
 			closingSoon: (minutes: number) =>
 				`Termin za slanje zatvara se za ${count(minutes, 'minutu', 'minute', 'minuta')}.`,
 			charged: 'Ova poruka troši jedan upit.',
-			free: 'Odgovor na tetinu poruku ne troši upit.',
-			noQuota: 'Iskoristili ste upite za ovaj mjesec. Kad se teta javi, odgovor je opet besplatan.',
+			free: 'Odgovor na poruku odgojiteljice ne troši upit.',
+			noQuota: 'Iskoristili ste upite za ovaj mjesec. Kad se odgojiteljica javi, odgovor je opet besplatan.',
 			quota: (remaining: number) =>
 				`Preostalo ovaj mjesec: ${count(remaining, 'upit', 'upita', 'upita')}`,
 			confirmTitle: 'Poslati ovu poruku?',
 			confirmCopy: (left: number) =>
-				`Teta još nije odgovorila na vašu zadnju poruku, pa ova troši jedan upit. Ovaj mjesec ostat će vam ${count(left, 'upit', 'upita', 'upita')}.`
+				`Odgojiteljica još nije odgovorila na vašu zadnju poruku, pa ova troši jedan upit. Ovaj mjesec ostat će vam ${count(left, 'upit', 'upita', 'upita')}.`
 		},
 		errors: {
 			'meeting-day-changed':
 				'Termini dana su promijenjeni. Popis je osvježen; zatvorite potvrdu i ponovno provjerite termine.',
 			'meeting-overlap':
-				'Termini se preklapaju s postojećom ponudom ove skupine ili odgojitelja. Odaberite drugo vrijeme.',
+				'Termini se preklapaju s postojećom ponudom ove skupine ili odgojiteljice. Odaberite drugo vrijeme.',
 			'meeting-changed':
 				'Termin je promijenjen ili upravo rezerviran. Popis je osvježen; odaberite slobodan termin.',
 			'meeting-already-booked': 'Za ovo dijete već postoji rezervacija u ovoj ponudi.',
