@@ -41,7 +41,7 @@
 	let zoomed = $state(false);
 	/** Where a one-finger drag started, while it could still turn out to be a swipe between photos. */
 	let swipe: { x: number; y: number } | undefined;
-	let swiped = $state(false);
+	let swiped = false;
 	onMount(() => dialog?.showModal());
 
 	// A photo that has just been swiped to opens fitted to the screen, whatever the one before was.

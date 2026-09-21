@@ -1,9 +1,9 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import type { Region } from '$lib/events/editor';
 	import { stickers, type Sticker } from '$lib/events/stickers';
 	import { messages, type Locale } from '$lib/i18n';
-	import { untrack } from 'svelte';
 	import { button, field } from './ui';
 
 	// What the teacher decides about one cover, under the photo: a crop of the original so the face can be
@@ -57,7 +57,7 @@
 	);
 	// A new face starts with an empty search, so the whole classroom is there again. Moving or restyling the
 	// same cover leaves what was typed alone.
-	let searched = $state(untrack(() => selected?.id));
+	let searched = untrack(() => selected?.id);
 	$effect(() => {
 		if (selected?.id !== searched) {
 			searched = selected?.id;

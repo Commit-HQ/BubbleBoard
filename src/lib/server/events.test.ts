@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { localDatabase } from './test-database';
+import { localDatabase, localStore } from './test-database';
 import { transaction } from './database';
 import {
 	consents,
@@ -15,7 +15,6 @@ import {
 } from './events';
 import { cleanUp } from './cleanup';
 import type { Staff, FamilyIdentity } from '$lib/api';
-import type { ObjectStore } from './storage';
 async function setup() {
 	const db = localDatabase();
 	await db.batch([
@@ -41,19 +40,7 @@ async function setup() {
 		credential: id,
 		wrappedKey: ''
 	});
-	const objects = new Map<string, Uint8Array<ArrayBuffer>>();
-	const store: ObjectStore = {
-		limits: { bytes: 1e8, uploads: 100, downloads: 100 },
-		bucket: {
-			put: async (k: string, v: Uint8Array<ArrayBuffer>) => objects.set(k, v),
-			head: async (k: string) => (objects.has(k) ? {} : null),
-			get: async (k: string) =>
-				objects.has(k) ? { body: new Response(objects.get(k)).body } : null,
-			delete: async (keys: string | string[]) => {
-				for (const key of [keys].flat()) objects.delete(key);
-			}
-		} as unknown as R2Bucket
-	};
+	const { store, objects } = localStore({ bytes: 1e8, uploads: 100, downloads: 100 });
 	await syncProjections(db, staff, 'group', 0, [{ child: 'child', family: 'a', label: 'label' }]);
 	return { db, staff, family, store, objects };
 }

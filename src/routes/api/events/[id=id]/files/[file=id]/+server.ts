@@ -1,7 +1,6 @@
 import { eventFile, uploadEventFile } from '$lib/server/events';
 import { database, objectStore, requireIdentity, requireStaff } from '$lib/server/session';
-import { readSealed } from '$lib/server/validate';
-import { maxEventFileBytes } from '$lib/events/types';
+import { readEventPhoto } from '$lib/server/validate';
 import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async (event) =>
 	eventFile(
@@ -19,7 +18,7 @@ export const PUT: RequestHandler = async (event) => {
 		staff,
 		event.params.id,
 		event.params.file,
-		await readSealed(event.request, maxEventFileBytes)
+		await readEventPhoto(event.request)
 	);
 	return new Response(null, { status: 204 });
 };

@@ -194,15 +194,15 @@
 								</div>
 							{:else}
 								<div class="mt-4 flex flex-wrap gap-2">
-									{#if app.admin}<button
+									{#if app.admin}
+										<button
 											class={button.secondary}
 											type="button"
 											aria-describedby="card-{family.id}"
 											onclick={() => (confirming = { action: 'replaceCard', family })}
 										>
 											<Icon name="refresh" class="size-4" />{t.card.replace}
-										</button>{/if}
-									{#if app.admin}
+										</button>
 										<button
 											class={button.danger}
 											type="button"

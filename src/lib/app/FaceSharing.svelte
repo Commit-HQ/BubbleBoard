@@ -1,7 +1,6 @@
 <script lang="ts">
-	import Icon from '$lib/components/Icon.svelte';
+	import RadioCard from './RadioCard.svelte';
 	import { messages, type Locale } from '$lib/i18n';
-	import { choice, field } from './ui';
 
 	// Whether a classroom's other families may see a child's face in event photos, as staff record it from
 	// the family's consent form. Families set the same choice themselves (PhotoConsent.svelte), and it is
@@ -22,11 +21,13 @@
 	const t = $derived(messages[locale].app.sharing);
 </script>
 
-{#snippet option(value: boolean, label: string, hint: string)}
-	<label class={choice.card}>
-		<input
-			class="sr-only"
-			type="radio"
+<fieldset class="grid gap-2">
+	<legend class="font-semibold">{t.title}</legend>
+	<p class="mb-1 text-sm text-muted">{t.hint}</p>
+	{#each [[false, t.covered, t.coveredHint], [true, t.shared, t.sharedHint]] as const as [value, label, hint]}
+		<RadioCard
+			{label}
+			{hint}
 			{name}
 			{disabled}
 			checked={share === value}
@@ -35,17 +36,5 @@
 				onchange?.(value);
 			}}
 		/>
-		<span class={choice.circle}><Icon name="check" class={choice.check} /></span>
-		<span>
-			<span class="block font-semibold">{label}</span>
-			<span class={field.hint}>{hint}</span>
-		</span>
-	</label>
-{/snippet}
-
-<fieldset class="grid gap-2">
-	<legend class="font-semibold">{t.title}</legend>
-	<p class="mb-1 text-sm text-muted">{t.hint}</p>
-	{@render option(false, t.covered, t.coveredHint)}
-	{@render option(true, t.shared, t.sharedHint)}
+	{/each}
 </fieldset>

@@ -153,7 +153,10 @@ export function coverPixels(
 		for (let y = y0; y < y1; y++)
 			for (let x = x0; x < x1; x++) {
 				const offset = (y * width + x) * 4;
-				pixels.set([247, 212, 112, 255], offset);
+				pixels[offset] = 247;
+				pixels[offset + 1] = 212;
+				pixels[offset + 2] = 112;
+				pixels[offset + 3] = 255;
 			}
 	}
 	return pixels;

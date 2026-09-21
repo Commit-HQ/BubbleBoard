@@ -73,32 +73,28 @@ self.onmessage = async (event: MessageEvent<{ image: ImageBitmap; assets: Detect
 					crop.height
 				);
 				const inverse = ctx.getTransform().inverse();
-				const input = await createImageBitmap(canvas);
-				try {
-					for (const detection of model.detect(input).detections) {
-						const b = detection.boundingBox;
-						if (!b) continue;
-						const corners = [
-							[b.originX, b.originY],
-							[b.originX + b.width, b.originY],
-							[b.originX, b.originY + b.height],
-							[b.originX + b.width, b.originY + b.height]
-						].map(([x, y]) => new DOMPoint(x, y).matrixTransform(inverse));
-						const x = Math.max(0, Math.min(...corners.map((p) => p.x)) + crop.x),
-							y = Math.max(0, Math.min(...corners.map((p) => p.y)) + crop.y);
-						const right = Math.min(image.width, Math.max(...corners.map((p) => p.x)) + crop.x),
-							bottom = Math.min(image.height, Math.max(...corners.map((p) => p.y)) + crop.y);
-						if (right > x && bottom > y)
-							candidates.push({
-								x,
-								y,
-								width: right - x,
-								height: bottom - y,
-								score: detection.categories[0]?.score ?? 0
-							});
-					}
-				} finally {
-					input.close();
+				// The detector takes the canvas itself, so no full-raster copy is made per crop and angle.
+				for (const detection of model.detect(canvas).detections) {
+					const b = detection.boundingBox;
+					if (!b) continue;
+					const corners = [
+						[b.originX, b.originY],
+						[b.originX + b.width, b.originY],
+						[b.originX, b.originY + b.height],
+						[b.originX + b.width, b.originY + b.height]
+					].map(([x, y]) => new DOMPoint(x, y).matrixTransform(inverse));
+					const x = Math.max(0, Math.min(...corners.map((p) => p.x)) + crop.x),
+						y = Math.max(0, Math.min(...corners.map((p) => p.y)) + crop.y);
+					const right = Math.min(image.width, Math.max(...corners.map((p) => p.x)) + crop.x),
+						bottom = Math.min(image.height, Math.max(...corners.map((p) => p.y)) + crop.y);
+					if (right > x && bottom > y)
+						candidates.push({
+							x,
+							y,
+							width: right - x,
+							height: bottom - y,
+							score: detection.categories[0]?.score ?? 0
+						});
 				}
 			}
 		const boxes: Box[] = [];

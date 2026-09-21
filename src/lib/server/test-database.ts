@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
+import type { ObjectStore, StorageLimits } from './storage';
 
 type Statement = { sql: string; params: SQLInputValue[] };
 
@@ -40,4 +41,28 @@ export function localDatabase() {
 		}
 	};
 	return { prepare: (sql: string) => statement(sql), batch } as unknown as D1Database;
+}
+
+/**
+ * The part of R2's API the server uses, in memory, with the objects it keeps. The limits default far above
+ * what tests store, so a test that cares about them sets only the ones it exercises.
+ */
+export function localStore(limits: Partial<StorageLimits> = {}) {
+	const objects = new Map<string, Uint8Array<ArrayBuffer>>();
+	const bucket = {
+		put: async (key: string, value: Uint8Array<ArrayBuffer>) => void objects.set(key, value),
+		head: async (key: string) => (objects.has(key) ? {} : null),
+		get: async (key: string) => {
+			const value = objects.get(key);
+			return value ? { body: new Response(value).body } : null;
+		},
+		delete: async (keys: string | string[]) => {
+			for (const key of [keys].flat()) objects.delete(key);
+		}
+	} as unknown as R2Bucket;
+	const store: ObjectStore = {
+		bucket,
+		limits: { bytes: 1e9, uploads: 1000, downloads: 1000, ...limits }
+	};
+	return { store, objects };
 }

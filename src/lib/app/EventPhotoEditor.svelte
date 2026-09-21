@@ -34,7 +34,7 @@
 	import FaceCanvas from './FaceCanvas.svelte';
 	import FaceNames from './FaceNames.svelte';
 	import FacePanel from './FacePanel.svelte';
-	import { getApp } from './state.svelte';
+	import { getApp, Task } from './state.svelte';
 	import { alert, button, field, filePicker, segment, surface } from './ui';
 
 	// Preparing an event's gallery, in the three steps the teacher works through: the event itself, then its
@@ -52,12 +52,15 @@
 		detection: 'pending' | 'ready' | 'failed' | 'manual';
 		generation: number;
 	};
-	let { locale }: { locale: Locale } = $props();
+	let {
+		locale,
+		/** The development fixture (src/routes/editor-check) only prepares photos; it cannot publish. */
+		publishable = true
+	}: { locale: Locale; publishable?: boolean } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.eventEditor);
 	const e = $derived(messages[locale].app.events);
 	const a = $derived(messages[locale].app.actions);
-	const publishable = typeof app.prepareEvent === 'function';
 	const limit = $derived(t.limit(maxEventPhotos, maxEventPhotoBytes / (1024 * 1024)));
 
 	let step = $state<'details' | 'photos' | 'review'>('details');
@@ -69,17 +72,16 @@
 	let details = $state<ReturnType<typeof EventDetails>>();
 	let editorReady = $state(false);
 	let draft = $state.raw<EventDraft>();
-	let working = $state(false),
-		progress = $state(0),
+	const task = new Task();
+	let progress = $state(0),
 		sending = $state(false);
 	let viewer = $state('base');
-	let publicationError = $state('');
 	let classroom = $state(app.myClassrooms.length === 1 ? app.myClassrooms[0].id : '');
 	let photos = $state.raw<Photo[]>([]);
 	let current = $state('');
-	let loading = $state(false);
 	/** Which of the photos being opened this one is, so a phone full of photos says how far it's got. */
 	let opening = $state({ done: 0, total: 0 });
+	const loading = $derived(opening.total > 0);
 	let detecting = $state('');
 	let error = $state('');
 	let feedback = $state('');
@@ -114,7 +116,7 @@
 		) ?? false
 	);
 	const roster = $derived(children.map((c) => `${c.id}:${c.name}`).join('|'));
-	let lastRoster = $state(untrack(() => roster));
+	let lastRoster = untrack(() => roster);
 	$effect(() => {
 		if (roster !== lastRoster) {
 			lastRoster = roster;
@@ -169,7 +171,6 @@
 		feedback = '';
 		error = '';
 	}
-	/** Back from the review: the prepared draft is no longer the photos as they are. */
 	/** On to the photos, keeping the words written so far; an event's words may be more than a gallery shows. */
 	function toPhotos() {
 		const written = details?.text();
@@ -311,7 +312,6 @@
 			error = limit;
 			return;
 		}
-		loading = true;
 		error = '';
 		opening = { done: 0, total: files.length };
 		try {
@@ -338,7 +338,6 @@
 				}
 			}
 		} finally {
-			loading = false;
 			opening = { done: 0, total: 0 };
 		}
 	}
@@ -400,12 +399,10 @@
 			cancelled = true;
 		};
 	});
-	async function startPreview() {
+	function startPreview() {
 		original = false;
-		publicationError = '';
 		progress = 0;
-		working = true;
-		try {
+		return task.run(async () => {
 			if (publishable) {
 				const prepared = await app.prepareEvent(
 					classroom,
@@ -417,47 +414,39 @@
 				draft = prepared;
 			}
 			step = 'review';
-		} catch (cause) {
-			publicationError = errorCode(cause);
-		} finally {
-			working = false;
-		}
+		});
 	}
-	async function publish() {
-		if (!draft || working || !title.trim() || !date) return;
-		working = true;
+	function publish() {
+		if (!draft || !title.trim() || !date) return;
+		const publishing = draft;
 		sending = true;
 		progress = 0;
-		publicationError = '';
-		try {
-			await app.publishEvent(
-				draft,
-				{
-					version: 1,
-					title: title.trim(),
-					description,
-					date,
-					photos: draft.files.map(({ id, width, height }) => ({
-						id,
-						width,
-						height,
-						text: photos.find((p) => p.id === id)?.text.trim() || undefined
-					}))
-				},
-				days,
-				(n) => (progress = n)
-			);
-			if (disposed) return;
-			for (const p of photos) revoke(p.url);
-			photos = [];
-			draft = undefined;
-			await goto(appPath(locale));
-		} catch (cause) {
-			publicationError = errorCode(cause);
-		} finally {
-			working = false;
-			sending = false;
-		}
+		return task
+			.run(async () => {
+				await app.publishEvent(
+					publishing,
+					{
+						version: 1,
+						title: title.trim(),
+						description,
+						date,
+						photos: publishing.files.map(({ id, width, height }) => ({
+							id,
+							width,
+							height,
+							text: photos.find((p) => p.id === id)?.text.trim() || undefined
+						}))
+					},
+					days,
+					(n) => (progress = n)
+				);
+				if (disposed) return;
+				for (const p of photos) revoke(p.url);
+				photos = [];
+				draft = undefined;
+				await goto(appPath(locale));
+			})
+			.finally(() => (sending = false));
 	}
 	beforeNavigate(({ cancel, type }) => {
 		if (photos.length && type !== 'leave' && !window.confirm(t.leave)) cancel();
@@ -553,7 +542,7 @@
 {/snippet}
 
 {#snippet busy()}
-	{#if working}
+	{#if task.busy}
 		<div class="grid gap-2" role="status">
 			<p class="font-semibold text-muted">
 				{sending ? e.uploading : e.preparing} ({progress}/{photos.length})
@@ -566,12 +555,12 @@
 {#if !app.myClassrooms.length}
 	<p class="text-muted">{messages[locale].app.notices.noClassrooms}</p>
 {:else}
-	<fieldset disabled={working} class="grid min-w-0 gap-5">
+	<fieldset disabled={task.busy} class="grid min-w-0 gap-5">
 		{@render steps(step === 'details' ? 0 : step === 'photos' ? 1 : 2)}
 
 		{#if error}<p class={alert} role="alert">{error}</p>{/if}
-		{#if publicationError}<p role="alert" class={alert}>
-				{publicationError === 'stale' ? e.stale : errorMessage(locale, publicationError)}
+		{#if task.error}<p role="alert" class={alert}>
+				{task.error === 'stale' ? e.stale : errorMessage(locale, task.error)}
 			</p>{/if}
 
 		{#if step === 'details'}
@@ -838,7 +827,7 @@
 					<button
 						type="button"
 						class={button.primary}
-						disabled={previewBusy || previewError || publicationError === 'stale'}
+						disabled={previewBusy || previewError || task.error === 'stale'}
 						onclick={publish}
 					>
 						<Icon name="check" class="size-4" />{sending ? a.working : e.publish}

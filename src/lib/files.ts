@@ -173,18 +173,28 @@ export async function savePicture(picture: Blob, name: string) {
 	const file = new File([saved], nameWith(name, pictureExtension(saved.type)), {
 		type: saved.type
 	});
-	if (
-		isAppleTouch(navigator.userAgent, navigator.maxTouchPoints) &&
-		navigator.canShare?.({ files: [file] })
-	) {
-		try {
-			return await navigator.share({ files: [file] });
-		} catch (cause) {
-			// Closing the share sheet saves nothing, as it should.
-			if (cause instanceof DOMException && cause.name === 'AbortError') return;
-		}
-	}
+	if ((await shareToPhotos([file])) !== 'unavailable') return;
 	saveFile(file, file.name);
+}
+
+/**
+ * Offers files to the iPhone and iPad share sheet, whose Save Image(s) puts them in Photos, where people
+ * look for pictures. Says `unavailable` where no share sheet can open, so the caller saves them its own way.
+ */
+async function shareToPhotos(files: File[]) {
+	if (
+		!isAppleTouch(navigator.userAgent, navigator.maxTouchPoints) ||
+		!navigator.canShare?.({ files })
+	)
+		return 'unavailable';
+	try {
+		await navigator.share({ files });
+		return 'shared';
+	} catch (cause) {
+		// Closing the share sheet saves nothing, as it should.
+		if (cause instanceof DOMException && cause.name === 'AbortError') return 'cancelled';
+		return 'unavailable';
+	}
 }
 
 /**
@@ -204,18 +214,8 @@ export async function savePictures(pictures: Blob[], set: string) {
 			})
 		);
 	}
-	if (
-		isAppleTouch(navigator.userAgent, navigator.maxTouchPoints) &&
-		navigator.canShare?.({ files })
-	) {
-		try {
-			return await navigator.share({ files });
-		} catch (cause) {
-			// Closing the share sheet saves nothing, as it should.
-			if (cause instanceof DOMException && cause.name === 'AbortError') return;
-			// A share sheet only opens while the tap that asked for it is still recent, and composing a
-			// gallery takes longer than that, so a file to keep is what is left when it is too late.
-		}
-	}
+	// A share sheet only opens while the tap that asked for it is still recent, and composing a gallery takes
+	// longer than that, so a file to keep is what is left when it is too late.
+	if ((await shareToPhotos(files)) !== 'unavailable') return;
 	saveFile(await zipFiles(files), nameWith(set, 'zip'));
 }

@@ -41,5 +41,8 @@
 		}}>Test: encrypted pixels</button
 	>
 	<p role="status">{result}</p>
-	<button onclick={addSample}>Test: load stock photo</button><EventPhotoEditor locale="en" />
+	<button onclick={addSample}>Test: load stock photo</button><EventPhotoEditor
+		locale="en"
+		publishable={false}
+	/>
 </main>

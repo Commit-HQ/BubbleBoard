@@ -30,9 +30,8 @@
 	const photos = $derived(event.value.photos);
 	const shown = $derived(photos[index]);
 	$effect(() => {
-		const photo = photos[index];
-		const generation = retry;
-		void generation;
+		const photo = shown;
+		void retry;
 		let cancelled = false,
 			created = '';
 		loading = true;

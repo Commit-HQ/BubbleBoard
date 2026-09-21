@@ -1,4 +1,12 @@
-import { openEvent, preparePackage, renderPackage, sharing } from '$lib/events/package';
+import {
+	openEvent,
+	preparePackage,
+	readChoice,
+	readLabel,
+	renderPackage,
+	sealChoice,
+	sharing
+} from '$lib/events/package';
 import type {
 	ConsentRow,
 	ConsentSnapshot,
@@ -254,19 +262,22 @@ export class App {
 	events = $state.raw<OpenEvent[]>([]);
 	eventsError = $state<string>();
 	async syncPhotoChildren(classroom: string) {
-		const rows = [];
-		for (const child of this.catalog.children.filter((c) => c.classroom === classroom))
-			for (const family of child.families) {
-				rows.push({
-					child: child.id,
-					family,
-					label: await encryptData({ name: child.name }, await this.messageKey(family), {
-						purpose: 'photo-label',
-						event: child.id,
-						part: family
-					})
-				});
-			}
+		// One label per child and family card, all sealed at once rather than one round trip after another.
+		const rows = await Promise.all(
+			this.catalog.children
+				.filter((c) => c.classroom === classroom)
+				.flatMap((child) =>
+					child.families.map(async (family) => ({
+						child: child.id,
+						family,
+						label: await encryptData({ name: child.name }, await this.messageKey(family), {
+							purpose: 'photo-label',
+							event: child.id,
+							part: family
+						})
+					}))
+				)
+		);
 		// Bound each body; a classroom's catalog version guards every batch.
 		for (let start = 0; start < rows.length; start += 40)
 			await request('POST', '/api/photo-consent/sync', {
@@ -1358,6 +1369,31 @@ export class App {
 	}
 
 	/**
+	 * A family's own consent rows, one for each of its children, with the name staff wrote and the choice
+	 * recorded so far already read with the family's key.
+	 */
+	async photoConsent() {
+		const { rows } = await request<ConsentSnapshot>('GET', '/api/photo-consent');
+		const key = await this.messageKey(this.messageFamily!);
+		return await Promise.all(
+			rows.map(async (row) => ({
+				...row,
+				name: await readLabel(row, key),
+				share: await readChoice(row, key)
+			}))
+		);
+	}
+
+	/** Records a family's own choice for one of its children, over the revision it was read at. */
+	async savePhotoConsent(row: ConsentRow, share: boolean) {
+		await request('PUT', '/api/photo-consent', {
+			child: row.child,
+			revision: row.revision,
+			choice: await sealChoice(share, await this.messageKey(row.family), row.child, row.family)
+		});
+	}
+
+	/**
 	 * Records what a child's consent form says, for every family card linked to the child. Families change
 	 * the same choice themselves in the app, so this reads the records first and fails as stale if one
 	 * changed meanwhile.
@@ -1399,10 +1435,7 @@ export class App {
 						...(consent === undefined
 							? {}
 							: {
-									choice: await encryptData({ share: consent.share }, key, {
-										purpose: 'photo-choice',
-										...context
-									}),
+									choice: await sealChoice(consent.share, key, child.id, family),
 									...(row === undefined ? {} : { revision: row.revision })
 								})
 					};

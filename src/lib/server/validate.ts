@@ -33,6 +33,7 @@ import { maxFileBytes, maxNoticeFiles } from '$lib/files';
 import { maxInfoBytes } from '$lib/info';
 import { maxNoticeBytes, noticeDays } from '$lib/notices';
 import { maxPhotoBytes } from '$lib/photos';
+import { maxEventFileBytes } from '$lib/events/types';
 
 // Request bodies, checked before anything reaches the database. The server can't open profiles, keys,
 // photos, or files, so it checks their form; the browsers that open them check the rest.
@@ -90,7 +91,7 @@ export async function readJson(request: Request): Promise<Fields> {
 }
 
 /** Reads encrypted bytes that hold at least one byte, and at most `max` before they were encrypted. */
-export async function readSealed(request: Request, max: number) {
+async function readSealed(request: Request, max: number) {
 	const sealed = await readBody(request, 'application/octet-stream', max + SEALED_BYTES_OVERHEAD);
 	return sealed.length > SEALED_BYTES_OVERHEAD ? sealed : invalid();
 }
@@ -100,6 +101,9 @@ export const readPhoto = (request: Request) => readSealed(request, maxPhotoBytes
 
 /** Reads a notice file's encrypted bytes. */
 export const readFile = (request: Request) => readSealed(request, maxFileBytes);
+
+/** Reads an event photo's encrypted package. */
+export const readEventPhoto = (request: Request) => readSealed(request, maxEventFileBytes);
 
 export function fields(value: unknown): Fields {
 	return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -305,7 +309,8 @@ export const newChild = (body: Fields): NewChild => ({ id: id(body.id), ...child
 
 const noticeContent = envelope(maxNoticeBytes);
 
-const days = (value: unknown) =>
+/** How long a notice or event stays up, in days, from the retention policy in $lib/notices. */
+export const days = (value: unknown) =>
 	noticeDays.includes(value as (typeof noticeDays)[number]) ? (value as number) : invalid();
 
 /** A notice's key for each of its classrooms: at least one, and each classroom once. */

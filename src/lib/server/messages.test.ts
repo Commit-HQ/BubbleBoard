@@ -1,4 +1,4 @@
-import { localDatabase } from './test-database';
+import { localDatabase, localStore } from './test-database';
 import { describe, expect, it } from 'vitest';
 import type { Identity, Staff } from '$lib/api';
 import { createId } from '$lib/crypto';
@@ -16,7 +16,6 @@ import {
 	startConversation,
 	uploadMessageFile
 } from './messages';
-import type { ObjectStore } from './storage';
 import { conversationRecipients, deliver, createVapidSecret } from './push';
 import type { PushEnv, PushMessage } from './push';
 import type { Admin } from './session';
@@ -89,22 +88,8 @@ async function fixture() {
 	};
 }
 /** R2 in memory, as the events tests use, with room for a few small files. */
-function objectStore() {
-	const objects = new Map<string, Uint8Array<ArrayBuffer>>();
-	const store: ObjectStore = {
-		limits: { bytes: 1e6, uploads: 100, downloads: 100 },
-		bucket: {
-			put: async (k: string, v: Uint8Array<ArrayBuffer>) => objects.set(k, v),
-			head: async (k: string) => (objects.has(k) ? {} : null),
-			get: async (k: string) =>
-				objects.has(k) ? { body: new Response(objects.get(k)).body } : null,
-			delete: async (keys: string | string[]) => {
-				for (const key of [keys].flat()) objects.delete(key);
-			}
-		} as unknown as R2Bucket
-	};
-	return { objects, store };
-}
+const objectStore = () => localStore({ bytes: 1e6, uploads: 100, downloads: 100 });
+
 describe('private inquiries', () => {
 	it('charges every family message a teacher hasn’t answered yet, and nothing else', async () => {
 		const f = await fixture(),

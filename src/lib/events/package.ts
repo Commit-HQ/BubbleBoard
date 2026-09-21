@@ -15,7 +15,10 @@ import {
 } from '$lib/crypto';
 import type { Region, Rect } from './editor';
 import {
+	editorSide,
 	maxEventPhotoText,
+	maxGrants,
+	maxPatches,
 	mostEventPhotos,
 	type ConsentRow,
 	type EventPhoto,
@@ -29,6 +32,54 @@ import { safePreview } from './images';
 const bytes = async (blob: Blob) => new Uint8Array(await blob.arrayBuffer());
 const context = (event: string, photo: string, part?: string) => ({ event, photo, part });
 export type ChildPolicy = { id: string; families: string[] };
+/**
+ * The authenticated context of what a family records about one child: it ties the envelope to that child and
+ * that family card, so neither can be moved to another. Every reader and writer of consent builds it here.
+ */
+const choiceContext = (child: string, family: string) => ({ event: child, part: family });
+
+/** A family's choice for one child. Missing, malformed or unreadable consent is always private. */
+export async function readChoice(
+	row: Pick<ConsentRow, 'child' | 'family' | 'choice'>,
+	key: CryptoKey
+) {
+	if (!row.choice) return false;
+	try {
+		return (
+			fields(
+				await decryptData(row.choice, key, {
+					purpose: 'photo-choice',
+					...choiceContext(row.child, row.family)
+				})
+			).share === true
+		);
+	} catch {
+		return false;
+	}
+}
+
+/** Seals a family's choice for one child, so only that family and staff read it. */
+export const sealChoice = (share: boolean, key: CryptoKey, child: string, family: string) =>
+	encryptData({ share }, key, { purpose: 'photo-choice', ...choiceContext(child, family) });
+
+/** What a classroom calls a child, as staff sealed it for the family. Unreadable labels have no name. */
+export async function readLabel(
+	row: Pick<ConsentRow, 'child' | 'family' | 'label'>,
+	key: CryptoKey
+) {
+	try {
+		const label = fields(
+			await decryptData(row.label, key, {
+				purpose: 'photo-label',
+				...choiceContext(row.child, row.family)
+			})
+		);
+		return typeof label.name === 'string' ? label.name : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 /** Missing, malformed or unreadable consent is always private. Ignore IDs outside the actual catalog. */
 export async function sharing(
 	children: ChildPolicy[],
@@ -41,20 +92,7 @@ export async function sharing(
 		const choices = await Promise.all(
 			child.families.map(async (family) => {
 				const row = rows.find((r) => r.child === child.id && r.family === family);
-				if (!row?.choice) return false;
-				try {
-					return (
-						fields(
-							await decryptData(row.choice, await key(family), {
-								purpose: 'photo-choice',
-								event: child.id,
-								part: family
-							})
-						).share === true
-					);
-				} catch {
-					return false;
-				}
+				return row ? await readChoice(row, await key(family)) : false;
 			})
 		);
 		if (choices.every(Boolean)) result.add(child.id);
@@ -65,17 +103,34 @@ export async function sharing(
 /** Crop only this face. Overlaps have zero in every channel, including invisible RGB. */
 export function facePixels(source: Uint8ClampedArray, width: number, region: Rect, others: Rect[]) {
 	const output = new Uint8ClampedArray(region.width * region.height * 4);
-	for (let y = 0; y < region.height; y++)
-		for (let x = 0; x < region.width; x++) {
-			const px = region.x + x,
-				py = region.y + y;
-			if (others.some((r) => px >= r.x && px < r.x + r.width && py >= r.y && py < r.y + r.height))
-				continue;
-			output.set(
-				source.subarray((py * width + px) * 4, (py * width + px) * 4 + 4),
-				(y * region.width + x) * 4
-			);
+	// Only a rect that actually meets this one can blank a pixel; in a gallery of separate faces, none does.
+	const meeting = others.filter(
+		(r) =>
+			r.x < region.x + region.width &&
+			r.x + r.width > region.x &&
+			r.y < region.y + region.height &&
+			r.y + r.height > region.y
+	);
+	for (let y = 0; y < region.height; y++) {
+		const py = region.y + y;
+		const crossing = meeting.filter((r) => py >= r.y && py < r.y + r.height);
+		const from = (py * width + region.x) * 4,
+			to = y * region.width * 4;
+		if (!crossing.length) {
+			output.set(source.subarray(from, from + region.width * 4), to);
+			continue;
 		}
+		for (let x = 0; x < region.width; x++) {
+			const px = region.x + x;
+			if (crossing.some((r) => px >= r.x && px < r.x + r.width)) continue;
+			const at = (py * width + px) * 4,
+				out = to + x * 4;
+			output[out] = source[at];
+			output[out + 1] = source[at + 1];
+			output[out + 2] = source[at + 2];
+			output[out + 3] = source[at + 3];
+		}
+	}
 	return output;
 }
 type Patch = {
@@ -126,67 +181,22 @@ export async function preparePackage(
 		const original = ctx.getImageData(0, 0, width, height).data;
 		const patches: Patch[] = [],
 			staffKeys: Record<string, string> = {};
-		for (const region of regions) {
-			if (!region.child) continue;
-			const child = children.find((c) => c.id === region.child);
-			if (!child) throw new UnreadableError();
+		/**
+		 * Seals one crop under its own content key: the bytes for the patch itself, a grant of that key to
+		 * each family entitled to see it, and the key kept for staff. Named faces and the overlap areas
+		 * between them differ only in which pixels they carry and who may open them.
+		 */
+		async function addPatch(
+			part: string,
+			rect: Rect,
+			pixels: Uint8ClampedArray<ArrayBuffer>,
+			families: string[],
+			visible: boolean
+		) {
 			const face = await createContentKey();
-			const crop = new OffscreenCanvas(region.width, region.height),
+			const crop = new OffscreenCanvas(rect.width, rect.height),
 				c = crop.getContext('2d')!;
-			c.putImageData(
-				new ImageData(
-					facePixels(
-						original,
-						width,
-						region,
-						regions.filter((r) => r.id !== region.id)
-					),
-					region.width,
-					region.height
-				),
-				0,
-				0
-			);
-			const data = toBase64Url(
-				await encryptBytes(await bytes(await crop.convertToBlob({ type: 'image/png' })), face.key, {
-					purpose: 'event-face',
-					...context(event, id, region.id)
-				})
-			);
-			const grants = await Promise.all(
-				child.families.map(async (family) =>
-					encryptData({ key: face.raw }, await familyKey(family), {
-						purpose: 'event-grant',
-						...context(event, id, region.id)
-					})
-				)
-			);
-			patches.push({
-				id: region.id,
-				x: region.x,
-				y: region.y,
-				width: region.width,
-				height: region.height,
-				data,
-				grants,
-				...(shared.has(child.id) ? { shared: face.raw } : {})
-			});
-			staffKeys[region.id] = face.raw;
-		}
-		const overlaps = overlapAreas(regions);
-		if (patches.length + overlaps.length > 400) throw new Error('Too many overlapping regions');
-		for (const area of overlaps) {
-			const involved = area.members.map((r) => children.find((c) => c.id === r.child)!);
-			if (involved.some((c) => !c)) throw new UnreadableError();
-			const part = createId(),
-				face = await createContentKey();
-			const crop = new OffscreenCanvas(area.width, area.height),
-				c = crop.getContext('2d')!;
-			c.putImageData(
-				new ImageData(overlapPixels(original, width, area), area.width, area.height),
-				0,
-				0
-			);
+			c.putImageData(new ImageData(pixels, rect.width, rect.height), 0, 0);
 			const data = toBase64Url(
 				await encryptBytes(await bytes(await crop.convertToBlob({ type: 'image/png' })), face.key, {
 					purpose: 'event-face',
@@ -194,7 +204,7 @@ export async function preparePackage(
 				})
 			);
 			const grants = await Promise.all(
-				overlapAudience(involved, shared).map(async (family) =>
+				families.map(async (family) =>
 					encryptData({ key: face.raw }, await familyKey(family), {
 						purpose: 'event-grant',
 						...context(event, id, part)
@@ -203,17 +213,48 @@ export async function preparePackage(
 			);
 			patches.push({
 				id: part,
-				x: area.x,
-				y: area.y,
-				width: area.width,
-				height: area.height,
+				x: rect.x,
+				y: rect.y,
+				width: rect.width,
+				height: rect.height,
 				data,
 				grants,
-				...(involved.every((c) => shared.has(c.id)) ? { shared: face.raw } : {})
+				...(visible ? { shared: face.raw } : {})
 			});
 			staffKeys[part] = face.raw;
 		}
-		const safe = await safePreview(blob, regions);
+		for (const region of regions) {
+			if (!region.child) continue;
+			const child = children.find((c) => c.id === region.child);
+			if (!child) throw new UnreadableError();
+			await addPatch(
+				region.id,
+				region,
+				facePixels(
+					original,
+					width,
+					region,
+					regions.filter((r) => r.id !== region.id)
+				),
+				child.families,
+				shared.has(child.id)
+			);
+		}
+		const overlaps = overlapAreas(regions);
+		if (patches.length + overlaps.length > maxPatches)
+			throw new Error('Too many overlapping regions');
+		for (const area of overlaps) {
+			const involved = area.members.map((r) => children.find((c) => c.id === r.child)!);
+			if (involved.some((c) => !c)) throw new UnreadableError();
+			await addPatch(
+				createId(),
+				area,
+				overlapPixels(original, width, area),
+				overlapAudience(involved, shared),
+				involved.every((c) => shared.has(c.id))
+			);
+		}
+		const safe = await safePreview(blob, regions, { pixels: original, width, height });
 		const type = baseTypes.find((known) => known === safe.type);
 		if (!type) throw new Error(`Unusable encoding: ${safe.type}`);
 		const base = toBase64Url(await bytes(safe));
@@ -254,12 +295,12 @@ export async function renderPackage(
 		!Number.isInteger(p.height) ||
 		Number(p.width) < 1 ||
 		Number(p.height) < 1 ||
-		Number(p.width) > 1920 ||
-		Number(p.height) > 1920 ||
+		Number(p.width) > editorSide ||
+		Number(p.height) > editorSide ||
 		typeof p.base !== 'string' ||
 		!baseTypes.some((known) => known === p.type) ||
 		!Array.isArray(p.patches) ||
-		p.patches.length > 400
+		p.patches.length > maxPatches
 	)
 		throw new UnreadableError();
 	const base = await createImageBitmap(raster(p.base, p.type as string));
@@ -293,7 +334,7 @@ export async function renderPackage(
 				!isId(patch.id) ||
 				typeof patch.data !== 'string' ||
 				!Array.isArray(patch.grants) ||
-				patch.grants.length > 20
+				patch.grants.length > maxGrants
 			)
 				continue;
 			const { x, y, width, height } = patch;
@@ -381,9 +422,9 @@ export async function openEvent(record: EventRecord, groupKey: CryptoKey): Promi
 			!Number.isInteger(f.width) ||
 			!Number.isInteger(f.height) ||
 			Number(f.width) < 1 ||
-			Number(f.width) > 1920 ||
+			Number(f.width) > editorSide ||
 			Number(f.height) < 1 ||
-			Number(f.height) > 1920 ||
+			Number(f.height) > editorSide ||
 			(f.text !== undefined && (typeof f.text !== 'string' || f.text.length > maxEventPhotoText))
 		)
 			throw new UnreadableError();
@@ -397,27 +438,8 @@ export async function openEvent(record: EventRecord, groupKey: CryptoKey): Promi
 			version: 1,
 			title: value.title,
 			date: value.date,
-			description: readEventText(value.description),
+			description: readDocument(value.description),
 			photos
 		}
-	};
-}
-
-/**
- * An event's words, read like a notice's. Events published before the editor wrote formatted text carry a
- * plain string, whose lines become paragraphs, so those galleries still open.
- */
-function readEventText(value: unknown): NoticeDocument {
-	if (typeof value !== 'string') return readDocument(value);
-	if (value.length > 5000) throw new UnreadableError();
-	return {
-		type: 'doc',
-		content: value
-			.split('\n')
-			.map((line) =>
-				line
-					? { type: 'paragraph', content: [{ type: 'text', text: line }] }
-					: { type: 'paragraph' }
-			)
 	};
 }

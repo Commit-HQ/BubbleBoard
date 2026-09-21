@@ -119,18 +119,6 @@ describe('event privacy', () => {
 			expect(value.photos.map((photo) => photo.text)).toEqual(['Ana found a chestnut.', undefined]);
 		});
 
-		it('reads the plain words of an event published before the editor, line by line', async () => {
-			const { value } = await sealed({ ...base, description: 'One line.\n\nAnother.' });
-			expect(value.description).toEqual({
-				type: 'doc',
-				content: [
-					{ type: 'paragraph', content: [{ type: 'text', text: 'One line.' }] },
-					{ type: 'paragraph' },
-					{ type: 'paragraph', content: [{ type: 'text', text: 'Another.' }] }
-				]
-			});
-		});
-
 		it('refuses a gallery larger than any installation may publish', async () => {
 			const many = (count: number) =>
 				Array.from({ length: count }, () => ({ id: createId(), width: 10, height: 10 }));

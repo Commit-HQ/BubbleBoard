@@ -67,10 +67,9 @@
 		const [a, b] = [...pointers.values()];
 		return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
 	}
-	function point(event: PointerEvent) {
-		return new DOMPoint(event.clientX, event.clientY).matrixTransform(
-			svg.getScreenCTM()!.inverse()
-		);
+	/** Where a pointer is in image coordinates. The caller passes the matrix so a move only asks for it once. */
+	function point(event: PointerEvent, screen = svg.getScreenCTM()!) {
+		return new DOMPoint(event.clientX, event.clientY).matrixTransform(screen.inverse());
 	}
 	function down(event: PointerEvent) {
 		if (event.button !== 0) return;
@@ -108,7 +107,9 @@
 			return;
 		}
 		if (!drag || drag.pointer !== event.pointerId) return;
-		const current = point(event),
+		// Reading the matrix forces a layout flush, so this move takes one and both branches share it.
+		const screen = svg.getScreenCTM()!;
+		const current = point(event, screen),
 			dx = current.x - drag.start.x,
 			dy = current.y - drag.start.y;
 		drag.moved ||= Math.abs(dx) + Math.abs(dy) > 1;
@@ -126,20 +127,19 @@
 				height
 			);
 		} else {
-			const scale = svg.getScreenCTM()!;
 			center = {
 				x: Math.max(
 					view.width / 2,
 					Math.min(
 						width - view.width / 2,
-						drag.center.x - (event.clientX - drag.client.x) / scale.a
+						drag.center.x - (event.clientX - drag.client.x) / screen.a
 					)
 				),
 				y: Math.max(
 					view.height / 2,
 					Math.min(
 						height - view.height / 2,
-						drag.center.y - (event.clientY - drag.client.y) / scale.d
+						drag.center.y - (event.clientY - drag.client.y) / screen.d
 					)
 				)
 			};
@@ -216,8 +216,7 @@
 >
 	<image href={url} x="0" y="0" {width} {height} />
 	{#if !original}
-		{#each regions as region, index (region.id)}
-			{@const rect = drag?.region?.id === region.id && draft ? draft : region}
+		{#each drawn as region, index (region.id)}
 			<g
 				role="button"
 				tabindex="0"
@@ -228,20 +227,26 @@
 				onclick={() => onselect(region.id)}
 				onkeydown={(event) => key(event, region)}
 			>
-				<rect x={rect.x} y={rect.y} width={rect.width} height={rect.height} fill="#f7d470" />
+				<rect
+					x={region.x}
+					y={region.y}
+					width={region.width}
+					height={region.height}
+					fill="#f7d470"
+				/>
 				<image
 					href={stickerUrl(region.sticker)}
-					x={rect.x}
-					y={rect.y}
-					width={rect.width}
-					height={rect.height}
+					x={region.x}
+					y={region.y}
+					width={region.width}
+					height={region.height}
 					preserveAspectRatio="none"
 				/>
 				<rect
-					x={rect.x}
-					y={rect.y}
-					width={rect.width}
-					height={rect.height}
+					x={region.x}
+					y={region.y}
+					width={region.width}
+					height={region.height}
 					fill="none"
 					stroke="#29253d"
 					stroke-opacity="0.35"
@@ -249,30 +254,30 @@
 					vector-effect="non-scaling-stroke"
 				/>
 				<rect
-					x={rect.x}
-					y={rect.y}
-					width={rect.width}
-					height={rect.height}
+					x={region.x}
+					y={region.y}
+					width={region.width}
+					height={region.height}
 					fill="none"
 					stroke={region.child ? '#15803d' : region.covered ? '#dc2626' : '#fff'}
 					stroke-width={selected === region.id ? 5 : 3}
 					vector-effect="non-scaling-stroke"
 				/>
 				<text
-					x={rect.x + rect.width / 2}
-					y={rect.y + rect.height / 4}
+					x={region.x + region.width / 2}
+					y={region.y + region.height / 4}
 					text-anchor="middle"
-					font-size={Math.max(14, Math.min(rect.width, rect.height) * 0.2)}
+					font-size={Math.max(14, Math.min(region.width, region.height) * 0.2)}
 					fill="#29253d"
 					font-weight="600">{index + 1}</text
 				>
 				{#if selected === region.id}
-					{@const grip = Math.min(handle, rect.width / 2, rect.height / 2)}
+					{@const grip = Math.min(handle, region.width / 2, region.height / 2)}
 					<circle
 						data-resize
 						class="cursor-nwse-resize"
-						cx={rect.x + rect.width}
-						cy={rect.y + rect.height}
+						cx={region.x + region.width}
+						cy={region.y + region.height}
 						r={grip / 2}
 						fill="#29253d"
 						stroke="#fff"

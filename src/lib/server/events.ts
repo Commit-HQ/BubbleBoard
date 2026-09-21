@@ -177,8 +177,8 @@ export async function publishEvent(
 	const row = await editable(db, staff, id, true);
 	if (row.postedAt !== null) return { published: false, classroom: row.classroom };
 	// A failed R2 put can leave a counted object; HEAD every file before the atomic commit.
-	for (const file of files)
-		if (!(await store.bucket.head(`events/${id}/${file}`))) error(409, 'stale');
+	const stored = await Promise.all(files.map((file) => store.bucket.head(`events/${id}/${file}`)));
+	if (stored.some((object) => !object)) error(409, 'stale');
 	const now = Date.now();
 	const result = await transaction(db, [
 		...files.map((file) =>

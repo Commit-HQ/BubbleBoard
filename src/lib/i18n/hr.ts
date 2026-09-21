@@ -221,8 +221,8 @@ export const hr = {
 			days: 'Neka ostane',
 			publish: 'Objavi događaj',
 			published: 'Događaj je objavljen.',
-			preparing: 'Pripremam šifrirane fotografije',
-			uploading: 'Šaljem fotografije',
+			preparing: 'Pripremamo šifrirane fotografije',
+			uploading: 'Šaljemo fotografije',
 			previewAs: 'Pregled kao',
 			base: 'Svi pokrovi',
 			consentTitle: 'Vidljivost lica mog djeteta',
@@ -237,7 +237,7 @@ export const hr = {
 			child: 'Dijete',
 			download: 'Spremi fotografiju',
 			downloadAll: 'Spremi sve fotografije',
-			preparingPhoto: (n: number, total: number) => `Pripremam fotografiju ${n} od ${total}…`,
+			preparingPhoto: (n: number, total: number) => `Pripremamo fotografiju ${n} od ${total}…`,
 			remove: 'Ukloni događaj',
 			removeHint: 'Događaj i njegove fotografije više neće biti dostupni obiteljima.',
 			open: 'Otvori galeriju',
@@ -249,7 +249,7 @@ export const hr = {
 			ready: 'Pregledaj pokrivenost svih lica i pogled odabrane obitelji prije objave.',
 			failed: 'Fotografiju nije moguće otvoriti.',
 			retry: 'Pokušaj ponovno',
-			loading: 'Otvaram fotografiju…'
+			loading: 'Otvaramo fotografiju…'
 		},
 		eventEditor: {
 			steps: ['Događaj', 'Fotografije', 'Pregled'],
@@ -264,8 +264,8 @@ export const hr = {
 			addMore: 'Dodaj još',
 			limit: (photos: number, mb: number) => `Odaberi do ${photos} fotografija, svaku do ${mb} MB.`,
 			none: 'Dodaj fotografije događaja. Otvaraju se samo na ovom uređaju; ništa se još ne šalje.',
-			loading: 'Pripremam fotografije…',
-			adding: (n: number, total: number) => `Pripremam fotografiju ${n} od ${total}…`,
+			loading: 'Pripremamo fotografije…',
+			adding: (n: number, total: number) => `Pripremamo fotografiju ${n} od ${total}…`,
 			photos: 'Fotografije',
 			caption: 'Nekoliko riječi o ovoj fotografiji',
 			captionPlaceholder: 'Nije obavezno',
@@ -812,7 +812,7 @@ export const hr = {
 			fit: 'Prilagodi zaslonu',
 			close: 'Zatvori',
 			save: 'Spremi',
-			opening: 'Otvaram fotografiju…',
+			opening: 'Otvaramo fotografiju…',
 			previous: 'Prethodna fotografija',
 			next: 'Sljedeća fotografija'
 		},

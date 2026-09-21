@@ -38,3 +38,12 @@ export const mostEventPhotos = 60;
 /** The most an event's manifest may take, in bytes, measured as the server measures it. */
 export const maxEventContentBytes = 32000;
 export const maxEventFileBytes = 32 * 1024 * 1024;
+/**
+ * The longest side the editor works at, and the ceiling a reader holds a published photo to. The writer's
+ * working size must stay at or under the reader's ceiling or a published gallery stops opening.
+ */
+export const editorSide = 1920;
+/** The most face patches one photo may carry, held to by both the writer and the reader. */
+export const maxPatches = 400;
+/** The most families one patch may be granted to, matching the family cap in src/lib/server/validate.ts. */
+export const maxGrants = 20;

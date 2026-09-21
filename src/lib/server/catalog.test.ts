@@ -1,4 +1,4 @@
-import { localDatabase } from './test-database';
+import { localDatabase, localStore } from './test-database';
 import type { RequestEvent } from '@sveltejs/kit';
 import { describe, expect, it, vi } from 'vitest';
 import type {
@@ -67,39 +67,10 @@ import {
 	startSession,
 	type Admin
 } from './session';
-import {
-	deleteMarked,
-	getObject,
-	putObject,
-	type ObjectStore,
-	type StorageLimits
-} from './storage';
+import { deleteMarked, getObject, putObject } from './storage';
 
 // The database boundary on the real migrations: who can read and change what. Profiles and keys are
 // placeholders, because the server never opens them.
-
-/**
- * The part of R2's API the server uses, in memory, with the objects it keeps, and limits far above what
- * tests store unless a test sets its own.
- */
-function localStore(limits: Partial<StorageLimits> = {}) {
-	const objects = new Map<string, Uint8Array<ArrayBuffer>>();
-	const bucket = {
-		put: async (key: string, value: Uint8Array<ArrayBuffer>) => void objects.set(key, value),
-		get: async (key: string) => {
-			const value = objects.get(key);
-			return value ? { body: new Response(value).body } : null;
-		},
-		delete: async (keys: string | string[]) => {
-			for (const key of [keys].flat()) objects.delete(key);
-		}
-	} as unknown as R2Bucket;
-	const store: ObjectStore = {
-		bucket,
-		limits: { bytes: 1e9, uploads: 1000, downloads: 1000, ...limits }
-	};
-	return { store, objects };
-}
 
 /** A request to routes that use sessions, with a cookie jar kept across calls. */
 function requestTo(db: D1Database) {
