@@ -167,16 +167,23 @@
 		const saved = await loadDraft(credential);
 		if (saved && !photos.length) found = saved;
 	});
+	const keeping = $derived(
+		credential && photos.length && !found
+			? savedDraft(credential, { classroom, title, date, days, description, step }, photos)
+			: undefined
+	);
 	$effect(() => {
-		const keeping =
-			credential && photos.length && !found
-				? savedDraft(credential, { classroom, title, date, days, description, step }, photos)
-				: undefined;
 		if (!keeping) return;
 		draftSaved = false;
-		saveTimer = setTimeout(async () => (draftSaved = await saveDraft(keeping)), 400);
+		saveTimer = setTimeout(keep, 400);
 		return () => clearTimeout(saveTimer);
 	});
+	/** Writes the draft now. A page put in the background has its timers stopped, so it doesn't wait for one. */
+	async function keep() {
+		clearTimeout(saveTimer);
+		const saving = keeping;
+		if (saving) draftSaved = await saveDraft(saving);
+	}
 	/** Puts the kept event back: its photos, what was marked on them, and the step the teacher was on. */
 	async function continueDraft(saved: SavedDraft) {
 		classroom = saved.classroom;
@@ -556,7 +563,9 @@
 />
 <svelte:document
 	onvisibilitychange={() => {
-		if (document.hidden) original = false;
+		if (!document.hidden) return;
+		original = false;
+		if (!draftSaved) void keep();
 	}}
 />
 
