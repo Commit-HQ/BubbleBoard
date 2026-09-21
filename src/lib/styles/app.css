@@ -148,6 +148,9 @@
 		-webkit-font-smoothing: antialiased;
 		/* Long words, common in Croatian and with enlarged text, wrap instead of widening the page. */
 		overflow-wrap: anywhere;
+		/* Fingers scroll the page and never zoom it, as in an app; iPhones ignore the viewport tag's
+		   user-scalable. Pictures zoom in their viewer, and text follows the device's text size. */
+		touch-action: pan-x pan-y;
 	}
 	@media (prefers-reduced-motion: no-preference) {
 		html {
