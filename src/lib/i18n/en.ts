@@ -39,9 +39,10 @@ export const en = {
 		open: 'Open the app',
 		quiet: 'Made for families. Inspired by the Bubbles.',
 		photoAlt: 'Children laughing and blowing soap bubbles in a sunny park',
-		// Lock-screen notifications, newest first. They stay this generic; the details wait in the app.
+		// Lock-screen notifications, newest first, in the words the app's own pushes use (`notificationTexts`).
+		// They stay this generic; the details wait in the app.
 		notifications: [
-			{ time: 'Just now', message: 'New photos from today' },
+			{ time: 'Just now', message: 'New photos from your kindergarten' },
 			{ time: '8:30', message: 'New notice from your kindergarten' }
 		]
 	},
@@ -54,7 +55,7 @@ export const en = {
 		},
 		photos: {
 			title: 'Photos from the day',
-			copy: 'Galleries from the day: your own child clearly, and other faces covered unless their parents allow sharing.'
+			copy: 'Galleries from the day, with the photos your child is in marked for you. Other children wear a cheerful sticker unless their parents allow sharing.'
 		},
 		messages: {
 			title: 'A direct line to teachers',
@@ -99,7 +100,7 @@ export const en = {
 		facts: [
 			'No usernames or passwords',
 			'Faces covered for other families, unless you allow more',
-			'Photos removed from the app after a set time'
+			'Save or share the photos you love before they’re removed from the app'
 		]
 	},
 	security: {
@@ -123,8 +124,8 @@ export const en = {
 		title: 'Made for teachers, too.',
 		copy: 'Share the day from a phone or a computer in a minute, with sensible defaults built in.',
 		preview: {
-			title: 'Preview before posting',
-			copy: 'See exactly what other families will see before a photo goes out.'
+			title: 'Faces covered for you',
+			copy: 'Your phone finds the faces and covers them. You name each child, then see the gallery exactly as each family will before it goes out.'
 		},
 		meetings: {
 			title: 'Individual meetings',

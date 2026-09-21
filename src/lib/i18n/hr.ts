@@ -38,7 +38,7 @@ export const hr = {
 		quiet: 'Za obitelji. Nadahnuto skupinom Bubbles.',
 		photoAlt: 'Djeca se smiju i puhaju balone od sapunice u sunčanom parku',
 		notifications: [
-			{ time: 'Upravo sada', message: 'Nove fotografije dana' },
+			{ time: 'Upravo sada', message: 'Nove fotografije iz vrtića' },
 			{ time: '8:30', message: 'Nova obavijest iz vrtića' }
 		]
 	},
@@ -51,7 +51,7 @@ export const hr = {
 		},
 		photos: {
 			title: 'Fotografije dana',
-			copy: 'Galerije s događaja u skupini: svoje dijete vidite jasno, a druga lica ostaju prekrivena osim ako njihovi roditelji dopuste dijeljenje.'
+			copy: 'Galerije s događaja u skupini, s označenim fotografijama na kojima je vaše dijete. Druga djeca nose veselu naljepnicu, osim ako njihovi roditelji dopuste dijeljenje.'
 		},
 		messages: {
 			title: 'Izravno s odgojiteljima',
@@ -93,7 +93,7 @@ export const hr = {
 		facts: [
 			'Bez korisničkih imena i lozinki',
 			'Lica prekrivena za druge obitelji, osim ako dopustite više',
-			'Fotografije se uklanjaju iz aplikacije nakon zadanog vremena'
+			'Spremite ili podijelite drage fotografije prije nego što se uklone iz aplikacije'
 		]
 	},
 	security: {
@@ -117,8 +117,8 @@ export const hr = {
 		title: 'Stvoreno i za odgojitelje.',
 		copy: 'Podijelite dan s mobitela ili računala u minuti, uz razumne zadane postavke.',
 		preview: {
-			title: 'Pregled prije objave',
-			copy: 'Vidite točno ono što će vidjeti druge obitelji prije nego što objavite fotografiju.'
+			title: 'Lica prekrivena umjesto vas',
+			copy: 'Vaš mobitel pronalazi lica i prekriva ih. Vi imenujete svako dijete, a zatim prije objave vidite galeriju točno onako kako će je vidjeti svaka obitelj.'
 		},
 		meetings: {
 			title: 'Individualni razgovori',
