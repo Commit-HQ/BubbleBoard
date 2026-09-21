@@ -73,14 +73,20 @@ export async function checkEventPixels() {
 	const assert = (ok: boolean, name: string) => {
 		if (!ok) throw new Error(name);
 	};
-	const base = await renderPackage(event, photo, prepared.sealed, eventKey.key, { covered: true });
-	const left = await renderPackage(event, photo, prepared.sealed, eventKey.key, {
+	const base = (await renderPackage(event, photo, prepared.sealed, eventKey.key, { covered: true }))
+		.blob;
+	const own = await renderPackage(event, photo, prepared.sealed, eventKey.key, {
 		family: familyA.key
 	});
-	const right = await renderPackage(event, photo, prepared.sealed, eventKey.key, {
-		family: familyB.key
-	});
-	const outsider = await renderPackage(event, photo, prepared.sealed, eventKey.key);
+	const left = own.blob;
+	const right = (
+		await renderPackage(event, photo, prepared.sealed, eventKey.key, { family: familyB.key })
+	).blob;
+	const nobody = await renderPackage(event, photo, prepared.sealed, eventKey.key);
+	const outsider = nobody.blob;
+	// The mark a family sees on a photo of its own child, which no one else's view carries.
+	assert(own.mine, 'Family A knows its child is here');
+	assert(!nobody.mine, 'A card with no face here is told nothing');
 	assert(near(await pixel(left, 10, 15), red), 'Family A own face');
 	assert(near(await pixel(right, 45, 15), blue), 'Family B own face');
 	// Each covered face must stay as the base has it, and nowhere near the face underneath it.
@@ -131,12 +137,12 @@ export async function checkEventPixels() {
 		new Set(),
 		async (f) => (f === 'a' ? familyA.key : familyB.key)
 	);
-	const commonView = await renderPackage(event, common.id, common.sealed, eventKey.key, {
-		family: familyA.key
-	});
+	const commonView = (
+		await renderPackage(event, common.id, common.sealed, eventKey.key, { family: familyA.key })
+	).blob;
 	assert(
 		near(await pixel(commonView, 28, 15), blue),
 		'Family allowed both faces sees intact overlap'
 	);
-	return 'PASS: family A, family B, outsider, overlap, decoded patch pixels';
+	return 'PASS: family A, family B, outsider, overlap, own-child mark, decoded patch pixels';
 }

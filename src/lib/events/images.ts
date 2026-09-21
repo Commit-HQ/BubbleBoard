@@ -72,3 +72,18 @@ export async function safePreview(blob: Blob, regions: Region[], raster?: SafeRa
 
 /** A raster the caller has already decoded, so safePreview needn't decode the same blob a second time. */
 export type SafeRaster = { pixels: Uint8ClampedArray; width: number; height: number };
+
+/**
+ * A small copy of a photo this device has put together, for a gallery's grid. Thirty photos drawn at their
+ * full size as thumbnails would each be held decoded, which is more memory than an older phone has to give.
+ */
+export async function thumbnail(picture: Blob) {
+	const image = await createImageBitmap(picture);
+	try {
+		const ctx = drawSmaller(image, 480);
+		if (!ctx) throw new Error('Canvas unavailable');
+		return await ctx.canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
+	} finally {
+		image.close();
+	}
+}

@@ -20,7 +20,8 @@ export const PUT: RequestHandler = async (event) => {
 		files,
 		days(b.days)
 	);
-	if (result.published) await announce(event, [result.classroom], await sessionHash(event));
+	if (result.published)
+		await announce(event, [result.classroom], await sessionHash(event), 'photos');
 	return new Response(null, { status: 204 });
 };
 export const DELETE: RequestHandler = async (event) => {

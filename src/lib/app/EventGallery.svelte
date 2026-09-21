@@ -1,74 +1,116 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import { nextWaiting } from '$lib/events/gallery';
+	import { thumbnail } from '$lib/events/images';
 	import type { OpenEvent } from '$lib/events/types';
 	import { savePicture, savePictures } from '$lib/files';
 	import { errorMessage, formatDay, messages, type Locale } from '$lib/i18n';
+	import { appPath } from '$lib/paths';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import NoticeBody from './NoticeBody.svelte';
 	import PictureViewer from './PictureViewer.svelte';
 	import { getApp, Task, type Picture } from './state.svelte';
 	import { alert, button, surface } from './ui';
 
-	// An event's gallery, as a family or a teacher opens it from the board: what it was and when, then its
-	// photos one at a time, with the teacher's words under each. Each photo is decrypted and composed on this
-	// device for whoever holds this card, so they come one by one rather than as a wall of thumbnails. A tap
-	// opens the photo on the whole screen, where a swipe moves through the gallery.
+	// An event's gallery, as a family or a teacher opens it from the board: what it was and when, then every
+	// photo as a small square. Each one is decrypted and put together on this device for whoever holds this
+	// card, so they fill in one after another rather than arriving as a page of pictures; the server has no
+	// thumbnail to send and never learns whose child is in which photo. A tap opens a photo on the whole
+	// screen, where a swipe moves through the gallery and the teacher's words show underneath.
 	let { locale, event, onremoved }: { locale: Locale; event: OpenEvent; onremoved: () => void } =
 		$props();
 	const app = getApp();
 	const task = new Task();
 	const t = $derived(messages[locale].app.events);
 	const p = $derived(messages[locale].app.eventEditor);
-	let index = $state(0),
-		picture = $state.raw<Picture>(),
-		prepared = $state(0),
-		loading = $state(false),
-		failed = $state(false),
-		retry = $state(0),
-		viewing = $state(false),
-		confirming = $state(false);
-	// A photo is put together on a canvas that iPhones and iPads before iOS 16.4 don't have; trying again
-	// can't help there, so say what will.
+	/** A photo is put together on a canvas that iPhones and iPads before iOS 16.4 don't have. */
 	const tooOld = typeof OffscreenCanvas === 'undefined';
 	const photos = $derived(event.value.photos);
-	const shown = $derived(photos[index]);
 	// Kept by the event's ID: a refreshed board hands over the same event as a new object, and that must not
 	// let go of the photos already opened.
 	const eventId = $derived(event.id);
+	/** Staff see every child, so a mark saying whose child is here would mean nothing to them. */
+	const family = $derived(app.status === 'family');
+	/** Each photo as it stands here: opened on this device, still opening, or one that wouldn't open. */
+	let tiles = $state.raw<((Picture & { small: string }) | 'failed' | undefined)[]>([]);
+	/** Which of the photos shown the whole screen is on, or -1 while the gallery is on the page. */
+	let position = $state(-1);
+	let onlyMine = $state(false);
+	let prepared = $state(0);
+	let confirming = $state(false);
+	/** Wakes the loop below when a photo that wouldn't open is asked for again; set while it's running. */
+	let again: (() => void) | undefined;
+
+	const marked = $derived(
+		tiles.map((tile) => family && typeof tile === 'object' && tile?.mine === true)
+	);
+	const mine = $derived(marked.filter(Boolean).length);
+	const opening = $derived(tiles.filter((tile) => tile === undefined).length);
+	/** The photos the grid and the whole screen move through: all of them, or only this family's child's. */
+	const shown = $derived(photos.map((_, at) => at).filter((at) => !onlyMine || marked[at]));
+	const at = $derived(position >= 0 ? (shown[position] ?? 0) : 0);
+	const viewed = $derived(tiles[at]);
+
 	$effect(() => {
 		void eventId;
 		return untrack(() => app.showEventPictures(event));
 	});
+	// One photo at a time, nearest the one being looked at first, and nothing at all once the family has left
+	// the page or opened another event. A photo already open comes back from the app without being fetched.
 	$effect(() => {
-		const photo = shown;
-		void retry;
-		let cancelled = false;
-		loading = true;
-		failed = false;
-		picture = undefined;
-		app
-			.eventPicture(event, photo.id)
-			.then((opened) => {
-				if (!cancelled) picture = opened;
-			})
-			.catch(() => {
-				if (!cancelled) failed = true;
-			})
-			.finally(() => {
-				if (!cancelled) loading = false;
-			});
-		return () => {
-			cancelled = true;
-		};
+		void eventId;
+		return untrack(() => {
+			let cancelled = false;
+			tiles = photos.map(() => undefined);
+			void (async () => {
+				while (!cancelled) {
+					const next = nextWaiting(
+						tiles.map((tile) => tile === undefined),
+						at
+					);
+					if (next < 0) {
+						// Everything is open: wait here until a tap asks for one to be tried again.
+						await new Promise<void>((resolve) => (again = resolve));
+						continue;
+					}
+					// The grid shows a small copy of each photo; the one the device keeps is for the whole screen.
+					const opened = await app
+						.eventPicture(event, photos[next].id)
+						.then(async (picture) => ({
+							...picture,
+							small: URL.createObjectURL(await thumbnail(picture.blob))
+						}))
+						.catch(() => 'failed' as const);
+					if (!cancelled) tiles = tiles.map((tile, i) => (i === next ? opened : tile));
+					else if (opened !== 'failed') URL.revokeObjectURL(opened.small);
+				}
+			})();
+			return () => {
+				cancelled = true;
+				again?.();
+				again = undefined;
+				for (const tile of tiles) if (typeof tile === 'object') URL.revokeObjectURL(tile.small);
+			};
+		});
 	});
 
-	function move(step: number) {
-		index = Math.max(0, Math.min(photos.length - 1, index + step));
+	/** Tapping a photo that wouldn't open asks for it again. */
+	function tryAgain(index: number) {
+		tiles = tiles.map((tile, i) => (i === index ? undefined : tile));
+		again?.();
+		again = undefined;
 	}
-	function save() {
-		const saving = picture;
-		if (saving) task.run(() => savePicture(saving.blob, event.value.title, `-${index + 1}`));
+	function show(index: number) {
+		const tile = tiles[index];
+		if (tile === 'failed') tryAgain(index);
+		else position = shown.indexOf(index);
+	}
+	function move(step: number) {
+		position = Math.max(0, Math.min(shown.length - 1, position + step));
+		// A photo that didn't open is tried again when it's swiped to, rather than waiting for nothing.
+		const next = shown[position];
+		if (tiles[next] === 'failed') tryAgain(next);
 	}
 	/** Every photo of the gallery, composed on this device one after another, then saved together. */
 	function saveAll() {
@@ -79,12 +121,16 @@
 					all.push((await app.eventPicture(event, photo.id)).blob);
 					prepared = all.length;
 				}
-				await savePictures(all, event.value.title);
+				if (all.length === 1) await savePicture(all[0], event.value.title);
+				else await savePictures(all, event.value.title);
 			} finally {
 				prepared = 0;
 			}
 		});
 	}
+	const until = $derived(
+		new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(event.expiresAt)
+	);
 </script>
 
 <div class="grid gap-5">
@@ -96,45 +142,62 @@
 		{/if}
 	</div>
 
-	{#if photos.length > 1}
-		<div class="flex flex-wrap gap-2" role="group" aria-label={p.photos}>
-			{#each photos as photo, i (photo.id)}
-				<button
-					type="button"
-					class="{button.chip} w-11"
-					aria-pressed={index === i}
-					aria-label={p.photo(i + 1, photos.length)}
-					onclick={() => (index = i)}>{i + 1}</button
-				>
-			{/each}
-		</div>
-	{/if}
+	{#if tooOld}
+		<p class={alert} role="alert">{t.tooOld}</p>
+	{:else}
+		{#if mine > 0}
+			<div class="flex flex-wrap gap-2" role="group" aria-label={t.filter}>
+				{#each [[false, t.allPhotos], [true, t.withMyChild]] as const as [only, label] (label)}
+					<button
+						type="button"
+						class={button.chip}
+						aria-pressed={onlyMine === only}
+						onclick={() => {
+							onlyMine = only;
+							position = -1;
+						}}>{label}</button
+					>
+				{/each}
+			</div>
+		{/if}
 
-	{#if loading}
-		<p class="font-semibold text-muted" role="status">{t.loading}</p>
-	{:else if failed}
-		<div class="grid justify-items-start gap-3">
-			{#if tooOld}
-				<p class={alert} role="alert">{t.tooOld}</p>
-			{:else}
-				<p class={alert} role="alert">{t.failed}</p>
-				<button type="button" class={button.secondary} onclick={() => retry++}>
-					<Icon name="refresh" class="size-4" />{t.retry}
-				</button>
-			{/if}
-		</div>
-	{:else if picture}
-		<figure class="grid gap-2">
-			<button
-				type="button"
-				class="block cursor-zoom-in rounded-3xl"
-				aria-label={p.photo(index + 1, photos.length)}
-				onclick={() => (viewing = true)}
-			>
-				<img src={picture.url} alt="" class="w-full rounded-3xl bg-ink/5" />
-			</button>
-			{#if shown.text}<figcaption class="text-muted">{shown.text}</figcaption>{/if}
-		</figure>
+		<ul class="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6" aria-label={p.photos}>
+			{#each shown as index (photos[index].id)}
+				{@const tile = tiles[index]}
+				<li>
+					<button
+						type="button"
+						class="relative block aspect-square w-full cursor-zoom-in overflow-hidden rounded-2xl bg-ink/5 ring-1 ring-ink/10 transition hover:ring-ink/25"
+						aria-label={tile === 'failed' ? t.retry : p.photo(index + 1, photos.length)}
+						onclick={() => show(index)}
+					>
+						{#if tile === 'failed'}
+							<span class="grid size-full place-items-center text-muted">
+								<Icon name="refresh" class="size-5" />
+							</span>
+						{:else if tile}
+							<img src={tile.small} alt="" class="size-full object-cover" />
+						{/if}
+						<span
+							class="absolute bottom-1 left-1 rounded-full bg-ink/55 px-2 text-xs font-semibold text-white"
+							aria-hidden="true">{index + 1}</span
+						>
+						{#if marked[index]}
+							<span class="absolute top-1 right-1 rounded-full frosted p-1 text-ink">
+								<Icon name="heart" class="size-4" />
+								<span class="sr-only">{t.withMyChild}</span>
+							</span>
+						{/if}
+					</button>
+				</li>
+			{/each}
+		</ul>
+
+		{#if opening}
+			<p class="font-semibold text-muted" role="status">
+				{t.openingPhotos(photos.length - opening, photos.length)}
+			</p>
+		{/if}
 	{/if}
 
 	{#if task.error}<p class={alert} role="alert">{errorMessage(locale, task.error)}</p>{/if}
@@ -143,37 +206,38 @@
 			{t.preparingPhoto(prepared, photos.length)}
 		</p>
 	{/if}
+	<p class="text-sm text-muted">{t.staysUntil(until)}</p>
 	<div class="flex flex-wrap gap-3">
-		<button
-			type="button"
-			class={button.primary}
-			disabled={!picture || task.busy}
-			onclick={() => save()}
-		>
-			<Icon name="download" class="size-4" />{t.download}
+		<button type="button" class={button.primary} disabled={tooOld || task.busy} onclick={saveAll}>
+			<Icon name="download" class="size-4" />{photos.length > 1 ? t.downloadAll : t.download}
 		</button>
-		{#if photos.length > 1}
-			<button type="button" class={button.secondary} disabled={task.busy} onclick={() => saveAll()}>
-				<Icon name="download" class="size-4" />{t.downloadAll}
-			</button>
-		{/if}
 		{#if app.canDeleteEvent(event)}
 			<button type="button" class={button.danger} onclick={() => (confirming = true)}>
 				<Icon name="trash" class="size-4" />{t.remove}
 			</button>
 		{/if}
 	</div>
+
+	{#if family}
+		<p class="text-sm text-muted">
+			{t.stickersExplained}
+			<a class="font-semibold underline underline-offset-4" href={appPath(locale, 'options')}
+				>{messages[locale].app.options.title}</a
+			>
+		</p>
+	{/if}
 </div>
 
-{#if viewing}
+{#if position >= 0}
 	<PictureViewer
 		{locale}
-		label={`${event.value.title} — ${p.photo(index + 1, photos.length)}`}
-		{picture}
+		label={`${event.value.title} — ${p.photo(at + 1, photos.length)}`}
+		picture={typeof viewed === 'object' ? viewed : undefined}
 		name={event.value.title}
-		caption={shown.text}
-		gallery={{ index, count: photos.length, onmove: move }}
-		onclose={() => (viewing = false)}
+		number={at + 1}
+		caption={photos[at].text}
+		gallery={{ index: position, count: shown.length, onmove: move }}
+		onclose={() => (position = -1)}
 	/>
 {/if}
 

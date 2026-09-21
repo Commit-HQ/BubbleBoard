@@ -192,7 +192,12 @@ export type InfoPageValues = Pick<NoticeValues, 'paper' | 'body' | 'files'>;
  * A board photo, or a picture on a notice or an info page, that this device opened, with the address its image
  * shows at.
  */
-export type Picture = { blob: Blob; url: string };
+export type Picture = {
+	blob: Blob;
+	url: string;
+	/** Whether one of this card's own children is in an event's photo (`renderPackage`). */
+	mine?: boolean;
+};
 
 const emptyCatalog: Catalog = {
 	revision: 0,
@@ -304,6 +309,8 @@ export class App {
 			this.eventsError = opened.some((r) => r.status === 'rejected')
 				? 'unreadable-photo'
 				: undefined;
+			// An event that came down takes its card's photo with it.
+			this.#keepPictures();
 		} catch (cause) {
 			if (version === this.#connectionVersion) this.eventsError = errorCode(cause);
 		}
@@ -361,13 +368,14 @@ export class App {
 	}
 	async eventPreview(draft: EventDraft, photo: string, viewer: string) {
 		const file = byId(draft.files, photo);
-		return renderPackage(
+		const { blob } = await renderPackage(
 			draft.id,
 			photo,
 			file.sealed,
 			draft.key,
 			viewer === 'base' ? { covered: true } : { family: await this.messageKey(viewer) }
 		);
+		return blob;
 	}
 	async publishEvent(
 		draft: EventDraft,
@@ -421,6 +429,11 @@ export class App {
 				this.#familyCard ? { family: this.#familyCard.familyKey } : { staff: this.#staff.staffKey }
 			)
 		);
+	}
+
+	/** Where the photo a board card shows is kept: the first of the event's gallery, and only that one. */
+	eventCover(event: OpenEvent) {
+		return this.eventPicture(event, event.value.photos[0].id);
 	}
 
 	/**
@@ -1666,10 +1679,10 @@ export class App {
 
 	/** A board photo, opened with its classroom's Group Key (`#picture`). */
 	photoPicture(photo: PhotoRecord) {
-		return this.#picture(photoPath(photo), (sealed) => {
+		return this.#picture(photoPath(photo), async (sealed) => {
 			const { groupKey } = byId(this.myClassrooms, photo.classroom);
 			const opening = openPhoto(sealed, groupKey, photo.classroom, photo.id);
-			return readable(opening, 'unreadable-photo');
+			return { blob: await readable(opening, 'unreadable-photo') };
 		});
 	}
 
@@ -1684,19 +1697,21 @@ export class App {
 	}
 
 	#filePicture(path: string, file: NoticeFile) {
-		return this.#picture(path, (sealed) => readable(openPicture(sealed, file), 'unreadable-file'));
+		return this.#picture(path, async (sealed) => ({
+			blob: await readable(openPicture(sealed, file), 'unreadable-file')
+		}));
 	}
 
 	/**
 	 * A picture, fetched from where it's kept and opened the first time it's shown, and kept while it's up. One
 	 * that didn't open is tried again the next time it's shown.
 	 */
-	#picture(path: string, open: (sealed: Uint8Array<ArrayBuffer>) => Promise<Blob>) {
+	#picture(path: string, open: (sealed: Uint8Array<ArrayBuffer>) => Promise<Omit<Picture, 'url'>>) {
 		let picture = this.#pictures.get(path);
 		if (!picture) {
 			picture = this.#signedIn(async () => {
-				const blob = await open(await requestBytes(path));
-				return { blob, url: URL.createObjectURL(blob) };
+				const opened = await open(await requestBytes(path));
+				return { ...opened, url: URL.createObjectURL(opened.blob) };
 			});
 			this.#pictures.set(path, picture);
 			picture.catch(() => this.#pictures.delete(path));
@@ -1718,6 +1733,8 @@ export class App {
 				files.map((file) => infoFilePath(id, file.id))
 			),
 			...this.#messagePictures,
+			// The photo each event card on the board shows, which is up for as long as the card is.
+			...this.events.map((event) => eventFilePath(event.id, event.value.photos[0].id)),
 			...this.#eventPictures
 		]);
 		for (const [path, picture] of this.#pictures) {

@@ -8,7 +8,8 @@ export const notificationText: Record<PushKind, string> = {
 	notice: 'New notice from your kindergarten',
 	message: 'New message',
 	slots: 'New meeting times',
-	booking: 'Meeting time changed'
+	booking: 'Meeting time changed',
+	photos: 'New photos from your kindergarten'
 };
 
 export const en = {
@@ -266,7 +267,19 @@ export const en = {
 			tooOld:
 				'This device’s software is too old to show event photos. Update it, or open BubbleBoard on a newer phone or a computer.',
 			retry: 'Try again',
-			loading: 'Opening the photo…'
+			loading: 'Opening the photo…',
+			// While the photos are still being put together on this device, one after another.
+			openingPhotos: (done: number, total: number) => `Opening photos… ${done} of ${total}`,
+			filter: 'Which photos to show',
+			allPhotos: 'All photos',
+			// On the photos this family's own child is in, and on the button that shows only those.
+			withMyChild: 'With your child',
+			staysUntil: (date: string) =>
+				`Photos stay here until ${date}. Save the ones you’d like to keep.`,
+			untilShort: (date: string) => `Photos stay here until ${date}.`,
+			// Under a family's gallery, followed by the link to Settings, where the choice is made.
+			stickersExplained:
+				'A sticker covers the children whose families keep their photos to themselves. You choose this for your own child in Settings.'
 		},
 		eventEditor: {
 			steps: ['Event', 'Photos', 'Review'],
@@ -873,6 +886,7 @@ export const en = {
 			fit: 'Fit to the screen',
 			close: 'Close',
 			save: 'Save',
+			share: 'Share',
 			opening: 'Opening the photo…',
 			previous: 'Previous photo',
 			next: 'Next photo'

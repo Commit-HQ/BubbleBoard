@@ -1,14 +1,12 @@
 <script lang="ts">
-	import Icon from '$lib/components/Icon.svelte';
-	import { formatDay, messages, type Locale } from '$lib/i18n';
+	import { messages, type Locale } from '$lib/i18n';
 	import type { Notice } from '$lib/notices';
 	import BoardPhoto from './BoardPhoto.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
-	import NoticeBody from './NoticeBody.svelte';
+	import EventCard from './EventCard.svelte';
 	import NoticeCard from './NoticeCard.svelte';
 	import { getApp } from './state.svelte';
-	import { choice, surface, button } from './ui';
-	import { appPath } from '$lib/paths';
+	import { choice } from './ui';
 
 	// Home's board, as on the kindergarten's corkboard: the photos of its classrooms' boards, then the notices,
 	// newest on top. With several classrooms, a filter shows one classroom's; it starts on all of them.
@@ -75,19 +73,7 @@
 
 	{#if app.eventsError}<p role="status" class="text-sm text-muted">{t.events.failed}</p>{/if}
 	{#each app.events.filter((e) => !shown || e.classroom === shown) as event (event.id)}
-		<article class="{surface} grid gap-3">
-			<p class="text-sm text-muted">{t.events.title} · {formatDay(locale, event.value.date)}</p>
-			<h2 class="text-3xl">{event.value.title}</h2>
-			{#if event.value.description.content.length}
-				<NoticeBody blocks={event.value.description.content} />
-			{/if}
-			<a
-				class="{button.secondary} justify-self-start"
-				href={`${appPath(locale, 'event')}?id=${event.id}`}
-			>
-				<Icon name="image" class="size-4" />{t.events.open} ({event.value.photos.length})
-			</a>
-		</article>
+		<EventCard {locale} {event} />
 	{/each}
 	{#if app.unreadableNotices}
 		<p class="text-sm font-semibold text-muted">{t.notices.unreadable}</p>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
-	import { savePicture } from '$lib/files';
+	import { canSharePicture, savePicture, sharePicture } from '$lib/files';
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import { onMount, tick } from 'svelte';
 	import { Task, type Picture } from './state.svelte';
@@ -16,6 +16,7 @@
 		label,
 		picture,
 		name,
+		number,
 		caption,
 		gallery,
 		onclose
@@ -27,6 +28,8 @@
 		picture?: Picture;
 		/** The name it's saved under, which one of a gallery is numbered after. */
 		name: string;
+		/** Which photo of a set this is, when the name it's saved under is numbered. */
+		number?: number;
 		/** The few words written under the photo, where there are any. */
 		caption?: string;
 		/** Where this picture is in a set, and how to move through it. */
@@ -36,7 +39,10 @@
 
 	const t = $derived(messages[locale].app.viewer);
 	/** Which photo of a gallery this is, so a set saved one by one keeps them apart. */
-	const suffix = $derived(gallery ? `-${gallery.index + 1}` : '');
+	const suffix = $derived(number ? `-${number}` : '');
+	// Sharing hands over the very file Save writes, so it shows nothing a family couldn't already keep. On
+	// iPhone and iPad Save opens the share sheet itself, so there is no second button there.
+	const shareable = canSharePicture();
 	const task = new Task();
 	let dialog = $state<HTMLDialogElement>();
 	let frame = $state<HTMLDivElement>();
@@ -180,6 +186,16 @@
 			>
 				<Icon name="download" class="size-4" />{t.save}
 			</button>
+			{#if shareable}
+				<button
+					class={button.frosted}
+					type="button"
+					disabled={task.busy || !picture}
+					onclick={() => picture && task.run(() => sharePicture(picture.blob, name, suffix))}
+				>
+					<Icon name="share" class="size-4" />{t.share}
+				</button>
+			{/if}
 		</div>
 	</div>
 </dialog>

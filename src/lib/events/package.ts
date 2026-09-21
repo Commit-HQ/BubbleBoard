@@ -272,18 +272,49 @@ export async function preparePackage(
 		bitmap.close();
 	}
 }
+/** The key of one patch out of the envelopes made for families, or nothing when none of them is this card's. */
+async function openGrant(
+	grants: unknown[],
+	family: CryptoKey,
+	event: string,
+	photo: string,
+	part: string
+) {
+	for (const grant of grants) {
+		try {
+			const raw = fields(
+				await decryptData(grant as string, family, {
+					purpose: 'event-grant',
+					...context(event, photo, part)
+				})
+			).key;
+			if (isContentKey(raw)) return raw;
+		} catch {
+			/* Another family's envelope. */
+		}
+	}
+	return undefined;
+}
 function raster(data: string, type: string) {
 	const value = fromBase64Url(data);
 	if (!value) throw new UnreadableError();
 	return new Blob([value], { type });
 }
+/**
+ * The photo this device may show, and whether one of this card's own children is in it. A face is granted to
+ * the families it belongs to whether or not it is also shared with the classroom, so a Family Key that opens
+ * any of a photo's envelopes is a family whose own child is there. An overlap's envelope says the same: it
+ * goes only to a family linked to every face in it that the classroom may not see, so a family holding one is
+ * linked to one of them. Nothing about this leaves the device; the server keeps only sealed bytes.
+ */
+export type RenderedPhoto = { blob: Blob; mine: boolean };
 export async function renderPackage(
 	event: string,
 	photo: string,
 	sealed: Uint8Array<ArrayBuffer>,
 	key: CryptoKey,
 	viewer: { family?: CryptoKey; staff?: CryptoKey; covered?: boolean } = {}
-) {
+): Promise<RenderedPhoto> {
 	const decoded = await decryptBytes(sealed, key, {
 		purpose: 'event-photo',
 		...context(event, photo)
@@ -313,6 +344,8 @@ export async function renderPackage(
 		base.close();
 	}
 	let staffKeys: Record<string, unknown> = {};
+	/** Whether an envelope of this photo opened with this card's Family Key (`RenderedPhoto`). */
+	let mine = false;
 	if (viewer.staff && typeof p.staff === 'string') {
 		try {
 			staffKeys = fields(
@@ -349,20 +382,14 @@ export async function renderPackage(
 			)
 				continue;
 			let raw = viewer.staff ? staffKeys[patch.id] : patch.shared;
-			if (!isContentKey(raw) && viewer.family)
-				for (const grant of patch.grants) {
-					try {
-						raw = fields(
-							await decryptData(grant, viewer.family, {
-								purpose: 'event-grant',
-								...context(event, photo, patch.id)
-							})
-						).key;
-						if (isContentKey(raw)) break;
-					} catch {
-						/* Another family's envelope. */
-					}
-				}
+			// The envelopes are opened while the face still needs a key, and once more, on a face the whole
+			// classroom may see, only until one of them opens: after the first, the answer can't change, so
+			// the rest are left alone rather than tried for nothing.
+			if (viewer.family && (!isContentKey(raw) || !mine)) {
+				const own = await openGrant(patch.grants, viewer.family, event, photo, patch.id);
+				if (own) mine = true;
+				if (!isContentKey(raw)) raw = own;
+			}
 			if (!isContentKey(raw)) continue;
 			const data = fromBase64Url(patch.data);
 			if (!data) continue;
@@ -390,10 +417,11 @@ export async function renderPackage(
 	// What this device shows and saves, put together from the base and the patches it could open. It is
 	// never uploaded, and the pixels it holds have been through an encoder already, so it is compressed too:
 	// a lossless copy of them would be several megabytes for a family to keep.
-	return canvas.convertToBlob({
+	const blob = await canvas.convertToBlob({
 		type: (await writesWebp()) ? 'image/webp' : 'image/jpeg',
 		quality: 0.9
 	});
+	return { blob, mine };
 }
 export async function openEvent(record: EventRecord, groupKey: CryptoKey): Promise<OpenEvent> {
 	const raw = fields(

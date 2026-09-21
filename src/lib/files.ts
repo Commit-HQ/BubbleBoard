@@ -181,12 +181,43 @@ export function saveFile(file: Blob, name: string) {
  * pictures. Elsewhere, or where the share sheet can't open, it's a download.
  */
 export async function savePicture(picture: Blob, name: string, suffix = '') {
-	const saved = await pictureToSave(picture);
-	const file = new File([saved], nameWith(name, pictureExtension(saved.type), suffix), {
-		type: saved.type
-	});
+	const file = await pictureFile(picture, name, suffix);
 	if ((await shareToPhotos([file])) !== 'unavailable') return;
 	saveFile(file, file.name);
+}
+
+/** One picture as a file to hand to the share sheet, encoded the way this device saves it. */
+async function pictureFile(picture: Blob, name: string, suffix: string) {
+	const saved = await pictureToSave(picture);
+	return new File([saved], nameWith(name, pictureExtension(saved.type), suffix), {
+		type: saved.type
+	});
+}
+
+/**
+ * Whether Share belongs beside Save on a picture. The share sheet takes files on Android and on computers
+ * with one, and the answer depends on the kind of file rather than on its bytes, so an empty one asks it. On
+ * iPhone and iPad, Save already opens the share sheet (`savePicture`), so a second button would do the same.
+ */
+export function canSharePicture() {
+	if (isAppleTouch(navigator.userAgent, navigator.maxTouchPoints)) return false;
+	return (
+		navigator.canShare?.({ files: [new File([], 'photo.jpg', { type: 'image/jpeg' })] }) === true
+	);
+}
+
+/**
+ * Hands one picture to whatever this device shares with: the same file Save would write, so sharing shows
+ * nothing a family couldn't already keep. Closing the sheet shares nothing, as it should.
+ */
+export async function sharePicture(picture: Blob, name: string, suffix = '') {
+	const file = await pictureFile(picture, name, suffix);
+	if (!navigator.canShare?.({ files: [file] })) return;
+	try {
+		await navigator.share({ files: [file] });
+	} catch (cause) {
+		if (!(cause instanceof DOMException && cause.name === 'AbortError')) throw cause;
+	}
 }
 
 /**
@@ -216,14 +247,8 @@ async function shareToPhotos(files: File[]) {
  */
 export async function savePictures(pictures: Blob[], set: string) {
 	const files: File[] = [];
-	for (const [position, picture] of pictures.entries()) {
-		const saved = await pictureToSave(picture);
-		files.push(
-			new File([saved], nameWith(set, pictureExtension(saved.type), `-${position + 1}`), {
-				type: saved.type
-			})
-		);
-	}
+	for (const [position, picture] of pictures.entries())
+		files.push(await pictureFile(picture, set, `-${position + 1}`));
 	// A share sheet only opens while the tap that asked for it is still recent, and composing a gallery takes
 	// longer than that, so a file to keep is what is left when it is too late.
 	if ((await shareToPhotos(files)) !== 'unavailable') return;

@@ -6,7 +6,8 @@ export const notificationText: Record<PushKind, string> = {
 	notice: 'Nova obavijest iz vrtića',
 	message: 'Nova poruka',
 	slots: 'Novi termini za razgovore',
-	booking: 'Promjena termina razgovora'
+	booking: 'Promjena termina razgovora',
+	photos: 'Nove fotografije iz vrtića'
 };
 
 export const hr = {
@@ -252,7 +253,16 @@ export const hr = {
 			tooOld:
 				'Softver ovog uređaja prestar je za prikaz fotografija s događaja. Ažurirajte ga ili otvorite BubbleBoard na novijem mobitelu ili računalu.',
 			retry: 'Pokušaj ponovno',
-			loading: 'Otvaramo fotografiju…'
+			loading: 'Otvaramo fotografiju…',
+			openingPhotos: (done: number, total: number) => `Otvaramo fotografije… ${done} od ${total}`,
+			filter: 'Koje fotografije prikazati',
+			allPhotos: 'Sve fotografije',
+			withMyChild: 'S vašim djetetom',
+			staysUntil: (date: string) =>
+				`Fotografije ostaju ovdje do ${date}. Spremite one koje želite zadržati.`,
+			untilShort: (date: string) => `Fotografije ostaju ovdje do ${date}.`,
+			stickersExplained:
+				'Naljepnica prekriva djecu čije obitelji njihove fotografije zadržavaju za sebe. Za svoje dijete to birate u postavkama.'
 		},
 		eventEditor: {
 			steps: ['Događaj', 'Fotografije', 'Pregled'],
@@ -847,6 +857,7 @@ export const hr = {
 			fit: 'Prilagodi zaslonu',
 			close: 'Zatvori',
 			save: 'Spremi',
+			share: 'Podijeli',
 			opening: 'Otvaramo fotografiju…',
 			previous: 'Prethodna fotografija',
 			next: 'Sljedeća fotografija'

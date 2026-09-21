@@ -111,6 +111,10 @@ Start with locally generated SVG stickers. A later sticker pack changes decorati
 
 Before the pilot, close the access boundary documented in `access-format.md`: replacing a family's card could let a teacher reach that family's other classrooms. Family-card replacement is now restricted to admins. The shared Staff Key remains an existing, documented compromise that warrants review for children's photos.
 
+## 7a. What a family's gallery looks like
+
+Implemented 2026-09-21, after the first version's one-photo-at-a-time gallery proved slow to move through. The gallery is a grid of squares composed on the device, the board's card carries the event's first photo, the photos this family's child is in are marked and can be shown on their own, the gallery says when the photos come down, one line explains the stickers, publication sends its own push kind, and a photo can go to the device's share sheet as well as be saved. The format did not change: the marks come from grant envelopes the packages already carried. See [events-format.md](events-format.md).
+
 ## 8. Annual albums and retention
 
 **Agreed:** teachers choose event duration as for notices: 1, 3, 7, 14, 30, 60 or 90 days, defaulting to 30. Expiry removes access and schedules deletion of photos, patches and retained preparation data through the existing cleanup mechanism.
