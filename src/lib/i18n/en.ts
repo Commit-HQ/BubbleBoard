@@ -17,15 +17,15 @@ export const en = {
 	ogLocale: 'en_US',
 	title: 'A little closer to their day',
 	description:
-		'BubbleBoard is a free, open-source app that connects kindergarten teachers and families. Notices, photos from the day, and private messages, all in one place and private by design.',
+		'BubbleBoard is a free app for kindergartens. Teachers share news and photos and answer parents’ questions. Everything is in one place, and only the people it’s meant for can see it.',
 	skip: 'Skip to content',
 	home: 'BubbleBoard home',
 	language: 'Language',
 	nav: {
 		label: 'Main',
 		sections: {
-			features: 'Features',
-			how: 'How it works',
+			features: 'What it does',
+			how: 'Getting started',
 			privacy: 'Privacy',
 			teachers: 'For teachers',
 			security: 'Security',
@@ -35,6 +35,8 @@ export const en = {
 	hero: {
 		heading: 'A little closer',
 		headingAccent: 'to their day.',
+		// The paragraph under the heading. `description` stays the plain summary that search results show.
+		copy: '“What did you do today?” “Nothing.” We know that answer. BubbleBoard shows you everything else: photos from the trip, notes from the teachers, and answers to your questions. Free, in one place, and only for your classroom’s eyes.',
 		cta: 'For your kindergarten',
 		open: 'Open the app',
 		quiet: 'Made for families. Inspired by the Bubbles.',
@@ -47,115 +49,117 @@ export const en = {
 		]
 	},
 	features: {
-		title: 'Everything from kindergarten, in one calm place.',
-		copy: 'No more scattered group chats, paper notes, and missed messages. BubbleBoard keeps the essentials together.',
+		title: 'The kindergarten notice board, now in your pocket.',
+		copy: 'No more paper notes lost in a backpack or messages buried in group chats. Everything that matters waits for you in one place.',
 		notices: {
 			title: 'Classroom notices',
-			copy: 'Reminders and news from the classroom, all in one feed.'
+			copy: 'A trip tomorrow? Spare clothes needed? Teachers post it, and you see it right away.'
 		},
 		photos: {
 			title: 'Photos from the day',
-			copy: 'Galleries from the day, with the photos your child is in marked for you. Other children wear a cheerful sticker unless their parents allow sharing.'
+			copy: 'Peek at how the show or the trip went. Photos with your child in them are marked for you. A cheerful sticker covers other children’s faces, unless their parents allow them to be seen.'
 		},
 		messages: {
-			title: 'A direct line to teachers',
-			copy: 'Ask your child’s teachers something privately, with each question in its own conversation.'
+			title: 'Ask the teachers',
+			copy: 'Have a question just for the teachers? Write it here. Other parents don’t see it, and each question gets its own conversation.'
 		},
 		documents: {
-			title: 'Shared documents',
-			copy: 'Weekly plans, menus, and forms, right next to everything else.'
+			title: 'Menus and weekly plans',
+			copy: 'What’s for lunch today? Menus, weekly plans, and forms are always at hand.'
 		},
 		notifications: {
-			title: 'Gentle notifications',
-			copy: 'A quick heads-up when something new arrives, with no details on your lock screen.'
+			title: 'Your phone lets you know',
+			copy: 'When something new arrives, your phone shows a short heads-up. What it says stays inside the app, so nobody reads it over your shoulder.'
 		},
 		devices: {
-			title: 'On every family device',
-			copy: 'One family QR code works on every phone, tablet, and computer at home.'
+			title: 'On mum’s phone and dad’s',
+			copy: 'One family code works on every phone, tablet, and computer at home.'
 		}
 	},
 	how: {
-		title: 'One QR code. Your classroom.',
-		copy: 'Parents and teachers join the same way. Your kindergarten hands out QR codes: one for all your family’s devices, and one for each teacher. That’s all you need.',
+		title: 'One code and you’re in.',
+		copy: 'Your kindergarten gives you a QR code, a small patterned square that your phone reads with its camera. One works for all your family’s devices, and each teacher has their own. That’s all you need.',
 		photoAlt:
 			'Children lying in a circle on a kindergarten rug, laughing, some with their legs in the air',
 		// In the order a family goes through them: the QR code's link opens BubbleBoard, which then asks to be
 		// installed, and the installed app asks to turn on notifications.
 		steps: [
 			{
-				title: 'Scan your QR code',
-				copy: 'Point your phone’s camera at the QR code from your kindergarten. No username or password to remember.'
+				title: 'Point your camera at the code',
+				copy: 'Open the camera on your phone and point it at the code from your kindergarten. No username or password to remember.'
 			},
 			{
-				title: 'Install the app',
-				copy: 'BubbleBoard shows you how to add it to your home screen, right from your browser. No app store needed.'
+				title: 'Put the app on your phone',
+				copy: 'BubbleBoard shows you step by step how to add it next to your other apps. No need to look for anything in an app store.'
 			},
-			{ title: 'Turn on notifications', copy: 'Hear when there’s something new to see.' }
+			{
+				title: 'Turn on notifications',
+				copy: 'That way your phone tells you as soon as something new arrives.'
+			}
 		]
 	},
 	privacy: {
 		title: 'Your child’s face. Your family’s choice.',
-		copy: 'Parents decide whether other families can see their child in classroom photos. You always see your own child clearly.',
+		copy: 'You decide whether other families can see your child in classroom photos. Until you allow it, a cheerful sticker covers their face for everyone else. You always see your own child without a sticker.',
 		photoAlt: 'Children painting with watercolours around a table, seen from above',
 		facts: [
 			'No usernames or passwords',
-			'Faces covered for other families, unless you allow more',
-			'Save or share the photos you love before they’re removed from the app'
+			'Other families see a sticker instead of a face, until you decide otherwise',
+			'Save or share the photos you love before they disappear from the app'
 		]
 	},
 	security: {
-		title: 'Locked before it leaves your phone.',
-		copy: 'Photos, messages, and children’s names are encrypted before they leave the device. Classroom notices and photos open only for families in your classroom and teachers at your kindergarten, and private conversations only for your family and those teachers.',
-		device: {
-			title: 'Encrypted on your device',
-			copy: 'Content is encrypted on your phone or computer before it’s uploaded.'
+		title: 'What’s shared in your classroom stays there.',
+		copy: 'Photos, messages, and children’s names are locked on your phone before they’re sent. Only the families and teachers in your classroom can unlock them.',
+		group: {
+			title: 'Only your classroom',
+			copy: 'Notices and photos are seen by all the families and teachers in your classroom. Private conversations are seen only by you and your teachers.'
 		},
-		server: {
-			title: 'Unreadable if it leaks',
-			copy: 'The server has no keys to read what it stores, so a leak reveals no photos, names, or messages.'
+		lock: {
+			title: 'Locked on your phone first',
+			copy: 'Everything is locked before it leaves your phone or computer. Anyone without the key sees only an unreadable jumble.'
 		},
-		host: {
-			title: 'Keys stay in your kindergarten',
-			copy: 'Whoever runs the server, us included, doesn’t have them. The code is public, so anyone can see how it works.'
-		},
-		note: 'Encryption protects what’s stored on the server. It can’t take back a photo someone has already saved to their own phone.'
+		keys: {
+			title: 'Even we can’t peek',
+			copy: 'Only your kindergarten has the keys. Nobody outside it does, not even us who made the app. The app is open source, so anyone can check how it works.'
+		}
 	},
 	teachers: {
 		title: 'Made for teachers, too.',
-		copy: 'Share the day from a phone or a computer in a minute, with sensible defaults built in.',
+		copy: 'Share the day in a minute, from a phone or a computer. The app minds the details so you don’t have to.',
 		preview: {
-			title: 'Faces covered for you',
-			copy: 'Your phone finds the faces and covers them. You name each child, then see the gallery exactly as each family will before it goes out.'
+			title: 'Stickers stick themselves',
+			copy: 'Your phone finds the faces in your photos and covers them. You just say who’s who. Before it goes out, you see the gallery exactly as each family will.'
 		},
 		meetings: {
 			title: 'Individual meetings',
-			copy: 'Offer the times you’re free, and families book one for their child without seeing who else has.'
+			copy: 'Put in the times you’re free, and parents pick one for their child. They don’t see who took the others.'
 		},
 		retention: {
 			title: 'You choose how long',
-			copy: 'Photos are removed from the app after the time you choose, from one day to three months.'
+			copy: 'Photos disappear from the app on their own after the time you choose, from one day to three months.'
 		},
 		seen: {
 			title: 'You see who’s read it',
-			copy: 'Families tap once to say they’ve read a notice, and a poll brings quick answers back.'
+			copy: 'Parents tap once to say they’ve read a notice. Need a quick answer from everyone? Post a poll.'
 		}
 	},
 	kindergartens: {
 		title: 'Want BubbleBoard for your kindergarten?',
-		copy: 'BubbleBoard isn’t a service you sign up for. Each kindergarten gets its own installation, so its families’ content is never mixed with anyone else’s. Tell us about your kindergarten and we’ll help you get started.',
+		copy: 'BubbleBoard has no subscription and no sign-up. Each kindergarten gets its own BubbleBoard, separate from all the others, so your families’ photos and messages are never mixed with anyone else’s. Write to us about your kindergarten and we’ll help you get going.',
 		facts: [
-			'Free and open source, with no ads and no tracking',
-			'Nothing for parents to buy or download from an app store',
+			'Free, with no ads and no tracking',
+			'Nothing for parents to buy or look for in an app store',
 			'Works on the phones and computers you already have'
 		],
 		hosting:
-			'The software is free. Each kindergarten covers its own hosting, which is usually a small cost.',
+			'The app is free. The only cost is renting the computer on the internet that it runs on. That cost is usually small, and each kindergarten covers its own.',
 		cta: 'Write to us',
 		subject: 'BubbleBoard for our kindergarten',
 		mission:
-			'BubbleBoard is made by Commit, a small group of developers who build free, open-source apps for everyday problems.',
-		itTeam: 'Have your own IT team?',
-		code: 'The code is on GitHub.'
+			'BubbleBoard is made by Commit, a small group of developers who build free, open-source apps that solve everyday problems. Open source means anyone can see how they’re made.',
+		itTeam: 'Know someone good with computers?',
+		code: 'Everything they need is on GitHub.'
 	},
 	footer: {
 		tagline: 'A little community. A lot of care.',

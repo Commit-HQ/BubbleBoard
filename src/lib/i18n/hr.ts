@@ -15,15 +15,15 @@ export const hr = {
 	ogLocale: 'hr_HR',
 	title: 'Malo bliže njihovom danu',
 	description:
-		'BubbleBoard je besplatna aplikacija otvorenog koda koja povezuje odgojitelje i obitelji u vrtiću. Obavijesti, fotografije dana i privatne poruke na jednom mjestu, uz privatnost ugrađenu od početka.',
+		'BubbleBoard je besplatna aplikacija za vrtić. Odgojitelji javljaju što ima novo, dijele fotografije i odgovaraju na pitanja roditelja. Sve je na jednom mjestu i vide ga samo oni kojima je namijenjeno.',
 	skip: 'Preskoči na sadržaj',
 	home: 'BubbleBoard početna',
 	language: 'Jezik',
 	nav: {
 		label: 'Glavna',
 		sections: {
-			features: 'Mogućnosti',
-			how: 'Kako radi',
+			features: 'Što nudi',
+			how: 'Kako početi',
 			privacy: 'Privatnost',
 			teachers: 'Za odgojitelje',
 			security: 'Sigurnost',
@@ -33,6 +33,7 @@ export const hr = {
 	hero: {
 		heading: 'Malo bliže',
 		headingAccent: 'njihovom danu.',
+		copy: '„Što je bilo u vrtiću?“ „Ništa.“ Znamo taj odgovor. BubbleBoard vam pokaže sve ostalo: fotografije s izleta, obavijesti odgojitelja i odgovore na vaša pitanja. Besplatno, na jednom mjestu i samo za oči vaše skupine.',
 		cta: 'Za vaš vrtić',
 		open: 'Otvori aplikaciju',
 		quiet: 'Za obitelji. Nadahnuto skupinom Bubbles.',
@@ -43,112 +44,114 @@ export const hr = {
 		]
 	},
 	features: {
-		title: 'Sve iz vrtića, na jednom mirnom mjestu.',
-		copy: 'Bez raštrkanih grupnih razgovora, papirića i propuštenih poruka. BubbleBoard sve važno drži na okupu.',
+		title: 'Oglasna ploča iz vrtića, sada u vašem džepu.',
+		copy: 'Nema više papirića koji se izgube u ruksaku ni poruka koje se zagube u grupnim razgovorima. Sve važno čeka vas na jednom mjestu.',
 		notices: {
 			title: 'Obavijesti iz skupine',
-			copy: 'Podsjetnici i novosti iz skupine, sve na jednom mjestu.'
+			copy: 'Sutra je izlet? Treba donijeti rezervnu odjeću? Odgojitelji jave, a vi to vidite odmah.'
 		},
 		photos: {
 			title: 'Fotografije dana',
-			copy: 'Galerije s događaja u skupini, s označenim fotografijama na kojima je vaše dijete. Druga djeca nose veselu naljepnicu, osim ako njihovi roditelji dopuste dijeljenje.'
+			copy: 'Zavirite kako je bilo na priredbi ili izletu. Fotografije na kojima je vaše dijete posebno su označene. Lica druge djece prekriva vesela naljepnica, osim ako njihovi roditelji dopuste da ih se vidi.'
 		},
 		messages: {
-			title: 'Izravno s odgojiteljima',
-			copy: 'Pitajte odgojitelje svojeg djeteta nešto privatno, a svako pitanje ima svoj razgovor.'
+			title: 'Pitajte odgojitelje',
+			copy: 'Imate pitanje samo za odgojitelje? Napišite ga ovdje. Drugi roditelji ga ne vide, a svako pitanje ima svoj razgovor.'
 		},
 		documents: {
-			title: 'Zajednički dokumenti',
-			copy: 'Tjedni planovi, jelovnici i obrasci, odmah uz sve ostalo.'
+			title: 'Jelovnik i tjedni plan',
+			copy: 'Što je danas za ručak? Jelovnici, tjedni planovi i obrasci uvijek su vam pri ruci.'
 		},
 		notifications: {
-			title: 'Nenametljive obavijesti',
-			copy: 'Kratka najava kad stigne nešto novo, bez detalja na zaključanom zaslonu.'
+			title: 'Mobitel vam javi',
+			copy: 'Kad stigne nešto novo, mobitel vam pokaže kratku najavu. Što točno piše vidite tek u aplikaciji, pa vam nitko ne čita preko ramena.'
 		},
 		devices: {
-			title: 'Na svim obiteljskim uređajima',
-			copy: 'Jedan obiteljski QR kod radi na svim mobitelima, tabletima i računalima u kući.'
+			title: 'Na maminom i tatinom mobitelu',
+			copy: 'Jedan obiteljski kod radi na svim mobitelima, tabletima i računalima kod kuće.'
 		}
 	},
 	how: {
-		title: 'Jedan QR kod. Vaša skupina.',
-		copy: 'Roditelji i odgojitelji pridružuju se na isti način. Vrtić dijeli QR kodove: jedan za sve uređaje vaše obitelji i po jedan za svakog odgojitelja. To je sve što trebate.',
+		title: 'Jedan kod i unutra ste.',
+		copy: 'Od vrtića dobijete QR kod, kvadratić sa šarom koji mobitel pročita kamerom. Jedan vrijedi za sve uređaje vaše obitelji, a svaki odgojitelj ima svoj. Ništa drugo ne trebate.',
 		photoAlt: 'Djeca leže u krugu na tepihu u vrtiću i smiju se, a neka drže noge u zraku',
 		steps: [
 			{
-				title: 'Skenirajte svoj QR kod',
-				copy: 'Usmjerite kameru mobitela prema QR kodu koji ste dobili u vrtiću. Bez pamćenja korisničkog imena i lozinke.'
+				title: 'Usmjerite kameru prema kodu',
+				copy: 'Otvorite kameru na mobitelu i usmjerite je prema kodu iz vrtića. Nema korisničkog imena ni lozinke koju biste morali pamtiti.'
 			},
 			{
-				title: 'Instalirajte aplikaciju',
-				copy: 'BubbleBoard će vam pokazati kako ga dodati na početni zaslon, izravno iz preglednika i bez trgovine aplikacija.'
+				title: 'Stavite aplikaciju na mobitel',
+				copy: 'BubbleBoard vam korak po korak pokaže kako ga dodati među ostale aplikacije. Ništa ne morate tražiti u trgovini aplikacija.'
 			},
-			{ title: 'Uključite obavijesti', copy: 'Saznajte kada vas čeka nešto novo.' }
+			{
+				title: 'Uključite obavijesti',
+				copy: 'Tako vam mobitel javi čim stigne nešto novo.'
+			}
 		]
 	},
 	privacy: {
 		title: 'Lice vašeg djeteta. Odluka vaše obitelji.',
-		copy: 'Roditelji odlučuju smiju li druge obitelji vidjeti njihovo dijete na fotografijama skupine. Svoje dijete uvijek vidite jasno.',
+		copy: 'Vi odlučujete smiju li druge obitelji vidjeti vaše dijete na fotografijama iz skupine. Dok to ne dopustite, njegovo lice drugima prekriva vesela naljepnica. Vi svoje dijete uvijek vidite bez naljepnice.',
 		photoAlt: 'Djeca slikaju vodenim bojama za stolom, pogled odozgo',
 		facts: [
-			'Bez korisničkih imena i lozinki',
-			'Lica prekrivena za druge obitelji, osim ako dopustite više',
-			'Spremite ili podijelite drage fotografije prije nego što se uklone iz aplikacije'
+			'Nema korisničkih imena ni lozinki',
+			'Druge obitelji vide naljepnicu umjesto lica, dok vi ne odlučite drukčije',
+			'Drage fotografije spremite ili podijelite prije nego što nestanu iz aplikacije'
 		]
 	},
 	security: {
-		title: 'Zaključano prije nego što napusti vaš mobitel.',
-		copy: 'Fotografije, poruke i imena djece šifriraju se prije nego što napuste uređaj. Obavijesti i fotografije skupine mogu otvoriti samo obitelji vaše skupine i odgojitelji vašeg vrtića, a privatne razgovore samo vaša obitelj i odgojitelji vrtića.',
-		device: {
-			title: 'Šifrirano na vašem uređaju',
-			copy: 'Sadržaj se šifrira na vašem mobitelu ili računalu prije slanja.'
+		title: 'Što je u skupini, ostaje u skupini.',
+		copy: 'Fotografije, poruke i imena djece zaključaju se na vašem mobitelu prije nego što se pošalju. Otključati ih mogu samo obitelji i odgojitelji vaše skupine.',
+		group: {
+			title: 'Samo vaša skupina',
+			copy: 'Obavijesti i fotografije vide sve obitelji i odgojitelji vaše skupine. Privatne razgovore vidite samo vi i vaši odgojitelji.'
 		},
-		server: {
-			title: 'Nečitljivo i ako procuri',
-			copy: 'Poslužitelj nema ključeve za čitanje sadržaja, pa curenje ne otkriva fotografije, imena ni poruke.'
+		lock: {
+			title: 'Zaključano već na mobitelu',
+			copy: 'Sve se zaključa prije nego što krene s vašeg mobitela ili računala. Tko nema ključ, vidi samo nečitljivu zbrku.'
 		},
-		host: {
-			title: 'Ključevi ostaju u vašem vrtiću',
-			copy: 'Nema ih nitko tko poslužuje BubbleBoard, uključujući nas. Kod je javan, pa svatko može vidjeti kako radi.'
-		},
-		note: 'Šifriranje štiti ono što je pohranjeno na poslužitelju. Ne može vratiti fotografiju koju je netko već spremio na svoj mobitel.'
+		keys: {
+			title: 'Ne možemo zaviriti ni mi',
+			copy: 'Ključeve ima samo vaš vrtić. Nema ih nitko izvan njega, pa ni mi koji smo napravili aplikaciju. Aplikacija je otvorenog koda, pa svatko može provjeriti kako radi.'
+		}
 	},
 	teachers: {
 		title: 'Stvoreno i za odgojitelje.',
-		copy: 'Podijelite dan s mobitela ili računala u minuti, uz razumne zadane postavke.',
+		copy: 'Podijelite dan u minuti, s mobitela ili računala. Aplikacija pazi na sitnice, da vi ne morate.',
 		preview: {
-			title: 'Lica prekrivena umjesto vas',
-			copy: 'Vaš mobitel pronalazi lica i prekriva ih. Vi imenujete svako dijete, a zatim prije objave vidite galeriju točno onako kako će je vidjeti svaka obitelj.'
+			title: 'Naljepnice se lijepe same',
+			copy: 'Vaš mobitel sam pronađe lica na fotografijama i prekrije ih. Vi samo kažete tko je tko. Prije objave vidite galeriju točno onako kako će je vidjeti svaka obitelj.'
 		},
 		meetings: {
 			title: 'Individualni razgovori',
-			copy: 'Ponudite termine kad ste slobodni, a obitelji rezerviraju termin za svoje dijete i ne vide tko je rezervirao ostale.'
+			copy: 'Upišite kada ste slobodni, a roditelji sami odaberu termin za svoje dijete. Ne vide tko je uzeo ostale termine.'
 		},
 		retention: {
 			title: 'Vi birate koliko dugo',
-			copy: 'Fotografije se uklanjaju iz aplikacije nakon vremena koje odaberete, od jednog dana do tri mjeseca.'
+			copy: 'Fotografije same nestanu iz aplikacije nakon vremena koje odaberete, od jednog dana do tri mjeseca.'
 		},
 		seen: {
 			title: 'Vidite tko je pročitao',
-			copy: 'Obitelji jednim dodirom potvrde da su pročitale obavijest, a anketa vam brzo donosi odgovore.'
+			copy: 'Roditelji jednim dodirom potvrde da su pročitali obavijest. Trebate brz odgovor od svih? Postavite anketu.'
 		}
 	},
 	kindergartens: {
 		title: 'Želite BubbleBoard u svojem vrtiću?',
-		copy: 'BubbleBoard nije usluga na koju se pretplaćujete. Svaki vrtić dobiva vlastitu instalaciju pa se sadržaj njegovih obitelji nikad ne miješa s tuđim. Recite nam nešto o svojem vrtiću i pomoći ćemo vam da započnete.',
+		copy: 'Na BubbleBoard se ne pretplaćuje i nema registracije. Svaki vrtić dobije svoj BubbleBoard, odvojen od svih drugih, pa se fotografije i poruke vaših obitelji nikad ne miješaju s tuđima. Javite nam se i recite nešto o svojem vrtiću, a mi ćemo vam pomoći da krenete.',
 		facts: [
-			'Besplatno i otvorenog koda, bez oglasa i praćenja',
-			'Roditelji ništa ne kupuju niti preuzimaju iz trgovine aplikacija',
+			'Besplatno, bez reklama i bez praćenja',
+			'Roditelji ništa ne kupuju i ništa ne traže u trgovini aplikacija',
 			'Radi na mobitelima i računalima koje već imate'
 		],
 		hosting:
-			'Softver je besplatan. Svaki vrtić sam pokriva troškove poslužitelja, koji su obično mali.',
+			'Aplikacija je besplatna. Jedini trošak je najam računala na internetu na kojem ona radi. Taj je trošak obično malen i svaki ga vrtić pokriva sam.',
 		cta: 'Pišite nam',
 		subject: 'BubbleBoard za naš vrtić',
 		mission:
-			'BubbleBoard izrađuje Commit, mala skupina programera koja stvara besplatne aplikacije otvorenog koda za svakodnevne probleme.',
-		itTeam: 'Imate vlastiti IT tim?',
-		code: 'Kod je na GitHubu.'
+			'BubbleBoard je napravio Commit, mala skupina programera koja izrađuje besplatne aplikacije otvorenog koda koje rješavaju svakodnevne probleme. Otvoreni kod znači da svatko može vidjeti kako su napravljene.',
+		itTeam: 'Imate nekoga vičnog računalima?',
+		code: 'Sve što treba nalazi se na GitHubu.'
 	},
 	footer: {
 		tagline: 'Mala zajednica. Puno pažnje.',

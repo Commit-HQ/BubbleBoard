@@ -85,7 +85,7 @@
 				{t.hero.heading}
 				<span class="block text-sunrise">{t.hero.headingAccent}</span>
 			</h1>
-			<p class="max-w-lg text-lg text-muted">{t.description}</p>
+			<p class="max-w-lg text-lg text-muted">{t.hero.copy}</p>
 			<!-- Families open the app with their card; kindergartens without BubbleBoard find the contact section. -->
 			<div class="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
 				{@render action(appPath(data.locale), t.hero.open, 'arrowRight')}
@@ -205,16 +205,19 @@
 		</ul>
 	</section>
 
-	<section id="security" aria-labelledby="security-title">
+	<section id="security" class="relative" aria-labelledby="security-title">
 		{@render intro('security', t.security.title, t.security.copy)}
+		<!-- The logo's grouping again, filling the empty side next to the heading on wide screens. -->
+		<Bubble class="top-0 right-20 hidden size-40 lg:block" />
+		<Bubble class="top-32 right-64 hidden size-16 lg:block" />
+		<Bubble class="top-40 right-6 hidden size-10 lg:block" />
 		<ul
 			class="mt-10 grid divide-y divide-ink/10 rounded-4xl glass md:grid-cols-3 md:divide-x md:divide-y-0"
 		>
-			{@render safeguard('lock', t.security.device)}
-			{@render safeguard('database', t.security.server)}
-			{@render safeguard('eyeOff', t.security.host)}
+			{@render safeguard('users', t.security.group)}
+			{@render safeguard('lock', t.security.lock)}
+			{@render safeguard('eyeOff', t.security.keys)}
 		</ul>
-		<p class="mt-5 text-sm text-muted">{t.security.note}</p>
 	</section>
 
 	<section
@@ -242,6 +245,7 @@
 		<p class="mx-auto mt-10 max-w-xl text-sm text-muted">
 			{t.kindergartens.mission}
 			{t.kindergartens.itTeam}
+			<br />
 			<a class="font-semibold text-ink underline underline-offset-4" href={repositoryUrl}
 				>{t.kindergartens.code}</a
 			>
