@@ -59,7 +59,10 @@ import {
 } from './push';
 import {
 	endSession,
+	familyDevices,
 	identityForCard,
+	nameDevice,
+	removeDevice,
 	requireAdmin,
 	requireIdentity,
 	requireStaff,
@@ -427,6 +430,50 @@ describe('one-time cards', () => {
 		await cleanUpLater();
 		expect(await ids('connects_until IS NOT NULL')).toEqual([]);
 		expect(await familyOf(db, family)).toMatchObject({ family: family.id });
+	});
+});
+
+describe('a family’s devices', () => {
+	it('are listed for the family alone, named by themselves, and removed by each other', async () => {
+		const db = localDatabase();
+		const { admin } = await setUpKindergarten(db);
+		const bubbles = await addClassroomTo(db, admin);
+		const [family, other] = [newFamily(), newFamily()];
+		await addChildTo(db, admin, bubbles, family);
+		await addChildTo(db, admin, bubbles, other);
+		const card = credential();
+		await addOneTimeCard(db, await familyOf(db, family), card);
+		const identity = await familyOf(db, family);
+
+		// One connected with the printed card, one with a one-time card, and another family's.
+		const [mum, grandpa, stranger] = [
+			await deviceWith(db, family.credential.id),
+			await deviceWith(db, card.id),
+			await deviceWith(db, other.credential.id)
+		];
+		await nameDevice(mum, 'sealed name');
+		const devices = await familyDevices(mum, identity);
+		expect(devices).toEqual([
+			{ id: expect.any(String), name: 'sealed name', current: true },
+			{ id: expect.any(String), name: null, current: false }
+		]);
+		expect(await familyDevices(grandpa, identity)).toEqual([
+			{ ...devices[0], current: false },
+			{ ...devices[1], current: true }
+		]);
+
+		// Another family removes nothing, and a removed device connects again only with a card.
+		await removeDevice(stranger, await familyOf(db, other), devices[1].id);
+		await expect(requireIdentity(grandpa)).resolves.toMatchObject({ family: family.id });
+		await removeDevice(mum, identity, devices[1].id);
+		await expect(requireIdentity(grandpa)).rejects.toMatchObject({ status: 401 });
+		await expect(requireIdentity(mum)).resolves.toMatchObject({ family: family.id });
+		await expect(requireIdentity(stranger)).resolves.toMatchObject({ family: other.id });
+		expect(await familyDevices(mum, identity)).toEqual([devices[0]]);
+
+		// Sessions that ran out aren't listed.
+		await db.prepare('UPDATE sessions SET expires_at = 0').run();
+		expect(await familyDevices(mum, identity)).toEqual([]);
 	});
 });
 

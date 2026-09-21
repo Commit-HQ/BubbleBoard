@@ -865,6 +865,28 @@ export const en = {
 			connectAgain:
 				'This device was connected before it could add others. To add devices from it, sign out, then connect it again with your family QR code.'
 		},
+		// In a family device's Settings: the devices connected for the family, with who uses each, and home's card
+		// that asks who uses this one.
+		devices: {
+			title: 'Connected devices',
+			copy: 'Every phone, tablet, or computer connected for your family. Only your family sees the names.',
+			current: 'This device',
+			unnamed: 'Unnamed device',
+			nameLabel: 'Who uses this device?',
+			namePlaceholder: 'Mum, Grandpa Ivo…',
+			nameHint: 'Only your family sees this name, in the list of connected devices.',
+			addName: 'Add a name',
+			changeName: 'Change name',
+			removeTitle: (name: string) => `Remove ${name}?`,
+			removeCopy:
+				'This device will be signed out. To use BubbleBoard on it again, it needs your family QR code.',
+			about: 'About removing devices',
+			aboutCopy:
+				'A removed device can connect again with your family QR code. If someone who shouldn’t have your QR code has it, ask your kindergarten to replace it. Replacing it signs out every device of your family, and you connect them again with the new QR code.',
+			cardCopy:
+				'Write a name, such as Mum or Grandpa Ivo. Your family sees it in Settings, so you know which devices are connected. Your kindergarten doesn’t see it.',
+			notNow: 'Not now'
+		},
 		// The link to the landing page in the footer of every app page.
 		about: 'About BubbleBoard',
 		// The kindergarten's info pages, from the header: what everyone who uses the app should know.

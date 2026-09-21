@@ -28,6 +28,7 @@ import {
 	request,
 	requestBytes,
 	type Access,
+	type Device,
 	type Kindergarten,
 	type NoticeRecord,
 	type PhotoRecord,
@@ -57,11 +58,16 @@ import {
 } from '$lib/crypto';
 import {
 	forgetCard,
+	hideNameCard,
 	loadCard,
 	markStartCardUsed,
+	nameCardHidden,
+	openDevices,
 	saveCard,
+	sealDeviceName,
 	startCardUsed,
-	type DeviceCard
+	type DeviceCard,
+	type FamilyDevice
 } from '$lib/device';
 import { CodedError, errorCode } from '$lib/errors';
 import { openFile, openPicture, saveFile, type NewFile, type NoticeFile } from '$lib/files';
@@ -810,6 +816,10 @@ export class App {
 	me = $state.raw<Teacher>();
 	/** The classrooms a family device has joined. */
 	familyClassrooms = $state.raw<FamilyClassroom[]>([]);
+	/** The devices connected for a family device's family, this one among them, once they've loaded. */
+	devices = $state.raw<FamilyDevice[]>([]);
+	/** Whether Not now put away home's card that asks who uses this device. */
+	deviceNameCardHidden = $state(true);
 	/** The notices this device sees, the most recently announced first. */
 	board = $state.raw<Notice[]>([]);
 	/** How many notices didn't open on this device. */
@@ -1086,6 +1096,7 @@ export class App {
 		void this.loadMessages();
 		void this.loadMeetings();
 		void this.#keepNotifications(resend);
+		if (this.status === 'family') void this.loadDevices().catch(() => {});
 	}
 
 	/**
@@ -1253,6 +1264,8 @@ export class App {
 		this.me = undefined;
 		this.catalog = emptyCatalog;
 		this.familyClassrooms = [];
+		this.devices = [];
+		this.deviceNameCardHidden = true;
 		this.board = [];
 		this.unreadableNotices = 0;
 		this.photos = [];
@@ -1262,8 +1275,11 @@ export class App {
 		this.notice = notice;
 		this.status = 'disconnected';
 		// The unfinished event goes with the card: the next person to connect here must never see it.
+		// Whoever connects next is asked who uses the device, whatever was answered before.
 		await Promise.all(
-			[forgetCard(), forgetSubscription(), clearDraft()].map((done) => done.catch(() => {}))
+			[forgetCard(), forgetSubscription(), clearDraft(), hideNameCard(false)].map((done) =>
+				done.catch(() => {})
+			)
 		);
 	}
 
@@ -1341,6 +1357,50 @@ export class App {
 			request<{ until: number }>('POST', '/api/devices', { credential: card.credential })
 		);
 		return { secret: card.secret, until };
+	}
+
+	/** Loads the devices connected for this device's family, and whether home still asks who uses this one. */
+	async loadDevices() {
+		const version = this.#connectionVersion;
+		const [{ devices }, hidden] = await Promise.all([
+			this.#signedIn(() => request<{ devices: Device[] }>('GET', '/api/devices')),
+			nameCardHidden().catch(() => false)
+		]);
+		if (version !== this.#connectionVersion) return;
+		this.deviceNameCardHidden = hidden;
+		await this.#showDevices(devices);
+	}
+
+	async #showDevices(records: Device[]) {
+		const version = this.#connectionVersion;
+		const devices = await openDevices(records, this.#family.familyKey);
+		if (version === this.#connectionVersion) this.devices = devices;
+	}
+
+	/** Says who uses this device, for the family's other devices to see. */
+	async nameDevice(name: string) {
+		const current = this.devices.find((device) => device.current);
+		if (!current) throw new CodedError('unexpected');
+		const sealed = await sealDeviceName(current.id, name, this.#family.familyKey);
+		const { devices } = await this.#signedIn(() =>
+			request<{ devices: Device[] }>('PUT', '/api/devices', { name: sealed })
+		);
+		await this.#showDevices(devices);
+	}
+
+	/** Signs out another of the family's devices, which connects again only with the family's QR code. */
+	async removeDevice(device: string) {
+		const { devices } = await this.#signedIn(() =>
+			request<{ devices: Device[] }>('DELETE', `/api/devices/${device}`)
+		);
+		await this.#showDevices(devices);
+	}
+
+	/** Puts away home's card that asks who uses this device. Settings keep the name. */
+	hideDeviceNameCard() {
+		this.deviceNameCardHidden = true;
+		// Without storage, the card comes back next time.
+		hideNameCard().catch(() => {});
 	}
 
 	/** Turns notifications on, from a tap: the permission request can't wait for anything before it. */

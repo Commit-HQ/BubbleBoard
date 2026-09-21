@@ -1,7 +1,11 @@
 import { afterEach, expect, it, vi } from 'vitest';
 vi.mock('$app/navigation', () => ({ replaceState: vi.fn() }));
 vi.mock('$app/state', () => ({ page: { url: new URL('https://example.test/app') } }));
-vi.mock('$lib/device', () => ({ saveCard: async () => {}, forgetCard: async () => {} }));
+vi.mock('$lib/device', () => ({
+	saveCard: async () => {},
+	forgetCard: async () => {},
+	hideNameCard: async () => {}
+}));
 vi.mock('$lib/notifications', () => ({
 	forgetSubscription: async () => {},
 	notificationState: async () => 'off',

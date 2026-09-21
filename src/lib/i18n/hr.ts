@@ -841,6 +841,26 @@ export const hr = {
 			connectAgain:
 				'Ovaj je uređaj povezan prije nego što je mogao dodavati druge. Da biste s njega dodavali uređaje, odjavite ga pa ga ponovno povežite obiteljskim QR kodom.'
 		},
+		devices: {
+			title: 'Povezani uređaji',
+			copy: 'Svi mobiteli, tableti i računala povezani za vašu obitelj. Imena vidi samo vaša obitelj.',
+			current: 'Ovaj uređaj',
+			unnamed: 'Uređaj bez imena',
+			nameLabel: 'Tko koristi ovaj uređaj?',
+			namePlaceholder: 'Mama, djed Ivo…',
+			nameHint: 'Ovo ime vidi samo vaša obitelj, na popisu povezanih uređaja.',
+			addName: 'Dodaj ime',
+			changeName: 'Promijeni ime',
+			removeTitle: (name: string) => `Ukloniti ${name}?`,
+			removeCopy:
+				'Ovaj će uređaj biti odjavljen. Za ponovno korištenje BubbleBoarda na njemu trebat će vaš obiteljski QR kod.',
+			about: 'O uklanjanju uređaja',
+			aboutCopy:
+				'Uklonjeni uređaj može se ponovno povezati vašim obiteljskim QR kodom. Ako vaš QR kod ima netko tko ga ne bi smio imati, zamolite vrtić da ga zamijeni. Zamjena odjavljuje sve uređaje vaše obitelji, a vi ih ponovno povezujete novim QR kodom.',
+			cardCopy:
+				'Upišite ime, na primjer Mama ili djed Ivo. Vaša ga obitelj vidi u Opcijama, pa znate koji su uređaji povezani. Vrtić ga ne vidi.',
+			notNow: 'Ne sada'
+		},
 		about: 'O BubbleBoardu',
 		info: {
 			title: 'Info',

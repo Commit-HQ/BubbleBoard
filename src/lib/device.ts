@@ -1,3 +1,5 @@
+import type { Device } from '$lib/api';
+import { decryptData, encryptData, fields } from '$lib/crypto';
 import { objectStore } from '$lib/indexeddb';
 
 // The card this browser is connected with, kept in IndexedDB as CryptoKey objects that can't be exported
@@ -46,6 +48,39 @@ export async function startCardUsed() {
 
 export async function markStartCardUsed() {
 	await launch('readwrite', (store) => void store.put(true, 'startCardUsed'));
+}
+
+/** Whether Not now put away home's card that asks who uses this device. Signing out brings it back. */
+export async function nameCardHidden() {
+	return (await launch('readonly', (store) => store.get('nameCardHidden'))) === true;
+}
+
+export async function hideNameCard(hidden = true) {
+	await launch('readwrite', (store) => void store.put(hidden, 'nameCardHidden'));
+}
+
+/** A device connected for this device's family, with who uses it once someone said. */
+export type FamilyDevice = { id: string; name?: string; current: boolean };
+
+/** Who uses a device, encrypted for its family (docs/access-format.md). */
+export function sealDeviceName(device: string, name: string, familyKey: CryptoKey) {
+	return encryptData({ name }, familyKey, { purpose: 'device-name', device });
+}
+
+/** A family's devices with their names opened. One whose name doesn't open shows as one without a name. */
+export function openDevices(records: Device[], familyKey: CryptoKey): Promise<FamilyDevice[]> {
+	return Promise.all(
+		records.map(async ({ id, name, current }) => {
+			if (!name) return { id, current };
+			try {
+				const context = { purpose: 'device-name', device: id } as const;
+				const said = fields(await decryptData(name, familyKey, context)).name;
+				return { id, current, name: typeof said === 'string' && said ? said : undefined };
+			} catch {
+				return { id, current };
+			}
+		})
+	);
 }
 
 function isDeviceCard(value: unknown): value is DeviceCard {

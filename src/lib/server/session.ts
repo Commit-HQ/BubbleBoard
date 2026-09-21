@@ -1,7 +1,7 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import type { FamilyIdentity, Identity, Staff } from '$lib/api';
+import type { Device, FamilyIdentity, Identity, Staff } from '$lib/api';
 import { fromBase64Url, toBase64Url } from '$lib/base64url';
-import { hashAuthToken, hashToken, randomBytes } from '$lib/crypto';
+import { createId, hashAuthToken, hashToken, randomBytes } from '$lib/crypto';
 import { storageLimits } from './limits';
 import type { ObjectStore } from './storage';
 
@@ -121,8 +121,10 @@ export async function startSession(event: RequestEvent, credential: string) {
 			.prepare('DELETE FROM sessions WHERE token_hash = ?')
 			.bind(previous ? await hashToken(previous) : ''),
 		db
-			.prepare('INSERT INTO sessions (token_hash, credential_id, expires_at) VALUES (?, ?, ?)')
-			.bind(await hashToken(token), credential, now + lifetime)
+			.prepare(
+				'INSERT INTO sessions (token_hash, credential_id, expires_at, id) VALUES (?, ?, ?, ?)'
+			)
+			.bind(await hashToken(token), credential, now + lifetime, createId())
 	]);
 	setCookie(event, token);
 }
@@ -155,6 +157,45 @@ async function currentIdentity(event: RequestEvent) {
 export async function sessionHash(event: RequestEvent) {
 	const token = cookieToken(event);
 	return token && hashToken(token);
+}
+
+/** A family's sessions, whichever of its cards started them. `?1` is the family. */
+const familySessions = `SELECT s.token_hash FROM sessions s JOIN credentials c ON c.id = s.credential_id
+	WHERE c.family_id = ?1`;
+
+/**
+ * The devices connected for a family, the longest connected first, for the family's own devices only: the
+ * names are encrypted with the Family Key, which staff hold too, so no route gives them to staff.
+ */
+export async function familyDevices(event: RequestEvent, family: FamilyIdentity) {
+	const { results } = await database(event)
+		.prepare(
+			`SELECT id, name, token_hash = ?2 AS current FROM sessions
+			WHERE token_hash IN (${familySessions}) AND expires_at > ?3 AND id IS NOT NULL ORDER BY rowid`
+		)
+		.bind(family.family, (await sessionHash(event)) ?? '', Date.now())
+		.all<{ id: string; name: string | null; current: number }>();
+	return results.map((row): Device => ({ ...row, current: row.current === 1 }));
+}
+
+/** Says who uses this device: its name, which the device encrypted for its family. */
+export async function nameDevice(event: RequestEvent, name: string) {
+	await database(event)
+		.prepare('UPDATE sessions SET name = ? WHERE token_hash = ?')
+		.bind(name, (await sessionHash(event)) ?? '')
+		.run();
+}
+
+/**
+ * Signs out one of a family's devices, from another of them. It can connect again with the family's card, so
+ * whoever shouldn't have the card either is kept out by replacing it, which signs out every device.
+ */
+export async function removeDevice(event: RequestEvent, family: FamilyIdentity, device: string) {
+	// One that's already gone, removed from another device meanwhile, is as removed as asked.
+	await database(event)
+		.prepare(`DELETE FROM sessions WHERE id = ?2 AND token_hash IN (${familySessions})`)
+		.bind(family.family, device)
+		.run();
 }
 
 export async function endSession(event: RequestEvent) {

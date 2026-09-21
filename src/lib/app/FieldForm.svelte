@@ -5,7 +5,8 @@
 	import { alert, button, field, formText } from './ui';
 
 	// One value to add or change: a name, or with `options`, a choice such as the classroom to move to. It
-	// runs its own change, so it opens without an earlier error and stays open while a change fails.
+	// runs its own change, so it opens without an earlier error and stays open while a change fails. A form
+	// that's there without being asked for, such as a card on home, leaves the focus where it is.
 	let {
 		locale,
 		label,
@@ -14,6 +15,8 @@
 		placeholder,
 		options,
 		submitLabel,
+		cancelLabel,
+		focus = true,
 		onsubmit,
 		oncancel
 	}: {
@@ -24,6 +27,8 @@
 		placeholder?: string;
 		options?: { value: string; label: string }[];
 		submitLabel: string;
+		cancelLabel?: string;
+		focus?: boolean;
 		onsubmit: (value: string) => Promise<unknown>;
 		oncancel: () => void;
 	} = $props();
@@ -32,7 +37,9 @@
 	const task = new Task();
 	let input = $state<HTMLInputElement | HTMLSelectElement>();
 	// The form opens when someone asks for it, so typing can start right away.
-	onMount(() => input?.focus());
+	onMount(() => {
+		if (focus) input?.focus();
+	});
 
 	function submit(event: SubmitEvent & { currentTarget: EventTarget & HTMLFormElement }) {
 		event.preventDefault();
@@ -67,6 +74,6 @@
 	{#if task.error}<p class={alert} role="alert">{errorMessage(locale, task.error)}</p>{/if}
 	<div class="flex flex-wrap gap-2">
 		<button class={button.primary} type="submit" disabled={task.busy}>{submitLabel}</button>
-		<button class={button.quiet} type="button" onclick={oncancel}>{t.cancel}</button>
+		<button class={button.quiet} type="button" onclick={oncancel}>{cancelLabel ?? t.cancel}</button>
 	</div>
 </form>

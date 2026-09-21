@@ -314,7 +314,7 @@ it('notifies only affected families once per device when several bookings are re
 			.bind(id, who.kind === 'staff' ? id : null, who.kind === 'family' ? id : null, id, 'key')
 			.run();
 		await db
-			.prepare('INSERT INTO sessions VALUES(?,?,?)')
+			.prepare('INSERT INTO sessions (token_hash, credential_id, expires_at) VALUES (?,?,?)')
 			.bind(id, id, Date.now() + 86400000)
 			.run();
 		await db

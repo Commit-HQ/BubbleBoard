@@ -72,6 +72,12 @@ export type Identity = { credential: string; wrappedKey: string } & (
 export type Staff = Extract<Identity, { kind: 'staff' }>;
 export type FamilyIdentity = Extract<Identity, { kind: 'family' }>;
 
+/**
+ * A device connected for a family, as the family's devices get it: its name, encrypted with the Family Key, once
+ * someone said who uses it, and whether it's the device asking.
+ */
+export type Device = { id: string; name: string | null; current: boolean };
+
 /** The records a staff member may see: everything for admins, their own classrooms for teachers. */
 export type Kindergarten = {
 	/** Moves on with every change a `TeacherChange` or `FamilyLinks` makes. */

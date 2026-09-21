@@ -62,6 +62,8 @@ type DataContext =
 	| { purpose: 'teacher-profile'; teacher: string }
 	| { purpose: 'child-profile'; child: string }
 	| { purpose: 'family-profile'; family: string }
+	// Who uses one of a family's devices, encrypted with the Family Key.
+	| { purpose: 'device-name'; device: string }
 	| { purpose: 'notice-content'; notice: string }
 	// Encrypted with the answering family's Family Key, which ties it to that family.
 	| { purpose: 'poll-vote'; notice: string }
@@ -403,6 +405,7 @@ function additionalData(context: KeyContext | DataContext) {
 		file?: string;
 		page?: string;
 		message?: string;
+		device?: string;
 	} = context;
 	const subject =
 		ids.credential ??
@@ -414,6 +417,7 @@ function additionalData(context: KeyContext | DataContext) {
 		ids.file ??
 		ids.page ??
 		ids.message ??
+		ids.device ??
 		null;
 	return encoder.encode(
 		JSON.stringify([

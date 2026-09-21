@@ -308,7 +308,7 @@ describe('private inquiries', () => {
 				)
 				.run();
 			await f.db
-				.prepare('INSERT INTO sessions VALUES (?,?,?)')
+				.prepare('INSERT INTO sessions (token_hash, credential_id, expires_at) VALUES (?,?,?)')
 				.bind(`session${index}`, credential, monday + 100000)
 				.run();
 			await f.db

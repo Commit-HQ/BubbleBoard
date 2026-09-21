@@ -4,6 +4,7 @@
 	import { messages, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
 	import Board from './Board.svelte';
+	import DeviceNameCard from './DeviceNameCard.svelte';
 	import MeetingsCard from './MeetingsCard.svelte';
 	import NotificationCard from './NotificationCard.svelte';
 	import PullToRefresh from './PullToRefresh.svelte';
@@ -51,6 +52,8 @@
 	</div>
 
 	<NotificationCard {locale} />
+
+	{#if !staff}<DeviceNameCard {locale} />{/if}
 
 	{#if classrooms.length}<MeetingsCard {locale} />{/if}
 
