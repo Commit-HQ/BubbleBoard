@@ -930,7 +930,8 @@ export const hr = {
 				`Termin za slanje zatvara se za ${count(minutes, 'minutu', 'minute', 'minuta')}.`,
 			charged: 'Ova poruka troši jedan upit.',
 			free: 'Odgovor na poruku odgojiteljice ne troši upit.',
-			noQuota: 'Iskoristili ste upite za ovaj mjesec. Kad se odgojiteljica javi, odgovor je opet besplatan.',
+			noQuota:
+				'Iskoristili ste upite za ovaj mjesec. Kad se odgojiteljica javi, odgovor je opet besplatan.',
 			quota: (remaining: number) =>
 				`Preostalo ovaj mjesec: ${count(remaining, 'upit', 'upita', 'upita')}`,
 			confirmTitle: 'Poslati ovu poruku?',

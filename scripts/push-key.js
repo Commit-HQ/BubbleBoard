@@ -1,5 +1,5 @@
-// Creates the key that signs notifications (VAPID, RFC 8292) when the installation has none (README,
-// "Deploy your own installation"). Devices subscribe with its public half, so an existing key is never
+// Creates the key that signs notifications (VAPID, RFC 8292) when the installation has none (docs/hosting.md).
+// Devices subscribe with its public half, so an existing key is never
 // replaced: a new one stops every device's notifications until the app renews them.
 //
 //   node scripts/push-key.js           stores it as the deployed Worker's VAPID_KEY secret (npm run deploy)

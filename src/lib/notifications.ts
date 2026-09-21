@@ -3,7 +3,7 @@ import { fromBase64Url, toBase64Url } from '$lib/base64url';
 import { isLocale, messages, type Locale } from '$lib/i18n';
 import { objectStore } from '$lib/indexeddb';
 
-// Notifications on this device (next-step-plan.md). The server pushes nothing but a nudge, and the service
+// Notifications on this device (decisions.md). The server pushes nothing but a nudge, and the service
 // worker shows the same words for every one, in the language notifications were turned on in, which this
 // keeps in IndexedDB for it, along with whether Not now put away home's card that turns them on.
 

@@ -10,7 +10,7 @@
 	import { appPath } from '$lib/paths';
 	import type { PageProps } from './$types';
 
-	// The first setup (README). The app takes the setup link's token from the fragment when it starts; the
+	// The first setup (docs/hosting.md). The app takes the setup link's token from the fragment when it starts; the
 	// token can also be typed.
 	let { data }: PageProps = $props();
 	const app = getApp();

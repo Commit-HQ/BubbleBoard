@@ -9,7 +9,7 @@ import { appPath, type AppPage } from '$lib/paths';
 import { pushKind, type PushKind } from '$lib/push';
 
 // BubbleBoard's service worker handles notifications only: no caching and no offline copies
-// (next-step-plan.md). A push carries one letter saying what happened and nothing more, so the words are
+// (decisions.md). A push carries one letter saying what happened and nothing more, so the words are
 // these, in the language notifications were turned on in, and every push shows one, as Safari requires. The
 // app's open windows load the board again, straight away in view or once back in view
 // (src/lib/app/state.svelte.ts), and a tap brings one forward, or opens one, on the page it's about.

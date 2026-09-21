@@ -5,7 +5,7 @@
 	import { getApp } from './state.svelte';
 	import { button, surface } from './ui';
 
-	// The card on home that turns notifications on (next-step-plan.md). Not now puts it away on this device,
+	// The card on home that turns notifications on (decisions.md). Not now puts it away on this device,
 	// and Settings keep the switch. Where notifications can't work, it isn't shown.
 	let { locale }: { locale: Locale } = $props();
 	const app = getApp();

@@ -386,7 +386,7 @@ const waitingOneTimeCards = 5;
 
 /**
  * Stores a one-time card that a family's device made for another of its devices, and returns until when it can
- * connect one (next-step-plan.md). A family's newest few wait, and a new one ends the oldest beyond them, so no
+ * connect one (decisions.md). A family's newest few wait, and a new one ends the oldest beyond them, so no
  * device can pile them up.
  */
 export async function addOneTimeCard(

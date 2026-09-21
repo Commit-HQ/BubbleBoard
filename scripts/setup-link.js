@@ -1,4 +1,4 @@
-// Creates a setup token and prints the link that sets up BubbleBoard (README, "Deploy your own installation").
+// Creates a setup token and prints the link that sets up BubbleBoard (docs/hosting.md).
 //
 //   npm run setup-link           stores the token as the deployed Worker's SETUP_TOKEN secret
 //   npm run setup-link:local     writes it to .dev.vars for `npm run dev`

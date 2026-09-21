@@ -1,10 +1,6 @@
-# Next step: notices with notifications
+# Decisions
 
-## Outcome
-
-A teacher posts a notice to one or more classrooms: formatted text with emoji on a paper colour, kept for the number of days they choose. Families in those classrooms and their teachers get a generic notification and open the notice, decrypted on their device. The author or an admin can edit or delete it at any time. On phones and tablets, parents install BubbleBoard before using it; on computers, it also works in the browser.
-
-The kindergarten access slice, recorded at the end, is implemented; its checks on a real installation come first. Photos follow this slice.
+Why BubbleBoard works the way it does: the product decisions behind notices, notifications, the board, devices, info pages, and kindergarten access, in the order they were made. Everything here is implemented unless it is listed as deferred. Event photos have their own pages: the [editor](events-editor.md) and the [format](events-format.md).
 
 ## Decisions from the notices design session — 2026-09-12
 
@@ -119,30 +115,9 @@ Teachers asked for pages with what everyone at the kindergarten should know, suc
 - The Free plan keeps working: queue operations and D1 writes per notice stay small, and nothing polls.
 - No offline content, background sync, or notice content in notifications.
 
-## Review and acceptance evidence
-
-Build this slice in reviewable checkpoints. At the owner's request (2026-09-12), Claude commits each checkpoint on the `notices` branch once `npm run validate` passes, and the owner reviews the commits. Use synthetic people and content until the access boundary is reviewed; this is a review gate for real data, not a new approval flow for routine development.
-
-Before calling the slice complete, demonstrate:
-
-1. A notice to two classrooms reaching a family with children in both once, a family in one of them, and their teachers, but not an unassigned admin, with notifications on a real iPhone Home Screen app, an Android phone, and a desktop browser.
-2. Installing on iPhone, iPad, and Android before BubbleBoard opens, from a card link and from an in-app browser, and connecting in the installed iPhone app with Scan card and with the code.
-3. Changing a notice with and without notifying again, deleting one, and expiry, each removing the old notice from every board and from D1, and its files from R2.
-4. Notifications stopping after signing out, a replaced card, a removed teacher or family, and an expired session, and gone subscriptions being deleted.
-5. Automated tests for Notice Key wrapping and wrong-key, tampering, and context failures; authorization for posting, changing, deleting, and reading across classrooms; and delivery groups, retries, and cleanup.
-6. The production build with its CSP, manifest, and service worker, and Croatian and English phone and desktop walkthroughs, including saving a notice's file on an iPhone Home Screen app and an Android phone.
-7. A D1 export and captured requests showing no notice text, colours, file names, or names in plaintext, and pushes carrying nothing a push service can read.
-
-## First: finish checking kindergarten access on the real installation
-
-The access slice is deployed and passes `npm run validate`. Card links from the iPhone and Android camera apps, and Scan card in the app, connect families there, so the landing page links to the app. Still to check:
-
-- a D1 export and captured requests, once the first notice checkpoints exist: no names, content, or card secrets, only tokens, hashes, and ciphertext;
-- setup, a family card, and a second device in Croatian and English, on a phone and a desktop.
-
 ## Earlier decisions: kindergarten access — 2026-09-12
 
-Where the user experience is concerned, the simplest option won; deferred variants need no data migration later. The notices decisions above take precedence where they differ.
+Where the user experience is concerned, the simplest option won; deferred variants need no data migration later. The decisions above take precedence where they differ.
 
 - **A kindergarten, not a classroom.** An installation holds any number of classrooms and one catalog of children and families. The spec's Teacher Key for each classroom becomes one **Staff Key** for the kindergarten, opened by every staff card. The server enforces which classrooms teachers see and what admins may change; families stay separated by encryption. docs/access-format.md records the trade-off.
 - **Roles:** an admin is a teacher who also manages classrooms, teachers, children, and family cards. There can be several, and the last working admin card can't be revoked. Teachers see the children and family cards of their own classrooms; since 2026-09-20 only admins replace a family's card, because such a card reaches every classroom the family's children are in ([access format](access-format.md)). Teachers post notices, board photos, and events in their own classrooms.

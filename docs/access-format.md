@@ -1,6 +1,6 @@
 # Access and encryption format
 
-The keys, cards, and encrypted records behind kindergarten access. `src/lib/crypto.ts` implements keys and envelopes, `src/lib/card.ts` card codes and links, and their tests check the properties below. It follows the [product specification](product-spec.md), §5–15 and §31–35, except that one Staff Key for the kindergarten replaces a Teacher Key for each classroom ([decisions](next-step-plan.md)). The app calls a card a QR code; this note keeps the word card.
+The keys, cards, and encrypted records behind kindergarten access. `src/lib/crypto.ts` implements keys and envelopes, `src/lib/card.ts` card codes and links, and their tests check the properties below. It follows the [product specification](product-spec.md), §5–15 and §31–35, except that one Staff Key for the kindergarten replaces a Teacher Key for each classroom ([decisions](decisions.md)). The app calls a card a QR code; this note keeps the word card.
 
 ## Versions and upgrades
 

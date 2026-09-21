@@ -1,4 +1,4 @@
-// Installing BubbleBoard, which phones and tablets need before anything else (next-step-plan.md): on
+// Installing BubbleBoard, which phones and tablets need before anything else (decisions.md): on
 // iPhone and iPad, notifications reach only the Home Screen app, whose storage Safari doesn't share.
 // Browser-only.
 
