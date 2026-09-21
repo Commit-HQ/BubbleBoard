@@ -177,7 +177,7 @@ export const en = {
 		points: [
 			{
 				title: 'Event photos',
-				copy: 'Faces are detected and labelled on the teacher’s device. A covered photo and separate face patches are encrypted before upload; the original is not uploaded. Families see their own children and faces permitted for classroom sharing. Your kindergarten may enter what your consent form says, and you can change it in the app at any time. Consent is encrypted and changes apply only to future publications. Events and their photos remain available for the 1 to 90 days chosen by the teacher, then are deleted. There is no hidden archive for a yearly album.'
+				copy: 'Faces are detected and labelled on the teacher’s device. A covered photo and separate face patches are encrypted before upload; the original is not uploaded. An unfinished event stays only on the teacher’s device until it is published or discarded, and is deleted after 7 days. Families see their own children and faces permitted for classroom sharing. Your kindergarten may enter what your consent form says, and you can change it in the app at any time. Consent is encrypted and changes apply only to future publications. Events and their photos remain available for the 1 to 90 days chosen by the teacher, then are deleted. There is no hidden archive for a yearly album.'
 			},
 			{
 				title: 'What’s stored',
@@ -243,7 +243,8 @@ export const en = {
 			consentHint:
 				'Your kindergarten may have set this from your consent form, and you can change it here at any time. Your choice applies to photos published from then on, and you always see your own child. If a child has several family QR codes, every linked family has to allow the classroom to see them.',
 			private: 'Only our family',
-			privateHint: 'Other families in the classroom see a sticker over your child’s face.',
+			privateHint:
+				'Other families in the classroom see a sticker over your child’s face. A sticker covers the face, but people who know your child may still recognise them by their hair or clothes.',
 			group: 'Families in our classroom too',
 			groupHint: 'Families of the classroom see your child’s face in classroom events.',
 			consentSaved: 'Saved.',
@@ -267,7 +268,8 @@ export const en = {
 		},
 		eventEditor: {
 			steps: ['Event', 'Photos', 'Review'],
-			local: 'The draft stays on this page. Closing or reloading the app loses it.',
+			local:
+				'The photos stay on this device and nothing is sent until you publish. An unfinished event waits here for 7 days.',
 			classroom: 'Classroom',
 			classroomLocked: 'Remove the photos to prepare the event for another classroom.',
 			continue: 'Continue',
@@ -326,7 +328,12 @@ export const en = {
 			leave: 'Leave this page and discard the event draft?',
 			allReviewed: 'Every photo is reviewed.',
 			tooManyFaces: 'This photo has too many covers. Use another photo or remove false detections.',
-			rosterChanged: 'The classroom’s children changed. Check the names again.'
+			rosterChanged: 'The classroom’s children changed. Check the names again.',
+			draftFound: 'Unfinished event',
+			draftFoundCopy: (n: number) =>
+				`This device kept the event you were preparing, with ${n === 1 ? '1 photo' : `${n} photos`}.`,
+			draftContinue: 'Continue',
+			draftDiscard: 'Start over'
 		},
 
 		meetings: {
@@ -584,7 +591,8 @@ export const en = {
 			title: 'Face in event photos',
 			hint: 'Set this from the family’s consent form. Parents can change it themselves in the app, and it counts for photos published from then on.',
 			covered: 'Covered for other families',
-			coveredHint: 'Other families in the classroom see a sticker over the child’s face.',
+			coveredHint:
+				'Other families in the classroom see a sticker over the child’s face. A sticker covers the face, but people who know the child may still recognise them by their hair or clothes.',
 			shared: 'Classroom families may see the face',
 			sharedHint: 'Every family QR code of this child allows it, as the consent form says.',
 			saved: 'Saved.'

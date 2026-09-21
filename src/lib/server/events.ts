@@ -5,11 +5,16 @@ import { checkClassrooms, transaction, visibleClassrooms } from './database';
 import { getObject, putObject, deleteMarked, type ObjectStore } from './storage';
 import { day } from '$lib/notices';
 
+/**
+ * The consent rows a viewer may read, with the revisions a publication is held to. `revision` is the consent
+ * clock of the classroom asked for; the family call asks for no classroom and reads only the rows, so it
+ * gets 0 rather than a clock that would mean nothing.
+ */
 export async function consents(db: D1Database, viewer: Identity, classroom?: string) {
 	const [visible, params] = visibleClassrooms(viewer);
 	const results = await db.batch([
 		db.prepare('SELECT revision FROM installation'),
-		db.prepare('SELECT revision FROM photo_clock'),
+		db.prepare('SELECT revision FROM photo_clock WHERE classroom_id=?').bind(classroom ?? ''),
 		db
 			.prepare(
 				`SELECT p.child_id AS child,p.family_id AS family,p.label,p.choice,p.revision FROM photo_families p JOIN children c ON c.id=p.child_id WHERE c.classroom_id IN (${visible}) AND (? IS NULL OR c.classroom_id=?) ${viewer.kind === 'family' ? 'AND p.family_id=?' : ''}`
@@ -23,7 +28,7 @@ export async function consents(db: D1Database, viewer: Identity, classroom?: str
 	]);
 	return {
 		catalog: (results[0].results[0] as { revision: number }).revision,
-		revision: (results[1].results[0] as { revision: number }).revision,
+		revision: (results[1].results[0] as { revision: number } | undefined)?.revision ?? 0,
 		rows: results[2].results as ConsentRow[]
 	};
 }
@@ -73,6 +78,9 @@ export async function syncProjections(
 ) {
 	await checkClassrooms(db, staff, [classroom]);
 	await transaction(db, [
+		// The guard fails the batch by leaving `revision` empty, so it has to reach a row: it stays unscoped,
+		// where a `WHERE` that matched nothing would let an outdated device through. It writes each row's own
+		// revision back, so nothing moves when the catalog is the one the device read.
 		db
 			.prepare(
 				'UPDATE photo_clock SET revision=CASE WHEN (SELECT revision FROM installation)=? THEN revision ELSE NULL END'

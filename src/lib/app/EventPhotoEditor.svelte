@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto, beforeNavigate } from '$app/navigation';
-	import { onDestroy, untrack } from 'svelte';
+	import { onDestroy, onMount, untrack } from 'svelte';
 	import { createId } from '$lib/crypto';
 	import { LocalFaceDetector } from '$lib/events/detector';
 	import {
@@ -8,6 +8,7 @@
 		boundedRect,
 		commit,
 		detectionRegion,
+		dropMissing,
 		emptyEdit,
 		manualRegion,
 		maxRegions,
@@ -18,6 +19,16 @@
 		type History,
 		type Rect
 	} from '$lib/events/editor';
+	import {
+		clearDraft,
+		draftPhoto,
+		forgetDraftPhoto,
+		loadDraft,
+		saveDraft,
+		savedDraft,
+		saveDraftPhoto,
+		type SavedDraft
+	} from '$lib/events/draft';
 	import { prepareEditorImage, safePreview } from '$lib/events/images';
 	import { errorMessage, formatDay, messages, type Locale } from '$lib/i18n';
 	import { maxEventPhotoBytes, maxEventPhotos } from '$lib/events/limits';
@@ -39,7 +50,8 @@
 
 	// Preparing an event's gallery, in the three steps the teacher works through: the event itself, then its
 	// photos one at a time, then the review that publishes them. Photos are opened, covered and packaged on
-	// this device; the draft lives only on this page (docs/events-editor.md).
+	// this device, and the unfinished event waits on it too, so half an hour of work survives a phone call
+	// (src/lib/events/draft.ts, docs/events-editor.md).
 	type Photo = {
 		id: string;
 		blob: Blob;
@@ -92,6 +104,13 @@
 	let previewUrl = $state('');
 	let previewBusy = $state(false);
 	let previewError = $state(false);
+	/** The card this device is connected with. Without one, as in the development fixture, nothing is kept. */
+	const credential = app.myCredential;
+	/** The unfinished event this device kept, while the teacher chooses whether to go on with it. */
+	let found = $state.raw<SavedDraft>();
+	/** Whether everything done so far is on the device, so leaving the page loses nothing. */
+	let draftSaved = $state(false);
+	let saveTimer: ReturnType<typeof setTimeout>;
 	let disposed = false;
 	const detector = new LocalFaceDetector();
 	const urls = new Set<string>();
@@ -129,10 +148,9 @@
 						present: {
 							...p.history.present,
 							reviewed: false,
-							regions: p.history.present.regions.map((r) =>
-								r.child && !children.some((c) => c.id === r.child)
-									? { ...r, child: null, covered: false }
-									: r
+							regions: dropMissing(
+								p.history.present.regions,
+								children.map((c) => c.id)
 							)
 						}
 					}
@@ -142,6 +160,69 @@
 			}
 		}
 	});
+	// The unfinished event, kept on the device as the teacher works and put back when the page opens again.
+	// Saving is best effort: a write that doesn't make it only leaves the page worth a warning before leaving.
+	onMount(async () => {
+		if (!credential) return;
+		const saved = await loadDraft(credential);
+		if (saved && !photos.length) found = saved;
+	});
+	$effect(() => {
+		const keeping =
+			credential && photos.length && !found
+				? savedDraft(credential, { classroom, title, date, days, description, step }, photos)
+				: undefined;
+		if (!keeping) return;
+		draftSaved = false;
+		saveTimer = setTimeout(async () => (draftSaved = await saveDraft(keeping)), 400);
+		return () => clearTimeout(saveTimer);
+	});
+	/** Puts the kept event back: its photos, what was marked on them, and the step the teacher was on. */
+	async function continueDraft(saved: SavedDraft) {
+		classroom = saved.classroom;
+		title = saved.title;
+		date = saved.date;
+		days = saved.days;
+		description = saved.description;
+		const ids = children.map((c) => c.id);
+		const restored: Photo[] = [];
+		let dropped = false;
+		for (const item of saved.photos) {
+			const blob = await draftPhoto(item.id);
+			if (!blob) continue;
+			const regions = dropMissing(item.edit.regions, ids);
+			const changed = regions.some((region, index) => region !== item.edit.regions[index]);
+			dropped ||= changed;
+			restored.push({
+				id: item.id,
+				blob,
+				url: url(blob),
+				width: item.width,
+				height: item.height,
+				text: item.text,
+				detection: item.detection,
+				generation: 0,
+				history: {
+					past: [],
+					future: [],
+					present: { ...item.edit, regions, reviewed: item.edit.reviewed && !changed }
+				}
+			});
+		}
+		// The draft came with its classroom, so this is the roster the restored photos were named against.
+		lastRoster = roster;
+		photos = restored;
+		current = restored[0]?.id ?? '';
+		step = restored.length ? saved.step : 'details';
+		found = undefined;
+		if (dropped) feedback = t.rosterChanged;
+		for (const item of restored) if (item.detection === 'pending') await detect(item.id);
+	}
+	/** Nothing of the kept event stays: the teacher starts again. */
+	async function startOver() {
+		found = undefined;
+		await clearDraft();
+	}
 	function url(blob: Blob) {
 		const value = URL.createObjectURL(blob);
 		urls.add(value);
@@ -331,6 +412,7 @@
 						generation: 0
 					};
 					photos = [...photos, item];
+					if (credential) void saveDraftPhoto(item.id, image.blob);
 					if (!current) switchPhoto(item.id);
 					await detect(item.id);
 				} catch {
@@ -360,6 +442,8 @@
 		if (detecting === id) detector.close();
 		revoke(photo.url);
 		photos = photos.filter((p) => p.id !== id);
+		// With its last photo gone there is no event left to keep, only a record naming photos that aren't there.
+		if (credential) void (photos.length ? forgetDraftPhoto(id) : clearDraft());
 		switchPhoto(photos[0]?.id ?? '');
 		draft = undefined;
 		removing = false;
@@ -444,12 +528,14 @@
 				for (const p of photos) revoke(p.url);
 				photos = [];
 				draft = undefined;
+				await clearDraft();
 				await goto(appPath(locale));
 			})
 			.finally(() => (sending = false));
 	}
 	beforeNavigate(({ cancel, type }) => {
-		if (photos.length && type !== 'leave' && !window.confirm(t.leave)) cancel();
+		// Only work the device hasn't kept is worth a warning; a saved event waits here on the way back.
+		if (photos.length && !draftSaved && type !== 'leave' && !window.confirm(t.leave)) cancel();
 	});
 	onDestroy(() => {
 		disposed = true;
@@ -462,7 +548,7 @@
 <svelte:window
 	onblur={() => (original = false)}
 	onbeforeunload={(event) => {
-		if (photos.length) {
+		if (photos.length && !draftSaved) {
 			event.preventDefault();
 			event.returnValue = '';
 		}
@@ -552,7 +638,20 @@
 	{/if}
 {/snippet}
 
-{#if !app.myClassrooms.length}
+{#if found}
+	<div class="{surface} grid justify-items-start gap-4">
+		<div>
+			<h2 class="text-2xl">{t.draftFound}</h2>
+			<p class="mt-2 text-muted">{t.draftFoundCopy(found.photos.length)}</p>
+		</div>
+		<div class="flex flex-wrap gap-3">
+			<button type="button" class={button.primary} onclick={() => continueDraft(found!)}>
+				{t.draftContinue}<Icon name="arrowRight" class="size-4" />
+			</button>
+			<button type="button" class={button.secondary} onclick={startOver}>{t.draftDiscard}</button>
+		</div>
+	</div>
+{:else if !app.myClassrooms.length}
 	<p class="text-muted">{messages[locale].app.notices.noClassrooms}</p>
 {:else}
 	<fieldset disabled={task.busy} class="grid min-w-0 gap-5">

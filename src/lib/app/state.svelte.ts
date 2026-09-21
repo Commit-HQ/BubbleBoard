@@ -14,6 +14,7 @@ import type {
 	OpenEvent,
 	EventContent
 } from '$lib/events/types';
+import { clearDraft } from '$lib/events/draft';
 import { maxEventBytes } from '$lib/events/limits';
 import { maxEventContentBytes, maxEventFileBytes } from '$lib/events/types';
 import type { EventDraft } from '$lib/events/publishing';
@@ -821,6 +822,14 @@ export class App {
 		return this.#familyCard?.unlockKey !== undefined;
 	}
 
+	/**
+	 * Which card this device is connected with, the ID alone and no key material: an unfinished event kept on
+	 * the device belongs to it, so another person's card never opens it (src/lib/events/draft.ts).
+	 */
+	get myCredential() {
+		return this.#card?.credential;
+	}
+
 	get #staff() {
 		if (!this.#keys) throw new Error('This device isn’t connected with a staff card');
 		return this.#keys;
@@ -1187,7 +1196,10 @@ export class App {
 		this.#keepPictures();
 		this.notice = notice;
 		this.status = 'disconnected';
-		await Promise.all([forgetCard(), forgetSubscription()].map((done) => done.catch(() => {})));
+		// The unfinished event goes with the card: the next person to connect here must never see it.
+		await Promise.all(
+			[forgetCard(), forgetSubscription(), clearDraft()].map((done) => done.catch(() => {}))
+		);
 	}
 
 	/** Uses a card read from a link, a photo, or a typed code. A device with a card asks first. */

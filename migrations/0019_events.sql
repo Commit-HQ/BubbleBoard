@@ -1,6 +1,12 @@
 -- Photo consent is encrypted with the family's key; this clock protects publication from stale consent.
-CREATE TABLE photo_clock (id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL);
-INSERT INTO photo_clock VALUES(1,0);
+-- One row per classroom, so a parent's change in one classroom doesn't throw away another teacher's
+-- half-prepared event. Every classroom has a row, from this backfill and from the trigger below.
+CREATE TABLE photo_clock (
+ classroom_id TEXT PRIMARY KEY REFERENCES classrooms(id) ON DELETE CASCADE,
+ revision INTEGER NOT NULL
+);
+INSERT INTO photo_clock SELECT id,0 FROM classrooms;
+CREATE TRIGGER photo_clock_started AFTER INSERT ON classrooms BEGIN INSERT INTO photo_clock VALUES(NEW.id,0); END;
 CREATE TABLE photo_families (
  child_id TEXT NOT NULL REFERENCES children(id) ON DELETE CASCADE,
  family_id TEXT NOT NULL REFERENCES families(id) ON DELETE CASCADE,
@@ -9,9 +15,17 @@ CREATE TABLE photo_families (
  revision INTEGER NOT NULL DEFAULT 0,
  PRIMARY KEY(child_id,family_id)
 );
-CREATE TRIGGER photo_family_added AFTER INSERT ON photo_families BEGIN UPDATE photo_clock SET revision=revision+1; END;
-CREATE TRIGGER photo_family_removed AFTER DELETE ON photo_families BEGIN UPDATE photo_clock SET revision=revision+1; END;
-CREATE TRIGGER photo_choice_changed AFTER UPDATE OF choice ON photo_families BEGIN UPDATE photo_clock SET revision=revision+1; END;
+-- A row belongs to the classroom its child is in, so only that classroom's clock moves. Two deletions can't
+-- find that classroom: `photo_child_moved` below runs after the child already carries its new classroom, and
+-- a removed child takes its rows with it through the cascade, leaving nothing to look up. Both are catalog
+-- changes, which move `installation.revision` (catalog.ts writes every child change through `nextRevision`),
+-- and `event_publish` compares that too, so the publication still fails as stale.
+CREATE TRIGGER photo_family_added AFTER INSERT ON photo_families BEGIN
+ UPDATE photo_clock SET revision=revision+1 WHERE classroom_id=(SELECT classroom_id FROM children WHERE id=NEW.child_id); END;
+CREATE TRIGGER photo_family_removed AFTER DELETE ON photo_families BEGIN
+ UPDATE photo_clock SET revision=revision+1 WHERE classroom_id=(SELECT classroom_id FROM children WHERE id=OLD.child_id); END;
+CREATE TRIGGER photo_choice_changed AFTER UPDATE OF choice ON photo_families BEGIN
+ UPDATE photo_clock SET revision=revision+1 WHERE classroom_id=(SELECT classroom_id FROM children WHERE id=NEW.child_id); END;
 CREATE TRIGGER photo_child_moved AFTER UPDATE OF classroom_id ON children WHEN OLD.classroom_id<>NEW.classroom_id
 BEGIN DELETE FROM photo_families WHERE child_id=NEW.id; END;
 CREATE TRIGGER photo_membership_removed AFTER DELETE ON family_classrooms
@@ -42,7 +56,8 @@ CREATE TRIGGER event_files_leaving AFTER DELETE ON event_files BEGIN
 END;
 -- The compare and the write run in the same publication transaction.
 CREATE TRIGGER event_publish BEFORE UPDATE OF posted_at ON events WHEN OLD.posted_at IS NULL AND NEW.posted_at IS NOT NULL
-AND (NEW.catalog_revision<>(SELECT revision FROM installation) OR NEW.consent_revision<>(SELECT revision FROM photo_clock))
+AND (NEW.catalog_revision<>(SELECT revision FROM installation)
+ OR NEW.consent_revision IS NOT(SELECT revision FROM photo_clock WHERE classroom_id=NEW.classroom_id))
 BEGIN SELECT RAISE(ABORT,'stale'); END;
 DROP VIEW named_objects;
 CREATE VIEW named_objects AS

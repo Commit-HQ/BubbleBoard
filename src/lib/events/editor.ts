@@ -70,6 +70,15 @@ export function manualRegion(
 	};
 }
 
+/** Drops the names of children who have left the classroom: those faces need deciding again. */
+export function dropMissing(regions: Region[], children: string[]): Region[] {
+	return regions.map((region) =>
+		region.child && !children.includes(region.child)
+			? { ...region, child: null, covered: false }
+			: region
+	);
+}
+
 export function unresolved(edit: Edit) {
 	return edit.regions.filter((region) => !region.child && !region.covered).length;
 }

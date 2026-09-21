@@ -80,7 +80,7 @@ The final action is **“Publish event”**, beside the way back to the photos, 
 | Reviewed     | “Reviewed”                                       | Next photo or final review         |
 | Problem      | Specific message, such as “Unable to open photo” | Retry, replace or remove the photo |
 
-Switching photos and steps preserves the draft during the open session. The first release does not promise recovery after closing the application or operating-system termination. Explain this before extended editing, and warn about losing work when navigating away in the app. Measure this risk on phones during the pilot. If interruptions frequently lose work, persistent encrypted drafts become a pilot exit requirement.
+Switching photos and steps preserves the draft, and the device keeps it so that a closed tab or an interrupted session can be continued: the editor opens with one choice, to go on with the kept event or to start over. Work the device has not managed to keep still warns before navigating away in the app. Measure this risk on phones during the pilot. If interruptions frequently lose work, persistent encrypted drafts become a pilot exit requirement.
 
 Per-photo undo/redo covers labels and geometry, not parent consent. Manual editing of one photo must not wait for detection on the remaining photos. Bound background processing to limit phone memory use.
 

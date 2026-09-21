@@ -107,7 +107,7 @@ Start with locally generated SVG stickers. A later sticker pack changes decorati
 - Preparation and upload use staging. Final checks of objects, revisions and permissions publish the event atomically. Repeating the final action must not send duplicate push notifications.
 - Deletion and expiry immediately stop retrieval; physical cleanup follows the existing reliable mechanism. Do not serve photos from a public cache. The current service worker caches nothing.
 - Push payloads contain no description, photo or child identity. Keep Croatian and English localisation together.
-- Online editing and preparation in the open page are sufficient for the first release. Persistent drafts require a separate design for encrypted local storage and must not be introduced implicitly.
+- The unfinished event is kept on the device (`src/lib/events/draft.ts`). Preparing a gallery takes a teacher 15–30 minutes on a phone and iOS discards background tabs, so a page-only draft loses the lot to a phone call. It is deliberately not encrypted: the same photos are already in the camera roll, and a key kept beside the data in the same IndexedDB protects nothing. What protects it is its lifetime — one draft per device, tied to the card's credential, deleted on publication, on starting over, on disconnection, and once it is 7 days old.
 
 Before the pilot, close the access boundary documented in `access-format.md`: replacing a family's card could let a teacher reach that family's other classrooms. Family-card replacement is now restricted to admins. The shared Staff Key remains an existing, documented compromise that warrants review for children's photos.
 

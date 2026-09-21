@@ -166,7 +166,7 @@ export const hr = {
 		points: [
 			{
 				title: 'Fotografije događaja',
-				copy: 'Lica se traže i označavaju na uređaju odgojitelja. Šalje se šifrirana prekrivena fotografija s odvojenim šifriranim isječcima, bez izvornika. Obitelji vide vlastitu djecu i lica za koja je dopušteno dijeljenje. Vrtić može unijeti ono što piše u vašoj izjavi o privoli, a vi to u aplikaciji možete promijeniti u svakom trenutku. Dopuštenja su šifrirana i promjene vrijede samo za buduće objave. Događaji i njihove fotografije dostupni su od 1 do 90 dana prema izboru odgojitelja, zatim se brišu. Nema skrivene arhive za godišnji album.'
+				copy: 'Lica se traže i označavaju na uređaju odgojitelja. Šalje se šifrirana prekrivena fotografija s odvojenim šifriranim isječcima, bez izvornika. Nedovršeni događaj ostaje samo na uređaju odgojitelja dok ga ne objavi ili odbaci i briše se nakon 7 dana. Obitelji vide vlastitu djecu i lica za koja je dopušteno dijeljenje. Vrtić može unijeti ono što piše u vašoj izjavi o privoli, a vi to u aplikaciji možete promijeniti u svakom trenutku. Dopuštenja su šifrirana i promjene vrijede samo za buduće objave. Događaji i njihove fotografije dostupni su od 1 do 90 dana prema izboru odgojitelja, zatim se brišu. Nema skrivene arhive za godišnji album.'
 			},
 			{
 				title: 'Što se čuva',
@@ -229,7 +229,8 @@ export const hr = {
 			consentHint:
 				'Vrtić je ovo možda postavio prema vašoj izjavi o privoli, a vi to ovdje možete promijeniti u svakom trenutku. Odabir vrijedi za fotografije objavljene od tada i vlastito dijete uvijek vidite. Ako dijete ima više obiteljskih QR kodova, skupini to mora dopustiti svaka povezana obitelj.',
 			private: 'Samo naša obitelj',
-			privateHint: 'Druge obitelji u skupini vide naljepnicu preko lica vašeg djeteta.',
+			privateHint:
+				'Druge obitelji u skupini vide naljepnicu preko lica vašeg djeteta. Naljepnica prekriva lice, no tko dobro poznaje vaše dijete može ga prepoznati i po kosi ili odjeći.',
 			group: 'I druge obitelji naše skupine',
 			groupHint: 'Obitelji iz skupine vide lice vašeg djeteta na događajima skupine.',
 			consentSaved: 'Spremljeno.',
@@ -254,7 +255,7 @@ export const hr = {
 		eventEditor: {
 			steps: ['Događaj', 'Fotografije', 'Pregled'],
 			local:
-				'Nacrt ostaje na ovoj stranici. Zatvaranjem ili ponovnim učitavanjem aplikacije gubi se.',
+				'Fotografije ostaju na ovom uređaju i ništa se ne šalje dok ne objavite. Nedovršeni događaj ovdje čeka 7 dana.',
 			classroom: 'Skupina',
 			classroomLocked: 'Ukloni fotografije da bi događaj pripremio za drugu skupinu.',
 			continue: 'Nastavi',
@@ -313,7 +314,12 @@ export const hr = {
 			allReviewed: 'Sve su fotografije pregledane.',
 			tooManyFaces:
 				'Na fotografiji je previše pokrova. Odaberi drugu fotografiju ili ukloni pogrešne detekcije.',
-			rosterChanged: 'Popis djece u skupini se promijenio. Ponovno provjeri oznake.'
+			rosterChanged: 'Popis djece u skupini se promijenio. Ponovno provjeri oznake.',
+			draftFound: 'Nedovršeni događaj',
+			draftFoundCopy: (n: number) =>
+				`Na ovom uređaju čeka nedovršeni događaj s ${count(n, 'fotografijom', 'fotografije', 'fotografija')}.`,
+			draftContinue: 'Nastavi',
+			draftDiscard: 'Kreni ispočetka'
 		},
 
 		meetings: {
@@ -566,7 +572,8 @@ export const hr = {
 			title: 'Lice na fotografijama događaja',
 			hint: 'Postavite prema obiteljskoj izjavi o privoli. Roditelji to mogu promijeniti sami u aplikaciji, a vrijedi za fotografije objavljene od tada.',
 			covered: 'Prekriveno za druge obitelji',
-			coveredHint: 'Druge obitelji u skupini vide naljepnicu preko lica djeteta.',
+			coveredHint:
+				'Druge obitelji u skupini vide naljepnicu preko lica djeteta. Naljepnica prekriva lice, no tko dobro poznaje dijete može ga prepoznati i po kosi ili odjeći.',
 			shared: 'Obitelji skupine smiju vidjeti lice',
 			sharedHint:
 				'Svi obiteljski QR kodovi ovog djeteta to dopuštaju, kako piše u izjavi o privoli.',

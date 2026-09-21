@@ -47,7 +47,7 @@ async function setup() {
 describe('events publication', () => {
 	it('stages invisibly, verifies uploads, publishes once, scopes reads and removes bytes', async () => {
 		const { db, staff, family, store, objects } = await setup();
-		const snapshot = await consents(db, staff);
+		const snapshot = await consents(db, staff, 'group');
 		await startEvent(db, staff, 'event', 'group', snapshot.catalog, snapshot.revision);
 		expect(await events(db, family('a'))).toEqual([]);
 		await expect(
@@ -71,7 +71,7 @@ describe('events publication', () => {
 	});
 	it('rejects stale consent atomically, including a previously missing choice; old publications keep their snapshot', async () => {
 		const { db, staff, family, store } = await setup();
-		const snapshot = await consents(db, staff);
+		const snapshot = await consents(db, staff, 'group');
 		await startEvent(db, staff, 'event', 'group', snapshot.catalog, snapshot.revision);
 		await uploadEventFile(db, store, staff, 'event', 'file', new Uint8Array([1]));
 		await saveConsent(db, family('a'), 'child', 0, 'choice');
@@ -85,12 +85,26 @@ describe('events publication', () => {
 			publishEvent(db, store, staff, 'event', 'content', 'key', ['file'], 30)
 		).rejects.toMatchObject({ status: 409 });
 		expect((await db.prepare('SELECT * FROM event_files').all()).results).toHaveLength(0);
-		const current = await consents(db, staff);
+		const current = await consents(db, staff, 'group');
 		await startEvent(db, staff, 'next', 'group', current.catalog, current.revision);
 		await uploadEventFile(db, store, staff, 'next', 'file', new Uint8Array([1]));
 		await publishEvent(db, store, staff, 'next', 'content', 'key', ['file'], 30);
 		await saveConsent(db, family('a'), 'child', 1, 'changed');
 		expect((await events(db, family('a')))[0].content).toBe('content');
+	});
+	it('leaves a publication alone when another classroom’s consent changes', async () => {
+		const { db, staff, family, store } = await setup();
+		await db.prepare("INSERT INTO children VALUES('theirs','other','profile')").run();
+		await syncProjections(db, staff, 'other', 0, [
+			{ child: 'theirs', family: 'b', label: 'label' }
+		]);
+		const snapshot = await consents(db, staff, 'group');
+		await startEvent(db, staff, 'event', 'group', snapshot.catalog, snapshot.revision);
+		await uploadEventFile(db, store, staff, 'event', 'file', new Uint8Array([1]));
+		await saveConsent(db, family('b'), 'theirs', 0, 'choice');
+		expect(
+			await publishEvent(db, store, staff, 'event', 'content', 'key', ['file'], 30)
+		).toMatchObject({ published: true });
 	});
 	it('records a consent form for every family card, only over the revision it read', async () => {
 		const { db, staff, family } = await setup();
@@ -132,7 +146,7 @@ describe('events publication', () => {
 	});
 	it('rejects catalog races and missing R2 bytes; expires staged and published data', async () => {
 		const { db, staff, family, store, objects } = await setup();
-		const snapshot = await consents(db, staff);
+		const snapshot = await consents(db, staff, 'group');
 		await startEvent(db, staff, 'event', 'group', snapshot.catalog, snapshot.revision);
 		await uploadEventFile(db, store, staff, 'event', 'file', new Uint8Array([1]));
 		objects.clear();
