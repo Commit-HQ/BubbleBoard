@@ -48,7 +48,9 @@
 
 <!-- Decorative bubbles are clipped rather than scrolling the page sideways when enlarged text leaves no
 room. `clip`, unlike `hidden`, keeps the header sticky. -->
-<div class="mx-auto max-w-7xl overflow-x-clip px-4 sm:px-8 lg:px-10">
+<!-- Every link loads its page as a document: the one landing page that runs in the browser, the walk through
+the app, shouldn't pull the others in as scripts. -->
+<div class="mx-auto max-w-7xl overflow-x-clip px-4 sm:px-8 lg:px-10" data-sveltekit-reload>
 	<SiteHeader href={home} label={t.home}>
 		<nav class="hidden xl:block" aria-label={t.nav.label}>
 			<ul class="flex">

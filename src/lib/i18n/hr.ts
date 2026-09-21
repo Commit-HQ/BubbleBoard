@@ -120,7 +120,7 @@ export const hr = {
 		title: 'Stvoreno i za odgojiteljice.',
 		copy: 'Podijelite dan u minuti, s mobitela ili računala. Aplikacija pazi na sitnice, da vi ne morate.',
 		// The link to the teachers' walk through the app.
-		tour: 'Pogledajte aplikaciju očima odgojiteljice',
+		tour: 'Pogledajte kako aplikacija izgleda odgojiteljicama',
 		preview: {
 			title: 'Naljepnice se lijepe same',
 			copy: 'Vaš mobitel sam pronađe lica na fotografijama i prekrije ih. Vi samo kažete tko je tko. Prije objave vidite galeriju točno onako kako će je vidjeti svaka obitelj.'
@@ -159,126 +159,131 @@ export const hr = {
 	explore: {
 		title: 'Razgledajte aplikaciju',
 		description:
-			'Pogledajte kako BubbleBoard izgleda roditeljima, a kako odgojiteljicama, zaslon po zaslon, u vrtiću koji ga već koristi.',
+			'Pogledajte kako BubbleBoard izgleda roditeljima, a kako odgojiteljicama. Pravi zasloni aplikacije, jedan po jedan, s izmišljenim vrtićem.',
 		// Dio početne stranice koji vodi ovamo.
 		teaser: {
-			title: 'Pogledajte prije nego što probate.',
-			copy: 'Prošećite kroz vrtić koji već koristi BubbleBoard, zaslon po zaslon. Ne treba vam QR kod.',
-			parents: 'Pogledajte kao roditelj',
-			teachers: 'Pogledajte kao odgojiteljica'
+			title: 'Pogledajte aplikaciju iznutra.',
+			copy: 'Pokazat ćemo vam prave zaslone aplikacije, korak po korak. Ne trebate QR kod ni prijavu.',
+			parents: 'Ja sam roditelj',
+			teachers: 'Ja sam odgojiteljica'
 		},
-		heading: 'Zavirite',
-		headingAccent: 'u aplikaciju.',
-		copy: 'Kratka šetnja kroz vrtić koji već koristi BubbleBoard. Odaberite tko ste, pa krenite korak po korak.',
-		roleLabel: 'Prikaži aplikaciju za',
-		roles: { parents: 'Roditelje', teachers: 'Odgojiteljice' },
-		sample: 'Vrtić, imena i poruke izmišljeni su za ovaj obilazak, a na fotografijama su modeli.',
+		heading: 'Pogledajte kako',
+		headingAccent: 'aplikacija izgleda.',
+		copy: 'Ovo su pravi zasloni aplikacije, s izmišljenim vrtićem. Odaberite jeste li roditelj ili odgojiteljica, pa idite korak po korak.',
+		roleLabel: 'Tko gleda aplikaciju',
+		roles: { parents: 'Roditelji', teachers: 'Odgojiteljice' },
+		sample:
+			'Vrtić, imena i poruke su izmišljeni. Na fotografijama su modeli, a ne djeca iz stvarnog vrtića.',
 		stepsLabel: 'Koraci',
 		step: (number: number, total: number) => `Korak ${number} od ${total}`,
 		previous: 'Natrag',
 		next: 'Dalje',
-		other: {
-			parents: 'Pogledajte i kao odgojiteljica',
-			teachers: 'Pogledajte i kao roditelj'
-		},
+		other: { parents: 'Pogledajte kao odgojiteljica', teachers: 'Pogledajte kao roditelj' },
 		parents: [
 			{
 				shot: 'parent-board',
 				title: 'Sve novo na jednom mjestu',
-				copy: 'Otvorite aplikaciju i odmah ste pred oglasnom pločom svoje skupine: fotografije s posljednjeg događaja, obavijesti odgojiteljica i termini razgovora, najnovije na vrhu.',
+				copy: 'Kad otvorite aplikaciju, vidite oglasnu ploču svoje skupine. Na njoj su obavijesti odgojiteljica, fotografije s događaja i termini razgovora. Najnovije je uvijek na vrhu.',
 				screen:
-					'Početni zaslon aplikacije: kartica s rezerviranim razgovorom obitelji, a ispod nje događaj „Dan mjehurića u parku“ s fotografijom djevojčice koja puše balone od sapunice.'
+					'Početni zaslon aplikacije: kartica koja vodi do termina razgovora, a ispod nje događaj „Dan mjehurića na Promenadi“ s fotografijom djevojčice koja puše balone od sapunice.'
 			},
 			{
 				shot: 'parent-poll',
-				title: 'Obavijesti na koje možete odgovoriti',
-				copy: 'Jednim dodirom javite odgojiteljicama da ste pročitali obavijest. Kad im treba odgovor od svih, na primjer tko ide na izlet, odgovorite odmah na obavijesti.',
+				title: 'Obavijesti i ankete',
+				copy: 'Kad pročitate obavijest, dodirnete „Označi kao pročitano“ i odgojiteljice to vide. Ako obavijest ima anketu, na primjer ide li dijete na izlet, odgovorite jednim dodirom.',
 				screen:
-					'Žuta obavijest o izletu u Maksimir s anketom: „Da, dolazimo“ ima 5 glasova, a „Ne, ovaj put ne“ 1. Ispod piše da je obavijest pročitana.'
+					'Žuta obavijest o izletu u Tvrđu s anketom: „Da, dolazimo“ ima 5 glasova, a „Ne, ovaj put ne“ 1. Ispod piše da je obavijest pročitana.'
 			},
 			{
 				shot: 'parent-gallery',
-				title: 'Fotografije njihovog dana',
-				copy: 'Srce označava fotografije na kojima je vaše dijete. Vesela naljepnica prekriva djecu čije obitelji njihova lica čuvaju za sebe. Spremite fotografije koje volite prije nego što nestanu iz aplikacije.',
+				title: 'Fotografije s događaja',
+				copy: 'Fotografije na kojima je vaše dijete označene su srcem. Djeca čiji roditelji ne žele da im se vidi lice imaju naljepnicu preko lica. Fotografije koje želite zadržati spremite na mobitel, jer nakon nekog vremena nestaju iz aplikacije.',
 				screen:
 					'Galerija događaja s tri fotografije, od kojih su dvije označene srcem, i gumb za spremanje svih fotografija.'
 			},
 			{
 				shot: 'parent-consent',
-				title: 'Lice vašeg djeteta, vaša odluka',
-				copy: 'Vi odlučujete vide li druge obitelji iz skupine lice vašeg djeteta ili naljepnicu, a odluku možete promijeniti kad god želite u Opcijama. Svoje dijete uvijek vidite.',
+				title: 'Vi odlučujete tko vidi lice vašeg djeteta',
+				copy: 'U Opcijama birate hoće li druge obitelji iz skupine vidjeti lice vašeg djeteta ili naljepnicu. Odluku možete promijeniti kad god želite. Vi svoje dijete uvijek vidite bez naljepnice.',
 				screen:
 					'Opcije s dva izbora za dijete Emu Novak: „Samo naša obitelj“ i „I druge obitelji naše skupine“, koji je odabran.'
 			},
 			{
 				shot: 'parent-messages',
-				title: 'Pitajte odgojiteljice',
-				copy: 'Pitanje samo za odgojiteljice dobije svoj privatni razgovor. Drugi roditelji ga nikad ne vide.',
+				title: 'Poruke odgojiteljicama',
+				copy: 'Imate pitanje za odgojiteljice? Napišite ga ovdje. Razgovor vidite samo vi i odgojiteljice, a drugi roditelji ne.',
 				screen:
 					'Razgovor „Raniji odlazak u četvrtak“: roditelj pita, odgojiteljica Ana Horvat odgovara, a roditelj zahvaljuje.'
 			},
 			{
 				shot: 'parent-meetings',
-				title: 'Rezervirajte razgovor jednim dodirom',
-				copy: 'Kad odgojiteljice ponude individualne razgovore, odaberete slobodan termin za svoje dijete. Vidite koji su termini zauzeti, ali ne i tko ih je uzeo.',
+				title: 'Termini individualnih razgovora',
+				copy: 'Kad odgojiteljice ponude termine za razgovor, odaberete slobodan termin za svoje dijete. Vidite koji su termini zauzeti, ali ne vidite tko ih je rezervirao.',
 				screen:
 					'Termini razgovora u utorak 29. rujna: neki slobodni, neki zauzeti, a jedan označen kao „Vaš razgovor“ za Emu Novak.'
+			},
+			{
+				shot: 'parent-devices',
+				title: 'Još uređaja za vašu obitelj',
+				copy: 'Želite da obavijesti vide i baka, djed ili teta čuvalica? U Opcijama napravite QR kod za još jedan uređaj. Skenirajte ga tim uređajem ili ga pošaljite kao poveznicu. Svaki kod povezuje jedan uređaj i vrijedi 24 sata.',
+				screen:
+					'Opcije, dio „Dodaj uređaj“: okrugli QR kod, ispod njega isti kod ispisan slovima i brojkama te gumbi „Podijeli poveznicu“ i „Gotovo“.'
 			}
 		],
 		teachers: [
 			{
 				shot: 'teacher-notice',
-				title: 'Objavite obavijest u minuti',
-				copy: 'Napišite je, odaberite boju papira kao na plutenoj ploči, pa skupine i koliko dugo ostaje objavljena. Priložite datoteke ili dodajte anketu kad vam zatreba.',
+				title: 'Nova obavijest',
+				copy: 'Napišete obavijest i odaberete boju papira. Zatim odaberete koje je skupine vide i koliko dana ostaje na ploči. Možete dodati i datoteku ili anketu.',
 				screen:
 					'Obrazac nove obavijesti: ružičasta obavijest o roditeljskom sastanku s popisom, iznad nje izbor boja, a ispod „Dodaj anketu“.'
 			},
 			{
 				shot: 'teacher-seen',
-				title: 'Vidite tko je pročitao',
-				copy: 'Uz svaku obavijest vidite koje su je obitelji pročitale, a koje još nisu. Odgovore na anketu aplikacija zbroji umjesto vas, a tko je što odabrao vide samo odgojiteljice.',
+				title: 'Tko je pročitao obavijest',
+				copy: 'Ispod svake obavijesti vidite koje su je obitelji pročitale, a koje nisu. Kod ankete vidite koliko je obitelji odabralo koji odgovor i koje su to obitelji. Tko je što odabrao vide samo odgojiteljice.',
 				screen:
 					'Obavijest o izletu kako je vidi odgojiteljica: uz svaki odgovor ankete obitelji koje su ga odabrale, dvije obitelji bez odgovora i „Pročitano: 6 od 8 obitelji“.'
 			},
 			{
 				shot: 'teacher-faces',
-				title: 'Naljepnice se lijepe same',
-				copy: 'Dodajte fotografije s događaja, a mobitel sam pronađe lica i prekrije ih. Vi samo kažete tko je tko. Ništa ne napušta vaš mobitel dok ne objavite.',
+				title: 'Naljepnice preko lica',
+				copy: 'Kad dodate fotografije s događaja, mobitel sam pronađe lica i stavi naljepnice preko njih. Vi samo dodirnete lice i odaberete čije je. Fotografije ostaju na vašem mobitelu dok ih ne objavite.',
 				screen:
 					'Uređivanje fotografije: djeca leže na tepihu s naljepnicama preko šest lica, od kojih su tri imenovana, i popis imena djece za odabir.'
 			},
 			{
 				shot: 'teacher-preview',
-				title: 'Provjerite kao bilo koja obitelj',
-				copy: 'Prije objave pogledajte galeriju točno onako kako će je vidjeti pojedina obitelj: njihovo dijete otkriveno, a djeca čije obitelji lica čuvaju za sebe i dalje pod naljepnicama.',
+				title: 'Provjera prije objave',
+				copy: 'Prije objave odaberete obitelj i vidite fotografije onako kako će ih ta obitelj vidjeti. Njihovo dijete je bez naljepnice. Djeca čiji roditelji ne žele da im se vidi lice ostaju prekrivena.',
 				screen:
 					'Korak pregleda, kao obitelj Novak: ista fotografija na kojoj su naljepnicama prekrivena još samo dva lica.'
 			},
 			{
 				shot: 'teacher-messages',
-				title: 'Pitanja roditelja, svako na svom mjestu',
-				copy: 'Svako pitanje stiže kao zaseban razgovor, a uz njega pišu dijete i skupina. Vaš vrtić određuje u koje sate roditelji mogu pisati i koliko upita obitelj ima mjesečno.',
+				title: 'Poruke roditelja',
+				copy: 'Svako pitanje roditelja je zaseban razgovor. Uz njega pišu obitelj, dijete i skupina. Vrtić određuje u koje sate roditelji mogu pisati i koliko upita mjesečno ima svaka obitelj.',
 				screen:
 					'Popis poruka s tri nepročitana upita: izgubljena plava jakna, napomena o alergiji za izlet i raniji odlazak u četvrtak.'
 			},
 			{
 				shot: 'teacher-meetings',
-				title: 'Razgovori bez papira za upisivanje',
-				copy: 'Upišite dan i sate kad ste slobodni, a aplikacija ih podijeli na termine. Roditelji rezerviraju za svoje dijete, a vi vidite tko kada dolazi.',
+				title: 'Individualni razgovori',
+				copy: 'Upišete dan i sate kad ste slobodni, a aplikacija ih podijeli na termine. Roditelji sami rezerviraju termin, a vi vidite tko je rezervirao koji.',
 				screen:
 					'Termini odgojiteljice u utorak 29. rujna: četiri zauzeta, svaki s imenom djeteta, i dva još slobodna.'
 			},
 			{
 				shot: 'teacher-classroom',
-				title: 'Jedan QR kod za svaku obitelj',
-				copy: 'Administrator dodaje djecu u skupinu i ispisuje QR kod za svaku obitelj. Ako se koji izgubi, zamijenite ga i stari kod prestaje vrijediti.',
+				title: 'Djeca i QR kodovi',
+				copy: 'Administrator upisuje djecu u skupinu i za svaku obitelj ispiše QR kod. Tim kodom obitelj ulazi u aplikaciju. Ako ga izgubi, dobije novi, a stari prestaje vrijediti.',
 				screen:
 					'Skupina Mjehurići s osmero djece, uz svako dijete ime obitelji, te gumbi za dodavanje djeteta i zamjenu QR kodova.'
 			}
 		],
 		closing: {
-			title: 'Dovoljno ste vidjeli da probate?',
-			copy: 'Obitelji otvaraju aplikaciju QR kodom koji dobiju od vrtića. Ako vaš vrtić još nema BubbleBoard, javite nam se i pomoći ćemo vam da krenete.'
+			title: 'Želite isprobati?',
+			copy: 'Ako vaš vrtić već koristi BubbleBoard, otvorite aplikaciju i skenirajte QR kod koji ste dobili. Ako ga još ne koristi, javite nam se i pomoći ćemo vam da krenete.'
 		}
 	},
 	footer: {
