@@ -25,6 +25,11 @@ export type EventContent = {
 	/** The event's words, written and read like a notice's (src/lib/notices.ts). */
 	description: NoticeDocument;
 	photos: EventPhoto[];
+	/**
+	 * Who published it. It travels inside the manifest, as a notice's author does, because families cannot
+	 * read the staff catalog. Events published before it, and the recovery card's, have none.
+	 */
+	author?: string;
 };
 /** The longest a photo's own words may be, in characters. */
 export const maxEventPhotoText = 300;

@@ -119,6 +119,16 @@ describe('event privacy', () => {
 			expect(value.photos.map((photo) => photo.text)).toEqual(['Ana found a chestnut.', undefined]);
 		});
 
+		it('names whoever published it, and opens an event published without a name', async () => {
+			const words = { type: 'doc', content: [] };
+			const named = await sealed({ ...base, description: words, author: 'Teta Ana' });
+			expect(named.value.author).toBe('Teta Ana');
+			const unnamed = await sealed({ ...base, description: words });
+			expect(unnamed.value.author).toBeUndefined();
+			for (const author of ['', 7, 'x'.repeat(161)])
+				await expect(sealed({ ...base, description: words, author })).rejects.toThrow();
+		});
+
 		it('refuses a gallery larger than any installation may publish', async () => {
 			const many = (count: number) =>
 				Array.from({ length: count }, () => ({ id: createId(), width: 10, height: 10 }));

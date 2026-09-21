@@ -21,6 +21,7 @@ import {
 	maxPatches,
 	mostEventPhotos,
 	type ConsentRow,
+	type EventContent,
 	type EventPhoto,
 	type EventRecord,
 	type OpenEvent
@@ -436,6 +437,8 @@ export async function openEvent(record: EventRecord, groupKey: CryptoKey): Promi
 		value.version !== 1 ||
 		typeof value.title !== 'string' ||
 		value.title.length > 160 ||
+		(value.author !== undefined &&
+			(typeof value.author !== 'string' || !value.author || value.author.length > 160)) ||
 		typeof value.date !== 'string' ||
 		!/^\d{4}-\d{2}-\d{2}$/.test(value.date) ||
 		!Array.isArray(value.photos) ||
@@ -459,15 +462,13 @@ export async function openEvent(record: EventRecord, groupKey: CryptoKey): Promi
 		const text = typeof f.text === 'string' && f.text ? f.text : undefined;
 		return { id: f.id as string, width: f.width as number, height: f.height as number, text };
 	});
-	return {
-		...record,
-		key,
-		value: {
-			version: 1,
-			title: value.title,
-			date: value.date,
-			description: readDocument(value.description),
-			photos
-		}
+	const content: EventContent = {
+		version: 1,
+		title: value.title,
+		date: value.date,
+		description: readDocument(value.description),
+		photos
 	};
+	if (value.author !== undefined) content.author = value.author as string;
+	return { ...record, key, value: content };
 }

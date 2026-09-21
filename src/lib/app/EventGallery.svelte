@@ -5,7 +5,7 @@
 	import { thumbnail } from '$lib/events/images';
 	import type { OpenEvent } from '$lib/events/types';
 	import { savePicture, savePictures } from '$lib/files';
-	import { errorMessage, formatDay, messages, type Locale } from '$lib/i18n';
+	import { errorMessage, formatDateTime, formatDay, messages, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import NoticeBody from './NoticeBody.svelte';
@@ -131,11 +131,20 @@
 	const until = $derived(
 		new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(event.expiresAt)
 	);
+	/** Who put the event up and when, as a notice's card says it. */
+	const details = $derived(
+		[event.value.author, formatDateTime(locale, event.postedAt)].filter(Boolean).join(' · ')
+	);
 </script>
 
 <div class="grid gap-5">
 	<div class="{surface} grid gap-3">
-		<p class="text-sm text-muted">{t.title} · {formatDay(locale, event.value.date)}</p>
+		<header
+			class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm text-muted"
+		>
+			<p>{t.title} · {formatDay(locale, event.value.date)}</p>
+			<p>{details}</p>
+		</header>
 		<h2 class="text-3xl">{event.value.title}</h2>
 		{#if event.value.description.content.length}
 			<NoticeBody blocks={event.value.description.content} />

@@ -384,8 +384,10 @@ export class App {
 		progress: (n: number) => void
 	) {
 		// Sealed before anything is sent: words too long for the manifest are refused here rather than after
-		// every photo has been uploaded.
-		const content = await encryptData(value, draft.key, {
+		// every photo has been uploaded. The name of whoever publishes goes inside, as a notice's does; the
+		// recovery card publishes without one.
+		const author = this.myName;
+		const content = await encryptData(author ? { ...value, author } : value, draft.key, {
 			purpose: 'event-content',
 			event: draft.id
 		});
