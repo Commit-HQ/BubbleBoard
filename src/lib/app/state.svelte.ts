@@ -237,6 +237,11 @@ function infoFilePath(page: string, file: string) {
 	return `/api/info/pages/${page}/files/${file}`;
 }
 
+/** Where the encrypted bytes of one of an event's photos are kept. */
+function eventFilePath(event: string, photo: string) {
+	return `/api/events/${event}/files/${photo}`;
+}
+
 /** Where the encrypted bytes of a file a teacher attached to an inquiry's message are kept. */
 function messageFilePath(conversation: string, message: string, file: string) {
 	return `/api/messages/${conversation}/files/${message}/${file}`;
@@ -404,14 +409,32 @@ export class App {
 		);
 		await this.loadEvents();
 	}
-	async eventPicture(event: OpenEvent, photo: string) {
-		const sealed = await this.#signedIn(() =>
-			requestBytes(`/api/events/${event.id}/files/${photo}`)
+	/** One of an event's photos, composed for whoever holds this card, and kept while the event is open. */
+	eventPicture(event: OpenEvent, photo: string) {
+		return this.#picture(eventFilePath(event.id, photo), (sealed) =>
+			renderPackage(
+				event.id,
+				photo,
+				sealed,
+				event.key,
+				this.#familyCard ? { family: this.#familyCard.familyKey } : { staff: this.#staff.staffKey }
+			)
 		);
-		const viewer = this.#familyCard
-			? { family: this.#familyCard.familyKey }
-			: { staff: this.#staff.staffKey };
-		return renderPackage(event.id, photo, sealed, event.key, viewer);
+	}
+
+	/**
+	 * Keeps the open event's photos while it's open, and lets go of them when it closes: what it gives back
+	 * closes them, so a gallery uses it as it is, `$effect(() => app.showEventPictures(event))`.
+	 */
+	showEventPictures(event: OpenEvent) {
+		this.#eventPictures = new Set(
+			event.value.photos.map((photo) => eventFilePath(event.id, photo.id))
+		);
+		this.#keepPictures();
+		return () => {
+			this.#eventPictures.clear();
+			this.#keepPictures();
+		};
 	}
 	canDeleteEvent(event: OpenEvent) {
 		return this.status === 'staff' && (this.admin || event.teacher === this.me?.id);
@@ -763,6 +786,8 @@ export class App {
 	#pictures = new Map<string, Promise<Picture>>();
 	/** The paths of the open conversation's pictures, which `#keepPictures` keeps while it's open. */
 	#messagePictures = new Set<string>();
+	/** The paths of the open event's photos, which `#keepPictures` keeps while it's open. */
+	#eventPictures = new Set<string>();
 	/** The Family Keys a staff device has opened, by the envelope each came from, until it disconnects. */
 	#familyKeys = new Map<string, Promise<CryptoKey>>();
 
@@ -1146,6 +1171,7 @@ export class App {
 		this.eventsError = undefined;
 		this.#conversationCache.clear();
 		this.#messagePictures.clear();
+		this.#eventPictures.clear();
 		this.#clearMeetings();
 		this.conversations = [];
 		this.messagePolicies = [];
@@ -1666,7 +1692,10 @@ export class App {
 		return picture;
 	}
 
-	/** Lets go of the pictures of board photos, and of files on notices and info pages, that aren't up anymore. */
+	/**
+	 * Lets go of the pictures of board photos, of files on notices and info pages, and of the open
+	 * conversation's and event's, that aren't up anymore.
+	 */
 	#keepPictures() {
 		const up = new Set([
 			...this.photos.map(photoPath),
@@ -1676,7 +1705,8 @@ export class App {
 			...this.infoPages.flatMap(({ id, files = [] }) =>
 				files.map((file) => infoFilePath(id, file.id))
 			),
-			...this.#messagePictures
+			...this.#messagePictures,
+			...this.#eventPictures
 		]);
 		for (const [path, picture] of this.#pictures) {
 			if (up.has(path)) continue;

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
 	import { errorCode } from '$lib/errors';
-	import { isPicture, type NoticeFile } from '$lib/files';
+	import { isPicture, withoutExtension, type NoticeFile } from '$lib/files';
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import FileLabel from './FileLabel.svelte';
 	import PictureViewer from './PictureViewer.svelte';
@@ -117,7 +117,7 @@
 		{locale}
 		label={t.open(viewing.file.name)}
 		picture={viewing.picture}
-		name={viewing.file.name}
+		name={withoutExtension(viewing.file.name)}
 		onclose={() => (viewing = undefined)}
 	/>
 {/if}

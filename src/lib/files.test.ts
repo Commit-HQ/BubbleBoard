@@ -6,6 +6,7 @@ import {
 	isPicture,
 	maxFileBytes,
 	maxNoticeFiles,
+	nameWith,
 	openFile,
 	openPicture,
 	prepareFile,
@@ -124,5 +125,26 @@ describe('notice files', () => {
 		]) {
 			await expect(openNotice(await served(files), keys)).rejects.toThrow(UnreadableError);
 		}
+	});
+});
+
+describe('saved names', () => {
+	it('keep a title whole, dots and all, and number a photo after it', () => {
+		expect(nameWith('Izlet 12.5.2026.', 'jpg', '-3')).toBe('Izlet 12.5.2026.-3.jpg');
+		expect(nameWith('Izlet 12.5.2026.', 'zip')).toBe('Izlet 12.5.2026..zip');
+		expect(nameWith('  Jesen/2026  ', 'jpg')).toBe('Jesen2026.jpg');
+		expect(nameWith('///', 'jpg')).toBe('file.jpg');
+	});
+
+	it('stay short enough for a notice to name them, the number included', () => {
+		const long = nameWith('a'.repeat(300), 'jpg', '-10');
+		expect(long).toMatch(/^a+-10\.jpg$/);
+		expect(isFileName(long)).toBe(true);
+		expect(nameWith('a'.repeat(300), 'jpg').length).toBe(long.length);
+	});
+
+	it('give an attached file its kind anew, in place of the one it came with', async () => {
+		const plan = await prepareFile(new File(['Hello'], 'Plan v1.2.docx'));
+		expect(plan.name).toBe('Plan v1.2.docx');
 	});
 });

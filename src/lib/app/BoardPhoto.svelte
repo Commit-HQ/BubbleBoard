@@ -83,7 +83,7 @@
 		{locale}
 		label={t.open(classroom)}
 		picture={viewing}
-		name="{classroom}.jpg"
+		name={classroom}
 		onclose={() => (viewing = undefined)}
 	/>
 {/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import type { OpenEvent } from '$lib/events/types';
 	import { savePicture, savePictures } from '$lib/files';
@@ -29,20 +30,24 @@
 		confirming = $state(false);
 	const photos = $derived(event.value.photos);
 	const shown = $derived(photos[index]);
+	// Kept by the event's ID: a refreshed board hands over the same event as a new object, and that must not
+	// let go of the photos already opened.
+	const eventId = $derived(event.id);
+	$effect(() => {
+		void eventId;
+		return untrack(() => app.showEventPictures(event));
+	});
 	$effect(() => {
 		const photo = shown;
 		void retry;
-		let cancelled = false,
-			created = '';
+		let cancelled = false;
 		loading = true;
 		failed = false;
 		picture = undefined;
 		app
 			.eventPicture(event, photo.id)
-			.then((blob) => {
-				if (cancelled) return;
-				created = URL.createObjectURL(blob);
-				picture = { blob, url: created };
+			.then((opened) => {
+				if (!cancelled) picture = opened;
 			})
 			.catch(() => {
 				if (!cancelled) failed = true;
@@ -52,7 +57,6 @@
 			});
 		return () => {
 			cancelled = true;
-			if (created) URL.revokeObjectURL(created);
 		};
 	});
 
@@ -61,7 +65,7 @@
 	}
 	function save() {
 		const saving = picture;
-		if (saving) task.run(() => savePicture(saving.blob, name(index)));
+		if (saving) task.run(() => savePicture(saving.blob, event.value.title, `-${index + 1}`));
 	}
 	/** Every photo of the gallery, composed on this device one after another, then saved together. */
 	function saveAll() {
@@ -69,7 +73,7 @@
 			const all: Blob[] = [];
 			try {
 				for (const photo of photos) {
-					all.push(await app.eventPicture(event, photo.id));
+					all.push((await app.eventPicture(event, photo.id)).blob);
 					prepared = all.length;
 				}
 				await savePictures(all, event.value.title);
@@ -77,10 +81,6 @@
 				prepared = 0;
 			}
 		});
-	}
-	/** What a saved photo is called on the device: the event and which photo of it this is. */
-	function name(position: number) {
-		return `${event.value.title}-${position + 1}`;
 	}
 </script>
 
@@ -163,7 +163,7 @@
 		{locale}
 		label={`${event.value.title} — ${p.photo(index + 1, photos.length)}`}
 		{picture}
-		name={name(index)}
+		name={event.value.title}
 		caption={shown.text}
 		gallery={{ index, count: photos.length, onmove: move }}
 		onclose={() => (viewing = false)}

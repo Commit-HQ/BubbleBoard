@@ -25,7 +25,7 @@
 		label: string;
 		/** The picture, or nothing while the next one of a gallery is being opened. */
 		picture?: Picture;
-		/** The name it's saved under. */
+		/** The name it's saved under, which one of a gallery is numbered after. */
 		name: string;
 		/** The few words written under the photo, where there are any. */
 		caption?: string;
@@ -35,6 +35,8 @@
 	} = $props();
 
 	const t = $derived(messages[locale].app.viewer);
+	/** Which photo of a gallery this is, so a set saved one by one keeps them apart. */
+	const suffix = $derived(gallery ? `-${gallery.index + 1}` : '');
 	const task = new Task();
 	let dialog = $state<HTMLDialogElement>();
 	let frame = $state<HTMLDivElement>();
@@ -174,7 +176,7 @@
 				class={button.frosted}
 				type="button"
 				disabled={task.busy || !picture}
-				onclick={() => picture && task.run(() => savePicture(picture.blob, name))}
+				onclick={() => picture && task.run(() => savePicture(picture.blob, name, suffix))}
 			>
 				<Icon name="download" class="size-4" />{t.save}
 			</button>

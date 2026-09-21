@@ -98,12 +98,24 @@ export function isFileName(value: unknown): value is string {
 	);
 }
 
-/** A file's name, no longer than a notice's content allows, with this extension. */
-function nameWith(name: string, extension: string) {
+/**
+ * A name a file may carry, no longer than a notice's content allows, with this extension, and with the
+ * suffix a set numbers its files by. Dots in the base are kept, since a title such as `Izlet 12.5.2026.`
+ * is one; a name that already ends in an extension drops it first (`withoutExtension`).
+ */
+export function nameWith(base: string, extension: string, suffix = '') {
+	const kept =
+		[...base]
+			.filter((character) => !unsafe(character))
+			.join('')
+			.trim() || 'file';
+	return `${kept.slice(0, maxNameLength - extension.length - suffix.length - 1)}${suffix}.${extension}`;
+}
+
+/** A file's name without the extension it came with, which the name it's saved under gets anew. */
+export function withoutExtension(name: string) {
 	const dot = name.lastIndexOf('.');
-	const base = [...(dot > 0 ? name.slice(0, dot) : name)].filter((character) => !unsafe(character));
-	const kept = base.join('').trim() || 'file';
-	return `${kept.slice(0, maxNameLength - extension.length - 1)}.${extension}`;
+	return dot > 0 ? name.slice(0, dot) : name;
 }
 
 /** Encrypts a file's bytes with a new key of its own, for its notice's content to hold. */
@@ -127,13 +139,13 @@ export async function prepareFile(file: File) {
 	const extension = extensionOf(file.name);
 	if (pictureExtensions.includes(extension)) {
 		const picture = await preparePhoto(file);
-		const name = nameWith(file.name, pictureExtension(picture.type));
+		const name = nameWith(withoutExtension(file.name), pictureExtension(picture.type));
 		return sealFile(createId(), name, new Uint8Array(await picture.arrayBuffer()));
 	}
 	if (!documentTypes.has(extension)) throw new CodedError('file-type');
 	if (file.size > maxFileBytes) throw new CodedError('file-too-large');
 	const data = new Uint8Array(await file.arrayBuffer());
-	return sealFile(createId(), nameWith(file.name, extension), data);
+	return sealFile(createId(), nameWith(withoutExtension(file.name), extension), data);
 }
 
 /** A notice's file's bytes, decrypted with the key its notice holds. */
@@ -168,9 +180,9 @@ export function saveFile(file: Blob, name: string) {
  * On iPhone and iPad it goes to the share sheet, whose Save Image puts it in Photos, where people look for
  * pictures. Elsewhere, or where the share sheet can't open, it's a download.
  */
-export async function savePicture(picture: Blob, name: string) {
+export async function savePicture(picture: Blob, name: string, suffix = '') {
 	const saved = await pictureToSave(picture);
-	const file = new File([saved], nameWith(name, pictureExtension(saved.type)), {
+	const file = new File([saved], nameWith(name, pictureExtension(saved.type), suffix), {
 		type: saved.type
 	});
 	if ((await shareToPhotos([file])) !== 'unavailable') return;
@@ -200,16 +212,14 @@ async function shareToPhotos(files: File[]) {
 /**
  * Saves a set of pictures at once, numbered after the set they belong to: the share sheet on iPhone and
  * iPad, whose Save Images puts them all in Photos, and otherwise one zip file holding them, since a gallery
- * is not worth one download per photo. Every name is built from the same one, so no two entries collide.
+ * is not worth one download per photo. Every name is built from the set's, numbered, so no two collide.
  */
 export async function savePictures(pictures: Blob[], set: string) {
 	const files: File[] = [];
 	for (const [position, picture] of pictures.entries()) {
 		const saved = await pictureToSave(picture);
-		const name = nameWith(set, pictureExtension(saved.type));
-		const dot = name.lastIndexOf('.');
 		files.push(
-			new File([saved], `${name.slice(0, dot)}-${position + 1}${name.slice(dot)}`, {
+			new File([saved], nameWith(set, pictureExtension(saved.type), `-${position + 1}`), {
 				type: saved.type
 			})
 		);
