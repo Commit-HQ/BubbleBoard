@@ -396,6 +396,10 @@ export const en = {
 			preparingPhoto: (n: number, total: number) => `Preparing photo ${n} of ${total}…`,
 			remove: 'Remove event',
 			removeHint: 'This event and its photos will no longer be available to families.',
+			edit: 'Edit',
+			edited: 'edited',
+			editTitle: 'Edit event',
+			save: 'Save changes',
 			open: 'Open gallery',
 			back: 'Back to board',
 			expired: 'This event is unavailable or has expired.',
@@ -513,7 +517,16 @@ export const en = {
 			draftFoundCopy: (n: number) =>
 				`This device kept the event you were preparing, with ${n === 1 ? '1 photo' : `${n} photos`}.`,
 			draftContinue: 'Continue',
-			draftDiscard: 'Start over'
+			draftDiscard: 'Start over',
+			localChange:
+				'New photos stay on this device until you save the changes. A change isn’t kept here, so finish it in one go.',
+			published: 'Photos already up',
+			publishedHint:
+				'These photos stay as they were published, with the faces covered as they were then. You can change their words or take one off.',
+			removePublished: 'Take photo off',
+			removePublishedCopy:
+				'Families will no longer see this photo. Anyone who already saved it keeps their copy.',
+			keepOne: 'An event needs at least one photo. Remove the event to take it down altogether.'
 		},
 
 		meetings: {

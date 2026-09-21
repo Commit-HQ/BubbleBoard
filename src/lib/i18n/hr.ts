@@ -378,6 +378,10 @@ export const hr = {
 			preparingPhoto: (n: number, total: number) => `Pripremamo fotografiju ${n} od ${total}…`,
 			remove: 'Ukloni događaj',
 			removeHint: 'Događaj i njegove fotografije više neće biti dostupni obiteljima.',
+			edit: 'Uredi',
+			edited: 'uređeno',
+			editTitle: 'Uredi događaj',
+			save: 'Spremi promjene',
 			open: 'Otvori galeriju',
 			back: 'Natrag na ploču',
 			expired: 'Događaj nije dostupan ili je istekao.',
@@ -492,7 +496,17 @@ export const hr = {
 			draftFoundCopy: (n: number) =>
 				`Na ovom uređaju čeka nedovršeni događaj s ${count(n, 'fotografijom', 'fotografije', 'fotografija')}.`,
 			draftContinue: 'Nastavi',
-			draftDiscard: 'Kreni ispočetka'
+			draftDiscard: 'Kreni ispočetka',
+			localChange:
+				'Nove fotografije ostaju na ovom uređaju dok ne spremite promjene. Promjena se ne čuva ovdje, pa je dovršite odjednom.',
+			published: 'Fotografije koje su već objavljene',
+			publishedHint:
+				'Ove fotografije ostaju onakve kakve su objavljene, s licima prekrivenima kao tada. Možete promijeniti njihov opis ili neku maknuti.',
+			removePublished: 'Makni fotografiju',
+			removePublishedCopy:
+				'Obitelji više neće vidjeti ovu fotografiju. Tko ju je već spremio, zadržava svoju kopiju.',
+			keepOne:
+				'Događaj treba barem jednu fotografiju. Uklonite događaj da ga posve skinete s ploče.'
 		},
 
 		meetings: {

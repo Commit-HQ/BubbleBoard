@@ -20,9 +20,15 @@
 	const until = $derived(
 		new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(event.expiresAt)
 	);
-	/** Who put the event up and when, as a notice's card says it. */
+	/** Who put the event up and when, and whether it was changed since, as a notice's card says it. */
 	const details = $derived(
-		[event.value.author, formatDateTime(locale, event.postedAt)].filter(Boolean).join(' · ')
+		[
+			event.value.author,
+			formatDateTime(locale, event.postedAt),
+			event.editedAt ? t.edited : undefined
+		]
+			.filter(Boolean)
+			.join(' · ')
 	);
 	let card = $state<HTMLElement>();
 	let confirming = $state(false);
@@ -86,8 +92,11 @@
 		<Icon name="image" class="size-4" />{t.open} ({event.value.photos.length})
 	</a>
 	<p class="text-sm text-muted">{t.untilShort(until)}</p>
-	{#if app.canDeleteEvent(event)}
+	{#if app.canChangeEvent(event)}
 		<div class="-ml-3 flex flex-wrap gap-2">
+			<a class={button.quiet} href={appPath(locale, 'event/edit', { id: event.id })}>
+				<Icon name="pencil" class="size-4" />{t.edit}
+			</a>
 			<button class={button.danger} type="button" onclick={() => (confirming = true)}>
 				<Icon name="trash" class="size-4" />{t.remove}
 			</button>

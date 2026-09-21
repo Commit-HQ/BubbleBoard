@@ -114,7 +114,7 @@ export async function events(db: D1Database, viewer: Identity) {
 	const [visible, params] = visibleClassrooms(viewer);
 	const { results } = await db
 		.prepare(
-			`SELECT id,classroom_id AS classroom,teacher_id AS teacher,content,event_key AS eventKey,posted_at AS postedAt,expires_at AS expiresAt FROM events WHERE posted_at IS NOT NULL AND expires_at>? AND classroom_id IN(${visible}) ORDER BY posted_at DESC`
+			`SELECT id,classroom_id AS classroom,teacher_id AS teacher,content,event_key AS eventKey,posted_at AS postedAt,edited_at AS editedAt,expires_at AS expiresAt FROM events WHERE posted_at IS NOT NULL AND expires_at>? AND classroom_id IN(${visible}) ORDER BY posted_at DESC`
 		)
 		.bind(Date.now(), ...params)
 		.all<EventRecord>();
@@ -156,8 +156,13 @@ async function editable(db: D1Database, staff: Staff, id: string, draft = false)
 		}>();
 	if (!row || row.expiresAt <= Date.now()) error(404, 'not-found');
 	await checkClassrooms(db, staff, [row.classroom]);
-	if (draft ? row.credential !== staff.credential : !staff.admin && row.teacher !== staff.teacher)
-		error(403, 'forbidden');
+	// An event still being prepared belongs to the one card preparing it, photos and all. Once it's up it
+	// belongs to whoever may change it: its author, or any admin, as a notice does.
+	const own =
+		draft && row.postedAt === null
+			? row.credential === staff.credential
+			: staff.admin || row.teacher === staff.teacher;
+	if (!own) error(403, 'forbidden');
 	return row;
 }
 export async function uploadEventFile(
@@ -168,8 +173,10 @@ export async function uploadEventFile(
 	file: string,
 	bytes: Uint8Array<ArrayBuffer>
 ) {
-	const row = await editable(db, staff, id, true);
-	if (row.postedAt !== null) error(409, 'stale');
+	// Photos are uploaded before the event names them, both for the first publication and for a change that
+	// adds some. Until a change names one in `event_files` nobody can read it, and an object no record names
+	// is reclaimed by the daily cleanup (storage.ts).
+	await editable(db, staff, id, true);
 	await putObject(db, store, `events/${id}/${file}`, bytes);
 }
 export async function publishEvent(
@@ -201,6 +208,75 @@ export async function publishEvent(
 			.bind(content, key, now, now + days * day, id, now)
 	]);
 	return { published: !!result.at(-1)?.meta.changes, classroom: row.classroom };
+}
+/**
+ * Changes an event that's up: its words, how long it stays, and which photos it holds. The photos it keeps
+ * are left exactly as they were published, with the consent of that day sealed into them; the photos it
+ * leaves out go on their way out with their rows, and the ones it adds were uploaded first, under the
+ * event's own key, and it must keep at least one. `added` carries the catalog and consent revisions the device prepared those new photos
+ * against, and is required as soon as the change brings any: a change that only rewrites words or drops
+ * photos depends on no consent at all.
+ */
+export async function changeEvent(
+	db: D1Database,
+	store: ObjectStore,
+	staff: Staff,
+	id: string,
+	content: string,
+	files: string[],
+	days: number,
+	added?: { catalog: number; consent: number }
+) {
+	const row = await editable(db, staff, id);
+	if (row.postedAt === null) error(404, 'not-found');
+	// An event is its photos: one that keeps none is deleted instead, which takes its bytes with it.
+	if (!files.length) error(400, 'invalid');
+	const held = await db
+		.prepare('SELECT id FROM event_files WHERE event_id=?')
+		.bind(id)
+		.all<{ id: string }>();
+	const kept = new Set(held.results.map((file) => file.id));
+	const coming = files.filter((file) => !kept.has(file));
+	// Only a change that brings photos is held to the revisions, and it can't be made without them.
+	const revisions = coming.length ? (added ?? error(400, 'invalid')) : undefined;
+	// A failed R2 put can leave a counted object; HEAD every new file before the atomic commit.
+	const stored = await Promise.all(coming.map((file) => store.bucket.head(`events/${id}/${file}`)));
+	if (stored.some((object) => !object)) error(409, 'stale');
+	const now = Date.now();
+	const result = await transaction(db, [
+		// `event_publish` compares the revisions only as an event first goes up, so a change that brings new
+		// photos compares them here instead: they were covered against a roster and a set of choices, and a
+		// parent who changed their mind meanwhile must not have their child published under the old answer.
+		// As in `syncProjections`, the guard stays unscoped so it reaches a row, and writes each clock back
+		// unchanged; leaving `revision` empty fails the whole batch as stale (database.ts).
+		...(revisions
+			? [
+					db
+						.prepare(
+							`UPDATE photo_clock SET revision=CASE WHEN (SELECT revision FROM installation)=?1
+							AND ?2=(SELECT revision FROM photo_clock WHERE classroom_id=?3) THEN revision ELSE NULL END`
+						)
+						.bind(revisions.catalog, revisions.consent, row.classroom)
+				]
+			: []),
+		...coming.map((file) =>
+			db.prepare('INSERT INTO event_files(event_id,id) VALUES(?,?)').bind(id, file)
+		),
+		// The photos the change leaves out go on their way out with their rows (`event_files_leaving`).
+		db
+			.prepare(
+				'DELETE FROM event_files WHERE event_id=? AND id NOT IN(SELECT value FROM json_each(?))'
+			)
+			.bind(id, JSON.stringify(files)),
+		// Its days count from when it went up, as a changed notice's do.
+		db
+			.prepare(
+				'UPDATE events SET content=?,edited_at=?,expires_at=? WHERE id=? AND posted_at IS NOT NULL AND expires_at>?'
+			)
+			.bind(content, now, row.postedAt + days * day, id, now)
+	]);
+	await deleteMarked(db, store.bucket);
+	return !!result.at(-1)?.meta.changes;
 }
 export async function eventFile(
 	db: D1Database,

@@ -25,6 +25,7 @@ export function explorePath(locale: Locale, role: ExploreRole) {
 export type AppPage =
 	| 'event'
 	| 'event/new'
+	| 'event/edit'
 	| 'meetings'
 	| 'messages'
 	| 'setup'

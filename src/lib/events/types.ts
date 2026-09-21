@@ -14,6 +14,8 @@ export type EventRecord = {
 	content: string;
 	eventKey: string;
 	postedAt: number;
+	/** When it was last changed after it went up, or nothing if it never was. */
+	editedAt: number | null;
 	expiresAt: number;
 };
 /** One photo of an event's gallery, with the few words a teacher may write under it. */

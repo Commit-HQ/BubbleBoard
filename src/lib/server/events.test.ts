@@ -9,6 +9,7 @@ import {
 	startEvent,
 	uploadEventFile,
 	publishEvent,
+	changeEvent,
 	events,
 	eventFile,
 	removeEvent
@@ -143,6 +144,86 @@ describe('events publication', () => {
 			['a', 'parent', 2],
 			['b', 'form', 0]
 		]);
+	});
+	it('lets the author and an admin change an event, and nobody else', async () => {
+		const { db, staff, family, store } = await setup();
+		const snapshot = await consents(db, staff, 'group');
+		await startEvent(db, staff, 'event', 'group', snapshot.catalog, snapshot.revision);
+		await uploadEventFile(db, store, staff, 'event', 'file', new Uint8Array([1]));
+		await publishEvent(db, store, staff, 'event', 'content', 'key', ['file'], 30);
+		const stranger: Staff = { ...staff, admin: false, teacher: 'other', credential: 'theirs' };
+		await db.prepare("INSERT INTO teachers VALUES('other',0,'profile')").run();
+		await db.prepare("INSERT INTO teacher_classrooms VALUES('other','group')").run();
+		await expect(
+			changeEvent(db, store, stranger, 'event', 'changed', ['file'], 30)
+		).rejects.toMatchObject({ status: 403 });
+		await expect(
+			uploadEventFile(db, store, stranger, 'event', 'theirs', new Uint8Array([2]))
+		).rejects.toMatchObject({ status: 403 });
+		expect(await changeEvent(db, store, staff, 'event', 'changed', ['file'], 30)).toBe(true);
+		expect(
+			await changeEvent(db, store, { ...staff, teacher: 'other' }, 'event', 'again', ['file'], 30)
+		).toBe(true);
+		const [record] = await events(db, family('a'));
+		expect(record.content).toBe('again');
+		expect(record.editedAt).toEqual(expect.any(Number));
+		expect(record.expiresAt).toBe(record.postedAt + 30 * 86400000);
+	});
+	it('adds photos under the revisions they were prepared against, and drops the ones left out', async () => {
+		const { db, staff, family, store, objects } = await setup();
+		const snapshot = await consents(db, staff, 'group');
+		await startEvent(db, staff, 'event', 'group', snapshot.catalog, snapshot.revision);
+		await uploadEventFile(db, store, staff, 'event', 'first', new Uint8Array([1]));
+		await publishEvent(db, store, staff, 'event', 'content', 'key', ['first'], 30);
+		const against = (s: { catalog: number; revision: number }) => ({
+			catalog: s.catalog,
+			consent: s.revision
+		});
+		// A photo the change names but nobody uploaded is refused, and an id already held needs no upload.
+		await expect(
+			changeEvent(db, store, staff, 'event', 'content', ['first', 'ghost'], 30, against(snapshot))
+		).rejects.toMatchObject({ status: 409 });
+		await uploadEventFile(db, store, staff, 'event', 'second', new Uint8Array([2]));
+		// A parent changes their mind while the new photo is being prepared, so the change is refused whole.
+		await saveConsent(db, family('a'), 'child', 0, 'choice');
+		await expect(
+			changeEvent(db, store, staff, 'event', 'changed', ['first', 'second'], 30, against(snapshot))
+		).rejects.toMatchObject({ status: 409 });
+		expect((await db.prepare('SELECT id FROM event_files').all()).results).toEqual([
+			{ id: 'first' }
+		]);
+		expect((await events(db, family('a')))[0].content).toBe('content');
+		// Prepared again against the consent as it stands now, the same photo goes up and the first comes off.
+		const current = await consents(db, staff, 'group');
+		expect(
+			await changeEvent(db, store, staff, 'event', 'changed', ['second'], 30, against(current))
+		).toBe(true);
+		expect((await db.prepare('SELECT id FROM event_files').all()).results).toEqual([
+			{ id: 'second' }
+		]);
+		expect([...objects.keys()]).toEqual(['events/event/second']);
+		// The guard writes each clock back as it was, so the next change may be prepared against the same one.
+		expect(await consents(db, staff, 'group')).toMatchObject(current);
+		await expect(eventFile(db, store, family('a'), 'event', 'first')).rejects.toMatchObject({
+			status: 404
+		});
+	});
+	it('refuses a change to an event that is gone and one that keeps no photos', async () => {
+		const { db, staff, store } = await setup();
+		const snapshot = await consents(db, staff, 'group');
+		await startEvent(db, staff, 'event', 'group', snapshot.catalog, snapshot.revision);
+		await uploadEventFile(db, store, staff, 'event', 'file', new Uint8Array([1]));
+		await expect(
+			changeEvent(db, store, staff, 'event', 'changed', ['file'], 30)
+		).rejects.toMatchObject({ status: 404 });
+		await publishEvent(db, store, staff, 'event', 'content', 'key', ['file'], 30);
+		await expect(changeEvent(db, store, staff, 'event', 'changed', [], 30)).rejects.toMatchObject({
+			status: 400
+		});
+		await db.prepare('UPDATE events SET expires_at=1 WHERE id=?').bind('event').run();
+		await expect(
+			changeEvent(db, store, staff, 'event', 'changed', ['file'], 30)
+		).rejects.toMatchObject({ status: 404 });
 	});
 	it('rejects catalog races and missing R2 bytes; expires staged and published data', async () => {
 		const { db, staff, family, store, objects } = await setup();

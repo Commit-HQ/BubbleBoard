@@ -13,6 +13,7 @@
 		locale,
 		classrooms,
 		locked,
+		from,
 		description,
 		classroom = $bindable(),
 		title = $bindable(),
@@ -24,6 +25,8 @@
 		classrooms: { id: string; name: string }[];
 		/** Whether photos are labelled already, which ties the event to its classroom. */
 		locked: boolean;
+		/** When the event went up, so a change counts its days from then rather than from today. */
+		from?: number;
 		/** The words written so far, which come back when the teacher returns to this step. */
 		description: NoticeDocument;
 		classroom: string;
@@ -88,5 +91,5 @@
 		/>
 	</div>
 
-	<DaysChoice {locale} legend={e.days} bind:days />
+	<DaysChoice {locale} legend={e.days} {from} bind:days />
 </div>

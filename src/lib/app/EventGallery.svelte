@@ -131,9 +131,15 @@
 	const until = $derived(
 		new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(event.expiresAt)
 	);
-	/** Who put the event up and when, as a notice's card says it. */
+	/** Who put the event up and when, and whether it was changed since, as a notice's card says it. */
 	const details = $derived(
-		[event.value.author, formatDateTime(locale, event.postedAt)].filter(Boolean).join(' · ')
+		[
+			event.value.author,
+			formatDateTime(locale, event.postedAt),
+			event.editedAt ? t.edited : undefined
+		]
+			.filter(Boolean)
+			.join(' · ')
 	);
 </script>
 
@@ -220,7 +226,10 @@
 		<button type="button" class={button.primary} disabled={tooOld || task.busy} onclick={saveAll}>
 			<Icon name="download" class="size-4" />{photos.length > 1 ? t.downloadAll : t.download}
 		</button>
-		{#if app.canDeleteEvent(event)}
+		{#if app.canChangeEvent(event)}
+			<a class={button.quiet} href={appPath(locale, 'event/edit', { id: event.id })}>
+				<Icon name="pencil" class="size-4" />{t.edit}
+			</a>
 			<button type="button" class={button.danger} onclick={() => (confirming = true)}>
 				<Icon name="trash" class="size-4" />{t.remove}
 			</button>

@@ -33,8 +33,13 @@
 	import { prepareEditorImage } from '$lib/events/images';
 	import { errorMessage, formatDay, messages, type Locale } from '$lib/i18n';
 	import { maxEventPhotoBytes, maxEventPhotos } from '$lib/events/limits';
-	import { maxEventPhotoText } from '$lib/events/types';
-	import type { NoticeDocument } from '$lib/notices';
+	import {
+		maxEventPhotoText,
+		type EventContent,
+		type EventPhoto,
+		type OpenEvent
+	} from '$lib/events/types';
+	import { day, type NoticeDocument } from '$lib/notices';
 	import type { EventDraft } from '$lib/events/publishing';
 	import { nextSticker, type Sticker } from '$lib/events/stickers';
 	import { appPath } from '$lib/paths';
@@ -53,6 +58,11 @@
 	// photos one at a time, then the review that publishes them. Photos are opened, covered and packaged on
 	// this device, and the unfinished event waits on it too, so half an hour of work survives a phone call
 	// (src/lib/events/draft.ts, docs/events-editor.md).
+	//
+	// With `event` the same steps change an event that's already up. Its photos are never opened again: they
+	// keep the covers and the consent they were published with, and a change may only reword one or take it
+	// off. Photos added now go through the whole of it, against the consent as it stands today. A change
+	// isn't kept on the device, so it's made in one sitting.
 	type Photo = {
 		id: string;
 		blob: Blob;
@@ -65,19 +75,42 @@
 		detection: 'pending' | 'ready' | 'failed' | 'manual';
 		generation: number;
 	};
-	let { locale }: { locale: Locale } = $props();
+	let { locale, event }: { locale: Locale; event?: OpenEvent } = $props();
 	const app = getApp();
+	/**
+	 * What the steps start with: the event as it is, or a new event's defaults. The edit page mounts a new
+	 * editor for each event, and reading the event in here, once, tells Svelte that's intended. Its days
+	 * count from when it went up, as a notice's do.
+	 */
+	function starting() {
+		return {
+			editing: !!event,
+			classroom: event?.classroom ?? (app.myClassrooms.length === 1 ? app.myClassrooms[0].id : ''),
+			title: event?.value.title ?? '',
+			date: event?.value.date ?? new Date().toLocaleDateString('en-CA'),
+			days: event ? Math.round((event.expiresAt - event.postedAt) / day) : 30,
+			description: event?.value.description ?? { type: 'doc', content: [] },
+			kept: event?.value.photos ?? [],
+			from: event?.postedAt
+		};
+	}
+	const start = starting();
+	const editing = start.editing;
 	const t = $derived(messages[locale].app.eventEditor);
 	const e = $derived(messages[locale].app.events);
 	const a = $derived(messages[locale].app.actions);
 	const limit = $derived(t.limit(maxEventPhotos, maxEventPhotoBytes / (1024 * 1024)));
 
 	let step = $state<'details' | 'photos' | 'review'>('details');
-	let title = $state(''),
-		date = $state(new Date().toLocaleDateString('en-CA')),
-		days = $state(30);
+	let title = $state(start.title),
+		date = $state(start.date),
+		days = $state(start.days);
 	/** The event's words, kept here while the first step's editor is unmounted. */
-	let description = $state.raw<NoticeDocument>({ type: 'doc', content: [] });
+	let description = $state.raw<NoticeDocument>(start.description);
+	/** The photos the event holds already, which a change may reword or take off, and nothing else. */
+	let kept = $state.raw<EventPhoto[]>(start.kept);
+	/** Which of those the teacher is taking off, while they answer whether they mean it. */
+	let takingOff = $state('');
 	let details = $state<ReturnType<typeof EventDetails>>();
 	let editorReady = $state(false);
 	let draft = $state.raw<EventDraft>();
@@ -85,7 +118,7 @@
 	let progress = $state(0),
 		sending = $state(false);
 	let viewer = $state('base');
-	let classroom = $state(app.myClassrooms.length === 1 ? app.myClassrooms[0].id : '');
+	let classroom = $state(start.classroom);
 	let photos = $state.raw<Photo[]>([]);
 	let current = $state('');
 	/** Which of the photos being opened this one is, so a phone full of photos says how far it's got. */
@@ -109,8 +142,8 @@
 	let largeView = $state<HTMLElement>();
 	let leaving = $state<URL>();
 	let leaveAnyway = false;
-	/** The card this device is connected with, which the kept event is tied to. */
-	const credential = app.myCredential;
+	/** The card this device is connected with, which the kept event is tied to. A change is never kept. */
+	const credential = editing ? undefined : app.myCredential;
 	/** The unfinished event this device kept, while the teacher chooses whether to go on with it. */
 	let found = $state.raw<SavedDraft>();
 	/** Whether everything done so far is on the device, so leaving the page loses nothing. */
@@ -126,8 +159,10 @@
 	const nameOf = (child: string) => children.find((c) => c.id === child)?.name ?? '';
 	const reviewedCount = $derived(photos.filter((p) => p.history.present.reviewed).length);
 	const allReviewed = $derived(
-		photos.length > 0 && reviewedCount === photos.length && !loading && !detecting
+		(photos.length > 0 || editing) && reviewedCount === photos.length && !loading && !detecting
 	);
+	/** How many photos the event would hold if it were saved now, which must never be none. */
+	const total = $derived(kept.length + photos.length);
 	const previewsPending = $derived(step === 'review' && photos.some((p) => !previews[p.id]));
 	const previewsFailed = $derived(photos.some((p) => previews[p.id]?.failed));
 	const large = $derived(photos.find((p) => p.id === enlarged));
@@ -166,6 +201,8 @@
 			}
 		}
 	});
+	// The photos already up stay open while they're being looked at here, as they do in the gallery.
+	$effect(() => (event ? app.showEventPictures(event) : undefined));
 	// The unfinished event, kept on the device as the teacher works and put back when the page opens again.
 	// Saving is best effort: a write that doesn't make it only leaves the page worth a warning before leaving.
 	onMount(async () => {
@@ -430,10 +467,7 @@
 		const files = Array.from(input.files ?? []);
 		input.value = '';
 		if (!files.length) return;
-		if (
-			files.length + photos.length > maxEventPhotos ||
-			files.some((f) => f.size > maxEventPhotoBytes)
-		) {
+		if (files.length + total > maxEventPhotos || files.some((f) => f.size > maxEventPhotoBytes)) {
 			error = limit;
 			return;
 		}
@@ -525,11 +559,17 @@
 	function startPreview() {
 		original = false;
 		progress = 0;
+		// A change that brings no photos has nothing to prepare or to check, so it goes straight to review.
+		if (!photos.length) {
+			step = 'review';
+			return;
+		}
 		return task.run(async () => {
 			const prepared = await app.prepareEvent(
 				classroom,
 				photos.map((p) => ({ id: p.id, blob: p.blob, regions: p.history.present.regions })),
-				(n) => (progress = n)
+				(n) => (progress = n),
+				event
 			);
 			if (disposed) return;
 			if (!allReviewed) throw new Error('stale');
@@ -538,34 +578,35 @@
 		});
 	}
 	function publish() {
-		if (!draft || !title.trim() || !date) return;
-		const publishing = draft;
+		if ((!draft && !editing) || !title.trim() || !date || !total) return;
+		const prepared = draft;
 		sending = true;
 		progress = 0;
+		// The photos already up keep their place and their size; the ones prepared now follow them.
+		const value: EventContent = {
+			version: 1,
+			title: title.trim(),
+			description,
+			date,
+			photos: [
+				...kept.map((k) => ({ ...k, text: k.text?.trim() || undefined })),
+				...(prepared?.files ?? []).map(({ id, width, height }) => ({
+					id,
+					width,
+					height,
+					text: photos.find((p) => p.id === id)?.text.trim() || undefined
+				}))
+			]
+		};
 		return task
 			.run(async () => {
-				await app.publishEvent(
-					publishing,
-					{
-						version: 1,
-						title: title.trim(),
-						description,
-						date,
-						photos: publishing.files.map(({ id, width, height }) => ({
-							id,
-							width,
-							height,
-							text: photos.find((p) => p.id === id)?.text.trim() || undefined
-						}))
-					},
-					days,
-					(n) => (progress = n)
-				);
+				if (event) await app.changeEvent(event, value, days, prepared, (n) => (progress = n));
+				else if (prepared) await app.publishEvent(prepared, value, days, (n) => (progress = n));
 				if (disposed) return;
 				for (const p of photos) revoke(p.url);
 				photos = [];
 				draft = undefined;
-				await clearDraft();
+				if (credential) await clearDraft();
 				await goto(appPath(locale));
 			})
 			.finally(() => (sending = false));
@@ -642,7 +683,10 @@
 			accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
 			multiple
 			onchange={addPhotos}
-			disabled={!classroom || loading || !!detecting || photos.length >= maxEventPhotos}
+			disabled={!classroom ||
+				loading ||
+				!!detecting ||
+				photos.length + kept.length >= maxEventPhotos}
 		/>
 	</label>
 {/snippet}
@@ -717,7 +761,8 @@
 				bind:this={details}
 				{locale}
 				classrooms={app.myClassrooms}
-				locked={photos.length > 0}
+				locked={editing || photos.length > 0}
+				from={start.from}
 				{description}
 				bind:classroom
 				bind:title
@@ -735,8 +780,55 @@
 			</button>
 		{:else if step === 'photos'}
 			<p class="flex items-start gap-2 text-sm text-muted">
-				<Icon name="info" class="mt-0.5 size-4 shrink-0" />{t.local}
+				<Icon name="info" class="mt-0.5 size-4 shrink-0" />{editing ? t.localChange : t.local}
 			</p>
+
+			{#if event && kept.length}
+				<!-- The photos already up, which are never opened again: only their words change, or they go. -->
+				<div class="grid gap-3">
+					<div>
+						<h2 class="text-2xl">{t.published}</h2>
+						<p class="mt-1 text-sm text-muted">{t.publishedHint}</p>
+					</div>
+					<ul class="grid gap-3 sm:grid-cols-2" aria-label={t.published}>
+						{#each kept as item, index (item.id)}
+							<li class="{surface} grid gap-3">
+								{#await app.eventPicture(event, item.id)}
+									<p class="text-sm font-semibold text-muted" role="status">{e.loading}</p>
+								{:then picture}
+									<img
+										src={picture.url}
+										alt={t.photo(index + 1, kept.length)}
+										class="w-full rounded-2xl"
+									/>
+								{:catch}
+									<p class="text-sm text-muted">{e.failed}</p>
+								{/await}
+								<label class={field.label}>
+									<span class={field.name}>{t.caption}</span>
+									<input
+										class={field.input}
+										maxlength={maxEventPhotoText}
+										value={item.text ?? ''}
+										placeholder={t.captionPlaceholder}
+										oninput={(written) => {
+											const words = written.currentTarget.value;
+											kept = kept.map((k) => (k.id === item.id ? { ...k, text: words } : k));
+										}}
+									/>
+								</label>
+								<button
+									type="button"
+									class="{button.quiet} justify-self-start"
+									onclick={() => (takingOff = item.id)}
+								>
+									<Icon name="trash" class="size-4" />{t.removePublished}
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
 
 			{#if !photos.length}
 				<div class="{surface} grid justify-items-start gap-4">
@@ -1020,15 +1112,17 @@
 
 			{@render busy()}
 
+			{#if editing && !total}<p class={alert} role="alert">{t.keepOne}</p>{/if}
+
 			<div class="flex flex-wrap gap-3 border-t border-ink/10 pt-5">
-				{#if draft}
+				{#if draft || editing}
 					<button
 						type="button"
 						class={button.primary}
-						disabled={previewsPending || previewsFailed || task.error === 'stale'}
+						disabled={previewsPending || previewsFailed || task.error === 'stale' || !total}
 						onclick={publish}
 					>
-						<Icon name="check" class="size-4" />{sending ? a.working : e.publish}
+						<Icon name="check" class="size-4" />{sending ? a.working : editing ? e.save : e.publish}
 					</button>
 				{/if}
 				<button type="button" class={button.secondary} onclick={backToPhotos}>
@@ -1047,6 +1141,22 @@
 			danger
 			onconfirm={async () => removePhoto()}
 			onclose={() => (removing = false)}
+		/>
+	{/if}
+
+	{#if takingOff}
+		{@const id = takingOff}
+		<ConfirmDialog
+			{locale}
+			title={t.removePublished}
+			copy={t.removePublishedCopy}
+			confirmLabel={t.removePublished}
+			danger
+			onconfirm={async () => {
+				kept = kept.filter((item) => item.id !== id);
+				takingOff = '';
+			}}
+			onclose={() => (takingOff = '')}
 		/>
 	{/if}
 

@@ -89,6 +89,7 @@ describe('event privacy', () => {
 				classroom: createId(),
 				teacher: null,
 				postedAt: 0,
+				editedAt: null,
 				expiresAt: 0,
 				eventKey: await encryptData({ key: content.raw }, group.key, {
 					purpose: 'event-key',

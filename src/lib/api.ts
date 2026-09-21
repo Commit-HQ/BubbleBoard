@@ -220,7 +220,7 @@ async function failure(response: Response) {
  * JSON that comes back.
  */
 export async function request<T = void>(
-	method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+	method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
 	path: string,
 	body?: unknown,
 	extra: Record<string, string> = {}

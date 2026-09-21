@@ -315,10 +315,17 @@ export class App {
 			if (version === this.#connectionVersion) this.eventsError = errorCode(cause);
 		}
 	}
+	/**
+	 * Seals photos for an event, each face covered or granted to the families entitled to it, against the
+	 * consent as it stands now. `into` prepares them for an event that's already up, under its own id and
+	 * content key, so a photo added later carries the consent of the day it was added and the photos already
+	 * published are left exactly as they are.
+	 */
 	async prepareEvent(
 		classroom: string,
 		photos: { id: string; blob: Blob; regions: Region[] }[],
-		progress: (n: number) => void
+		progress: (n: number) => void,
+		into?: OpenEvent
 	): Promise<EventDraft> {
 		await this.refresh({ now: true });
 		await this.syncPhotoChildren(classroom);
@@ -329,13 +336,15 @@ export class App {
 		if (snapshot.catalog !== this.catalog.revision) throw new ApiError(409, 'stale');
 		const children = this.catalog.children.filter((c) => c.classroom === classroom);
 		const shared = await sharing(children, snapshot.rows, (f) => this.messageKey(f));
-		const id = createId(),
-			key = await createContentKey();
-		const envelope = await encryptData(
-			{ key: key.raw },
-			byId(this.myClassrooms, classroom).groupKey,
-			{ purpose: 'event-key', event: id }
-		);
+		const id = into?.id ?? createId();
+		const made = into ? undefined : await createContentKey();
+		const key = made?.key ?? into!.key;
+		const envelope = made
+			? await encryptData({ key: made.raw }, byId(this.myClassrooms, classroom).groupKey, {
+					purpose: 'event-key',
+					event: id
+				})
+			: undefined;
 		const files = [];
 		let total = 0;
 		for (const photo of photos) {
@@ -344,7 +353,7 @@ export class App {
 				photo.id,
 				photo.blob,
 				photo.regions,
-				key.key,
+				key,
 				this.#staff.staffKey,
 				children,
 				shared,
@@ -358,7 +367,7 @@ export class App {
 		}
 		return {
 			id,
-			key: key.key,
+			key,
 			envelope,
 			catalog: snapshot.catalog,
 			consent: snapshot.revision,
@@ -420,6 +429,46 @@ export class App {
 		);
 		await this.loadEvents();
 	}
+	/**
+	 * Changes an event that's up, sealed again under the key it was published with: its words, how long it
+	 * stays, and the photos it holds now, which are the ones it keeps and any `added` prepares. The photos it
+	 * keeps are never sealed again, so they hold the consent of the day they went up. The name on the event
+	 * stays whoever published it, so an admin changing another teacher's event doesn't take it over, exactly
+	 * as a changed notice keeps its author. Nobody is notified again.
+	 */
+	async changeEvent(
+		event: OpenEvent,
+		value: EventContent,
+		days: number,
+		added: EventDraft | undefined,
+		progress: (n: number) => void
+	) {
+		const author = event.value.author;
+		const content = await encryptData(author ? { ...value, author } : value, event.key, {
+			purpose: 'event-content',
+			event: event.id
+		});
+		if (envelopeSize(content)! > maxEventContentBytes) throw new CodedError('event-too-long');
+		for (const [index, file] of (added?.files ?? []).entries()) {
+			await this.#signedIn(() =>
+				request('PUT', `/api/events/${event.id}/files/${file.id}`, file.sealed)
+			).catch((cause) => {
+				if (!(cause instanceof ApiError && (cause.code === 'stored' || cause.code === 'stale')))
+					throw cause;
+			});
+			progress(index + 1);
+		}
+		await this.#signedIn(() =>
+			request('PATCH', `/api/events/${event.id}`, {
+				content,
+				files: value.photos.map((photo) => photo.id),
+				days,
+				// Only a change that brings photos says what consent they were prepared against.
+				...(added ? { catalog: added.catalog, consent: added.consent } : {})
+			})
+		);
+		await this.loadEvents();
+	}
 	/** One of an event's photos, composed for whoever holds this card, and kept while the event is open. */
 	eventPicture(event: OpenEvent, photo: string) {
 		return this.#picture(eventFilePath(event.id, photo), (sealed) =>
@@ -452,7 +501,8 @@ export class App {
 			this.#keepPictures();
 		};
 	}
-	canDeleteEvent(event: OpenEvent) {
+	/** Whether this device may change or delete an event: its author's own, or any for an admin. */
+	canChangeEvent(event: OpenEvent) {
 		return this.status === 'staff' && (this.admin || event.teacher === this.me?.id);
 	}
 	async deleteEvent(event: OpenEvent) {
