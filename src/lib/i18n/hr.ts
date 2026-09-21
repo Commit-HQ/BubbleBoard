@@ -249,6 +249,8 @@ export const hr = {
 			review: 'Pregled i objava',
 			ready: 'Pregledaj pokrivenost svih lica i pogled odabrane obitelji prije objave.',
 			failed: 'Fotografiju nije moguće otvoriti.',
+			tooOld:
+				'Softver ovog uređaja prestar je za prikaz fotografija s događaja. Ažurirajte ga ili otvorite BubbleBoard na novijem mobitelu ili računalu.',
 			retry: 'Pokušaj ponovno',
 			loading: 'Otvaramo fotografiju…'
 		},

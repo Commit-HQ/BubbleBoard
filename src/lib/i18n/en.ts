@@ -263,6 +263,8 @@ export const en = {
 			review: 'Review and publish',
 			ready: 'Check all covered faces and the selected family’s view before publishing.',
 			failed: 'Unable to open this photo.',
+			tooOld:
+				'This device’s software is too old to show event photos. Update it, or open BubbleBoard on a newer phone or a computer.',
 			retry: 'Try again',
 			loading: 'Opening the photo…'
 		},

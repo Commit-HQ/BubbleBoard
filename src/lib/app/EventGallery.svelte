@@ -28,6 +28,9 @@
 		retry = $state(0),
 		viewing = $state(false),
 		confirming = $state(false);
+	// A photo is put together on a canvas that iPhones and iPads before iOS 16.4 don't have; trying again
+	// can't help there, so say what will.
+	const tooOld = typeof OffscreenCanvas === 'undefined';
 	const photos = $derived(event.value.photos);
 	const shown = $derived(photos[index]);
 	// Kept by the event's ID: a refreshed board hands over the same event as a new object, and that must not
@@ -111,10 +114,14 @@
 		<p class="font-semibold text-muted" role="status">{t.loading}</p>
 	{:else if failed}
 		<div class="grid justify-items-start gap-3">
-			<p class={alert} role="alert">{t.failed}</p>
-			<button type="button" class={button.secondary} onclick={() => retry++}>
-				<Icon name="refresh" class="size-4" />{t.retry}
-			</button>
+			{#if tooOld}
+				<p class={alert} role="alert">{t.tooOld}</p>
+			{:else}
+				<p class={alert} role="alert">{t.failed}</p>
+				<button type="button" class={button.secondary} onclick={() => retry++}>
+					<Icon name="refresh" class="size-4" />{t.retry}
+				</button>
+			{/if}
 		</div>
 	{:else if picture}
 		<figure class="grid gap-2">
