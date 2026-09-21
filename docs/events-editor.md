@@ -2,7 +2,7 @@
 
 Status: the first-version workflow was implemented on 2026-09-20 and its three steps were brought into the rest of the app's shapes and words on 2026-09-20; physical iOS/Android testing and the pilot are still outstanding. Drafts exist only in the open session.
 
-The editor includes local detection in multiple orientations, manual covers, three stickers, child assignment, undo/redo and review. One switcher, under the photo while marking it and above it in the review, shows the final photo or the original. The name of each named child is written on their cover, on this device only: names never enter a published photo. The family-card selector also includes the names of linked children. Parent settings, encrypted patches, publication, galleries, downloads and deletion are connected. See [format and security boundaries](events-format.md).
+The editor includes local detection in multiple orientations, manual covers, eighteen stickers, child assignment, undo/redo and review. One switcher, under the photo while marking it and above it in the review, shows the final photo or the original. The name of each named child is written on their cover, on this device only: names never enter a published photo. The family-card selector also includes the names of linked children. Parent settings, encrypted patches, publication, galleries, downloads and deletion are connected. See [format and security boundaries](events-format.md).
 
 ## Basic workflow
 
@@ -86,7 +86,7 @@ Per-photo undo/redo covers labels and geometry, not parent consent. Manual editi
 
 ## First-release scope and teacher testing
 
-Include detection, name assignment, a private identification crop, adding/moving/resizing covers, original view, undo/redo, gallery review and family previews. Three built-in stickers are available; choosing artwork is optional. A later sticker pack must not change the security mask.
+Include detection, name assignment, a private identification crop, adding/moving/resizing covers, original view, undo/redo, gallery review and family previews. Eighteen built-in stickers are available, and new covers take them in turn so a group photo isn't a wall of one face; choosing artwork is optional. A later sticker pack must not change the security mask.
 
 Defer filters, freeform text on photos, sticker rotation, identity recognition, copying face positions between photos and bulk approval of unreviewed photos.
 

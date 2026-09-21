@@ -35,7 +35,7 @@
 	import { maxEventPhotoText } from '$lib/events/types';
 	import type { NoticeDocument } from '$lib/notices';
 	import type { EventDraft } from '$lib/events/publishing';
-	import type { Sticker } from '$lib/events/stickers';
+	import { nextSticker, type Sticker } from '$lib/events/stickers';
 	import { appPath } from '$lib/paths';
 	import { errorCode } from '$lib/errors';
 	import Icon from '$lib/components/Icon.svelte';
@@ -299,7 +299,13 @@
 			viewCenter?.x,
 			viewCenter?.y
 		);
-		setHistory(commit(photo.history, [...edit.regions, region], region.id));
+		setHistory(
+			commit(
+				photo.history,
+				[...edit.regions, { ...region, sticker: nextSticker(edit.regions.length) }],
+				region.id
+			)
+		);
 		original = false;
 	}
 	function nameFace(child: string | null) {
@@ -369,7 +375,13 @@
 					history: additions.length
 						? commit(
 								p.history,
-								[...p.history.present.regions, ...additions],
+								[
+									...p.history.present.regions,
+									...additions.map((region, index) => ({
+										...region,
+										sticker: nextSticker(p.history.present.regions.length + index)
+									}))
+								],
 								p.history.present.selected ?? additions[0].id
 							)
 						: p.history
