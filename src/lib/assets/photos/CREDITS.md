@@ -22,3 +22,5 @@ magick bubbles-1280.avif -crop 1280x672+0+190 +repage -resize 1200x630 -strip -q
 ```
 
 Render photos with `src/lib/components/Photo.svelte`, which lists each photo by name. The credits above are also published with the site in `static/third-party-notices.txt`; update both when a photo changes.
+
+The screens of the app in `src/lib/assets/explore` show the same three photos, as the photos of a made-up event, so these credits cover them too.

@@ -24,7 +24,8 @@
 	} = $props();
 </script>
 
-<li>
+<!-- The list is a grid, whose rows would otherwise grow as wide as the longest line they cut short. -->
+<li class="min-w-0">
 	<a class="{listRow} {unread ? 'ring-2 ring-accent' : ''}" {href}>
 		<span
 			class="grid size-11 shrink-0 place-items-center rounded-2xl text-lg font-bold {unread

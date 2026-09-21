@@ -127,6 +127,8 @@ export const en = {
 	teachers: {
 		title: 'Made for teachers, too.',
 		copy: 'Share the day in a minute, from a phone or a computer. The app minds the details so you don’t have to.',
+		// The link to the teachers' walk through the app.
+		tour: 'See the app through a teacher’s eyes',
 		preview: {
 			title: 'Stickers stick themselves',
 			copy: 'Your phone finds the faces in your photos and covers them. You just say who’s who. Before it goes out, you see the gallery exactly as each family will.'
@@ -160,6 +162,132 @@ export const en = {
 			'BubbleBoard is made by Commit, a small group of developers who build free, open-source apps that solve everyday problems. Open source means anyone can see how they’re made.',
 		itTeam: 'Know someone good with computers?',
 		code: 'Everything they need is on GitHub.'
+	},
+	// The walk through the app (/explore/parents and /explore/teachers): one screen of the app a step, taken
+	// from a local installation with made-up names. `screen` is what the picture shows, for screen readers.
+	explore: {
+		title: 'Explore the app',
+		description:
+			'See what BubbleBoard looks like for parents and for teachers, one screen at a time, in a kindergarten that already uses it.',
+		// The landing page's section that leads here.
+		teaser: {
+			title: 'See it before you try it.',
+			copy: 'Walk through a kindergarten that already uses BubbleBoard, one screen at a time. No QR code needed.',
+			parents: 'See it as a parent',
+			teachers: 'See it as a teacher'
+		},
+		heading: 'Take a look',
+		headingAccent: 'inside the app.',
+		copy: 'A short walk through a kindergarten that already uses BubbleBoard. Choose who you are, then go step by step.',
+		roleLabel: 'Show the app for',
+		roles: { parents: 'Parents', teachers: 'Teachers' },
+		sample:
+			'The kindergarten, the names, and the messages are made up for this tour, and the photos show models.',
+		stepsLabel: 'Steps',
+		step: (number: number, total: number) => `Step ${number} of ${total}`,
+		previous: 'Previous',
+		next: 'Next',
+		// The last step of each walk leads to the other.
+		other: { parents: 'Now see it as a teacher', teachers: 'Now see it as a parent' },
+		parents: [
+			{
+				shot: 'parent-board',
+				title: 'Everything new, in one place',
+				copy: 'Open the app and you’re at your classroom’s notice board: photos from the latest event, notices from the teachers, and meeting times, with the newest on top.',
+				screen:
+					'The app’s home: a card with the family’s booked meeting, then the event “Bubble day in the park” with a photo of a girl blowing soap bubbles.'
+			},
+			{
+				shot: 'parent-poll',
+				title: 'Notices you can answer',
+				copy: 'One tap tells the teachers you’ve read a notice. When they need an answer from everyone, such as who’s coming on the trip, you answer right on the notice.',
+				screen:
+					'A yellow notice about a trip to the park, with a poll: “Yes, we’re coming” has 5 votes and “No, not this time” has 1. Below it, the notice is marked as seen.'
+			},
+			{
+				shot: 'parent-gallery',
+				title: 'Photos from their day',
+				copy: 'A heart marks the photos your child is in. A cheerful sticker covers the children whose families keep their faces private. Save the photos you love before they disappear from the app.',
+				screen:
+					'An event’s gallery with three photos, two of them marked with a heart, and a button that saves all the photos.'
+			},
+			{
+				shot: 'parent-consent',
+				title: 'Your child’s face, your choice',
+				copy: 'You decide whether other families in the classroom see your child’s face or a sticker, and you can change your mind at any time in Settings. You always see your own child.',
+				screen:
+					'Settings, with two choices for the child Ema Novak: “Only our family” and “Families in our classroom too”, which is chosen.'
+			},
+			{
+				shot: 'parent-messages',
+				title: 'Ask the teachers',
+				copy: 'A question just for the teachers gets its own private conversation. Other parents never see it.',
+				screen:
+					'A conversation called “Picking Ema up early on Thursday”: the parent asks, the teacher Ana Horvat answers, and the parent thanks her.'
+			},
+			{
+				shot: 'parent-meetings',
+				title: 'Book a meeting in a tap',
+				copy: 'When the teachers offer individual meetings, you pick a free time for your child. You see which times are taken, but not by whom.',
+				screen:
+					'Meeting times on Tuesday 29 September: some available, some booked, and one marked “Your meeting” for Ema Novak.'
+			}
+		],
+		teachers: [
+			{
+				shot: 'teacher-notice',
+				title: 'Post a notice in a minute',
+				copy: 'Write it, give it a paper colour as on the corkboard, then choose the classrooms and how long it stays up. Attach files or add a poll when you need one.',
+				screen:
+					'The new notice form: a pink notice about a parents’ evening with a bulleted list, the colour choices above it, and “Add a poll” below.'
+			},
+			{
+				shot: 'teacher-seen',
+				title: 'See who’s read it',
+				copy: 'Every notice shows which families have seen it and which haven’t yet. Poll answers are counted for you, and only teachers see who chose what.',
+				screen:
+					'The trip notice as a teacher sees it: each poll answer with the families that chose it, the two families without an answer, and “Seen by 6 of 8 families”.'
+			},
+			{
+				shot: 'teacher-faces',
+				title: 'Stickers stick themselves',
+				copy: 'Add an event’s photos, and your phone finds the faces and covers them. You just say who’s who. Nothing leaves your phone until you publish.',
+				screen:
+					'The photo editor: children lying on a rug with stickers over six faces, three of them named, and a list of children’s names to choose from.'
+			},
+			{
+				shot: 'teacher-preview',
+				title: 'Check it as any family',
+				copy: 'Before you publish, look at the gallery exactly as a family will: their own child uncovered, and the children whose families keep their faces private still under stickers.',
+				screen:
+					'The review step, previewing as the Novak family: the same photo with only two faces still covered by stickers.'
+			},
+			{
+				shot: 'teacher-messages',
+				title: 'Parents’ questions, each in its place',
+				copy: 'Every question arrives as its own conversation, with the child and the classroom beside it. Your kindergarten sets the hours when parents can write and how many inquiries a family has each month.',
+				screen:
+					'The messages list with three unread inquiries: a lost blue jacket, an allergy note for the trip, and picking Ema up early on Thursday.'
+			},
+			{
+				shot: 'teacher-meetings',
+				title: 'Meetings without the sign-up sheet',
+				copy: 'Put in a day and the hours you’re free, and the app splits them into times. Parents book for their child, and you see who’s coming when.',
+				screen:
+					'A teacher’s meeting times on Tuesday 29 September: four booked, each with a child’s name, and two still available.'
+			},
+			{
+				shot: 'teacher-classroom',
+				title: 'One QR code per family',
+				copy: 'An admin adds the children of each classroom and prints a QR code for every family. If one gets lost, replace it and the old code stops working.',
+				screen:
+					'The Bubbles classroom with 8 children, each with their family’s name, and buttons to add a child and replace QR codes.'
+			}
+		],
+		closing: {
+			title: 'Seen enough to try it?',
+			copy: 'Families open the app with the QR code from their kindergarten. If your kindergarten doesn’t have BubbleBoard yet, write to us and we’ll help you get going.'
+		}
 	},
 	footer: {
 		tagline: 'A little community. A lot of care.',

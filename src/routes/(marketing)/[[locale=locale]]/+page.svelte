@@ -1,12 +1,14 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
 	import shareImage from '$lib/assets/photos/share.jpg';
+	import ActionLink from '$lib/components/ActionLink.svelte';
 	import Bubble from '$lib/components/Bubble.svelte';
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
 	import IconTile from '$lib/components/IconTile.svelte';
 	import Photo from '$lib/components/Photo.svelte';
+	import Screenshot from '$lib/components/Screenshot.svelte';
 	import { locales, messages } from '$lib/i18n';
-	import { appPath, homePath } from '$lib/paths';
+	import { appPath, explorePath, homePath } from '$lib/paths';
 	import { absoluteUrl, contactEmail, repositoryUrl } from '$lib/project';
 	import type { PageProps } from './$types';
 
@@ -46,15 +48,12 @@
 	<p class="max-w-md text-lg text-muted">{copy}</p>
 {/snippet}
 
-{#snippet action(href: string, label: string, icon: IconName)}
+{#snippet tour(href: string, label: string)}
 	<a
-		class="inline-flex items-center gap-3 rounded-full bg-ink py-2 pr-2 pl-6 font-semibold text-white shadow-xl shadow-ink/30 hover:-translate-y-0.5 motion-safe:transition-transform"
+		class="mt-6 inline-flex min-h-11 items-center gap-2 font-semibold underline-offset-4 hover:underline"
 		{href}
 	>
-		{label}
-		<span class="grid size-9 shrink-0 place-items-center rounded-full bg-white text-ink">
-			<Icon name={icon} class="size-4" />
-		</span>
+		{label}<Icon name="arrowRight" class="size-4 shrink-0 text-accent" />
 	</a>
 {/snippet}
 
@@ -88,7 +87,7 @@
 			<p class="max-w-lg text-lg text-muted">{t.hero.copy}</p>
 			<!-- Families open the app with their card; kindergartens without BubbleBoard find the contact section. -->
 			<div class="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
-				{@render action(appPath(data.locale), t.hero.open, 'arrowRight')}
+				<ActionLink href={appPath(data.locale)} label={t.hero.open} icon="arrowRight" />
 				<a
 					class="flex items-center gap-2 font-semibold text-muted hover:text-ink"
 					href="#kindergartens"
@@ -139,6 +138,32 @@
 			{@render feature('bell', t.features.notifications)}
 			{@render feature('phone', t.features.devices)}
 		</ul>
+	</section>
+
+	<!-- The way into the walk through the app, apart from the hero so it doesn't crowd the main action. The phone
+	runs off the bottom of the card, which shows enough of the screen to invite a look. -->
+	<section
+		id="explore"
+		class="grid items-center gap-x-16 gap-y-10 overflow-hidden rounded-4xl glass bg-linear-135 from-accent/15 via-blush/10 to-apricot/15 px-6 pt-10 sm:px-12 sm:pt-14 lg:grid-cols-[1.1fr_0.9fr] lg:pt-0 lg:pl-16"
+		aria-labelledby="explore-title"
+	>
+		<div class="lg:py-16">
+			{@render intro('explore', t.explore.teaser.title, t.explore.teaser.copy)}
+			<div class="mt-9 flex flex-wrap items-center gap-3">
+				<ActionLink
+					href={explorePath(data.locale, 'parents')}
+					label={t.explore.teaser.parents}
+					icon="arrowRight"
+				/>
+				<a
+					class="inline-flex min-h-13 items-center rounded-full glass px-6 font-semibold hover:bg-white/75"
+					href={explorePath(data.locale, 'teachers')}>{t.explore.teaser.teachers}</a
+				>
+			</div>
+		</div>
+		<div class="h-80 justify-self-center lg:h-112 lg:pt-14">
+			<Screenshot name="parent-poll" locale={data.locale} alt={t.explore.parents[1].screen} />
+		</div>
 	</section>
 
 	<section id="how" class="grid gap-4 lg:grid-cols-2" aria-labelledby="how-title">
@@ -196,6 +221,7 @@
 	>
 		<div class="lg:pt-6">
 			{@render intro('teachers', t.teachers.title, t.teachers.copy)}
+			{@render tour(explorePath(data.locale, 'teachers'), t.teachers.tour)}
 		</div>
 		<ul class="grid gap-4 sm:grid-cols-2">
 			{@render feature('eye', t.teachers.preview)}
@@ -240,7 +266,7 @@
 		</ul>
 		<p class="mx-auto mt-6 max-w-xl text-muted">{t.kindergartens.hosting}</p>
 		<div class="mt-9">
-			{@render action(writeToUs, t.kindergartens.cta, 'mail')}
+			<ActionLink href={writeToUs} label={t.kindergartens.cta} icon="mail" />
 		</div>
 		<p class="mx-auto mt-10 max-w-xl text-sm text-muted">
 			{t.kindergartens.mission}

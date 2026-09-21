@@ -13,6 +13,14 @@ export function privacyPath(locale: Locale) {
 	return `${prefix(locale)}/privacy`;
 }
 
+/** Whose walk through the app a landing page shows (`/explore/parents`, `/en/explore/teachers`). */
+export const exploreRoles = ['parents', 'teachers'] as const;
+export type ExploreRole = (typeof exploreRoles)[number];
+
+export function explorePath(locale: Locale, role: ExploreRole) {
+	return `${prefix(locale)}/explore/${role}`;
+}
+
 /** App pages. Pages are prerendered once, so record IDs go in the query; they aren't secret. */
 export type AppPage =
 	| 'event'

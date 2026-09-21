@@ -59,7 +59,7 @@ No component UI library, ORM, remote font service, analytics SDK, or separate ba
 src/
   lib/
     app/                App screens: components, browser state, QR drawing and scanning
-    assets/             Local brand assets and optimized photos
+    assets/             Local brand assets, optimized photos, and screens of the app for its walk-through
     components/         Reusable Svelte components
     i18n/               Croatian and English interface copy
     server/             Worker only: sessions, request checks, database queries, storage limits
@@ -73,9 +73,9 @@ src/
     kindergarten.ts     Records the browser decrypts and builds
     paths.ts            Site paths
     project.ts          Project links and the validated site address
-  params/               Route matchers (language prefix, record IDs)
+  params/               Route matchers (language prefix, record IDs, walk-through roles)
   routes/
-    (marketing)/        Landing and privacy pages: static HTML without JavaScript
+    (marketing)/        Landing, walk-through, and privacy pages: static HTML without JavaScript
     (app)/              App pages: prerendered shells that run in the browser
     api/                JSON endpoints for the app
   app.d.ts              Worker bindings for TypeScript
