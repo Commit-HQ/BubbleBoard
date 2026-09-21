@@ -522,7 +522,11 @@ export const en = {
 				'New photos stay on this device until you save the changes. A change isn’t kept here, so finish it in one go.',
 			published: 'Photos already up',
 			publishedHint:
-				'These photos stay as they were published, with the faces covered as they were then. You can change their words or take one off.',
+				'The covers on these photos can no longer be changed. When a photo is published it is locked so that each family sees only what it may, and the original without covers isn’t kept anywhere. You can change its words or take it off. To fix a cover, take the photo off and add it again.',
+			moveEarlier: 'Move earlier',
+			moveLater: 'Move later',
+			orderHint:
+				'Photos are shown in this order, and the first one is the photo the board card shows. Drag a photo in the row, or use Move earlier and Move later.',
 			removePublished: 'Take photo off',
 			removePublishedCopy:
 				'Families will no longer see this photo. Anyone who already saved it keeps their copy.',

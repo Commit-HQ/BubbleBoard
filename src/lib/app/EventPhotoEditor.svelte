@@ -47,7 +47,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import EventDetails from './EventDetails.svelte';
-	import EventPhotoStrip from './EventPhotoStrip.svelte';
+	import EventPhotoStrip, { type Thumb } from './EventPhotoStrip.svelte';
 	import FaceCanvas from './FaceCanvas.svelte';
 	import FaceNames from './FaceNames.svelte';
 	import FacePanel from './FacePanel.svelte';
@@ -109,6 +109,15 @@
 	let description = $state.raw<NoticeDocument>(start.description);
 	/** The photos the event holds already, which a change may reword or take off, and nothing else. */
 	let kept = $state.raw<EventPhoto[]>(start.kept);
+	/**
+	 * The order the gallery is in, by photo ID, and the only place that order lives: `kept` and `photos` say
+	 * what each photo is, this says where it comes. The first of them is the photo the board card shows, and
+	 * the manifest, the headings and the review all follow it. Moving a photo changes nothing that was sealed
+	 * for it, so it never costs a photo its review or its consent.
+	 */
+	let order = $state.raw<string[]>(start.kept.map((photo) => photo.id));
+	/** The photos already up as this device composes them, opened once for the strip and the card. */
+	let opened = $state.raw<Record<string, string>>({});
 	/** Which of those the teacher is taking off, while they answer whether they mean it. */
 	let takingOff = $state('');
 	let details = $state<ReturnType<typeof EventDetails>>();
@@ -120,7 +129,8 @@
 	let viewer = $state('base');
 	let classroom = $state(start.classroom);
 	let photos = $state.raw<Photo[]>([]);
-	let current = $state('');
+	/** The photo that's open. A change starts on the first of the photos already up. */
+	let current = $state(start.kept[0]?.id ?? '');
 	/** Which of the photos being opened this one is, so a phone full of photos says how far it's got. */
 	let opening = $state({ done: 0, total: 0 });
 	const loading = $derived(opening.total > 0);
@@ -157,17 +167,42 @@
 	const selected = $derived(edit?.regions.find((r) => r.id === edit.selected));
 	const children = $derived(app.catalog.children.filter((c) => c.classroom === classroom));
 	const nameOf = (child: string) => children.find((c) => c.id === child)?.name ?? '';
+	/** The photos being prepared now, in the gallery's order, which is the order they're kept in too. */
+	const inOrder = $derived(order.flatMap((id) => photos.filter((p) => p.id === id)));
+	/** Every photo of the gallery in its order: one already up, or one being prepared now. */
+	const gallery = $derived(
+		order.flatMap((id): Thumb[] => {
+			const made = photos.find((p) => p.id === id);
+			if (made) return [{ id, url: made.url, history: made.history, detection: made.detection }];
+			const already = kept.find((p) => p.id === id);
+			return already ? [{ id, url: opened[id], published: true }] : [];
+		})
+	);
 	const reviewedCount = $derived(photos.filter((p) => p.history.present.reviewed).length);
 	const allReviewed = $derived(
 		(photos.length > 0 || editing) && reviewedCount === photos.length && !loading && !detecting
 	);
 	/** How many photos the event would hold if it were saved now, which must never be none. */
-	const total = $derived(kept.length + photos.length);
+	const total = $derived(order.length);
+	/** The photo already up that the strip has open, when the one it has open isn't being prepared now. */
+	const shown = $derived(kept.find((p) => p.id === current));
 	const previewsPending = $derived(step === 'review' && photos.some((p) => !previews[p.id]));
 	const previewsFailed = $derived(photos.some((p) => previews[p.id]?.failed));
 	const large = $derived(photos.find((p) => p.id === enlarged));
 	const nextUnreviewed = $derived(
-		photos.find((p) => p.id !== current && !p.history.present.reviewed)?.id
+		inOrder.find((p) => p.id !== current && !p.history.present.reviewed)?.id
+	);
+	/**
+	 * Whether a change has been started here that leaving the page would lose: a photo prepared, taken off or
+	 * moved, or words written under one. The event's own title, date and words aren't counted, as a notice's
+	 * aren't either.
+	 */
+	const unsaved = $derived(
+		editing &&
+			(photos.length > 0 ||
+				order.length !== start.kept.length ||
+				order.some((id, at) => id !== start.kept[at].id) ||
+				kept.some((photo) => photo !== start.kept.find((was) => was.id === photo.id)))
 	);
 	const detailsDone = $derived(!!classroom && !!title.trim() && !!date && editorReady);
 	const overlap = $derived(
@@ -201,8 +236,25 @@
 			}
 		}
 	});
-	// The photos already up stay open while they're being looked at here, as they do in the gallery.
+	// The photos already up stay open while they're being looked at here, as they do in the gallery, and each
+	// is composed on this device once, for its thumbnail and for the card that words it.
 	$effect(() => (event ? app.showEventPictures(event) : undefined));
+	$effect(() => {
+		if (!event) return;
+		const list = event.value.photos;
+		let cancelled = false;
+		void (async () => {
+			for (const photo of list) {
+				const picture = await app.eventPicture(event, photo.id).catch(() => undefined);
+				if (cancelled) return;
+				// One that wouldn't open is remembered as having none, so its card says so rather than waiting.
+				opened = { ...opened, [photo.id]: picture?.url ?? '' };
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	});
 	// The unfinished event, kept on the device as the teacher works and put back when the page opens again.
 	// Saving is best effort: a write that doesn't make it only leaves the page worth a warning before leaving.
 	onMount(async () => {
@@ -212,7 +264,7 @@
 	});
 	const keeping = $derived(
 		credential && photos.length && !found
-			? savedDraft(credential, { classroom, title, date, days, description, step }, photos)
+			? savedDraft(credential, { classroom, title, date, days, description, step }, inOrder)
 			: undefined
 	);
 	$effect(() => {
@@ -262,6 +314,7 @@
 		// The draft came with its classroom, so this is the roster the restored photos were named against.
 		lastRoster = roster;
 		photos = restored;
+		order = restored.map((item) => item.id);
 		current = restored[0]?.id ?? '';
 		step = restored.length ? saved.step : 'details';
 		found = undefined;
@@ -283,6 +336,12 @@
 			URL.revokeObjectURL(value);
 			urls.delete(value);
 		}
+	}
+	/** Puts a photo at another place in the gallery, which is the one thing that decides what families see. */
+	function move(id: string, to: number) {
+		if (to < 0 || to >= order.length) return;
+		const rest = order.filter((other) => other !== id);
+		order = [...rest.slice(0, to), id, ...rest.slice(to)];
 	}
 	function update(id: string, change: (photo: Photo) => Photo) {
 		photos = photos.map((p) => (p.id === id ? change(p) : p));
@@ -490,6 +549,7 @@
 						generation: 0
 					};
 					photos = [...photos, item];
+					order = [...order, item.id];
 					if (credential) void saveDraftPhoto(item.id, image.blob);
 					if (!current) switchPhoto(item.id, false);
 					await detect(item.id);
@@ -520,9 +580,10 @@
 		if (detecting === id) detector.close();
 		revoke(photo.url);
 		photos = photos.filter((p) => p.id !== id);
+		order = order.filter((other) => other !== id);
 		// With its last photo gone there is no event left to keep, only a record naming photos that aren't there.
 		if (credential) void (photos.length ? forgetDraftPhoto(id) : clearDraft());
-		switchPhoto(photos[0]?.id ?? '');
+		switchPhoto(order[0] ?? '');
 		draft = undefined;
 		removing = false;
 	}
@@ -567,7 +628,7 @@
 		return task.run(async () => {
 			const prepared = await app.prepareEvent(
 				classroom,
-				photos.map((p) => ({ id: p.id, blob: p.blob, regions: p.history.present.regions })),
+				inOrder.map((p) => ({ id: p.id, blob: p.blob, regions: p.history.present.regions })),
 				(n) => (progress = n),
 				event
 			);
@@ -582,21 +643,21 @@
 		const prepared = draft;
 		sending = true;
 		progress = 0;
-		// The photos already up keep their place and their size; the ones prepared now follow them.
+		// The gallery as the teacher has arranged it: each photo where the order puts it, whether it was
+		// already up or prepared just now.
 		const value: EventContent = {
 			version: 1,
 			title: title.trim(),
 			description,
 			date,
-			photos: [
-				...kept.map((k) => ({ ...k, text: k.text?.trim() || undefined })),
-				...(prepared?.files ?? []).map(({ id, width, height }) => ({
-					id,
-					width,
-					height,
-					text: photos.find((p) => p.id === id)?.text.trim() || undefined
-				}))
-			]
+			photos: order.flatMap((id) => {
+				const already = kept.find((p) => p.id === id);
+				if (already) return [{ ...already, text: already.text?.trim() || undefined }];
+				const file = prepared?.files.find((p) => p.id === id);
+				if (!file) return [];
+				const words = photos.find((p) => p.id === id)?.text.trim() || undefined;
+				return [{ id, width: file.width, height: file.height, text: words }];
+			})
 		};
 		return task
 			.run(async () => {
@@ -607,13 +668,15 @@
 				photos = [];
 				draft = undefined;
 				if (credential) await clearDraft();
+				// Saved: what's left here is no longer worth a question on the way out.
+				leaveAnyway = true;
 				await goto(appPath(locale));
 			})
 			.finally(() => (sending = false));
 	}
 	beforeNavigate((navigation) => {
 		// Only work the device hasn't kept is worth a warning; a saved event waits here on the way back.
-		if (!photos.length || draftSaved || leaveAnyway) return;
+		if ((!photos.length && !unsaved) || draftSaved || leaveAnyway) return;
 		navigation.cancel();
 		// Closing the tab or leaving the site gets the browser's own question instead.
 		if (!navigation.willUnload && navigation.to) leaving = navigation.to.url;
@@ -638,7 +701,7 @@
 <svelte:window
 	onblur={() => (original = false)}
 	onbeforeunload={(event) => {
-		if (photos.length && !draftSaved) {
+		if ((photos.length || unsaved) && !draftSaved) {
 			event.preventDefault();
 			event.returnValue = '';
 		}
@@ -721,6 +784,45 @@
 	</svg>
 {/snippet}
 
+{#snippet ordering(id: string, published: boolean)}
+	{@const at = order.indexOf(id)}
+	<div bind:this={heading} class="flex flex-wrap items-center justify-between gap-2">
+		<!-- The heading says where the photo comes, so moving it says so too, out loud as well. -->
+		<h2 class="text-2xl" aria-live="polite">{t.photo(at + 1, total)}</h2>
+		<div class="flex flex-wrap items-center gap-2">
+			<button
+				type="button"
+				class={button.quiet}
+				disabled={at <= 0}
+				onclick={() => move(id, at - 1)}
+			>
+				<Icon name="chevronLeft" class="size-4" />{t.moveEarlier}
+			</button>
+			<button
+				type="button"
+				class={button.quiet}
+				disabled={at < 0 || at >= total - 1}
+				onclick={() => move(id, at + 1)}
+			>
+				<Icon name="chevronRight" class="size-4" />{t.moveLater}
+			</button>
+			{#if published}
+				<button type="button" class={button.quiet} onclick={() => (takingOff = id)}>
+					<Icon name="trash" class="size-4" />{t.removePublished}
+				</button>
+			{:else}
+				<button
+					type="button"
+					class={button.icon}
+					aria-label={t.removePhoto}
+					title={t.removePhoto}
+					onclick={() => (removing = true)}><Icon name="trash" /></button
+				>
+			{/if}
+		</div>
+	</div>
+{/snippet}
+
 {#snippet busy()}
 	{#if task.busy}
 		<div class="grid gap-2" role="status">
@@ -783,54 +885,7 @@
 				<Icon name="info" class="mt-0.5 size-4 shrink-0" />{editing ? t.localChange : t.local}
 			</p>
 
-			{#if event && kept.length}
-				<!-- The photos already up, which are never opened again: only their words change, or they go. -->
-				<div class="grid gap-3">
-					<div>
-						<h2 class="text-2xl">{t.published}</h2>
-						<p class="mt-1 text-sm text-muted">{t.publishedHint}</p>
-					</div>
-					<ul class="grid gap-3 sm:grid-cols-2" aria-label={t.published}>
-						{#each kept as item, index (item.id)}
-							<li class="{surface} grid gap-3">
-								{#await app.eventPicture(event, item.id)}
-									<p class="text-sm font-semibold text-muted" role="status">{e.loading}</p>
-								{:then picture}
-									<img
-										src={picture.url}
-										alt={t.photo(index + 1, kept.length)}
-										class="w-full rounded-2xl"
-									/>
-								{:catch}
-									<p class="text-sm text-muted">{e.failed}</p>
-								{/await}
-								<label class={field.label}>
-									<span class={field.name}>{t.caption}</span>
-									<input
-										class={field.input}
-										maxlength={maxEventPhotoText}
-										value={item.text ?? ''}
-										placeholder={t.captionPlaceholder}
-										oninput={(written) => {
-											const words = written.currentTarget.value;
-											kept = kept.map((k) => (k.id === item.id ? { ...k, text: words } : k));
-										}}
-									/>
-								</label>
-								<button
-									type="button"
-									class="{button.quiet} justify-self-start"
-									onclick={() => (takingOff = item.id)}
-								>
-									<Icon name="trash" class="size-4" />{t.removePublished}
-								</button>
-							</li>
-						{/each}
-					</ul>
-				</div>
-			{/if}
-
-			{#if !photos.length}
+			{#if !total}
 				<div class="{surface} grid justify-items-start gap-4">
 					<p class="text-muted">{t.none}</p>
 					{@render addButton(button.primary, t.add)}
@@ -838,10 +893,13 @@
 				</div>
 			{:else}
 				<div class="flex flex-wrap items-center justify-between gap-3">
-					<p class="font-semibold" role="status">{t.progress(reviewedCount, photos.length)}</p>
+					{#if photos.length}
+						<p class="font-semibold" role="status">{t.progress(reviewedCount, photos.length)}</p>
+					{/if}
 					{@render addButton(button.secondary, t.addMore)}
 				</div>
-				<EventPhotoStrip {locale} {photos} {current} onpick={switchPhoto} />
+				<EventPhotoStrip {locale} photos={gallery} {current} onpick={switchPhoto} onmove={move} />
+				<p class={field.hint}>{t.orderHint}</p>
 			{/if}
 
 			{#if loading}
@@ -850,17 +908,37 @@
 				</p>
 			{/if}
 
-			{#if photo && edit}
-				<div bind:this={heading} class="flex flex-wrap items-center justify-between gap-2">
-					<h2 class="text-2xl">{t.photo(photos.indexOf(photo) + 1, photos.length)}</h2>
-					<button
-						type="button"
-						class={button.icon}
-						aria-label={t.removePhoto}
-						title={t.removePhoto}
-						onclick={() => (removing = true)}><Icon name="trash" /></button
-					>
+			{#if shown}
+				<!-- A photo already up: it is never opened again, so this is all there is to do with it. -->
+				{@render ordering(shown.id, true)}
+				<div class="{surface} grid gap-3">
+					<div>
+						<h3 class="text-lg font-semibold">{t.published}</h3>
+						<p class="mt-1 text-sm text-muted">{t.publishedHint}</p>
+					</div>
+					{#if opened[shown.id]}
+						<img src={opened[shown.id]} alt="" class="w-full rounded-2xl" />
+					{:else}
+						<p class="text-sm font-semibold text-muted" role="status">
+							{opened[shown.id] === '' ? e.failed : e.loading}
+						</p>
+					{/if}
+					<label class={field.label}>
+						<span class={field.name}>{t.caption}</span>
+						<input
+							class={field.input}
+							maxlength={maxEventPhotoText}
+							value={shown.text ?? ''}
+							placeholder={t.captionPlaceholder}
+							oninput={(written) => {
+								const words = written.currentTarget.value;
+								kept = kept.map((k) => (k.id === shown!.id ? { ...k, text: words } : k));
+							}}
+						/>
+					</label>
 				</div>
+			{:else if photo && edit}
+				{@render ordering(photo.id, false)}
 
 				<!-- The tools are a card of their own, so the photo itself keeps its own square edges. -->
 				<div class="grid gap-3">
@@ -918,7 +996,7 @@
 							selected={edit.selected}
 							{original}
 							bind:zoom
-							label={t.photo(photos.indexOf(photo) + 1, photos.length)}
+							label={t.photo(order.indexOf(photo.id) + 1, total)}
 							regionLabel={(n) =>
 								`${t.face(n)}: ${children.find((c) => c.id === edit.regions[n - 1].child)?.name ?? (edit.regions[n - 1].covered ? t.covered : t.who)}`}
 							name={nameOf}
@@ -1076,13 +1154,14 @@
 
 			<!-- The whole gallery at once, as the chosen audience sees it, so a missed face stands out. -->
 			<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" aria-label={t.photos}>
-				{#each photos as item, index (item.id)}
+				{#each inOrder as item (item.id)}
 					{@const shot = previews[item.id]}
+					{@const index = order.indexOf(item.id)}
 					<li>
 						<button
 							type="button"
 							class="relative block w-full overflow-hidden rounded-2xl ring-1 ring-ink/10 transition hover:ring-ink/25 aria-pressed:ring-3 aria-pressed:ring-accent"
-							aria-label={t.photo(index + 1, photos.length)}
+							aria-label={t.photo(index + 1, total)}
 							aria-pressed={item.id === enlarged}
 							onclick={() => {
 								original = false;
@@ -1154,6 +1233,8 @@
 			danger
 			onconfirm={async () => {
 				kept = kept.filter((item) => item.id !== id);
+				order = order.filter((other) => other !== id);
+				if (current === id) switchPhoto(order[0] ?? '');
 				takingOff = '';
 			}}
 			onclose={() => (takingOff = '')}

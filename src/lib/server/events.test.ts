@@ -204,6 +204,28 @@ describe('events publication', () => {
 		expect([...objects.keys()]).toEqual(['events/event/second']);
 		// The guard writes each clock back as it was, so the next change may be prepared against the same one.
 		expect(await consents(db, staff, 'group')).toMatchObject(current);
+		// Putting the same photos in another order is a change to the manifest and nothing else: it names no
+		// new photo, so it asks about no consent, and the photos the event holds stay exactly as they were.
+		await uploadEventFile(db, store, staff, 'event', 'third', new Uint8Array([3]));
+		await changeEvent(
+			db,
+			store,
+			staff,
+			'event',
+			'changed',
+			['second', 'third'],
+			30,
+			against(current)
+		);
+		await saveConsent(db, family('a'), 'child', 1, 'later');
+		expect(await changeEvent(db, store, staff, 'event', 'reordered', ['third', 'second'], 30)).toBe(
+			true
+		);
+		expect((await db.prepare('SELECT id FROM event_files ORDER BY id').all()).results).toEqual([
+			{ id: 'second' },
+			{ id: 'third' }
+		]);
+		expect((await events(db, family('a')))[0].content).toBe('reordered');
 		await expect(eventFile(db, store, family('a'), 'event', 'first')).rejects.toMatchObject({
 			status: 404
 		});

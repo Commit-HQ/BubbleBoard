@@ -501,7 +501,11 @@ export const hr = {
 				'Nove fotografije ostaju na ovom uređaju dok ne spremite promjene. Promjena se ne čuva ovdje, pa je dovršite odjednom.',
 			published: 'Fotografije koje su već objavljene',
 			publishedHint:
-				'Ove fotografije ostaju onakve kakve su objavljene, s licima prekrivenima kao tada. Možete promijeniti njihov opis ili neku maknuti.',
+				'Pokrovi na ovim fotografijama više se ne mogu mijenjati. Kad se fotografija objavi, zaključava se tako da svaka obitelj vidi samo ono što smije, a izvorna fotografija bez pokrova nigdje se ne čuva. Možete joj promijeniti opis ili je maknuti. Ako pokrov treba ispraviti, maknite fotografiju i dodajte je ponovno.',
+			moveEarlier: 'Pomakni prije',
+			moveLater: 'Pomakni poslije',
+			orderHint:
+				'Fotografije se prikazuju ovim redoslijedom, a prva je ona koju pokazuje kartica na ploči. Povucite fotografiju u nizu ili upotrijebite Pomakni prije i Pomakni poslije.',
 			removePublished: 'Makni fotografiju',
 			removePublishedCopy:
 				'Obitelji više neće vidjeti ovu fotografiju. Tko ju je već spremio, zadržava svoju kopiju.',
