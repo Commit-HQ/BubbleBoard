@@ -47,7 +47,7 @@ An event's photos are the heaviest thing an installation keeps. Each one is made
 | `PUBLIC_EVENT_PHOTOS`   | 30      | Photos in one event                      |
 | `PUBLIC_EVENT_PHOTO_MB` | 10      | The size of a photo a teacher may choose |
 
-More photos also means more for a phone to hold while a teacher marks them, so raise these with the pilot's phones in mind.
+More photos also means more for a phone to hold while a teacher marks them, so raise these with your teachers' phones in mind.
 
 The storage defaults stay a tenth below the free allowance; `0` stops uploads or downloads altogether. Months are counted in UTC. Teachers make room by taking down photos, deleting notices with files, and deleting closed inquiries whose messages carry files, and admins by taking files off info pages or deleting pages, which deletes their bytes right away; notices past their days leave with their files in the daily cleanup. Change a limit in `.env`, then run `npm run deploy`.
 

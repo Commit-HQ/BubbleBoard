@@ -1,8 +1,8 @@
 # Event photo editor
 
-Status: the first-version workflow was implemented on 2026-09-20 and its three steps were brought into the rest of the app's shapes and words on 2026-09-20; physical iOS/Android testing and the pilot are still outstanding. Drafts exist only in the open session.
+How a teacher covers faces before an event's photos are published, and why the editor refuses what it refuses. The [format](events-format.md) holds the security boundaries underneath it.
 
-The editor includes local detection in multiple orientations, manual covers, eighteen stickers, child assignment, undo/redo and review. One switcher, under the photo while marking it and above it in the review, shows the final photo or the original. The name of each named child is written on their cover, on this device only: names never enter a published photo. The family-card selector also includes the names of linked children. Parent settings, encrypted patches, publication, galleries, downloads and deletion are connected. See [format and security boundaries](events-format.md).
+The editor includes local detection in multiple orientations, manual covers, eighteen stickers, child assignment, undo/redo and review. One switcher, under the photo while marking it and above it in the review, shows the final photo or the original. The name of each named child is written on their cover, on this device only: names never enter a published photo. The family-card selector also includes the names of linked children. Parent settings, encrypted patches, publication, galleries, downloads and deletion are connected.
 
 ## Basic workflow
 
@@ -81,17 +81,15 @@ The final action is **“Publish event”**, beside the way back to the photos, 
 | Reviewed     | “Reviewed”                                       | Next photo or final review         |
 | Problem      | Specific message, such as “Unable to open photo” | Retry, replace or remove the photo |
 
-Switching photos and steps preserves the draft, and the device keeps it so that a closed tab or an interrupted session can be continued: the editor opens with one choice, to go on with the kept event or to start over. Work the device has not managed to keep is worth a question before navigating away in the app, which the app asks itself; closing the tab gets the browser's own, which only the browser may ask. Measure this risk on phones during the pilot. If interruptions frequently lose work, persistent encrypted drafts become a pilot exit requirement.
+Switching photos and steps preserves the draft, and the device keeps it so that a closed tab or an interrupted session can be continued: the editor opens with one choice, to go on with the kept event or to start over. Work the device has not managed to keep is worth a question before navigating away in the app, which the app asks itself; closing the tab gets the browser's own, which only the browser may ask.
 
 Per-photo undo/redo covers labels and geometry, not parent consent. Manual editing of one photo must not wait for detection on the remaining photos. Bound background processing to limit phone memory use.
 
-## First-release scope and teacher testing
+## Scope
 
 Include detection, name assignment, a private identification crop, adding/moving/resizing covers, original view, undo/redo, gallery review and family previews. Eighteen built-in stickers are available, and new covers take them in turn so a group photo isn't a wall of one face; choosing artwork is optional, so the whole set waits behind one button showing the cover's current sticker, and puts itself away once one is picked. A later sticker pack must not change the security mask.
 
 Defer filters, freeform text on photos, sticker rotation, identity recognition, copying face positions between photos and bulk approval of unreviewed photos.
-
-During the pilot, measure gallery labelling time, incorrect assignments, returns to previous faces, accidental movement while zooming, use of the original and lost drafts. Check whether automatic advancement helps or confuses teachers. The earlier interactive conversation prototype demonstrated assignment and audience differences, not detection, secure processing or a finished editor.
 
 ## The published gallery
 

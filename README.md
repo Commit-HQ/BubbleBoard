@@ -33,7 +33,7 @@ No sign-ups, no ads, no tracking. Each kindergarten runs its own copy, and every
 - 🔔 **Notifications that say nothing.** A push tells you something is new, never what or about whom.
 - 🌍 **Croatian and English**, installable on phones and tablets.
 
-More detail on what's implemented is in [docs/status.md](docs/status.md).
+Why it behaves the way it does is written down in [docs/decisions.md](docs/decisions.md).
 
 ## Run it locally
 
