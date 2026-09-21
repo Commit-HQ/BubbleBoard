@@ -339,7 +339,6 @@ export const hr = {
 				'Neki se pokrovi preklapaju. Zajednički dio vidi samo obitelj koja smije vidjeti sva lica u tom dijelu. Provjeri rubove.',
 			removePhoto: 'Ukloni fotografiju',
 			removePhotoCopy: 'Ova fotografija i sve označeno na njoj nestaju iz nacrta.',
-			preview: 'Pregledaj prekrivene fotografije',
 			back: 'Natrag na fotografije',
 			backToGrid: 'Natrag na sve fotografije',
 			previewFailed: 'Pregled nije moguće pripremiti. Vrati se na fotografije i pokušaj ponovno.',

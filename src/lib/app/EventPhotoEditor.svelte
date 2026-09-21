@@ -30,7 +30,7 @@
 		saveDraftPhoto,
 		type SavedDraft
 	} from '$lib/events/draft';
-	import { prepareEditorImage, safePreview } from '$lib/events/images';
+	import { prepareEditorImage } from '$lib/events/images';
 	import { errorMessage, formatDay, messages, type Locale } from '$lib/i18n';
 	import { maxEventPhotoBytes, maxEventPhotos } from '$lib/events/limits';
 	import { maxEventPhotoText } from '$lib/events/types';
@@ -65,11 +65,7 @@
 		detection: 'pending' | 'ready' | 'failed' | 'manual';
 		generation: number;
 	};
-	let {
-		locale,
-		/** The development fixture (src/routes/editor-check) only prepares photos; it cannot publish. */
-		publishable = true
-	}: { locale: Locale; publishable?: boolean } = $props();
+	let { locale }: { locale: Locale } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.eventEditor);
 	const e = $derived(messages[locale].app.events);
@@ -113,7 +109,7 @@
 	let largeView = $state<HTMLElement>();
 	let leaving = $state<URL>();
 	let leaveAnyway = false;
-	/** The card this device is connected with. Without one, as in the development fixture, nothing is kept. */
+	/** The card this device is connected with, which the kept event is tied to. */
 	const credential = app.myCredential;
 	/** The unfinished event this device kept, while the teacher chooses whether to go on with it. */
 	let found = $state.raw<SavedDraft>();
@@ -138,9 +134,7 @@
 	const nextUnreviewed = $derived(
 		photos.find((p) => p.id !== current && !p.history.present.reviewed)?.id
 	);
-	const detailsDone = $derived(
-		!!classroom && (!publishable || (!!title.trim() && !!date && editorReady))
-	);
+	const detailsDone = $derived(!!classroom && !!title.trim() && !!date && editorReady);
 	const overlap = $derived(
 		edit?.regions.some((one, index) =>
 			edit.regions.slice(index + 1).some((two) => overlaps(one, two))
@@ -505,15 +499,13 @@
 			prepared = draft,
 			recipient = viewer;
 		untrack(forgetPreviews);
-		if (step !== 'review') return;
+		if (step !== 'review' || !prepared) return;
 		let cancelled = false;
 		void (async () => {
 			for (const item of list) {
 				if (cancelled || disposed) return;
 				try {
-					const blob = await (prepared
-						? app.eventPreview(prepared, item.id, recipient)
-						: safePreview(item.blob, item.history.present.regions));
+					const blob = await app.eventPreview(prepared, item.id, recipient);
 					if (cancelled || disposed) return;
 					previews = { ...previews, [item.id]: { url: url(blob) } };
 				} catch {
@@ -534,16 +526,14 @@
 		original = false;
 		progress = 0;
 		return task.run(async () => {
-			if (publishable) {
-				const prepared = await app.prepareEvent(
-					classroom,
-					photos.map((p) => ({ id: p.id, blob: p.blob, regions: p.history.present.regions })),
-					(n) => (progress = n)
-				);
-				if (disposed) return;
-				if (!allReviewed) throw new Error('stale');
-				draft = prepared;
-			}
+			const prepared = await app.prepareEvent(
+				classroom,
+				photos.map((p) => ({ id: p.id, blob: p.blob, regions: p.history.present.regions })),
+				(n) => (progress = n)
+			);
+			if (disposed) return;
+			if (!allReviewed) throw new Error('stale');
+			draft = prepared;
 			step = 'review';
 		});
 	}
@@ -727,7 +717,6 @@
 				bind:this={details}
 				{locale}
 				classrooms={app.myClassrooms}
-				{publishable}
 				locked={photos.length > 0}
 				{description}
 				bind:classroom
@@ -938,7 +927,7 @@
 
 			<div class="flex flex-wrap gap-3 border-t border-ink/10 pt-5">
 				<button type="button" class={button.primary} disabled={!allReviewed} onclick={startPreview}>
-					{publishable ? e.review : t.preview}<Icon name="arrowRight" class="size-4" />
+					{e.review}<Icon name="arrowRight" class="size-4" />
 				</button>
 				<button type="button" class={button.secondary} onclick={() => (step = 'details')}>
 					<Icon name="chevronLeft" class="size-4" />{t.backToDetails}
@@ -948,11 +937,9 @@
 			<div>
 				<h2 class="text-3xl">{e.review}</h2>
 				<p class="mt-2 text-muted">{e.ready}</p>
-				{#if publishable}
-					<p class="mt-2 text-sm text-muted">
-						{title} · {formatDay(locale, date)} · {messages[locale].app.notices.dayCount(days)}
-					</p>
-				{/if}
+				<p class="mt-2 text-sm text-muted">
+					{title} · {formatDay(locale, date)} · {messages[locale].app.notices.dayCount(days)}
+				</p>
 			</div>
 
 			{#if draft}

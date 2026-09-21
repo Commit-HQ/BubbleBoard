@@ -357,7 +357,6 @@ export const en = {
 				'Some covers overlap. The shared area is revealed only to a family allowed to see every face there. Check the edges.',
 			removePhoto: 'Remove photo',
 			removePhotoCopy: 'This photo and everything marked on it leave the draft.',
-			preview: 'Review covered photos',
 			back: 'Back to the photos',
 			backToGrid: 'Back to all photos',
 			previewFailed: 'Could not prepare the preview. Return to the photos and try again.',

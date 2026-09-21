@@ -12,7 +12,6 @@
 	let {
 		locale,
 		classrooms,
-		publishable,
 		locked,
 		description,
 		classroom = $bindable(),
@@ -23,8 +22,6 @@
 	}: {
 		locale: Locale;
 		classrooms: { id: string; name: string }[];
-		/** Whether this device can publish at all; the development fixture only prepares photos. */
-		publishable: boolean;
 		/** Whether photos are labelled already, which ties the event to its classroom. */
 		locked: boolean;
 		/** The words written so far, which come back when the teacher returns to this step. */
@@ -70,28 +67,26 @@
 		</p>
 	{/if}
 
-	{#if publishable}
-		<label class={field.label}>
-			<span class={field.name}>{e.name}</span>
-			<input class={field.input} maxlength="160" bind:value={title} required />
-		</label>
+	<label class={field.label}>
+		<span class={field.name}>{e.name}</span>
+		<input class={field.input} maxlength="160" bind:value={title} required />
+	</label>
 
-		<label class={field.label}>
-			<span class={field.name}>{e.date}</span>
-			<input class={field.input} type="date" bind:value={date} required />
-		</label>
+	<label class={field.label}>
+		<span class={field.name}>{e.date}</span>
+		<input class={field.input} type="date" bind:value={date} required />
+	</label>
 
-		<div class="grid gap-1.5">
-			<span id="{id}-description" class={field.name}>{e.description}</span>
-			<NoticeEditor
-				bind:this={editor}
-				bind:ready
-				{locale}
-				content={description}
-				labelledby="{id}-description"
-			/>
-		</div>
+	<div class="grid gap-1.5">
+		<span id="{id}-description" class={field.name}>{e.description}</span>
+		<NoticeEditor
+			bind:this={editor}
+			bind:ready
+			{locale}
+			content={description}
+			labelledby="{id}-description"
+		/>
+	</div>
 
-		<DaysChoice {locale} legend={e.days} bind:days />
-	{/if}
+	<DaysChoice {locale} legend={e.days} bind:days />
 </div>
