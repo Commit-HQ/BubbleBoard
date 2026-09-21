@@ -828,9 +828,8 @@ export const hr = {
 			signOutCopy: 'Za ponovno korištenje BubbleBoarda ovdje trebat će vam QR kod.'
 		},
 		addDevice: {
-			title: 'Dodaj uređaj',
 			copy: 'Povežite još jedan mobitel, tablet ili računalo, na primjer za baku i djeda, bez ispisanog QR koda.',
-			show: 'Prikaži QR kod',
+			show: 'Dodaj uređaj',
 			scan: (until: string) =>
 				`Skenirajte ga drugim uređajem ili ga pošaljite kao poveznicu. Povezuje jedan uređaj, do ${until}.`,
 			qr: 'QR kod za drugi uređaj',
@@ -1027,7 +1026,7 @@ export const hr = {
 		},
 		viewer: {
 			zoom: 'Povećaj',
-			fit: 'Prilagodi zaslonu',
+			zoomOut: 'Smanji',
 			close: 'Zatvori',
 			save: 'Spremi',
 			share: 'Podijeli',

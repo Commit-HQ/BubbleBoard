@@ -850,11 +850,11 @@ export const en = {
 			signOutTitle: 'Sign out of this device?',
 			signOutCopy: 'To use BubbleBoard here again, you’ll need your QR code.'
 		},
-		// In a family device's Settings: a one-time QR code that connects another of the family's devices.
+		// In a family device's Settings, under the family's connected devices: a one-time QR code that connects
+		// another of the family's devices.
 		addDevice: {
-			title: 'Add a device',
 			copy: 'Connect another phone, tablet, or computer, such as a grandparent’s, without the printed QR code.',
-			show: 'Show a QR code',
+			show: 'Add a device',
 			scan: (until: string) =>
 				`Scan it with the other device, or send it as a link. It connects one device, until ${until}.`,
 			qr: 'QR code for another device',
@@ -865,8 +865,8 @@ export const en = {
 			connectAgain:
 				'This device was connected before it could add others. To add devices from it, sign out, then connect it again with your family QR code.'
 		},
-		// In a family device's Settings: the devices connected for the family, with who uses each, and home's card
-		// that asks who uses this one.
+		// In a family device's Settings: the devices connected for the family, with who uses each, above adding
+		// another, and home's card that asks who uses this one.
 		devices: {
 			title: 'Connected devices',
 			copy: 'Every phone, tablet, or computer connected for your family. Only your family sees the names.',
@@ -1061,7 +1061,7 @@ export const en = {
 		// A board photo or a notice's picture on the whole screen.
 		viewer: {
 			zoom: 'Zoom in',
-			fit: 'Fit to the screen',
+			zoomOut: 'Zoom out',
 			close: 'Close',
 			save: 'Save',
 			share: 'Share',

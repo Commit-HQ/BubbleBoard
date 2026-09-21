@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import PhotoConsent from '$lib/app/PhotoConsent.svelte';
-	import AddDevice from '$lib/app/AddDevice.svelte';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
 	import Devices from '$lib/app/Devices.svelte';
 	import NotificationSwitch from '$lib/app/NotificationSwitch.svelte';
@@ -17,8 +16,8 @@
 	import type { PageProps } from './$types';
 
 	// Settings, from the header of a connected device's pages: its notifications, then the language, on a family
-	// device adding the family's other devices and the list of those connected, and its card with signing out
-	// at the bottom. They open on any device, because the header also has them while the app starts; a device
+	// device the family's devices, those connected and adding another, and its card with signing out at the
+	// bottom. They open on any device, because the header also has them while the app starts; a device
 	// that turns out not to be connected sees only the language.
 	let { data }: PageProps = $props();
 	const app = getApp();
@@ -52,7 +51,6 @@
 
 	{#if app.status === 'family'}
 		<PhotoConsent locale={data.locale} />
-		<AddDevice locale={data.locale} />
 		<Devices locale={data.locale} />
 	{/if}
 
