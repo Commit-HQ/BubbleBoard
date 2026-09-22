@@ -29,6 +29,7 @@ export const en = {
 			privacy: 'Privacy',
 			teachers: 'For teachers',
 			security: 'Security',
+			faq: 'Questions',
 			kindergartens: 'For kindergartens'
 		}
 	},
@@ -122,6 +123,128 @@ export const en = {
 		keys: {
 			title: 'Even we can’t peek',
 			copy: 'Only your kindergarten has the keys. Nobody outside it does, not even us who made the app. The app is open source, so anyone can check how it works.'
+		}
+	},
+	// Frequently asked questions on the landing page, in three groups. Each answer is one paragraph.
+	faq: {
+		title: 'Frequently asked questions',
+		copy: 'What parents and teachers ask most often, and a few technical questions for those who want to know more.',
+		groups: {
+			parents: {
+				title: 'For parents',
+				items: [
+					{
+						q: 'I lost my QR code. Do I have to go to the kindergarten right away?',
+						a: 'No. If at least one of your devices is still connected, open Settings on it and choose “Add a device”. A new QR code appears. Scan it within 24 hours and the device is connected. Only when no device is connected any more, ask the kindergarten for a new family QR code. A new code signs out all your devices, so you connect them again.'
+					},
+					{
+						q: 'I bought a new phone. How do I connect it?',
+						a: 'Scan the family QR code you got from the kindergarten. If it isn’t at hand, open Settings on the old phone and choose “Add a device”, then scan that code with the new phone. If you have neither, the kindergarten gives you a new code.'
+					},
+					{
+						q: 'Can grandparents use the app too?',
+						a: 'Yes. One family QR code works for the whole family. Grandma and grandpa scan the code you got from the kindergarten. If it isn’t at hand, open Settings on your phone and choose “Add a device”, then they scan that code or you send them the link. You can give each device a name, such as “grandpa Ivo”. Only your family sees the name.'
+					},
+					{
+						q: 'The parents don’t live together. How does that work?',
+						a: 'The kindergarten gives each parent their own family QR code. Both see the same notices and photos, and each one’s messages with the teachers are private. The child’s face is shown to other families only if both parents allow it.'
+					},
+					{
+						q: 'Do I have to log in?',
+						a: 'No. There are no usernames or passwords. A device stays connected as long as you open the app at least once in 90 days. If you don’t open it for 90 days, the device is signed out. Then you connect it again with the QR code.'
+					},
+					{
+						q: 'How do monthly inquiries work?',
+						a: 'Inquiries aren’t paid for. It’s just a monthly number of messages a family can send to the teachers, so they aren’t flooded. For each classroom, the kindergarten decides whether parents can write, during which hours, and how many inquiries a family has each month, usually three. A new inquiry uses one. Every further message uses one more, until a teacher answers. Answering a teacher uses nothing. Before you send, the app tells you whether a message will use an inquiry. On the first of the month you have all your inquiries again.'
+					},
+					{
+						q: 'What if I change my consent after photos are already published?',
+						a: 'The new consent applies to photos published from then on. Photos already published stay as they are. If you want one gone, ask the teacher to remove it. Anyone who already saved it has their copy.'
+					},
+					{
+						q: 'I see a device I don’t recognise among the connected devices. What now?',
+						a: 'First check that it isn’t just a device without a name, grandma’s for example. If not, remove it in Settings and it is signed out. Whoever has your QR code can connect again, so if you think the code is in the wrong hands, ask the kindergarten for a new one. A new code signs out all your devices, so you connect them again.'
+					},
+					{
+						q: 'Why do notices and photos disappear from the app?',
+						a: 'The teacher chooses how many days each post stays, from one to ninety. BubbleBoard is a notice board, not an archive. What expires is deleted, so the app takes up little space. That is why a kindergarten can keep it for free, with no subscription and no costs growing year after year. Save the photos you want to keep to your phone while they are in the app.'
+					},
+					{
+						q: 'I have several children, maybe in different classrooms. Do I need several QR codes?',
+						a: 'No. One family QR code covers all your children, whatever classroom they are in. Home shows the notices and photos of all their classrooms together, and you can show just one classroom too. Face consent is given for each child separately. When a child moves to another classroom or a sibling joins the kindergarten, the kindergarten simply adds them to your existing code.'
+					}
+				]
+			},
+			teachers: {
+				title: 'For teachers',
+				items: [
+					{
+						q: 'Do I have to print every QR code?',
+						a: 'No. When a parent comes to pick up their child, add the family QR code and the parent scans it from your screen. You can also save it as a PDF or a screenshot and send it to the parent the way you usually write to each other. The code is shown only once, so save it if the parent isn’t there. If you lose it, “Replace QR code” makes a new one.'
+					},
+					{
+						q: 'Parents say they can’t send inquiries. Why?',
+						a: 'Messaging is turned on for each classroom separately. In the classroom, under “Parent messaging”, the group lead or the BubbleBoard administrator turns sending on, sets the number of inquiries per month, and the hours when parents may write. Until it’s turned on, parents can’t send messages, not even answers to yours. You can always write to them.'
+					},
+					{
+						q: 'What is “Keep covered” for?',
+						a: 'A face you don’t assign to any child stays covered for everyone, whatever the consents say. Use it for someone who isn’t from the classroom, such as a passer-by, a parent, or a sibling. And when you aren’t sure who is in the photo. There is also a button that covers every remaining unlabelled face at once.'
+					},
+					{
+						q: 'A parent changed their consent after I published. What happens?',
+						a: 'Nothing changes by itself. The published gallery stays as it is, and the new consent applies to the next publications. If the parent wants a photo gone, remove it from the gallery.'
+					},
+					{
+						q: 'I lost my own QR code. What now?',
+						a: 'The BubbleBoard administrator opens Manage, then Teachers, and chooses “Replace QR code” next to your name. Your role and classrooms stay. The old code stops working. If every administrator code is lost, the kindergarten has a recovery QR code.'
+					},
+					{
+						q: 'How long do notices and photos stay?',
+						a: 'As long as you choose when you post: 1, 3, 7, 14, 30, 60, or 90 days. 30 is preselected. You can change it later too. The board photo and the pages under Info have no limit. They stay until you replace or delete them.'
+					},
+					{
+						q: 'What do I see, and what do a lead and an administrator see?',
+						a: 'You see the children, families, and posts of your own classrooms. In her classrooms, a group lead also adds children and family QR codes and turns on parent messaging. The BubbleBoard administrator sees every classroom, adds teachers and classrooms, and writes the pages under Info.'
+					}
+				]
+			},
+			technical: {
+				title: 'Technical questions',
+				items: [
+					{
+						q: 'What encryption is used?',
+						a: 'AES-256-GCM, built into every modern browser. Keys are made on the device and never leave it in readable form. Photos, notices, messages, children’s names, and consents are locked on the device before they are sent. A QR code carries a 128-bit secret. From it, HKDF-SHA-256 derives two separate values: the password the device presents to the server, and the key that unlocks the other keys. The server sees only the password.'
+					},
+					{
+						q: 'Is the server really “blind”?',
+						a: 'For content, yes. It can’t read a single name, message, photo, or consent, because it holds no key. To it, every child, family, classroom, and post is just a random ID, a string of letters and digits with no meaning. It sees only what it needs to work: which IDs go together, timestamps, and file sizes. It knows that ID 7f3a marked post 9c1d as seen, but not whose family that is or what the post says. All the staff of a kindergarten share one staff key, and the server decides which classroom each of them sees. The code is open, so anyone can check.'
+					},
+					{
+						q: 'How do the stickers on faces work? Is it just a layer over the photo?',
+						a: 'No. A sticker isn’t a layer that could be removed. Before anything is sent, the teacher’s phone cuts every marked face out of the photo and writes blank pixels in its place. That makes the base photo, in which the faces simply aren’t there. Each cut-out face is encrypted separately, with a key of its own, and only the families allowed to see it get that key: always the child’s own family, and the other families in the classroom once that family allows it. A face the teacher keeps covered is never sent at all. When you open a photo, your phone unlocks the base photo and the face pieces it has keys for, and puts them back together itself. Where there is no key, the sticker stays. The original photo never leaves the teacher’s phone, and the server has neither the photo nor a single face in readable form.'
+					},
+					{
+						q: 'Why do posts expire?',
+						a: 'So the kindergarten stays on the free plan. Storage is free up to a certain size, and expiring posts keep it below that limit for good, however many years the app runs. Expired posts and their files are removed by a daily cleanup.'
+					},
+					{
+						q: 'How does signing in without a password work?',
+						a: 'A device connects once with a QR code and gets a session: a random token in a cookie, which the server keeps only as a hash. A session lasts 90 days from its last use and is extended while you keep opening the app. The keys stay in the browser on the device and can’t be exported. A session alone unlocks nothing. Signing out deletes both.'
+					},
+					{
+						q: 'Why does the app have to be installed on a phone?',
+						a: 'Because of notifications. On iPhone and iPad, notifications work only in an app added to the Home Screen. So on phones and tablets BubbleBoard works once you install it. There is no store and no download, you add it from the QR code’s link. On a computer it works in the browser.'
+					},
+					{
+						q: 'What does a push notification carry?',
+						a: 'One byte saying which kind of news it is, encrypted for that one device by the web push standard. The words you see on screen are in the app itself. Every notification is the same size, so nothing can be told from that either.'
+					},
+					{
+						q: 'Can I check how the app works myself, or run it for my kindergarten?',
+						a: 'Yes. All the code is on GitHub under the AGPL-3.0 licence, with setup instructions. Every kindergarten runs its own copy, usually with the help of a parent who is handy with computers. We are glad to help, so write to us.'
+					}
+				]
+			}
 		}
 	},
 	teachers: {

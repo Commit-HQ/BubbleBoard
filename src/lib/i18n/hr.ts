@@ -27,6 +27,7 @@ export const hr = {
 			privacy: 'Privatnost',
 			teachers: 'Za odgojiteljice',
 			security: 'Sigurnost',
+			faq: 'Pitanja',
 			kindergartens: 'Za vrtiće'
 		}
 	},
@@ -114,6 +115,128 @@ export const hr = {
 		keys: {
 			title: 'Ne možemo zaviriti ni mi',
 			copy: 'Ključeve ima samo vaš vrtić. Nema ih nitko izvan njega, pa ni mi koji smo napravili aplikaciju. Aplikacija je otvorenog koda, pa svatko može provjeriti kako radi.'
+		}
+	},
+	// Česta pitanja na početnoj stranici, u tri skupine. Svaki odgovor je jedan odlomak.
+	faq: {
+		title: 'Česta pitanja',
+		copy: 'Što roditelji i odgojiteljice najčešće pitaju, i nekoliko tehničkih pitanja za one koji žele znati više.',
+		groups: {
+			parents: {
+				title: 'Za roditelje',
+				items: [
+					{
+						q: 'Izgubila sam QR kod. Moram li odmah u vrtić?',
+						a: 'Ne. Ako je bar jedan vaš uređaj još povezan, na njemu otvorite Opcije i odaberite „Dodaj uređaj”. Prikaže se novi QR kod. Skenirajte ga u roku od 24 sata i uređaj je povezan. Samo ako više nijedan uređaj nije povezan, zamolite vrtić za novi obiteljski QR kod. Novi kod odjavljuje sve vaše uređaje, pa ih povežete ponovno.'
+					},
+					{
+						q: 'Kupila sam novi mobitel. Kako ga povežem?',
+						a: 'Skenirajte obiteljski QR kod koji ste dobili od vrtića. Ako ga nemate pri ruci, na starom mobitelu otvorite Opcije i odaberite „Dodaj uređaj”, pa novi mobitel skenira taj kod. Ako nemate ni jedno ni drugo, vrtić vam daje novi kod.'
+					},
+					{
+						q: 'Mogu li aplikaciju koristiti i baka i djed?',
+						a: 'Mogu. Jedan obiteljski QR kod vrijedi za cijelu obitelj. Baka i djed skeniraju kod koji ste dobili od vrtića. Ako ga nemate pri ruci, na svojem mobitelu otvorite Opcije i odaberite „Dodaj uređaj”, pa skeniraju taj kod ili im pošaljete poveznicu. Svakom uređaju možete dati ime, na primjer „djed Ivo”. Ime vidi samo vaša obitelj.'
+					},
+					{
+						q: 'Roditelji ne žive zajedno. Kako to funkcionira?',
+						a: 'Vrtić svakom roditelju da svoj obiteljski QR kod. Oboje vide iste obavijesti i fotografije, a poruke s odgojiteljicama su svakome privatne. Lice djeteta drugim obiteljima pokazuje se samo ako to dopuste oba roditelja.'
+					},
+					{
+						q: 'Moram li se prijavljivati?',
+						a: 'Ne. Nema korisničkih imena ni lozinki. Uređaj ostaje povezan dok god aplikaciju otvorite bar jednom u 90 dana. Ako je ne otvorite 90 dana, uređaj se odjavi. Tada ga ponovno povežete QR kodom.'
+					},
+					{
+						q: 'Kako funkcioniraju mjesečni upiti?',
+						a: 'Upiti se ne plaćaju. To je samo mjesečni broj poruka koje obitelj može poslati odgojiteljicama, da ih ne zatrpa. Vrtić za svaku skupinu odluči smiju li roditelji pisati, u koje sate i koliko upita obitelj ima mjesečno, obično tri. Novi upit troši jedan. Svaka nova poruka troši još jedan, sve dok odgojiteljica ne odgovori. Odgovor odgojiteljici ne troši ništa. Aplikacija vam prije slanja kaže hoće li poruka potrošiti upit. Prvog u mjesecu opet imate sve upite.'
+					},
+					{
+						q: 'Što ako promijenim privolu, a fotografije su već objavljene?',
+						a: 'Nova privola vrijedi za fotografije objavljene od tada. Već objavljene fotografije ostaju kakve jesu. Ako želite da neka nestane, zamolite odgojiteljicu da je ukloni. Tko ju je već spremio, ima svoju kopiju.'
+					},
+					{
+						q: 'U povezanim uređajima vidim uređaj koji ne poznajem. Što sad?',
+						a: 'Prvo provjerite nije li to samo uređaj bez imena, na primjer bakin. Ako nije, uklonite ga u Opcijama i on je odjavljen. Tko ima vaš QR kod može se povezati opet, pa ako mislite da je kod u krivim rukama, zamolite vrtić za novi. Novi kod odjavljuje sve vaše uređaje, pa ih povežete ponovno.'
+					},
+					{
+						q: 'Zašto obavijesti i fotografije nestaju iz aplikacije?',
+						a: 'Odgojiteljica za svaku objavu bira koliko dana ostaje, od jednog do devedeset. BubbleBoard je oglasna ploča, ne arhiva. Što istekne, briše se, pa aplikacija zauzima malo prostora. Zato je vrtić može držati besplatno, bez pretplate i bez troškova koji bi rasli iz godine u godinu. Fotografije koje želite zadržati spremite na mobitel dok su u aplikaciji.'
+					},
+					{
+						q: 'Imam više djece, možda i u različitim skupinama. Trebam li više QR kodova?',
+						a: 'Ne. Jedan obiteljski QR kod vrijedi za svu vašu djecu, u kojoj god skupini bila. Na početnoj stranici vidite obavijesti i fotografije svih njihovih skupina zajedno, a možete prikazati i samo jednu skupinu. Privolu za lice dajete za svako dijete posebno. Kad dijete prijeđe u drugu skupinu ili dobije brata ili sestru u vrtiću, vrtić to samo doda uz vaš postojeći kod.'
+					}
+				]
+			},
+			teachers: {
+				title: 'Za odgojiteljice',
+				items: [
+					{
+						q: 'Moram li svaki QR kod ispisati?',
+						a: 'Ne. Kad roditelj dođe po dijete, dodajte obiteljski QR kod i roditelj ga skenira s vašeg ekrana. Možete ga i spremiti kao PDF ili sliku zaslona i poslati roditelju kako se inače dopisujete. Kod se prikazuje samo jednom, pa ga spremite ako roditelj nije tu. Ako ga izgubite, „Zamijeni QR kod” napravi novi.'
+					},
+					{
+						q: 'Roditelji kažu da ne mogu slati upite. Zašto?',
+						a: 'Poruke se uključuju za svaku skupinu posebno. U skupini, pod „Poruke roditelja”, voditeljica skupine ili BubbleBoard administratorica uključi slanje, odredi broj upita mjesečno i sate kad roditelji smiju pisati. Dok se ne uključi, roditelji ne mogu slati poruke, ni odgovarati na vaše. Vi im možete pisati uvijek.'
+					},
+					{
+						q: 'Čemu služi „Ostavi prekriveno”?',
+						a: 'Lice koje ne dodijelite nijednom djetetu ostaje prekriveno svima, bez obzira na privole. Koristite to za nekoga tko nije iz skupine, na primjer prolaznika, roditelja, brata ili sestru. I kad niste sigurni tko je na fotografiji. Ima i gumb koji odjednom prekrije sva još neoznačena lica.'
+					},
+					{
+						q: 'Roditelj je promijenio privolu nakon objave. Što se događa?',
+						a: 'Ništa se ne mijenja samo od sebe. Objavljena galerija ostaje kakva jest, a nova privola vrijedi za sljedeće objave. Ako roditelj želi da neka fotografija nestane, uklonite je iz galerije.'
+					},
+					{
+						q: 'Izgubila sam svoj QR kod. Što sad?',
+						a: 'BubbleBoard administratorica u Upravljanju, pod Odgojiteljice, odabere „Zamijeni QR kod” uz vaše ime. Vaša uloga i skupine ostaju. Stari kod prestaje raditi. Ako se izgube svi administratorski kodovi, vrtić ima QR kod za oporavak.'
+					},
+					{
+						q: 'Koliko dugo ostaju obavijesti i fotografije?',
+						a: 'Koliko odaberete pri objavi: 1, 3, 7, 14, 30, 60 ili 90 dana. Unaprijed je odabrano 30. Rok možete promijeniti i poslije. Fotografija oglasne ploče i stranice pod Info nemaju rok. Ostaju dok ih ne zamijenite ili obrišete.'
+					},
+					{
+						q: 'Što ja vidim, a što voditeljica i administratorica?',
+						a: 'Vi vidite djecu, obitelji i objave svojih skupina. Voditeljica skupine u svojim skupinama još dodaje djecu i obiteljske QR kodove i uključuje poruke roditelja. BubbleBoard administratorica vidi sve skupine, dodaje odgojiteljice i skupine i piše stranice pod Info.'
+					}
+				]
+			},
+			technical: {
+				title: 'Tehnička pitanja',
+				items: [
+					{
+						q: 'Kakva se enkripcija koristi?',
+						a: 'AES-256-GCM, ugrađen u svaki moderni preglednik. Ključevi nastaju na uređaju i nikad ne odlaze s njega u čitljivom obliku. Fotografije, obavijesti, poruke, imena djece i privole zaključaju se na uređaju prije slanja. QR kod nosi tajnu od 128 bitova. Iz nje se s HKDF-SHA-256 izvode dvije odvojene vrijednosti: lozinka kojom se uređaj javlja serveru i ključ koji otključava ostale ključeve. Server vidi samo lozinku.'
+					},
+					{
+						q: 'Je li server zaista „slijep”?',
+						a: 'Za sadržaj jest. Ne može pročitati nijedno ime, poruku, fotografiju ni privolu, jer nema nijedan ključ. Svako dijete, obitelj, skupina i objava za njega su samo nasumična oznaka, niz slova i brojeva bez značenja. Vidi samo ono što mu treba da radi: koje oznake idu zajedno, vremena i veličine datoteka. Zna da je oznaka 7f3a označila objavu 9c1d kao pročitanu, ali ne i čija je to obitelj ni što u objavi piše. Sve odgojiteljice vrtića dijele isti ključ osoblja, a koju skupinu koja vidi određuje server. Kod je otvoren, pa svatko može provjeriti.'
+					},
+					{
+						q: 'Kako rade naljepnice na licima? Je li to samo sloj preko slike?',
+						a: 'Nije. Naljepnica nije sloj koji bi se mogao maknuti. Prije slanja mobitel odgojiteljice svako označeno lice izreže iz fotografije i na njegovo mjesto upiše prazne piksele. Tako nastaje osnovna slika, u kojoj lica jednostavno nema. Svako izrezano lice zasebno je šifrirano, svojim ključem, i ključ dobiju samo obitelji koje ga smiju vidjeti: uvijek obitelj tog djeteta, a ostale obitelji iz skupine tek kad njegova obitelj to dopusti. Lice koje odgojiteljica ostavi prekriveno nikad se ni ne šalje. Kad otvorite fotografiju, vaš mobitel otključa osnovnu sliku i one dijelove s licima za koje ima ključ, pa ih sam slaže natrag. Gdje nema ključa, ostaje naljepnica. Izvorna fotografija nikad ne napušta mobitel odgojiteljice, a server nema ni sliku ni ijedno lice u čitljivom obliku.'
+					},
+					{
+						q: 'Zašto objave imaju rok trajanja?',
+						a: 'Da bi vrtić ostao u besplatnom paketu. Pohrana je besplatna do određene veličine, a objave koje istječu drže je trajno ispod te granice, koliko god godina aplikacija radila. Istekle objave i njihove datoteke briše dnevno čišćenje.'
+					},
+					{
+						q: 'Kako radi prijava bez lozinke?',
+						a: 'Uređaj se jednom poveže QR kodom i dobije sesiju: nasumični token u kolačiću, koji server čuva samo kao hash. Sesija traje 90 dana od zadnjeg korištenja i produžuje se dok otvarate aplikaciju. Ključevi ostaju u pregledniku na uređaju i ne mogu se izvesti. Sesija sama ne otključava ništa. Odjava briše oboje.'
+					},
+					{
+						q: 'Zašto se aplikacija mora instalirati na mobitel?',
+						a: 'Zbog obavijesti. Na iPhoneu i iPadu obavijesti rade samo u aplikaciji dodanoj na početni zaslon. Zato BubbleBoard na mobitelima i tabletima radi tek kad ga instalirate. Nema trgovine ni preuzimanja, dodate ga s poveznice QR koda. Na računalu radi u pregledniku.'
+					},
+					{
+						q: 'Što nosi push obavijest?',
+						a: 'Jedan bajt koji kaže koje je vrste novost, šifriran za točno taj uređaj po standardu za web push. Riječi koje vidite na ekranu su u samoj aplikaciji. Svaka je obavijest iste veličine, pa se ni iz toga ne može ništa zaključiti.'
+					},
+					{
+						q: 'Mogu li sam provjeriti kako aplikacija radi ili je pokrenuti za svoj vrtić?',
+						a: 'Možete. Sav kod je na GitHubu pod licencom AGPL-3.0, s uputama za postavljanje. Svaki vrtić pokreće svoju kopiju, obično uz pomoć roditelja vičnog računalima. Rado pomažemo, pišite nam.'
+					}
+				]
+			}
 		}
 	},
 	teachers: {

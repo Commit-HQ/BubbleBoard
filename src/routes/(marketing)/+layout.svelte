@@ -71,7 +71,7 @@ the app, shouldn't pull the others in as scripts. -->
 		{@render children()}
 	</main>
 
-	<!-- A brand column and three link columns of three rows each; section links fill two of them. -->
+	<!-- A brand column and three link columns of four rows each; section links fill two of them. -->
 	<footer class="mb-4 rounded-4xl glass p-7 sm:p-10">
 		<div class="grid gap-x-6 gap-y-8 md:grid-cols-3 md:gap-x-10 lg:grid-cols-[1.3fr_1fr_1fr_1fr]">
 			<div class="md:col-span-3 lg:col-span-1">
@@ -89,7 +89,7 @@ the app, shouldn't pull the others in as scripts. -->
 			<div class="md:col-span-2">
 				<h2 class="text-lg">{t.footer.explore}</h2>
 				<ul
-					class="mt-3 grid grid-flow-col grid-cols-2 grid-rows-3 gap-x-6 gap-y-2 text-muted md:gap-x-10"
+					class="mt-3 grid grid-flow-col grid-cols-2 grid-rows-4 gap-x-6 gap-y-2 text-muted md:gap-x-10"
 				>
 					{#each sections as { href, label } (href)}
 						<li><a class="hover:text-ink" {href}>{label}</a></li>
