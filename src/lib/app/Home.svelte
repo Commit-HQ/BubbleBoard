@@ -59,8 +59,8 @@
 
 	{#if staff && !classrooms.length}
 		<div class="grid justify-items-start gap-4">
-			<p class="text-muted">{app.admin ? t.manage.emptyAdmin : t.notices.noClassrooms}</p>
-			{#if app.admin}
+			<p class="text-muted">{app.head ? t.manage.emptyHead : t.notices.noClassrooms}</p>
+			{#if app.head}
 				<a class={button.secondary} href={appPath(locale, 'manage')}>
 					<Icon name="dashboard" class="size-4" />{t.manage.title}
 				</a>

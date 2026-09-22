@@ -47,11 +47,12 @@ const access = {
 		classrooms: [],
 		families: [],
 		children: [],
-		teachers: [{ id: 'teacher', name: 'Private name', admin: true }]
+		teachers: [{ id: 'teacher', name: 'Private name', role: 'head' }]
 	},
 	notices: [],
 	photos: [],
-	info: { pages: [] }
+	info: { pages: [] },
+	mutedClassrooms: []
 };
 async function connected() {
 	vi.stubGlobal('document', { visibilityState: 'visible' });

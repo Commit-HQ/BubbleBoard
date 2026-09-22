@@ -51,7 +51,8 @@
 	const chosenChild = (offer: string) => selectedChildren[offer] || children(offer)[0]?.child;
 	const alreadyBooked = (offer: string) =>
 		app.meetings.some((s) => s.offer === offer && s.child === chosenChild(offer) && s.mine);
-	const canManage = (s: MeetingSlot) => staff && (app.admin || s.teacher === app.me?.id);
+	const canManage = (s: MeetingSlot) =>
+		staff && (app.manages(s.classroom) || s.teacher === app.me?.id);
 	const removableDay = (slot: MeetingSlot) => {
 		const day = messageClock(slot.start).date;
 		return upcoming.filter(

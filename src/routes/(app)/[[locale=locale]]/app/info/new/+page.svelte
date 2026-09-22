@@ -11,6 +11,6 @@
 	const back = $derived(appPath(data.locale, 'info'));
 </script>
 
-<Screen locale={data.locale} title={t.newTitle} {back} need="admin">
+<Screen locale={data.locale} title={t.newTitle} {back} need="head">
 	<InfoPageForm locale={data.locale} onsaved={() => goto(back)} />
 </Screen>

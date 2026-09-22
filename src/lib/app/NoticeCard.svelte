@@ -11,8 +11,8 @@
 	import { alert, button, paperClass } from './ui';
 
 	// One notice on the board, on its paper, with its poll, pictures, and documents. A family marks it as seen,
-	// and until then it stands out; staff see which of its families did, and the actions its author or an admin
-	// may take.
+	// and until then it stands out; staff see which of its families did, and the actions open to whoever may
+	// change it.
 	let { locale, notice, ondelete }: { locale: Locale; notice: Notice; ondelete: () => void } =
 		$props();
 	const app = getApp();

@@ -286,7 +286,7 @@ export const en = {
 			{
 				shot: 'teacher-classroom',
 				title: 'Every family gets its own QR code',
-				copy: 'An admin adds the children to a classroom and prints a QR code for each family. The family uses that code to get into the app, with no username or password. If they lose it, they get a new one and the old one stops working.',
+				copy: 'The BubbleBoard administrator adds the children to a classroom and prints a QR code for each family. The family uses that code to get into the app, with no username or password. If they lose it, they get a new one and the old one stops working.',
 				screen:
 					'The Bubbles classroom with 8 children, each with their family’s name, and buttons to add a child and replace QR codes.'
 			}
@@ -330,7 +330,7 @@ export const en = {
 			},
 			{
 				title: 'How long',
-				copy: 'Notices stay up for the 1 to 90 days a teacher chooses, a notice board photo until it’s replaced, info pages until an admin changes or deletes them, conversations with their files until the family leaves their classroom or a teacher deletes the closed conversation, names until an admin removes them, and a device’s login until it goes unused for 90 days. Individual meeting offers and reservations are removed 90 days after the last time in the offer. Deleted records stay in the database’s backup history for up to 30 days.'
+				copy: 'Notices stay up for the 1 to 90 days a teacher chooses, a notice board photo until it’s replaced, info pages until the kindergarten changes or deletes them, conversations with their files until the family leaves their classroom or a teacher deletes the closed conversation, names until the kindergarten removes them, and a device’s login until it goes unused for 90 days. Individual meeting offers and reservations are removed 90 days after the last time in the offer. Deleted records stay in the database’s backup history for up to 30 days.'
 			},
 			{
 				title: 'Notifications',
@@ -611,9 +611,9 @@ export const en = {
 			copy: 'Open BubbleBoard’s home page and scan your QR code.',
 			action: 'Go to BubbleBoard'
 		},
-		adminOnly: {
-			title: 'Only admins can open this page',
-			copy: 'If you need something here, ask an admin at your kindergarten.'
+		headOnly: {
+			title: 'Only a BubbleBoard administrator can open this page',
+			copy: 'If you need something here, ask your kindergarten’s BubbleBoard administrator.'
 		},
 		notFound: {
 			title: 'Not found',
@@ -638,7 +638,7 @@ export const en = {
 		},
 		unreadable: {
 			title: 'Some records didn’t open',
-			copy: 'BubbleBoard couldn’t open some of your kindergarten’s records on this device. Try again, and if it keeps happening, tell an admin.'
+			copy: 'BubbleBoard couldn’t open some of your kindergarten’s records on this device. Try again, and if it keeps happening, tell the BubbleBoard administrator.'
 		},
 		staffOnly: {
 			title: 'This page is for teachers',
@@ -694,7 +694,8 @@ export const en = {
 			continue: 'Continue',
 			leaveFirst: 'Print or save both QR codes first, then tick the box.',
 			kinds: {
-				admin: 'Admin QR code',
+				head: 'BubbleBoard administrator QR code',
+				lead: 'Group lead QR code',
 				teacher: 'Teacher QR code',
 				recovery: 'Recovery QR code',
 				family: 'Family QR code'
@@ -704,7 +705,7 @@ export const en = {
 			about: 'Notices and photos from your kindergarten.',
 			private: 'Don’t share this QR code. If it’s lost, your kindergarten can give you a new one.',
 			recovery:
-				'A spare for when every admin QR code is lost: then only it can replace the lost QR codes and add children, teachers, and classrooms. Whoever has it can do everything an admin can, so keep it locked away at the kindergarten, apart from everyday QR codes.',
+				'A spare for when every BubbleBoard administrator QR code is lost: then only it can replace the lost QR codes and add children, teachers, and classrooms. Whoever has it can do everything a BubbleBoard administrator can, so keep it locked away at the kindergarten, apart from everyday QR codes.',
 			qr: (name: string) => `QR code for ${name}`,
 			replace: 'Replace QR code',
 			replaceTitle: (name: string) => `Replace the QR code for ${name}?`,
@@ -727,15 +728,16 @@ export const en = {
 		},
 		manage: {
 			title: 'Manage',
-			admin: 'Here’s your kindergarten.',
+			head: 'Here’s your kindergarten.',
 			teacher: 'Here are your classrooms.',
 			classrooms: 'Classrooms',
 			addClassroom: 'Add classroom',
 			classroomName: 'Classroom name',
 			teachers: 'Teachers',
 			teachersDetail: 'Names, classrooms, and QR codes',
-			emptyAdmin: 'Start by adding your first classroom.',
-			emptyTeacher: 'You haven’t been added to a classroom yet. An admin can add you.'
+			emptyHead: 'Start by adding your first classroom.',
+			emptyTeacher:
+				'You haven’t been added to a classroom yet. A BubbleBoard administrator can add you.'
 		},
 		classroom: {
 			children: 'Children',
@@ -798,6 +800,7 @@ export const en = {
 			cards: 'Family QR codes',
 			noCards: 'No family QR code yet. Add one so the family can connect.',
 			also: (children: string[]) => `Also for ${list(children)}`,
+			alsoElsewhere: 'Also in another group',
 			removeCardTitle: (name: string) => `Remove the QR code for ${name}?`,
 			removeCardShared: (children: string[]) => `The QR code keeps working for ${list(children)}.`,
 			removeCardLast: 'The QR code stops working, and every device that used it is signed out.',
@@ -815,31 +818,40 @@ export const en = {
 					? `Family QR codes that will stop working: ${list(cards)}.`
 					: 'This can’t be undone.'
 		},
+		// What each staff member may do, on her QR code, in the list of teachers, and in her form.
+		roles: {
+			teacher: 'Teacher',
+			lead: 'Group lead',
+			head: 'BubbleBoard administrator'
+		},
 		teachers: {
 			title: 'Teachers',
 			add: 'Add teacher',
-			admin: 'Admin',
 			you: 'you',
 			noClassrooms: 'No classrooms',
 			recoveryTitle: 'For emergencies',
-			recoveryDetail: 'Opens everything if every admin QR code is lost.'
+			recoveryDetail: 'Opens everything if every BubbleBoard administrator QR code is lost.'
 		},
 		teacher: {
 			newTitle: 'Add teacher',
 			name: 'Name',
 			classrooms: 'Classrooms',
 			noClassrooms: 'There are no classrooms yet.',
-			admin: 'Admin',
-			adminHint: 'Can add classrooms, teachers, and children, and open every classroom.',
-			selfAdmin: 'Another admin can change this.',
+			role: 'What she may do',
+			teacherHint: 'Posts notices and photos in her classrooms.',
+			leadHint:
+				'Everything a teacher does, and in her classrooms she also adds children and family QR codes and sets up parent messaging.',
+			headHint:
+				'Everything a group lead does, in every classroom, and also adds classrooms, teachers, and info pages.',
+			selfRole: 'Another BubbleBoard administrator can change this.',
 			create: 'Create QR code',
 			remove: 'Remove teacher',
 			removeTitle: (name: string) => `Remove ${name}?`,
 			removeCopy: (name: string) =>
 				`${name} won’t be able to open BubbleBoard anymore, and devices using their QR code will be signed out.`,
-			self: 'This is you. Another admin can remove you.',
+			self: 'This is you. Another BubbleBoard administrator can remove you.',
 			recovery:
-				'A spare for when every admin QR code is lost. Then only it can replace the lost QR codes, and without it no one could add children, teachers, or classrooms. Because it can do everything an admin can, keep it locked away at the kindergarten, apart from everyday QR codes, and replace it if someone else may have seen it.'
+				'A spare for when every BubbleBoard administrator QR code is lost. Then only it can replace the lost QR codes, and without it no one could add children, teachers, or classrooms. Because it can do everything a BubbleBoard administrator can, keep it locked away at the kindergarten, apart from everyday QR codes, and replace it if someone else may have seen it.'
 		},
 		options: {
 			title: 'Settings',
@@ -894,7 +906,7 @@ export const en = {
 			title: 'Info',
 			empty:
 				'Nothing here yet. When your kindergarten adds information for everyone, such as opening hours or contacts, it appears here.',
-			emptyAdmin:
+			emptyHead:
 				'Nothing here yet. Add a page for each thing everyone at your kindergarten should know, such as opening hours, contacts, or meals, with files if you like.',
 			add: 'Add page',
 			newTitle: 'New page',
@@ -946,7 +958,7 @@ export const en = {
 				'For a change everyone should see. The notice goes back to the top of the board.',
 			post: 'Post notice',
 			save: 'Save changes',
-			noClassrooms: 'You can post notices once an admin adds you to a classroom.'
+			noClassrooms: 'You can post notices once a BubbleBoard administrator adds you to a classroom.'
 		},
 		polls: {
 			add: 'Add a poll',
@@ -1004,6 +1016,9 @@ export const en = {
 			blocked:
 				'Notifications are blocked for BubbleBoard. Allow them in your device’s settings, then turn them on here.',
 			title: 'Notifications',
+			classrooms: 'Classrooms that notify you',
+			classroomsHint:
+				'You run every classroom, so choose the ones you want to hear about. A classroom added later notifies you until you take it off.',
 			on: 'On: this device hears about new notices.',
 			off: 'Off on this device.',
 			unsupported: 'This browser can’t show notifications from BubbleBoard.'
@@ -1200,7 +1215,7 @@ export const en = {
 			offline: 'BubbleBoard can’t be reached. Check your internet connection and try again.',
 			'signed-out': 'This device was signed out. Scan your QR code again to continue.',
 			'unreadable-records':
-				'Some of your kindergarten’s records didn’t open on this device. Try again, and if it keeps happening, tell an admin.',
+				'Some of your kindergarten’s records didn’t open on this device. Try again, and if it keeps happening, tell the BubbleBoard administrator.',
 			'unknown-card': 'This QR code doesn’t work anymore. Ask your kindergarten for a new one.',
 			'ended-card':
 				'This QR code was already used, or its day is over. Ask whoever gave it to you for a new one.',
@@ -1217,7 +1232,8 @@ export const en = {
 			'already-set-up': 'BubbleBoard is already set up here. Connect with your QR code instead.',
 			'setup-unavailable':
 				'Setup isn’t ready on this installation. Ask whoever installed BubbleBoard.',
-			'last-admin': 'BubbleBoard needs at least one admin. Make someone else an admin first.',
+			'last-head':
+				'BubbleBoard needs at least one administrator. Make someone else an administrator first.',
 			'not-empty': 'Move or remove this classroom’s children first.',
 			'empty-name': 'A name can’t be left blank. Type one and try again.',
 			stale:

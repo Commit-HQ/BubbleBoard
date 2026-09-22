@@ -31,7 +31,10 @@ async function fixture() {
 			.prepare('INSERT INTO classrooms(id,profile,group_key_for_staff) VALUES(?,?,?)')
 			.bind(id, 'profile', 'key')
 			.run();
-	await db.prepare('INSERT INTO teachers VALUES(?,?,?)').bind(teacher, 1, 'profile').run();
+	await db
+		.prepare('INSERT INTO teachers (id,profile,role) VALUES(?,?,?)')
+		.bind(teacher, 'profile', 'teacher')
+		.run();
 	await db.prepare('INSERT INTO teacher_classrooms VALUES(?,?)').bind(teacher, classroom).run();
 	for (const id of [family, secondFamily, otherFamily]) {
 		await db.prepare('INSERT INTO families VALUES(?,?,?)').bind(id, 'profile', 'key').run();
@@ -42,7 +45,13 @@ async function fixture() {
 	}
 	for (const id of [child, otherChild])
 		await db.prepare('INSERT INTO children VALUES(?,?,?)').bind(id, classroom, 'profile').run();
-	const staff: Staff = { kind: 'staff', teacher, admin: false, credential: 'c', wrappedKey: 'k' };
+	const staff: Staff = {
+		kind: 'staff',
+		teacher,
+		role: 'teacher',
+		credential: 'c',
+		wrappedKey: 'k'
+	};
 	const parent: Identity = { kind: 'family', family, credential: 'c', wrappedKey: 'k' };
 	const second: Identity = { ...parent, family: secondFamily };
 	const other: Identity = { ...parent, family: otherFamily };
@@ -84,7 +93,7 @@ describe('meeting reservations', () => {
 		};
 		// This is the same parse-then-save boundary as the child update endpoint, including older clients.
 		const save = async (body: Record<string, unknown>) =>
-			changeChild(db, { ...staff, admin: true }, child, childChange(body));
+			changeChild(db, { ...staff, role: 'head' }, child, childChange(body));
 		await expect(save(edit)).rejects.toMatchObject({ status: 400 });
 		expect((await meetingData(db, parent)).slots[0]).toMatchObject({ mine: true, version: 1 });
 		await save({ ...edit, meetingFamilies: [parent.family, second.family] });
@@ -258,7 +267,10 @@ describe('removing a day of meetings', () => {
 	it('does not remove times absent from the confirmation, other days, or another teacher’s times', async () => {
 		const { db, staff, offer } = await fixture();
 		const colleague = createId();
-		await db.prepare('INSERT INTO teachers VALUES(?,?,?)').bind(colleague, 0, 'profile').run();
+		await db
+			.prepare('INSERT INTO teachers (id,profile,role) VALUES(?,?,?)')
+			.bind(colleague, 'profile', 'teacher')
+			.run();
 		await db
 			.prepare('INSERT INTO teacher_classrooms VALUES(?,?)')
 			.bind(colleague, offer.classroom)
@@ -284,7 +296,7 @@ describe('removing a day of meetings', () => {
 		await expect(
 			removeMeetingDay(db, staff, request(offer.classroom, remaining))
 		).rejects.toMatchObject({ status: 409 });
-		await removeMeetingDay(db, { ...staff, admin: true }, request(offer.classroom, remaining));
+		await removeMeetingDay(db, { ...staff, role: 'lead' }, request(offer.classroom, remaining));
 		expect((await meetingData(db, staff)).slots).toEqual([]);
 	});
 	it('rejects invalid dates, foreign classrooms, and times that have started', async () => {

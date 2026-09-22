@@ -20,7 +20,7 @@ import {
 } from './messages';
 import { conversationRecipients, deliver, createVapidSecret } from './push';
 import type { PushEnv, PushMessage } from './push';
-import type { Admin } from './session';
+import type { Head, Manager } from './session';
 
 const monday = Date.parse('2026-09-14T08:00:00Z'); // 10:00 Zagreb
 async function fixture() {
@@ -30,6 +30,7 @@ async function fixture() {
 		family = createId(),
 		otherFamily = createId(),
 		teacher = createId(),
+		lead = createId(),
 		colleague = createId(),
 		outsider = createId();
 	for (const id of [classroom, otherClassroom])
@@ -39,12 +40,13 @@ async function fixture() {
 			.run();
 	for (const id of [family, otherFamily])
 		await db.prepare('INSERT INTO families VALUES (?,?,?)').bind(id, 'profile', 'key').run();
-	for (const id of [teacher, colleague, outsider])
+	// The head holds no classroom; the lead and her colleague hold the one the family is in.
+	for (const id of [teacher, lead, colleague, outsider])
 		await db
-			.prepare('INSERT INTO teachers VALUES (?,?,?)')
-			.bind(id, id === teacher ? 1 : 0, 'profile')
+			.prepare('INSERT INTO teachers (id,profile,role) VALUES (?,?,?)')
+			.bind(id, 'profile', id === teacher ? 'head' : id === lead ? 'lead' : 'teacher')
 			.run();
-	for (const id of [teacher, colleague])
+	for (const id of [lead, colleague])
 		await db.prepare('INSERT INTO teacher_classrooms VALUES (?,?)').bind(id, classroom).run();
 	await db
 		.prepare('INSERT INTO teacher_classrooms VALUES (?,?)')
@@ -56,8 +58,9 @@ async function fixture() {
 			.bind(id, classroom, 'key')
 			.run();
 	const parent: Identity = { kind: 'family', family, credential: 'c', wrappedKey: 'k' };
-	const admin: Admin = { kind: 'staff', teacher, admin: true, credential: 'c', wrappedKey: 'k' };
-	const staff: Staff = { ...admin, teacher: colleague, admin: false };
+	const head: Head = { kind: 'staff', teacher, role: 'head', credential: 'c', wrappedKey: 'k' };
+	const groupLead: Manager = { ...head, teacher: lead, role: 'lead' };
+	const staff: Staff = { ...head, teacher: colleague, role: 'teacher' };
 	const stranger: Staff = { ...staff, teacher: outsider };
 	const settings = {
 		classroom,
@@ -66,7 +69,7 @@ async function fixture() {
 		schedule: defaultSchedule(),
 		revision: 0
 	};
-	await saveSettings(db, admin, settings);
+	await saveSettings(db, head, settings);
 	const inquiry = () => ({
 		id: createId(),
 		classroom,
@@ -78,7 +81,8 @@ async function fixture() {
 	return {
 		db,
 		parent,
-		admin,
+		head,
+		groupLead,
 		staff,
 		stranger,
 		settings,
@@ -117,7 +121,7 @@ describe('private inquiries', () => {
 		await expect(
 			reply(f.db, f.parent, first.id, createId(), 'one more thing', [], monday)
 		).rejects.toMatchObject({ body: { message: 'messages-limit' } });
-		await saveSettings(f.db, f.admin, { ...f.settings, monthlyLimit: 3, revision: 1 });
+		await saveSettings(f.db, f.head, { ...f.settings, monthlyLimit: 3, revision: 1 });
 		expect(await reply(f.db, f.parent, first.id, createId(), 'one more thing', [], monday)).toBe(
 			true
 		);
@@ -199,7 +203,7 @@ describe('private inquiries', () => {
 			reply(f.db, f.parent, first.id, createId(), 'weekend', [], saturday)
 		).rejects.toMatchObject({ body: { message: 'messages-hours' } });
 		await reply(f.db, f.staff, first.id, createId(), 'staff weekend', [], saturday);
-		await saveSettings(f.db, f.admin, { ...f.settings, enabled: false, revision: 1 });
+		await saveSettings(f.db, f.head, { ...f.settings, enabled: false, revision: 1 });
 		await expect(
 			reply(f.db, f.parent, first.id, createId(), 'disabled', [], monday)
 		).rejects.toMatchObject({ body: { message: 'messages-disabled' } });
@@ -215,7 +219,7 @@ describe('private inquiries', () => {
 			.prepare('INSERT INTO family_classrooms VALUES (?,?,?)')
 			.bind(f.family, f.otherClassroom, 'key')
 			.run();
-		await saveSettings(f.db, f.admin, { ...f.settings, classroom: f.otherClassroom });
+		await saveSettings(f.db, f.head, { ...f.settings, classroom: f.otherClassroom });
 		await startConversation(
 			f.db,
 			f.parent,
@@ -236,12 +240,20 @@ describe('private inquiries', () => {
 	});
 	it('starts a classroom nobody has settled switched off, with three inquiries a month', async () => {
 		const f = await fixture();
-		const { policies } = await inbox(f.db, f.admin, monday);
+		const { policies } = await inbox(f.db, f.head, monday);
 		expect(policies.find((policy) => policy.classroom === f.otherClassroom)).toMatchObject({
 			enabled: false,
 			monthlyLimit: 3,
 			used: 0
 		});
+	});
+	// A teacher never reaches here: the route takes a head or a lead (src/routes/api/classrooms).
+	it('lets the head settle any classroom and a lead only the ones she holds', async () => {
+		const f = await fixture();
+		const forOther = { ...f.settings, classroom: f.otherClassroom };
+		await saveSettings(f.db, f.head, forOther);
+		await saveSettings(f.db, f.groupLead, { ...f.settings, monthlyLimit: 5, revision: 1 });
+		await expect(saveSettings(f.db, f.groupLead, forOther)).rejects.toMatchObject({ status: 409 });
 	});
 	it('handles concurrent last-slot sends and identical retries without partial or duplicate messages', async () => {
 		const f = await fixture();
@@ -278,13 +290,13 @@ describe('private inquiries', () => {
 		const f = await fixture(),
 			first = f.inquiry();
 		await startConversation(f.db, f.parent, first, monday);
-		await expect(saveSettings(f.db, f.admin, f.settings)).rejects.toMatchObject({ status: 409 });
+		await expect(saveSettings(f.db, f.head, f.settings)).rejects.toMatchObject({ status: 409 });
 		await f.db
 			.prepare('DELETE FROM family_classrooms WHERE family_id=? AND classroom_id=?')
 			.bind(f.family, f.classroom)
 			.run();
 		expect(await f.db.prepare('SELECT COUNT(*) AS n FROM messages').first()).toEqual({ n: 0 });
-		await expect(readMessages(f.db, f.admin, first.id)).rejects.toMatchObject({ status: 404 });
+		await expect(readMessages(f.db, f.head, first.id)).rejects.toMatchObject({ status: 404 });
 	});
 	it('routes notifications only to this family and its assigned teachers', async () => {
 		const f = await fixture(),
@@ -417,7 +429,7 @@ describe('changing one message', () => {
 		const changed = (await readMessages(f.db, f.staff, first.id)).at(-1)!;
 		expect(changed).toMatchObject({ content: 'sealed again', editedAt: monday + 1000 });
 		// A colleague shares the conversation but not the message; the family it was written to has no say.
-		for (const who of [f.admin, f.parent])
+		for (const who of [f.head, f.parent])
 			await expect(
 				editMessage(f.db, who, first.id, message, 'not theirs', monday)
 			).rejects.toMatchObject({ status: 403, body: { message: 'forbidden' } });
@@ -480,7 +492,7 @@ describe('changing one message', () => {
 			deleteMessage(f.db, store, f.parent, first.id, first.message, monday)
 		).rejects.toMatchObject({ status: 403 });
 		await expect(
-			deleteMessage(f.db, store, f.admin, first.id, message, monday)
+			deleteMessage(f.db, store, f.head, first.id, message, monday)
 		).rejects.toMatchObject({ status: 403 });
 		await deleteMessage(f.db, store, f.staff, first.id, message, monday + 1000);
 		const rows = await readMessages(f.db, f.parent, first.id);
@@ -537,7 +549,7 @@ describe('changing one message', () => {
 			first = f.inquiry(),
 			other = f.inquiry();
 		await startConversation(f.db, f.staff, first, monday);
-		await saveSettings(f.db, f.admin, { ...f.settings, monthlyLimit: 3, revision: 1 });
+		await saveSettings(f.db, f.head, { ...f.settings, monthlyLimit: 3, revision: 1 });
 		await startConversation(f.db, f.parent, other, monday);
 		await expect(
 			editMessage(f.db, f.staff, other.id, first.message, 'sealed', monday)

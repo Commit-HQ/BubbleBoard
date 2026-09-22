@@ -9,7 +9,7 @@
 	import { alert, button, paperClass } from './ui';
 
 	// One of the kindergarten's info pages, on its paper, with its pictures and documents and when it was last
-	// updated. Admins also edit or delete it here, and move it up or down among the pages.
+	// updated. The head also edits or deletes it here, and moves it up or down among the pages.
 	let {
 		locale,
 		page,
@@ -47,7 +47,7 @@
 	{/if}
 	<p class="mt-5 text-sm text-muted">{t.updated(formatDateTime(locale, page.editedAt))}</p>
 
-	{#if app.admin}
+	{#if app.head}
 		<div class="mt-4 -ml-3 flex flex-wrap items-center gap-2">
 			<a class={button.quiet} href={appPath(locale, 'info/edit', { id: page.id })}>
 				<Icon name="pencil" class="size-4" />{t.edit}

@@ -5,7 +5,7 @@
 	import { getApp, Task } from './state.svelte';
 	import { alert, button, field, formText } from './ui';
 
-	// Manage's last classroom tile, for admins. It turns over to a field for the new classroom's name in its
+	// Manage's last classroom tile, for the head. It turns over to a field for the new classroom's name in its
 	// own place, and turns back once the classroom is added or the form is cancelled.
 	let { locale }: { locale: Locale } = $props();
 	const app = getApp();

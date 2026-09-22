@@ -2,12 +2,12 @@ import { error } from '@sveltejs/kit';
 import type { InfoPageChange, InfoPageRecord, NewInfoPage, StaffInfo } from '$lib/api';
 import { maxInfoPages } from '$lib/info';
 import { transaction } from './database';
-import type { Admin } from './session';
+import type { Head } from './session';
 import { deleteMarked, getObject, putObject, type ObjectStore } from './storage';
 
 // The kindergarten's info pages (docs/access-format.md): text and files for everyone who uses the app, in the order
-// admins put them in, which stay until admins change or delete them. The server can't read them, so it decides who
-// may change them and fetch their files: admins add, change, order, and delete pages, and every connected device
+// the head put them in, which stay until she changes or deletes them. The server can't read them, so it decides who
+// may change them and fetch their files: the head adds, changes, orders, and deletes pages, and every connected device
 // reads them, staff with the Info Key wrapped for the Staff Key, and families with the copy each of their classrooms
 // keeps (`classrooms.info_key`). The first page brings the key for staff and for every classroom, and a classroom
 // added later brings its copy (catalog.ts), which the database checks (migrations/0013_info.sql). A page names the
@@ -18,7 +18,7 @@ function fileKey(page: string, file: string) {
 	return `info/${page}/${file}`;
 }
 
-/** The pages, in the order admins put them in. */
+/** The pages, in the order the head put them in. */
 function pagesQuery(db: D1Database) {
 	return db.prepare(
 		'SELECT id, content, edited_at AS editedAt FROM info_pages ORDER BY position, id'
@@ -73,12 +73,12 @@ function insertFiles(db: D1Database, page: string, files: string[]) {
 }
 
 /**
- * Adds a page for an admin, after the others, with the files its content holds. The kindergarten's first page brings
+ * Adds a page for the head, after the others, with the files its content holds. The kindergarten's first page brings
  * the new Info Key for staff and for each classroom, and is refused when another page brought a key first or a
  * classroom would be left without it; any other page is refused when it brings a key, or comes before there's one.
  * Either way, the device is told to load its records again.
  */
-export async function addInfoPage(db: D1Database, admin: Admin, page: NewInfoPage) {
+export async function addInfoPage(db: D1Database, head: Head, page: NewInfoPage) {
 	const row = await db
 		.prepare('SELECT COUNT(*) AS count FROM info_pages')
 		.first<{ count: number }>();
@@ -106,11 +106,11 @@ export async function addInfoPage(db: D1Database, admin: Admin, page: NewInfoPag
 	return info;
 }
 
-/** Changes a page for an admin, and deletes the files the change leaves out. */
+/** Changes a page for the head, and deletes the files the change leaves out. */
 export async function changeInfoPage(
 	db: D1Database,
 	bucket: R2Bucket,
-	admin: Admin,
+	head: Head,
 	id: string,
 	change: InfoPageChange
 ) {
@@ -132,8 +132,8 @@ export async function changeInfoPage(
 	return info;
 }
 
-/** Deletes a page for an admin, with its files. */
-export async function deleteInfoPage(db: D1Database, bucket: R2Bucket, admin: Admin, id: string) {
+/** Deletes a page for the head, with its files. */
+export async function deleteInfoPage(db: D1Database, bucket: R2Bucket, head: Head, id: string) {
 	const { results, info } = await changeInfo(db, [
 		db.prepare('DELETE FROM info_pages WHERE id = ?').bind(id)
 	]);
@@ -143,10 +143,10 @@ export async function deleteInfoPage(db: D1Database, bucket: R2Bucket, admin: Ad
 }
 
 /**
- * Puts the pages in the order an admin's device sends, which names every page once. A device that doesn't know about
+ * Puts the pages in the order the head's device sends, which names every page once. A device that doesn't know about
  * a page added or deleted meanwhile is told to load its records again.
  */
-export async function orderInfoPages(db: D1Database, admin: Admin, pages: string[]) {
+export async function orderInfoPages(db: D1Database, head: Head, pages: string[]) {
 	const order = JSON.stringify(pages);
 	const row = await db
 		.prepare(
@@ -168,14 +168,14 @@ export async function orderInfoPages(db: D1Database, admin: Admin, pages: string
 }
 
 /**
- * Stores a file's encrypted bytes for a page about to be added or changed, which names the file when an admin saves
+ * Stores a file's encrypted bytes for a page about to be added or changed, which names the file when the head saves
  * it. A file stored already is refused as `stored`, and files no page names are deleted in the daily cleanup a day
  * later.
  */
 export async function uploadInfoFile(
 	db: D1Database,
 	store: ObjectStore,
-	admin: Admin,
+	head: Head,
 	page: string,
 	file: string,
 	bytes: Uint8Array<ArrayBuffer>

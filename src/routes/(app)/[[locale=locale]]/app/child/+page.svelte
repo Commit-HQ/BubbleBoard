@@ -29,8 +29,13 @@
 	const families = $derived(
 		app.catalog.families.filter((family) => child?.families.includes(family.id))
 	);
+	/** Whether this device runs the child's classroom, which is what the editing parts wait for. */
+	const manages = $derived(child !== undefined && app.manages(child.classroom));
+	/** Only classrooms this device runs: a child is never moved somewhere its mover can't follow. */
 	const otherClassrooms = $derived(
-		app.catalog.classrooms.filter((candidate) => candidate.id !== child?.classroom)
+		app.catalog.classrooms.filter(
+			(candidate) => candidate.id !== child?.classroom && app.manages(candidate.id)
+		)
 	);
 	let editing = $state<Editing>();
 	let confirming = $state<Confirming>();
@@ -42,7 +47,7 @@
 
 	$effect(() => {
 		const current = child;
-		if (!current || !app.admin || sharing?.child === current.id) return;
+		if (!current || !manages || sharing?.child === current.id) return;
 		void sharingTask.run(async () => {
 			const { shared } = await app.photoSharing(current.classroom);
 			sharing = { child: current.id, share: shared.has(current.id) };
@@ -60,6 +65,13 @@
 			sharingSaved = true;
 		});
 		if (sharingTask.error) sharing = undefined;
+	}
+
+	/** Whether the family's QR code also opens a classroom this device doesn't see. */
+	function reachesElsewhere(family: Family) {
+		return family.classrooms.some(
+			(classroom) => !app.catalog.classrooms.some((candidate) => candidate.id === classroom)
+		);
 	}
 
 	/** The family's other children that this device can see. */
@@ -140,7 +152,7 @@
 		locale={data.locale}
 		title={child?.name ?? t.notFound.title}
 		back={classroom && appPath(data.locale, 'classroom', { id: classroom.id })}
-		rename={child && app.admin
+		rename={child && manages
 			? { label: t.newChild.name, save: (name) => close(app.renameChild(child, name)) }
 			: undefined}
 	>
@@ -157,7 +169,7 @@
 								<div class="min-w-0">
 									<div class="flex items-start gap-1">
 										<p id="card-{family.id}" class="min-w-0 font-bold">{family.name}</p>
-										{#if app.admin && !renaming}
+										{#if manages && !renaming}
 											<button
 												class="{button.icon} -my-2.5"
 												type="button"
@@ -179,6 +191,11 @@
 											)}
 										</p>
 									{/if}
+									<!-- The QR code also opens a classroom this device doesn't see, so replacing or
+									removing it reaches further than this page shows. -->
+									{#if reachesElsewhere(family)}
+										<p class="text-sm text-muted">{t.child.alsoElsewhere}</p>
+									{/if}
 								</div>
 							</div>
 							{#if renaming}
@@ -194,7 +211,7 @@
 								</div>
 							{:else}
 								<div class="mt-4 flex flex-wrap gap-2">
-									{#if app.admin}
+									{#if manages}
 										<button
 											class={button.secondary}
 											type="button"
@@ -219,7 +236,7 @@
 						<li class="text-muted">{t.child.noCards}</li>
 					{/each}
 				</ul>
-				{#if app.admin}
+				{#if manages}
 					{#if editing === 'addCard'}
 						<div class={surface}>
 							<FieldForm
@@ -245,7 +262,7 @@
 				{/if}
 			</section>
 
-			{#if app.admin}
+			{#if manages}
 				<section class="{surface} grid gap-4" aria-labelledby="sharing-title">
 					<h2 id="sharing-title" class="sr-only">{t.sharing.title}</h2>
 					{#if sharing}

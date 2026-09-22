@@ -48,7 +48,10 @@ function served(id: string, sealed: Sealed, visible?: string[]): NoticeRecord {
 		expiresAt: 2,
 		seen: [],
 		votes: [],
-		classrooms: sealed.classrooms.filter(({ classroom }) => !visible || visible.includes(classroom))
+		classrooms: sealed.classrooms.filter(
+			({ classroom }) => !visible || visible.includes(classroom)
+		),
+		elsewhere: visible !== undefined && visible.length < sealed.classrooms.length
 	};
 }
 

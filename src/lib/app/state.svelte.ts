@@ -33,7 +33,8 @@ import {
 	type NoticeRecord,
 	type PhotoRecord,
 	type PollAnswer,
-	type StaffInfo
+	type StaffInfo,
+	type StaffRole
 } from '$lib/api';
 import {
 	openConversation,
@@ -165,7 +166,7 @@ export type SealedMessage = {
 	start: boolean;
 	payload: Record<string, unknown>;
 };
-export type TeacherValues = { name: string; admin: boolean; classrooms: string[] };
+export type TeacherValues = { name: string; role: StaffRole; classrooms: string[] };
 export type ChildValues = { name: string; classroom: string; share: boolean } & (
 	{ cardName: string } | { sibling: string }
 );
@@ -439,7 +440,7 @@ export class App {
 	 * Changes an event that's up, sealed again under the key it was published with: its words, how long it
 	 * stays, and the photos it holds now, which are the ones it keeps and any `added` prepares. The photos it
 	 * keeps are never sealed again, so they hold the consent of the day they went up. The name on the event
-	 * stays whoever published it, so an admin changing another teacher's event doesn't take it over, exactly
+	 * stays whoever published it, so someone changing another teacher's event doesn't take it over, exactly
 	 * as a changed notice keeps its author. Nobody is notified again.
 	 */
 	async changeEvent(
@@ -507,9 +508,14 @@ export class App {
 			this.#keepPictures();
 		};
 	}
-	/** Whether this device may change or delete an event: its author's own, or any for an admin. */
+	/**
+	 * Whether this device may change or delete an event: its author's own, any for a head, and for a group
+	 * lead any in a classroom she runs.
+	 */
 	canChangeEvent(event: OpenEvent) {
-		return this.status === 'staff' && (this.admin || event.teacher === this.me?.id);
+		return (
+			this.status === 'staff' && (event.teacher === this.me?.id || this.manages(event.classroom))
+		);
 	}
 	async deleteEvent(event: OpenEvent) {
 		await this.#signedIn(() => request('DELETE', `/api/events/${event.id}`));
@@ -570,7 +576,7 @@ export class App {
 			this.messagesVersion++;
 		} catch (cause) {
 			// What loaded before stays: a connection that dropped for a moment shouldn't empty the inbox, or
-			// take away the settings an admin has open. Only the card going away clears them (`#disconnect`).
+			// take away the settings someone has open. Only the card going away clears them (`#disconnect`).
 			if (this.#card !== card || load !== this.#messageLoad) return;
 			this.messagesError = errorCode(cause);
 		}
@@ -734,8 +740,8 @@ export class App {
 	}
 
 	/**
-	 * Saves what an admin decided about a classroom's messaging. The policy is loaded again either way, so a
-	 * save refused as stale leaves the form showing what the other admin settled.
+	 * Saves what staff decided about a classroom's messaging. The policy is loaded again either way, so a
+	 * save refused as stale leaves the form showing what whoever got there first settled.
 	 */
 	async saveMessageSettings(settings: MessageSettings) {
 		try {
@@ -851,6 +857,11 @@ export class App {
 	notifications = $state<NotificationState>('unsupported');
 	/** Whether Not now put away home's card that turns notifications on. */
 	notificationCardHidden = $state(true);
+	/**
+	 * The classrooms a head chose not to hear about. She belongs to none, so she hears about every classroom
+	 * that isn't in here, a classroom added later included. Empty for anyone else.
+	 */
+	mutedClassrooms = $state.raw<string[]>([]);
 	catalog = $state.raw(emptyCatalog);
 	me = $state.raw<Teacher>();
 	/** The classrooms a family device has joined. */
@@ -865,7 +876,7 @@ export class App {
 	unreadableNotices = $state(0);
 	/** The photos of the boards of this device's classrooms: one for each classroom that shows one. */
 	photos = $state.raw<Photo[]>([]);
-	/** The kindergarten's info pages that open on this device, in the order admins put them in. */
+	/** The kindergarten's info pages that open on this device, in the order staff put them in. */
 	infoPages = $state.raw<InfoPage[]>([]);
 	/** How many info pages didn't open on this device. */
 	unreadableInfoPages = $state(0);
@@ -906,8 +917,21 @@ export class App {
 	/** The Family Keys a staff device has opened, by the envelope each came from, until it disconnects. */
 	#familyKeys = new Map<string, Promise<CryptoKey>>();
 
-	get admin() {
-		return this.me?.admin === true;
+	/** What this device's staff member may do; nothing at all on a family device. */
+	get role(): StaffRole | undefined {
+		return this.status === 'staff' ? this.me?.role : undefined;
+	}
+
+	get head() {
+		return this.role === 'head';
+	}
+
+	/**
+	 * Whether this device runs the classroom: adds children there, prints and replaces family QR codes,
+	 * settles its messaging. A head runs every classroom, a group lead the ones she's been given.
+	 */
+	manages(classroom: string) {
+		return this.head || (this.role === 'lead' && this.me?.classrooms.includes(classroom) === true);
 	}
 
 	/** The name this device's staff member goes by, on what they put up and in home's greeting. */
@@ -922,7 +946,7 @@ export class App {
 
 	/**
 	 * The classrooms this device belongs to, with their Group Keys: a family's children's, or those the server
-	 * sends staff, which are a teacher's own, or all of them for an admin.
+	 * sends staff, which are a teacher's own, or all of them for a head.
 	 */
 	get myClassrooms(): FamilyClassroom[] {
 		return this.status === 'family' ? this.familyClassrooms : this.catalog.classrooms;
@@ -1093,6 +1117,7 @@ export class App {
 			const keys = await openStaffKeys(access, card.unlockKey);
 			if (version !== this.#connectionVersion) return;
 			this.#keys = keys;
+			this.mutedClassrooms = access.mutedClassrooms;
 			await this.#load(access.kindergarten, access.teacher);
 			if (version !== this.#connectionVersion) return;
 			classrooms = this.catalog.classrooms;
@@ -1263,7 +1288,7 @@ export class App {
 		}
 	}
 
-	/** Sends an admin's change to the records, which come back as they are now. */
+	/** Sends a change to the records, which come back as they are now. */
 	#change(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown) {
 		return this.#send<Kindergarten>(method, path, body, (records) => this.#load(records));
 	}
@@ -1275,7 +1300,7 @@ export class App {
 		);
 	}
 
-	/** Sends an admin's change to the info pages, which come back as staff get them now. */
+	/** Sends a change to the info pages, which come back as staff get them now. */
 	#changeInfo(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown) {
 		return this.#send<StaffInfo>(method, path, body, (info) => this.#showStaffInfo(info));
 	}
@@ -1302,6 +1327,7 @@ export class App {
 		this.messagesError = undefined;
 		this.me = undefined;
 		this.catalog = emptyCatalog;
+		this.mutedClassrooms = [];
 		this.familyClassrooms = [];
 		this.devices = [];
 		this.deviceNameCardHidden = true;
@@ -1452,6 +1478,17 @@ export class App {
 		this.notifications = 'off';
 	}
 
+	/**
+	 * Says which classrooms a head wants to hear about. The server keeps the others, so a classroom added
+	 * afterwards notifies her until she takes it off the list.
+	 */
+	async setNotifiedClassrooms(classrooms: string[]) {
+		await this.#signedIn(() => request('PUT', '/api/push/classrooms', { classrooms }));
+		this.mutedClassrooms = this.catalog.classrooms
+			.map(({ id }) => id)
+			.filter((id) => !classrooms.includes(id));
+	}
+
 	/** Puts away home's card that turns notifications on, on this device. Settings keep the switch. */
 	hideNotificationCard() {
 		this.notificationCardHidden = true;
@@ -1459,15 +1496,15 @@ export class App {
 		hideHomeCard().catch(() => {});
 	}
 
-	/** Stores the first setup and connects this device with the admin's card. */
+	/** Stores the first setup and connects this device with the head's card. */
 	async setUp(token: string, kindergarten: NewKindergarten) {
 		await request('POST', '/api/setup', { token, teachers: kindergarten.teachers });
-		const { admin } = kindergarten;
+		const { head } = kindergarten;
 		const card: DeviceCard = {
 			kind: 'staff',
-			credential: admin.id,
-			cardHash: await hashAuthToken(admin.authToken),
-			unlockKey: admin.unlockKey
+			credential: head.id,
+			cardHash: await hashAuthToken(head.authToken),
+			unlockKey: head.unlockKey
 		};
 		await saveCard(card);
 		this.#card = card;
@@ -1489,20 +1526,27 @@ export class App {
 		return this.#change('DELETE', `/api/classrooms/${id}`);
 	}
 
-	/** Returns the new teacher's card secret, to print. */
-	async addTeacher({ name, admin, classrooms }: TeacherValues) {
+	/** Returns the new teacher's card secret, to print. A head runs every classroom, so she's given none. */
+	async addTeacher({ name, role, classrooms }: TeacherValues) {
 		const id = createId();
 		const card = await staffCard(this.#staff);
 		const profile = await teacherProfile(this.#staff.staffKey, id, name);
-		const teacher = { id, admin, classrooms, profile, credential: card.credential };
+		const held = role === 'head' ? [] : classrooms;
+		const teacher = { id, role, classrooms: held, profile, credential: card.credential };
 		await this.#change('POST', '/api/teachers', teacher);
 		return card.secret;
 	}
 
-	async changeTeacher(id: string, { name, admin, classrooms }: TeacherValues) {
+	async changeTeacher(id: string, { name, role, classrooms }: TeacherValues) {
 		const profile = await teacherProfile(this.#staff.staffKey, id, name);
 		const { revision } = this.catalog;
-		await this.#change('PUT', `/api/teachers/${id}`, { revision, admin, classrooms, profile });
+		const held = role === 'head' ? [] : classrooms;
+		await this.#change('PUT', `/api/teachers/${id}`, {
+			revision,
+			role,
+			classrooms: held,
+			profile
+		});
 	}
 
 	removeTeacher(id: string) {
@@ -1673,9 +1717,17 @@ export class App {
 		return cards.map(({ secret }) => secret);
 	}
 
-	/** Whether this device may change a notice: its author's own, or any for an admin. */
+	/**
+	 * Whether this device may change a notice: its author's own, any for a head, and for a group lead one
+	 * that goes only to classrooms she runs, so she never reaches a classroom outside her own. The server
+	 * says whether it goes elsewhere, since the device only gets the notice's keys for its own classrooms.
+	 */
 	canChange(notice: Notice) {
-		return this.status === 'staff' && (this.admin || notice.teacher === this.me?.id);
+		return (
+			this.status === 'staff' &&
+			(notice.teacher === this.me?.id ||
+				(!notice.elsewhere && notice.classrooms.every((classroom) => this.manages(classroom))))
+		);
 	}
 
 	/** Whether this device's family marked a notice as seen. */
@@ -1773,7 +1825,7 @@ export class App {
 
 	/**
 	 * Adds an info page after the others, or changes `page`, sealed with the Info Key, or for the kindergarten's first
-	 * page under a new key for staff and for every classroom, all of which an admin's device sees. The server learns
+	 * page under a new key for staff and for every classroom, all of which the head's device sees. The server learns
 	 * nothing of a page's text, paper, or files' names and keys. Files attached in the form were sealed then, and are
 	 * uploaded one at a time first.
 	 */

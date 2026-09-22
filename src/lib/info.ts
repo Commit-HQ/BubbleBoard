@@ -22,7 +22,7 @@ import {
 } from '$lib/notices';
 
 // The kindergarten's info pages, as devices write and read them (docs/access-format.md): text on paper, with files,
-// for everyone who uses the app, such as opening hours, meals, and contacts, in the order admins put them in. Every
+// for everyone who uses the app, such as opening hours, meals, and contacts, in the order the head put them in. Every
 // page is encrypted with the kindergarten's Info Key, made with its first page and kept for good, which the server
 // keeps wrapped with the Staff Key, for staff, and with the Group Key of every classroom, for families; a classroom
 // added later gets the key when it's added. A page's files are sealed as a notice's are (src/lib/files.ts).

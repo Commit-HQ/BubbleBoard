@@ -1,6 +1,9 @@
-import type { RequestEvent } from '@sveltejs/kit';
+import { error, type RequestEvent } from '@sveltejs/kit';
+import type { Staff } from '../api';
 import { fromBase64Url, toBase64Url } from '../base64url';
 import { pushCode, type PushKind } from '../push';
+import { includesAll, transaction } from './database';
+import type { Head } from './session';
 
 // Notifications for new notices, board photos, messages and meeting times: Web Push (RFC 8030), signed with
 // the installation's VAPID key (RFC 8292). A push carries one letter saying which of those happened,
@@ -8,7 +11,7 @@ import { pushCode, type PushKind } from '../push';
 // read it and learns nothing about a notice, a message, or a child. The words themselves never leave the
 // device: the service worker holds them. Posting puts the devices to notify on a queue, in groups one Worker
 // invocation can send, and the queue handler sends them (worker/index.js). Imports stay relative: Wrangler
-// bundles this for that handler without SvelteKit.
+// bundles this for that handler without SvelteKit's path aliases.
 
 /** Where to push, and the keys the device's browser made, which are empty until its app sends them. */
 export type PushDevice = { endpoint: string; p256dh: string | null; auth: string | null };
@@ -220,8 +223,47 @@ export async function encryptKind(device: PushDevice, kind: PushKind) {
 }
 
 /**
- * The devices that turned on notifications for a notice's classrooms: families in them and the teachers
- * assigned to them, except the device that posted it. Admins hear only about the classrooms they teach.
+ * The classrooms whose notifications a head turned off. Nobody else has any: a teacher or a group lead hears
+ * about the classrooms she's assigned to, which she doesn't choose.
+ */
+export async function mutedClassrooms(db: D1Database, staff: Staff) {
+	if (staff.role !== 'head') return [];
+	const { results } = await db
+		.prepare('SELECT classroom_id AS classroom FROM teacher_muted_classrooms WHERE teacher_id = ?')
+		.bind(staff.teacher)
+		.all<{ classroom: string }>();
+	return results.map(({ classroom }) => classroom);
+}
+
+/**
+ * Sets which classrooms a head hears nothing from, in place of her earlier choice. A classroom that isn't
+ * there anymore means the device read the kindergarten before it was deleted, so it's told to read again.
+ */
+export async function setMutedClassrooms(db: D1Database, head: Head, classrooms: string[]) {
+	if (!(await includesAll(db, classrooms, 'SELECT id FROM classrooms'))) error(409, 'stale');
+	await transaction(db, [
+		db.prepare('DELETE FROM teacher_muted_classrooms WHERE teacher_id = ?').bind(head.teacher),
+		...classrooms.map((classroom) =>
+			db
+				.prepare('INSERT INTO teacher_muted_classrooms (teacher_id, classroom_id) VALUES (?, ?)')
+				.bind(head.teacher, classroom)
+		)
+	]);
+}
+
+/**
+ * Whether the credential `c` belongs to a head who hears about one of the classrooms in question, which
+ * `classrooms` selects as a column named `classroom`. She hears about every one she didn't mute, so a
+ * classroom made after her choice speaks up on its own.
+ */
+const headHears = (classrooms: string) =>
+	`c.teacher_id IN (SELECT id FROM teachers WHERE role = 'head') AND EXISTS (
+	SELECT 1 FROM (${classrooms}) WHERE classroom NOT IN
+	(SELECT classroom_id FROM teacher_muted_classrooms WHERE teacher_id = c.teacher_id))`;
+
+/**
+ * The devices that turned on notifications for a notice's classrooms: families in them, the teachers
+ * assigned to them, and the heads who didn't mute any of them, except the device that posted it.
  */
 export async function recipients(
 	db: D1Database,
@@ -237,6 +279,7 @@ export async function recipients(
 			WHERE s.expires_at > ?1 AND p.session_hash <> ?2 AND (
 				c.family_id IN (SELECT family_id FROM family_classrooms WHERE classroom_id IN (SELECT value FROM json_each(?3)))
 				OR c.teacher_id IN (SELECT teacher_id FROM teacher_classrooms WHERE classroom_id IN (SELECT value FROM json_each(?3)))
+				OR (${headHears('SELECT value AS classroom FROM json_each(?3)')})
 			)`
 		)
 		.bind(now, poster ?? '', JSON.stringify(classrooms))
@@ -379,7 +422,10 @@ export async function deliver(
 	}
 }
 
-/** Private conversations notify only their family and assigned teachers, never other families. */
+/**
+ * Private conversations notify only their family, the classroom's assigned teachers, and the heads who hear
+ * about that classroom, never other families.
+ */
 export async function conversationRecipients(
 	db: D1Database,
 	conversation: string,
@@ -392,7 +438,8 @@ export async function conversationRecipients(
  JOIN sessions s ON s.token_hash=p.session_hash JOIN credentials c ON c.id=s.credential_id
  JOIN conversations t ON t.id=?
  WHERE s.expires_at>? AND p.session_hash<>? AND (
- c.family_id=t.family_id OR c.teacher_id IN (SELECT teacher_id FROM teacher_classrooms WHERE classroom_id=t.classroom_id))`
+ c.family_id=t.family_id OR c.teacher_id IN (SELECT teacher_id FROM teacher_classrooms WHERE classroom_id=t.classroom_id)
+ OR (${headHears('SELECT t.classroom_id AS classroom')}))`
 		)
 		.bind(conversation, now, poster)
 		.all<PushDevice>();
@@ -410,8 +457,9 @@ export async function announceConversation(
 }
 
 /**
- * Booking changes notify the child's families and the classroom's teachers; names never leave devices. One
- * notification per device, even when a whole day cancels several reservations.
+ * Booking changes notify the child's families, the classroom's teachers, and the heads who hear about that
+ * classroom; names never leave devices. One notification per device, even when a whole day cancels several
+ * reservations.
  */
 export async function announceMeetingChanges(
 	event: RequestEvent,
@@ -426,7 +474,8 @@ export async function announceMeetingChanges(
  JOIN sessions s ON s.token_hash=p.session_hash JOIN credentials c ON c.id=s.credential_id
  JOIN json_each(?) changed JOIN meeting_offers o ON o.id=json_extract(changed.value,'$.offer') WHERE s.expires_at>? AND p.session_hash<>? AND (
  c.family_id IN(SELECT i.family_id FROM meeting_invites i JOIN family_classrooms f ON f.family_id=i.family_id AND f.classroom_id=o.classroom_id WHERE i.offer_id=o.id AND i.child_id=json_extract(changed.value,'$.child'))
- OR c.teacher_id IN(SELECT teacher_id FROM teacher_classrooms WHERE classroom_id=o.classroom_id))`
+ OR c.teacher_id IN(SELECT teacher_id FROM teacher_classrooms WHERE classroom_id=o.classroom_id)
+ OR (${headHears('SELECT o.classroom_id AS classroom')}))`
 	)
 		.bind(JSON.stringify(changes), Date.now(), poster ?? '')
 		.all<PushDevice>();

@@ -68,7 +68,7 @@
 	<Screen
 		locale={data.locale}
 		title={teacher ? teacherName(data.locale, teacher) : t.notFound.title}
-		need="admin"
+		need="head"
 		back={teachersPage}
 	>
 		{#if teacher}

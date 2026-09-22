@@ -28,23 +28,23 @@ async function createCard() {
 	return { id: createId(), secret, ...(await deriveCredential(secret)) };
 }
 
-// A kindergarten as setup creates it: one Staff Key for the admin's card and a recovery card, and the
-// admin's encrypted teacher profile.
+// A kindergarten as setup creates it: one Staff Key for the head's card and a recovery card, and the
+// head's encrypted teacher profile.
 async function setUp() {
 	const teacher = createId();
-	const [adminCard, recoveryCard] = [await createCard(), await createCard()];
+	const [headCard, recoveryCard] = [await createCard(), await createCard()];
 	const staffKey = await createKey(
-		[adminCard, recoveryCard].map((card): Wrapping => ({
+		[headCard, recoveryCard].map((card): Wrapping => ({
 			key: card.unlockKey,
 			context: { purpose: 'staff-key-for-credential', credential: card.id }
 		}))
 	);
 	return {
 		teacher,
-		adminCard,
+		headCard,
 		recoveryCard,
 		staffKey: staffKey.key,
-		staffKeyForAdmin: staffKey.envelopes[0],
+		staffKeyForHead: staffKey.envelopes[0],
 		staffKeyForRecovery: staffKey.envelopes[1],
 		teacherProfile: await encryptData(teacherData, staffKey.key, {
 			purpose: 'teacher-profile',
@@ -53,7 +53,7 @@ async function setUp() {
 	};
 }
 
-// A classroom as an admin device adds it: a Group Key wrapped for staff, and the encrypted profile.
+// A classroom as a staff device adds it: a Group Key wrapped for staff, and the encrypted profile.
 async function addClassroom({ staffKey }: Kindergarten) {
 	const classroom = createId();
 	const groupKey = await createKey([
@@ -70,7 +70,7 @@ async function addClassroom({ staffKey }: Kindergarten) {
 	};
 }
 
-// A family as an admin device adds it: a Family Key wrapped for staff and the family card, and the Group
+// A family as a staff device adds it: a Family Key wrapped for staff and the family card, and the Group
 // Key of each classroom its children are in, re-wrapped from the staff copy.
 async function addFamily({ staffKey }: Kindergarten, classrooms: Classroom[]) {
 	const family = createId();
@@ -156,7 +156,7 @@ describe('card secrets', () => {
 
 	it('open nothing with the auth token alone', async () => {
 		const k = await setUp();
-		const token = fromBase64Url(k.adminCard.authToken)!;
+		const token = fromBase64Url(k.headCard.authToken)!;
 		// The token used directly as a key, and put through the documented unlock-key derivation.
 		const tokenAsKey = await crypto.subtle.importKey('raw', token, 'AES-GCM', false, ['decrypt']);
 		const tokenAsSecret = await crypto.subtle.deriveKey(
@@ -171,11 +171,9 @@ describe('card secrets', () => {
 			false,
 			['decrypt']
 		);
-		const context = { purpose: 'staff-key-for-credential', credential: k.adminCard.id } as const;
+		const context = { purpose: 'staff-key-for-credential', credential: k.headCard.id } as const;
 		for (const key of [tokenAsKey, tokenAsSecret]) {
-			await expect(unwrapKey(k.staffKeyForAdmin, { key, context })).rejects.toThrow(
-				UnreadableError
-			);
+			await expect(unwrapKey(k.staffKeyForHead, { key, context })).rejects.toThrow(UnreadableError);
 		}
 	});
 });
@@ -189,9 +187,9 @@ describe('envelopes', () => {
 			decryptData(a.profile, b.groupKey, { purpose: 'classroom-profile', classroom: a.classroom })
 		).rejects.toThrow(UnreadableError);
 		await expect(
-			unwrapKey(k.staffKeyForAdmin, {
+			unwrapKey(k.staffKeyForHead, {
 				key: family.card.unlockKey,
-				context: { purpose: 'staff-key-for-credential', credential: k.adminCard.id }
+				context: { purpose: 'staff-key-for-credential', credential: k.headCard.id }
 			})
 		).rejects.toThrow(UnreadableError);
 	});
@@ -248,10 +246,10 @@ describe('envelopes', () => {
 			decryptData(k.teacherProfile, k.staffKey, { purpose: 'teacher-profile', teacher: createId() })
 		).rejects.toThrow(UnreadableError);
 
-		// The admin card's envelope under the recovery card's credential.
+		// The head card's envelope under the recovery card's credential.
 		await expect(
-			unwrapKey(k.staffKeyForAdmin, {
-				key: k.adminCard.unlockKey,
+			unwrapKey(k.staffKeyForHead, {
+				key: k.headCard.unlockKey,
 				context: { purpose: 'staff-key-for-credential', credential: k.recoveryCard.id }
 			})
 		).rejects.toThrow(UnreadableError);
@@ -259,11 +257,11 @@ describe('envelopes', () => {
 
 	it('produce keys that cannot be exported', async () => {
 		const k = await setUp();
-		const unwrapped = await unwrapKey(k.staffKeyForAdmin, {
-			key: k.adminCard.unlockKey,
-			context: { purpose: 'staff-key-for-credential', credential: k.adminCard.id }
+		const unwrapped = await unwrapKey(k.staffKeyForHead, {
+			key: k.headCard.unlockKey,
+			context: { purpose: 'staff-key-for-credential', credential: k.headCard.id }
 		});
-		for (const key of [k.staffKey, k.adminCard.unlockKey, unwrapped]) {
+		for (const key of [k.staffKey, k.headCard.unlockKey, unwrapped]) {
 			expect(key.extractable).toBe(false);
 			await expect(crypto.subtle.exportKey('raw', key)).rejects.toThrow();
 		}

@@ -5,7 +5,7 @@ import { deleteMarked, getObject, putObject, type ObjectStore } from './storage'
 
 // The photo of each classroom's board (docs/access-format.md): its encrypted bytes in private R2, and in the
 // database which photo each classroom shows, since when, and its encrypted details, who put it up. The
-// classroom's teachers and admins put a photo up in place of the one there, or take it down, and everyone who
+// classroom's staff and the head put a photo up in place of the one there, or take it down, and everyone who
 // sees the classroom may fetch it. The server can't open a photo, so an object is named only by its classroom
 // and the photo's random ID.
 

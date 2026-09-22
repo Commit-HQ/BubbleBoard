@@ -59,7 +59,7 @@ export type Inbox = {
 };
 export const defaultSchedule = () =>
 	Array.from({ length: 5 }, () => ({ start: '08:00', end: '16:00' }));
-/** What a classroom starts with when an admin first opens its messaging settings. */
+/** What a classroom starts with when its messaging settings are first opened. */
 export const defaultMonthlyLimit = 3;
 /** The kindergarten's own timezone: every hour the app shows or reckons with is read in it. */
 export const zone = 'Europe/Zagreb';

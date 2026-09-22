@@ -6,7 +6,8 @@ import type {
 	NewClassroom,
 	NewCredential,
 	NewFamily,
-	Staff
+	Staff,
+	StaffRole
 } from '$lib/api';
 import {
 	createId,
@@ -32,7 +33,7 @@ export type Teacher = {
 	id: string;
 	name: string;
 	recovery: boolean;
-	admin: boolean;
+	role: StaffRole;
 	classrooms: string[];
 };
 export type Family = { id: string; name: string; familyKeyForStaff: string; classrooms: string[] };
@@ -45,7 +46,7 @@ export type Catalog = {
 	families: Family[];
 	children: Child[];
 };
-export type CardKind = 'admin' | 'teacher' | 'recovery' | 'family';
+export type CardKind = 'head' | 'lead' | 'teacher' | 'recovery' | 'family';
 
 type FamilyAccess = Extract<Access, { kind: 'family' }>;
 
@@ -73,20 +74,20 @@ function credential(
 	return { id: card.id, authToken: card.authToken, wrappedKey };
 }
 
-/** The first setup: one Staff Key, wrapped for the admin's card and for the recovery card. */
-export async function createKindergarten(adminName: string) {
-	const [admin, recovery] = await Promise.all([blankCard(), blankCard()]);
+/** The first setup: one Staff Key, wrapped for the head's card and for the recovery card. */
+export async function createKindergarten(headName: string) {
+	const [head, recovery] = await Promise.all([blankCard(), blankCard()]);
 	const staffKey = await createKey([
-		wrapping.staffKeyForCard(admin.unlockKey, admin.id),
+		wrapping.staffKeyForCard(head.unlockKey, head.id),
 		wrapping.staffKeyForCard(recovery.unlockKey, recovery.id)
 	]);
-	const adminTeacher = createId();
+	const headTeacher = createId();
 	const recoveryTeacher = createId();
 	const teachers = [
 		{
-			id: adminTeacher,
-			profile: await teacherProfile(staffKey.key, adminTeacher, adminName),
-			credential: credential(admin, staffKey.envelopes[0])
+			id: headTeacher,
+			profile: await teacherProfile(staffKey.key, headTeacher, headName),
+			credential: credential(head, staffKey.envelopes[0])
 		},
 		{
 			id: recoveryTeacher,
@@ -97,7 +98,7 @@ export async function createKindergarten(adminName: string) {
 			credential: credential(recovery, staffKey.envelopes[1])
 		}
 	];
-	return { teachers, admin: { ...admin, name: adminName }, recovery };
+	return { teachers, head: { ...head, name: headName }, recovery };
 }
 
 export async function openStaffKeys(access: Staff, unlockKey: CryptoKey): Promise<StaffKeys> {
@@ -147,12 +148,12 @@ export async function openCatalog(staffKey: CryptoKey, records: Kindergarten): P
 			})
 		),
 		Promise.all(
-			records.teachers.map(async ({ id, admin, profile, classrooms }) => {
+			records.teachers.map(async ({ id, role, profile, classrooms }) => {
 				const data = await decryptData(profile, staffKey, {
 					purpose: 'teacher-profile',
 					teacher: id
 				});
-				return { id, admin, classrooms, ...readTeacher(data) };
+				return { id, role, classrooms, ...readTeacher(data) };
 			})
 		),
 		Promise.all(
@@ -211,9 +212,9 @@ function byName<T extends { name: string }>(items: T[]) {
 	return items.sort((a, b) => collator.compare(a.name, b.name));
 }
 
-/** Which kind of card a staff member holds. */
-export function cardKind(teacher: Pick<Teacher, 'admin' | 'recovery'>): CardKind {
-	return teacher.recovery ? 'recovery' : teacher.admin ? 'admin' : 'teacher';
+/** Which kind of card a staff member holds: the recovery card, or one for her role. */
+export function cardKind(teacher: Pick<Teacher, 'role' | 'recovery'>): CardKind {
+	return teacher.recovery ? 'recovery' : teacher.role;
 }
 
 /**
@@ -335,16 +336,26 @@ export type CreatedFamily = Awaited<ReturnType<typeof newFamily>>;
  * Which classrooms `families` gain and lose when the children become `children`: a family reaches
  * exactly the classrooms its children are in, and a family left without children is removed. Families
  * outside `families` are left alone, so a change never undoes records this device hasn't seen.
+ *
+ * `visible` says which classrooms this device can see. A family's classrooms outside them stay as they
+ * are: a group lead sees neither the other group's children nor its classroom, so she must not take the
+ * family out of it, and a family that still reaches one is not removed either.
  */
 export function planFamilyLinks(
 	current: Pick<Family, 'id' | 'classrooms'>[],
 	children: Pick<Child, 'classroom' | 'families'>[],
-	families: Iterable<string>
+	families: Iterable<string>,
+	visible: ReadonlySet<string>
 ) {
 	const wanted = new Map<string, Set<string>>();
 	for (const family of families) wanted.set(family, new Set());
 	for (const child of children) {
 		for (const family of child.families) wanted.get(family)?.add(child.classroom);
+	}
+	for (const [family, classrooms] of wanted) {
+		for (const classroom of current.find(({ id }) => id === family)?.classrooms ?? []) {
+			if (!visible.has(classroom)) classrooms.add(classroom);
+		}
 	}
 	const had = new Map(current.map((family) => [family.id, family.classrooms]));
 	const plan = {
@@ -387,7 +398,12 @@ export async function familyLinks(
 	families: Iterable<string>,
 	created: CreatedFamily[] = []
 ): Promise<FamilyLinks> {
-	const plan = planFamilyLinks(catalog.families, children, families);
+	const plan = planFamilyLinks(
+		catalog.families,
+		children,
+		families,
+		new Set(catalog.classrooms.map(({ id }) => id))
+	);
 	const createdKeys = new Map(created.map(({ family, familyKey }) => [family.id, familyKey]));
 	const addMemberships = await Promise.all(
 		plan.addMemberships.map(async ({ family, classroom }) => {

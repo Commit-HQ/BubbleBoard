@@ -11,11 +11,14 @@ export type NewClassroom = {
 	groupKeyForStaff: string;
 	infoKey?: string;
 };
-type TeacherRecord = { admin: boolean; profile: string; classrooms: string[] };
+/** What a staff member may do: post in her classrooms, run them, or run the whole kindergarten. */
+export type StaffRole = 'teacher' | 'lead' | 'head';
+/** A head runs every classroom, so she's assigned to none and her `classrooms` are empty. */
+type TeacherRecord = { role: StaffRole; profile: string; classrooms: string[] };
 export type NewTeacher = TeacherRecord & { id: string; credential: NewCredential };
 /**
  * A change to a teacher carries the catalog `revision` it was made from, as `FamilyLinks` do, so a form
- * left open can't restore rights another admin has withdrawn.
+ * left open can't restore rights another head has withdrawn.
  */
 export type TeacherChange = TeacherRecord & { revision: number };
 export type NewFamily = {
@@ -59,7 +62,7 @@ export type ChildChange = FamilyLinks & {
 };
 export type NewChild = ChildChange & { id: string };
 
-/** The first setup: the admin's card and the recovery card, both admins. */
+/** The first setup: the first head's card and the recovery card, both heads. */
 export type Setup = {
 	token: string;
 	teachers: Pick<NewTeacher, 'id' | 'profile' | 'credential'>[];
@@ -67,7 +70,7 @@ export type Setup = {
 
 /** Whose card a session belongs to, and the wrapped key that card opens. */
 export type Identity = { credential: string; wrappedKey: string } & (
-	{ kind: 'staff'; teacher: string; admin: boolean } | { kind: 'family'; family: string }
+	{ kind: 'staff'; teacher: string; role: StaffRole } | { kind: 'family'; family: string }
 );
 export type Staff = Extract<Identity, { kind: 'staff' }>;
 export type FamilyIdentity = Extract<Identity, { kind: 'family' }>;
@@ -78,13 +81,19 @@ export type FamilyIdentity = Extract<Identity, { kind: 'family' }>;
  */
 export type Device = { id: string; name: string | null; current: boolean };
 
-/** The records a staff member may see: everything for admins, their own classrooms for teachers. */
+/** The records a staff member may see: everything for a head, her own classrooms for anyone else. */
 export type Kindergarten = {
 	/** Moves on with every change a `TeacherChange` or `FamilyLinks` makes. */
 	revision: number;
 	classrooms: { id: string; profile: string; groupKeyForStaff: string }[];
 	teachers: (TeacherRecord & { id: string })[];
 	children: { id: string; classroom: string; profile: string }[];
+	/**
+	 * A family with the classrooms of all its children, including ones the device doesn't see: a group lead
+	 * plans a family's links without touching the classrooms outside her own, and the page can say that a
+	 * card reaches further. The IDs say nothing more: the device can open neither those classrooms nor the
+	 * children in them.
+	 */
 	families: { id: string; profile: string; familyKeyForStaff: string; classrooms: string[] }[];
 };
 
@@ -104,8 +113,14 @@ export type NoticeRecord = {
 	expiresAt: number;
 	classrooms: NoticeKey[];
 	/**
+	 * Whether it also goes to classrooms the device doesn't see. A group lead may change a colleague's notice
+	 * only when every classroom of it is hers, and her device gets keys for hers alone, so it can't tell from
+	 * them.
+	 */
+	elsewhere: boolean;
+	/**
 	 * The families that marked it as seen, of those the device may know about: a family device's own family,
-	 * the families in a teacher's classrooms, or every family for an admin.
+	 * the families in a teacher's classrooms, or every family for a head.
 	 */
 	seen: string[];
 	/**
@@ -159,8 +174,8 @@ export type PhotoRecord = {
 /** One of the kindergarten's info pages as the server keeps it: its content, encrypted with the Info Key. */
 export type InfoPageRecord = { id: string; content: string; editedAt: number };
 /**
- * The kindergarten's info pages as staff get them, in the order admins put them in, with the Info Key wrapped for
- * the Staff Key, which the first page brings.
+ * The kindergarten's info pages as staff get them, in the order the head put them in, with the Info Key wrapped
+ * for the Staff Key, which the first page brings.
  */
 export type StaffInfo = { infoKeyForStaff: string | null; pages: InfoPageRecord[] };
 /** The Info Key, wrapped with the Group Key of one classroom. */
@@ -168,7 +183,7 @@ export type InfoKey = { classroom: string; infoKey: string };
 /** A new Info Key, wrapped for staff and for every classroom. */
 export type NewInfoKey = { infoKeyForStaff: string; classrooms: InfoKey[] };
 /**
- * An info page as an admin's device saves it: its content, sealed with the Info Key, and the files the content
+ * An info page as the head's device saves it: its content, sealed with the Info Key, and the files the content
  * holds, uploaded just before. The files a change leaves out are deleted.
  */
 export type InfoPageChange = { content: string; files: string[] };
@@ -181,7 +196,12 @@ export type NewInfoPage = InfoPageChange & { id: string; key?: NewInfoKey };
  * info pages.
  */
 export type Access = (
-	| (Staff & { kindergarten: Kindergarten; info: StaffInfo })
+	| (Staff & {
+			kindergarten: Kindergarten;
+			info: StaffInfo;
+			/** The classrooms a head chose not to hear about. Empty for anyone else. */
+			mutedClassrooms: string[];
+	  })
 	| (FamilyIdentity & {
 			classrooms: {
 				id: string;

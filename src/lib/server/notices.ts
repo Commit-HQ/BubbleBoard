@@ -11,25 +11,26 @@ import type {
 	VoteRecord
 } from '$lib/api';
 import { day } from '$lib/notices';
-import { checkClassrooms, transaction, visibleClassrooms } from './database';
+import { checkClassrooms, isHead, transaction, visibleClassrooms } from './database';
 import { deleteMarked, getObject, putObject, type ObjectStore } from './storage';
 
 // The board: notices as envelopes, with the classrooms they're for (docs/access-format.md). The server
-// can't read a notice, so it decides who sees and changes which. Teachers post to their own classrooms and
-// admins to any; the author and admins change and delete a notice; everyone reads the notices of their
-// classrooms, and admins those of every classroom. Families mark the notices they see as seen and answer
-// their polls, which their teachers see, and which the notice's families see too when its poll shows the
-// counts. A notice names the files it carries: their encrypted bytes are uploaded before it's saved, and
-// deleted once it no longer names them. Reads leave out notices past their days, which the daily cleanup
+// can't read a notice, so it decides who sees and changes which. Staff post to the classrooms they hold and
+// the head to any; the author and the head change and delete a notice, and so does a group lead when every
+// classroom the notice is for is one of hers, since it says nothing to a group she doesn't run; everyone
+// reads the notices of their classrooms, and the head those of every classroom. Families mark the notices
+// they see as seen and answer their polls, which their teachers see, and which the notice's families see
+// too when its poll shows the counts. A notice names the files it carries: their encrypted bytes are
+// uploaded before it's saved, and deleted once it no longer names them. Reads leave out notices past their days, which the daily cleanup
 // deletes with their files (cleanup.ts).
 
 /**
  * The families whose marks and answers on notices someone sees, as a query and its parameters: a family
- * only its own, a teacher the families in their classrooms, and an admin every family.
+ * only its own, a teacher or a lead the families in her classrooms, and the head every family.
  */
 function visibleFamilies(viewer: Identity): [string, string[]] {
 	if (viewer.kind === 'family') return ['SELECT ?', [viewer.family]];
-	if (viewer.admin) return ['SELECT id FROM families', []];
+	if (isHead(viewer)) return ['SELECT id FROM families', []];
 	return [
 		`SELECT family_id FROM family_classrooms WHERE classroom_id IN
 		(SELECT classroom_id FROM teacher_classrooms WHERE teacher_id = ?)`,
@@ -59,6 +60,7 @@ function boardQuery(db: D1Database, viewer: Identity) {
 			SELECT n.id, n.teacher_id AS teacher, n.content, n.posted_at AS postedAt,
 			n.announced_at AS announcedAt, n.edited_at AS editedAt, n.expires_at AS expiresAt,
 			json_group_array(json_object('classroom', nc.classroom_id, 'noticeKey', nc.notice_key)) AS classrooms,
+			(SELECT COUNT(*) FROM notice_classrooms WHERE notice_id = n.id) > COUNT(nc.classroom_id) AS elsewhere,
 			(SELECT json_group_array(family_id) FROM notice_seen
 			WHERE notice_id = n.id AND family_id IN (SELECT * FROM visible_families)) AS seen,
 			(SELECT json_group_array(json_object('family', family_id, 'choice', choice)) FROM poll_votes
@@ -73,9 +75,11 @@ function boardQuery(db: D1Database, viewer: Identity) {
 /** The board's rows as notices. SQLite has no arrays, so each notice's lists come as JSON. */
 function readBoard({ results }: D1Result): NoticeRecord[] {
 	type Lists = 'classrooms' | 'seen' | 'votes';
-	type Row = Omit<NoticeRecord, Lists> & Record<Lists, string>;
+	type Row = Omit<NoticeRecord, Lists | 'elsewhere'> &
+		Record<Lists, string> & { elsewhere: number };
 	return (results as Row[]).map((row) => ({
 		...row,
+		elsewhere: row.elsewhere === 1,
 		classrooms: JSON.parse(row.classrooms) as NoticeKey[],
 		seen: JSON.parse(row.seen) as string[],
 		votes: JSON.parse(row.votes) as VoteRecord[]
@@ -147,16 +151,27 @@ export async function postNotice(db: D1Database, staff: Staff, notice: NewNotice
 	]);
 }
 
-/** A notice that's still up and the staff member may change: their own, or any for an admin. */
+/**
+ * A notice that's still up and the staff member may change: her own, any for the head, and for a group lead
+ * one whose classrooms are all hers. A notice she shares with another group is that group's too, so she
+ * leaves it to its author or the head.
+ */
 async function changeable(db: D1Database, staff: Staff, id: string) {
 	const notice = await db
 		.prepare(
-			'SELECT teacher_id AS teacher, posted_at AS postedAt FROM notices WHERE id = ? AND expires_at > ?'
+			`SELECT teacher_id AS teacher, posted_at AS postedAt, NOT EXISTS (SELECT 1 FROM notice_classrooms
+			WHERE notice_id = notices.id AND classroom_id NOT IN
+			(SELECT classroom_id FROM teacher_classrooms WHERE teacher_id = ?3)) AS onlyHers
+			FROM notices WHERE id = ?1 AND expires_at > ?2`
 		)
-		.bind(id, Date.now())
-		.first<{ teacher: string | null; postedAt: number }>();
+		.bind(id, Date.now(), staff.teacher)
+		.first<{ teacher: string | null; postedAt: number; onlyHers: number }>();
 	if (!notice) error(404, 'not-found');
-	if (!staff.admin && notice.teacher !== staff.teacher) error(403, 'forbidden');
+	const own =
+		isHead(staff) ||
+		notice.teacher === staff.teacher ||
+		(staff.role === 'lead' && notice.onlyHers === 1);
+	if (!own) error(403, 'forbidden');
 	return notice;
 }
 

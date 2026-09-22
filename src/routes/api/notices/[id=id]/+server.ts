@@ -5,7 +5,8 @@ import { database, objectStore, requireStaff, sessionHash } from '$lib/server/se
 import { noticeChange, readJson } from '$lib/server/validate';
 import type { RequestHandler } from './$types';
 
-// The author and admins change or delete a notice, and each responds with the board as they see it. A
+// The author, the head, and the lead of every classroom it's for change or delete a notice, and each
+// responds with the board as they see it. A
 // change that announces the notice again notifies its families and teachers, as posting does. The files a
 // change leaves out, or a deleted notice's, are deleted with it.
 export const PUT: RequestHandler = async (event) => {

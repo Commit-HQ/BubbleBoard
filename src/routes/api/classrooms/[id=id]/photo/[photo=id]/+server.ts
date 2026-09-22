@@ -12,7 +12,7 @@ import { photoDetails, readPhoto } from '$lib/server/validate';
 import type { RequestHandler } from './$types';
 
 // A classroom's board photo: its encrypted bytes for everyone who sees the classroom, and putting a new one
-// up or taking it down for the classroom's teachers and admins, which responds with the board photos as they
+// up or taking it down for the classroom's staff and the head, which responds with the board photos as they
 // see them. A new photo's details, who put it up, come encrypted in a header beside its bytes. It counts
 // against the installation's storage limits and notifies the classroom's families and teachers, as a new
 // notice does.

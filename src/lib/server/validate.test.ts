@@ -12,6 +12,7 @@ import {
 	newClassroom,
 	newInfoPage,
 	newNotice,
+	newTeacher,
 	noticeChange,
 	photoDetails,
 	pollAnswer,
@@ -58,10 +59,20 @@ it('refuses a new family card that wouldn’t reach its child’s classroom', ()
 
 it('refuses a setup whose two cards share an ID', () => {
 	const teacher = () => ({ id: createId(), profile: envelope(20), credential: credential() });
-	const [admin, recovery] = [teacher(), teacher()];
-	expect(setup({ token: 'token', teachers: [admin, recovery] }).teachers).toHaveLength(2);
-	const shared = { ...recovery, credential: { ...recovery.credential, id: admin.credential.id } };
-	expect(() => setup({ token: 'token', teachers: [admin, shared] })).toThrow();
+	const [head, recovery] = [teacher(), teacher()];
+	expect(setup({ token: 'token', teachers: [head, recovery] }).teachers).toHaveLength(2);
+	const shared = { ...recovery, credential: { ...recovery.credential, id: head.credential.id } };
+	expect(() => setup({ token: 'token', teachers: [head, shared] })).toThrow();
+});
+
+it('refuses a teacher without one of the three roles, and a head with classrooms', () => {
+	const staff = { id: createId(), profile: envelope(20), credential: credential() };
+	const classrooms = [createId()];
+	expect(newTeacher({ ...staff, role: 'lead', classrooms }).classrooms).toEqual(classrooms);
+	expect(newTeacher({ ...staff, role: 'head', classrooms: [] }).role).toBe('head');
+	expect(() => newTeacher({ ...staff, role: 'head', classrooms })).toThrow();
+	expect(() => newTeacher({ ...staff, role: 'admin', classrooms: [] })).toThrow();
+	expect(() => newTeacher({ ...staff, classrooms: [] })).toThrow();
 });
 
 it('refuses new family cards that repeat a family or a card', () => {

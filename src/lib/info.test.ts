@@ -12,7 +12,7 @@ import {
 import { newClassroom } from './kindergarten';
 import type { NoticeDocument } from './notices';
 
-// Info pages sealed as an admin's device saves them, and opened the way devices get them back from the server: staff
+// Info pages sealed as the head's device saves them, and opened the way devices get them back from the server: staff
 // with the Staff Key, and families with the Group Key of any of their classrooms. Synthetic content only.
 
 const text = (value: string): NoticeDocument => ({

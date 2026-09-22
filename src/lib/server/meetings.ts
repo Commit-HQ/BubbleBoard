@@ -153,7 +153,9 @@ export async function changeMeeting(
  AND EXISTS(SELECT 1 FROM meeting_invites i JOIN children c ON c.id=i.child_id AND c.classroom_id=? JOIN family_classrooms f ON f.family_id=i.family_id AND f.classroom_id=c.classroom_id WHERE i.offer_id=meeting_slots.offer_id AND i.child_id=? AND i.family_id=?)`;
 		values = [body.child, id, body.version, now, slot.classroom, body.child, who.family];
 	} else {
-		if (who.kind === 'staff' && !who.admin && slot.teacher !== who.teacher) error(403, 'forbidden');
+		// The head and the classroom's lead settle any teacher's times there; a teacher only her own.
+		if (who.kind === 'staff' && who.role === 'teacher' && slot.teacher !== who.teacher)
+			error(403, 'forbidden');
 		if (body.action === 'remove') {
 			if (who.kind !== 'staff') error(403, 'forbidden');
 			sql =
@@ -223,7 +225,15 @@ export async function removeMeetingDay(
  AND NOT EXISTS(SELECT 1 FROM targets t LEFT JOIN expected e ON e.id=t.id AND e.version=t.version WHERE e.id IS NULL)
  RETURNING offer_id AS offer,child_id AS child`
 		)
-		.bind(body.classroom, who.admin ? 1 : 0, who.teacher, start, end, now, JSON.stringify(slots))
+		.bind(
+			body.classroom,
+			who.role === 'teacher' ? 0 : 1,
+			who.teacher,
+			start,
+			end,
+			now,
+			JSON.stringify(slots)
+		)
 		.all<{ offer: string; child: string | null }>();
 	if (!results.length) error(409, 'meeting-day-changed');
 	return results;

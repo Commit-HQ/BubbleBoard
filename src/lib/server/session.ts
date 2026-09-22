@@ -1,5 +1,5 @@
 import { error, type RequestEvent } from '@sveltejs/kit';
-import type { Device, FamilyIdentity, Identity, Staff } from '$lib/api';
+import type { Device, FamilyIdentity, Identity, Staff, StaffRole } from '$lib/api';
 import { fromBase64Url, toBase64Url } from '$lib/base64url';
 import { createId, hashAuthToken, hashToken, randomBytes } from '$lib/crypto';
 import { storageLimits } from './limits';
@@ -16,8 +16,13 @@ const lifetime = 90 * day;
 /** A session in use is extended once it's this old, so most requests don't write. */
 const renewAfter = 7 * day;
 
-/** A staff member whose admin rights were checked for this request. Changes that need them take one. */
-export type Admin = Staff & { admin: true };
+/** The head of the kindergarten, checked for this request. Changes only she may make take one. */
+export type Head = Staff & { role: 'head' };
+/**
+ * A head or a group lead, checked for this request. Changes to children, family cards and messaging take
+ * one; a lead's reach is then narrowed to the classrooms she holds where the change is made.
+ */
+export type Manager = Staff & { role: 'head' | 'lead' };
 
 export function database(event: RequestEvent) {
 	const db = event.platform?.env.DB;
@@ -55,7 +60,7 @@ export async function limitAttempts(event: RequestEvent) {
 }
 
 const identityColumns = `c.id AS credential, c.wrapped_key AS wrappedKey, c.teacher_id AS teacher,
-	c.family_id AS family, t.admin`;
+	c.family_id AS family, t.role`;
 const identityTables = 'credentials c LEFT JOIN teachers t ON t.id = c.teacher_id';
 
 type IdentityRow = {
@@ -63,13 +68,14 @@ type IdentityRow = {
 	wrappedKey: string;
 	teacher: string | null;
 	family: string | null;
-	admin: number | null;
+	role: StaffRole | null;
 };
 
 function identity(row: IdentityRow | null): Identity | undefined {
 	if (!row) return undefined;
 	const { credential, wrappedKey, teacher, family } = row;
-	if (teacher) return { kind: 'staff', credential, wrappedKey, teacher, admin: row.admin === 1 };
+	if (teacher)
+		return { kind: 'staff', credential, wrappedKey, teacher, role: row.role ?? 'teacher' };
 	return family ? { kind: 'family', credential, wrappedKey, family } : undefined;
 }
 
@@ -228,8 +234,14 @@ export async function requireFamily(event: RequestEvent): Promise<FamilyIdentity
 	return current;
 }
 
-export async function requireAdmin(event: RequestEvent): Promise<Admin> {
+export async function requireHead(event: RequestEvent): Promise<Head> {
 	const staff = await requireStaff(event);
-	if (!staff.admin) error(403, 'forbidden');
-	return { ...staff, admin: true };
+	if (staff.role !== 'head') error(403, 'forbidden');
+	return { ...staff, role: 'head' };
+}
+
+export async function requireManager(event: RequestEvent): Promise<Manager> {
+	const staff = await requireStaff(event);
+	if (staff.role === 'teacher') error(403, 'forbidden');
+	return { ...staff, role: staff.role };
 }

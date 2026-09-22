@@ -11,7 +11,7 @@ import { imageBlob, pictureToSave, preparePhoto } from '$lib/photos';
 import { zipFiles } from '$lib/zip';
 
 // Files attached to notices and info pages (docs/access-format.md): documents and pictures a teacher adds to a
-// notice, or an admin to an info page. The browser encrypts each with a key of its own, which goes inside the
+// notice, or the head to an info page. The browser encrypts each with a key of its own, which goes inside the
 // content with the file's name, so whoever opens the notice or the page opens its files. The server keeps their
 // encrypted bytes in private R2, can't open them, and deletes them with what carries them. Boards and info pages
 // show pictures, which devices save as JPEG or PNG, and devices save documents as they are.

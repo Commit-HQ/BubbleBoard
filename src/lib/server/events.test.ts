@@ -20,7 +20,7 @@ async function setup() {
 	const db = localDatabase();
 	await db.batch([
 		db.prepare('INSERT INTO installation(id,set_up_at) VALUES(1,0)'),
-		db.prepare("INSERT INTO teachers VALUES('teacher',1,'profile')"),
+		db.prepare("INSERT INTO teachers (id,profile,role) VALUES('teacher','profile','head')"),
 		db.prepare(
 			"INSERT INTO classrooms(id,profile,group_key_for_staff) VALUES('group','profile','key'),('other','profile','key')"
 		),
@@ -31,7 +31,7 @@ async function setup() {
 	const staff: Staff = {
 		kind: 'staff',
 		teacher: 'teacher',
-		admin: true,
+		role: 'head',
 		credential: 'credential',
 		wrappedKey: ''
 	};
@@ -145,14 +145,16 @@ describe('events publication', () => {
 			['b', 'form', 0]
 		]);
 	});
-	it('lets the author and an admin change an event, and nobody else', async () => {
+	it('lets the author, the head, and the lead of its classroom change an event, and nobody else', async () => {
 		const { db, staff, family, store } = await setup();
 		const snapshot = await consents(db, staff, 'group');
 		await startEvent(db, staff, 'event', 'group', snapshot.catalog, snapshot.revision);
 		await uploadEventFile(db, store, staff, 'event', 'file', new Uint8Array([1]));
 		await publishEvent(db, store, staff, 'event', 'content', 'key', ['file'], 30);
-		const stranger: Staff = { ...staff, admin: false, teacher: 'other', credential: 'theirs' };
-		await db.prepare("INSERT INTO teachers VALUES('other',0,'profile')").run();
+		const stranger: Staff = { ...staff, role: 'teacher', teacher: 'other', credential: 'theirs' };
+		await db
+			.prepare("INSERT INTO teachers (id,profile,role) VALUES('other','profile','teacher')")
+			.run();
 		await db.prepare("INSERT INTO teacher_classrooms VALUES('other','group')").run();
 		await expect(
 			changeEvent(db, store, stranger, 'event', 'changed', ['file'], 30)
@@ -164,8 +166,12 @@ describe('events publication', () => {
 		expect(
 			await changeEvent(db, store, { ...staff, teacher: 'other' }, 'event', 'again', ['file'], 30)
 		).toBe(true);
+		// The lead of the classroom the event is for changes it, though she didn't post it.
+		expect(
+			await changeEvent(db, store, { ...stranger, role: 'lead' }, 'event', 'hers', ['file'], 30)
+		).toBe(true);
 		const [record] = await events(db, family('a'));
-		expect(record.content).toBe('again');
+		expect(record.content).toBe('hers');
 		expect(record.editedAt).toEqual(expect.any(Number));
 		expect(record.expiresAt).toBe(record.postedAt + 30 * 86400000);
 	});

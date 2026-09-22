@@ -109,6 +109,7 @@ describe('notice files', () => {
 				announcedAt: 1,
 				editedAt: null,
 				expiresAt: 2,
+				elsewhere: false,
 				seen: [],
 				votes: [],
 				classrooms: sealed.classrooms

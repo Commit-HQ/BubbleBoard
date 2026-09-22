@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Access, Membership, NewClassroom, NewCredential, Staff } from './api';
+import type { Access, Membership, NewClassroom, NewCredential, Staff, StaffRole } from './api';
 import { createId, deriveCredential, UnreadableError } from './crypto';
 import {
 	byId,
@@ -24,23 +24,24 @@ import {
 
 const noRecords = { revision: 0, classrooms: [], teachers: [], families: [], children: [] };
 
-function staffAccess(credential: NewCredential, admin: boolean): Staff {
+function staffAccess(credential: NewCredential, role: StaffRole): Staff {
 	const { id, wrappedKey } = credential;
-	return { kind: 'staff', credential: id, wrappedKey, teacher: createId(), admin };
+	return { kind: 'staff', credential: id, wrappedKey, teacher: createId(), role };
 }
 
 async function setUpKindergarten() {
 	const kindergarten = await createKindergarten('Ana');
-	const access = staffAccess(kindergarten.teachers[0].credential, true);
-	return { ...kindergarten, keys: await openStaffKeys(access, kindergarten.admin.unlockKey) };
+	const access = staffAccess(kindergarten.teachers[0].credential, 'head');
+	return { ...kindergarten, keys: await openStaffKeys(access, kindergarten.head.unlockKey) };
 }
 
 describe('family links', () => {
 	const current = [{ id: 'family', classrooms: ['bubbles'] }];
+	const everywhere = new Set(['bubbles', 'owls']);
 
 	it('follow the classrooms a family’s children are in', () => {
 		const children = [{ classroom: 'owls', families: ['family'] }];
-		expect(planFamilyLinks(current, children, ['family'])).toEqual({
+		expect(planFamilyLinks(current, children, ['family'], everywhere)).toEqual({
 			addMemberships: [{ family: 'family', classroom: 'owls' }],
 			removeMemberships: [{ family: 'family', classroom: 'bubbles' }],
 			removeFamilies: []
@@ -52,7 +53,7 @@ describe('family links', () => {
 			{ classroom: 'owls', families: ['family'] },
 			{ classroom: 'bubbles', families: ['family'] }
 		];
-		expect(planFamilyLinks(current, children, ['family'])).toEqual({
+		expect(planFamilyLinks(current, children, ['family'], everywhere)).toEqual({
 			addMemberships: [{ family: 'family', classroom: 'owls' }],
 			removeMemberships: [],
 			removeFamilies: []
@@ -61,7 +62,32 @@ describe('family links', () => {
 
 	it('remove a family left without children, and leave the families a change didn’t touch', () => {
 		const families = [...current, { id: 'untouched', classrooms: ['bubbles'] }];
-		expect(planFamilyLinks(families, [], ['family'])).toEqual({
+		expect(planFamilyLinks(families, [], ['family'], everywhere)).toEqual({
+			addMemberships: [],
+			removeMemberships: [],
+			removeFamilies: ['family']
+		});
+	});
+
+	it('leave a classroom this device can’t see as it is', () => {
+		// A group lead's device sees Owls only, so the child in Bubbles is none of her business.
+		const spread = [{ id: 'family', classrooms: ['bubbles', 'owls'] }];
+		const children = [{ classroom: 'owls', families: ['family'] }];
+		expect(planFamilyLinks(spread, children, ['family'], new Set(['owls']))).toEqual({
+			addMemberships: [],
+			removeMemberships: [],
+			removeFamilies: []
+		});
+	});
+
+	it('remove a family only once no classroom is left, seen or unseen', () => {
+		const spread = [{ id: 'family', classrooms: ['bubbles', 'owls'] }];
+		expect(planFamilyLinks(spread, [], ['family'], new Set(['owls']))).toEqual({
+			addMemberships: [],
+			removeMemberships: [{ family: 'family', classroom: 'owls' }],
+			removeFamilies: []
+		});
+		expect(planFamilyLinks(spread, [], ['family'], everywhere)).toEqual({
 			addMemberships: [],
 			removeMemberships: [],
 			removeFamilies: ['family']
@@ -70,11 +96,16 @@ describe('family links', () => {
 });
 
 describe('kindergarten records', () => {
-	it('set up an admin and a nameless recovery card, both opening the same records', async () => {
+	it('set up a head and a nameless recovery card, both opening the same records', async () => {
 		const { teachers, recovery, keys } = await setUpKindergarten();
 		const records = {
 			...noRecords,
-			teachers: teachers.map(({ id, profile }) => ({ id, profile, admin: true, classrooms: [] }))
+			teachers: teachers.map(({ id, profile }) => ({
+				id,
+				profile,
+				role: 'head' as const,
+				classrooms: []
+			}))
 		};
 		const catalog = await openCatalog(keys.staffKey, records);
 		expect(catalog.teachers.map(({ name, recovery }) => ({ name, recovery }))).toEqual([
@@ -82,7 +113,7 @@ describe('kindergarten records', () => {
 			{ name: '', recovery: true }
 		]);
 
-		const recoveryAccess = staffAccess(teachers[1].credential, true);
+		const recoveryAccess = staffAccess(teachers[1].credential, 'head');
 		const recoveryKeys = await openStaffKeys(recoveryAccess, recovery.unlockKey);
 		expect((await openCatalog(recoveryKeys.staffKey, records)).teachers).toHaveLength(2);
 	});
@@ -114,7 +145,7 @@ describe('kindergarten records', () => {
 
 		const card = await staffCard(keys);
 		const { unlockKey } = await deriveCredential(card.secret);
-		const teacherKeys = await openStaffKeys(staffAccess(card.credential, false), unlockKey);
+		const teacherKeys = await openStaffKeys(staffAccess(card.credential, 'teacher'), unlockKey);
 		const catalog = await openCatalog(teacherKeys.staffKey, records);
 		expect(catalog.classrooms.map(({ name }) => name)).toEqual(['Bubbles']);
 		expect(catalog.children).toMatchObject([{ name: 'Luka', families: child.families }]);

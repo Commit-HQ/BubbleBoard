@@ -11,11 +11,11 @@ Each kindergarten runs its own BubbleBoard in its own Cloudflare account, usuall
 5. Run `npm run validate` and `npx wrangler deploy --dry-run`.
 6. Run `npm run deploy`. The first deploy creates the database, the notifications queue, and the files bucket, applies the migrations, stores a new `SETUP_TOKEN` secret and the `VAPID_KEY` secret that signs notifications, and prints that key and a setup link. Cloudflare can't show a secret again, so save the key in a password manager: if the Worker is ever deleted or moves to another Cloudflare account, put it back with `npx wrangler secret put VAPID_KEY` after the first deploy there. Later deploys apply new migrations and leave both secrets alone: with a new `VAPID_KEY`, devices get no notifications until BubbleBoard renews them the next time it opens, and some browsers need them turned on again. When a deploy creates a resource, Wrangler also writes it into `wrangler.jsonc`; the deploy puts the file back as it was, so it stays the same for every installation, since later deploys find the resources by name.
 7. To use your own domain, add it to the Worker in the Cloudflare dashboard (**Workers & Pages → your Worker → Settings → Domains & Routes**) before opening the setup link, which points at `PUBLIC_SITE_URL`. The domain must first be active in the same Cloudflare account: for a domain registered elsewhere, add it under **Domains**, turn off DNSSEC at the registrar if it's on, and replace the registrar's nameservers with the two Cloudflare shows. Turn on **Always Use HTTPS** for the domain (**SSL/TLS → Edge Certificates**): the app needs `https://`, and the domain otherwise also answers plain `http://`. Domains are kept out of `wrangler.jsonc` so the configuration works for every installation. Printed cards use the address setup was opened on, so set up on the final domain.
-8. Open the setup link on the first admin's device, enter their name, and print or save both cards before continuing. Keep the recovery card somewhere safe: it can do everything an admin can.
+8. Open the setup link on the first head's device, enter her name, and print or save both cards before continuing. Keep the recovery card somewhere safe: it can do everything a head can.
 
 The setup token only allows the first setup. If the link is lost before then, `npm run setup-link` replaces the token and prints a new link.
 
-If setup finished but its cards were neither printed nor saved, the device that ran setup is still connected as the admin. Open BubbleBoard there, go to **Manage** and then **Teachers**, and use **Replace QR code** on your own name and on the recovery QR code, then print or save the new ones. The old ones stop working.
+If setup finished but its cards were neither printed nor saved, the device that ran setup is still connected as the head. Open BubbleBoard there, go to **Manage** and then **Teachers**, and use **Replace QR code** on your own name and on the recovery QR code, then print or save the new ones. The old ones stop working.
 
 Start over only when no device or card can open BubbleBoard, for example when the setup page closed before it showed the cards. This deletes every record:
 
@@ -49,7 +49,7 @@ An event's photos are the heaviest thing an installation keeps. Each one is made
 
 More photos also means more for a phone to hold while a teacher marks them, so raise these with your teachers' phones in mind.
 
-The storage defaults stay a tenth below the free allowance; `0` stops uploads or downloads altogether. Months are counted in UTC. Teachers make room by taking down photos, deleting notices with files, and deleting closed inquiries whose messages carry files, and admins by taking files off info pages or deleting pages, which deletes their bytes right away; notices past their days leave with their files in the daily cleanup. Change a limit in `.env`, then run `npm run deploy`.
+The storage defaults stay a tenth below the free allowance; `0` stops uploads or downloads altogether. Months are counted in UTC. Teachers make room by taking down photos, deleting notices with files, and deleting closed inquiries whose messages carry files, and the head by taking files off info pages or deleting pages, which deletes their bytes right away; notices past their days leave with their files in the daily cleanup. Change a limit in `.env`, then run `npm run deploy`.
 
 ## Backup and restore
 
@@ -68,7 +68,7 @@ Board photos and the files of notices and info pages in R2 have no backup: they'
 
 The intended design encrypts sensitive content on users’ devices and does not give the server the keys needed to read stored content. It does **not** promise that every possible leak is harmless. A compromised device, shared QR card, saved photo, or malicious application update remains a risk. A host controls the JavaScript delivered to browsers; public source and deployment verification improve accountability, not mathematical isolation from that host.
 
-Admins manage classrooms, teachers, and family cards. Every staff card opens the same Staff Key, so the server, not encryption, keeps each teacher to their own classrooms; families are kept apart by encryption. Removing access cannot recall saved copies or erase keys already held by a device. Kindergarten approval and consent remain part of operating the service.
+The head manages classrooms, teachers, and info pages; a head, or a group lead in the classrooms ticked for her, manages children and family cards. Every staff card opens the same Staff Key, so the server, not encryption, keeps each staff member to her classrooms and her role; families are kept apart by encryption. Removing access cannot recall saved copies or erase keys already held by a device. Kindergarten approval and consent remain part of operating the service.
 
 Every installation serves a short privacy policy at `/privacy` and `/en/privacy`: what it stores, where, and for how long, with the project's contact address. It describes the current code, so keep it in step with changes (`privacyPolicy` in `src/lib/i18n/`).
 

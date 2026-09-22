@@ -5,7 +5,7 @@ import { database, requireStaff, sessionHash } from '$lib/server/session';
 import { newNotice, readJson } from '$lib/server/validate';
 import type { RequestHandler } from './$types';
 
-// Teachers post to their own classrooms, admins to any. The notice's families and teachers get a
+// Staff post to the classrooms they hold, the head to any. The notice's families and teachers get a
 // notification, and the response is the board as the poster sees it.
 export const POST: RequestHandler = async (event) => {
 	const staff = await requireStaff(event);

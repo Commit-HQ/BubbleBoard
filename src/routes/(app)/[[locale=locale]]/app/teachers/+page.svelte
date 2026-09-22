@@ -12,6 +12,7 @@
 	let { data }: PageProps = $props();
 	const app = getApp();
 	const t = $derived(messages[data.locale].app.teachers);
+	const roles = $derived(messages[data.locale].app.roles);
 	const teachers = $derived(app.catalog.teachers.filter((teacher) => !teacher.recovery));
 	// The recovery card is kept with the staff cards, but it's nobody's, so it's set apart below them.
 	const recovery = $derived(app.catalog.teachers.find((teacher) => teacher.recovery));
@@ -21,14 +22,16 @@
 		return teacher.id === app.me?.id ? `${name} (${t.you})` : name;
 	}
 
+	// A plain teacher is named by her classrooms alone; the two roles above her say so first.
 	function detail(teacher: Teacher) {
 		const classrooms = listNames(data.locale, namesOf(app.catalog.classrooms, teacher.classrooms));
-		if (teacher.admin) return classrooms ? `${t.admin} · ${classrooms}` : t.admin;
-		return classrooms || t.noClassrooms;
+		const role = teacher.role === 'teacher' ? '' : roles[teacher.role];
+		if (!role) return classrooms || t.noClassrooms;
+		return classrooms ? `${role} · ${classrooms}` : role;
 	}
 </script>
 
-<Screen locale={data.locale} title={t.title} need="admin" back={appPath(data.locale, 'manage')}>
+<Screen locale={data.locale} title={t.title} need="head" back={appPath(data.locale, 'manage')}>
 	<a class="{button.primary} justify-self-start" href={appPath(data.locale, 'teacher/new')}>
 		<Icon name="plus" class="size-4" />{t.add}
 	</a>

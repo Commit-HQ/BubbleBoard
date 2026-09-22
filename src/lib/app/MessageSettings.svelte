@@ -6,9 +6,9 @@
 	import { getApp, Task } from './state.svelte';
 	import { alert, button, choice, field, labelFocus, surface } from './ui';
 
-	// What an admin decides about a classroom's parent messaging: whether families may write at all, how many
-	// inquiries each family has a month, and the hours their messages go through. Teachers are never held to
-	// any of it. It opens from the classroom's page, where it stays out of the way until asked for.
+	// What the staff running a classroom decide about its parent messaging: whether families may write at
+	// all, how many inquiries each family has a month, and the hours their messages go through. Teachers are
+	// never held to any of it. It opens from the classroom's page, where it stays out of the way until asked for.
 	let {
 		locale,
 		settings,
@@ -47,7 +47,7 @@
 			revision++;
 			saved = true;
 		});
-		// Another admin got there first: the reload above brought their week in through `settings`, so the
+		// Someone else got there first: the reload above brought their week in through `settings`, so the
 		// form shows it and can be saved again.
 		if (task.error === 'stale') {
 			enabled = settings.enabled;

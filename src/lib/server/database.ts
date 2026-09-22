@@ -10,7 +10,7 @@ export async function transaction(db: D1Database, statements: D1PreparedStatemen
 		return await db.batch(statements);
 	} catch (cause) {
 		const message = cause instanceof Error ? cause.message : '';
-		if (message.includes('last-admin')) error(409, 'last-admin');
+		if (message.includes('last-head')) error(409, 'last-head');
 		// Two meetings offered over each other, in one classroom or for one teacher.
 		if (message.includes('meeting-overlap')) error(409, 'meeting-overlap');
 		// The records changed since the device read them, or something the change refers to is gone. A
@@ -26,6 +26,9 @@ export async function transaction(db: D1Database, statements: D1PreparedStatemen
 		throw cause;
 	}
 }
+
+/** Whether someone runs the whole kindergarten, which every check for a head's reach asks. */
+export const isHead = (viewer: Identity) => viewer.kind === 'staff' && viewer.role === 'head';
 
 /** Whether a subquery's results include every one of these IDs, which must each come once. */
 export async function includesAll(
@@ -43,18 +46,18 @@ export async function includesAll(
 
 /**
  * The classrooms whose board someone sees, with its notices and photo, as a subquery and its parameters: a
- * family its children's classrooms, a teacher their own, and an admin every classroom.
+ * family its children's classrooms, a teacher or a group lead the ones she holds, and a head every classroom.
  */
 export function visibleClassrooms(viewer: Identity): [string, string[]] {
 	if (viewer.kind === 'family') {
 		return ['SELECT classroom_id FROM family_classrooms WHERE family_id = ?', [viewer.family]];
 	}
-	if (viewer.admin) return ['SELECT id FROM classrooms', []];
+	if (isHead(viewer)) return ['SELECT id FROM classrooms', []];
 	return ['SELECT classroom_id FROM teacher_classrooms WHERE teacher_id = ?', [viewer.teacher]];
 }
 
 /**
- * Refuses classrooms a staff member can't put notices or photos up in: a teacher's own, or any for an admin.
+ * Refuses classrooms a staff member can't put notices or photos up in: the ones she holds, or any for a head.
  * Each classroom comes once. A device that offers another has records from before a classroom was deleted or
  * its teacher moved, so it's told to load them again.
  */

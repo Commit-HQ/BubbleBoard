@@ -276,7 +276,7 @@ export const hr = {
 			{
 				shot: 'teacher-classroom',
 				title: 'Svaka obitelj dobije svoj QR kod',
-				copy: 'Administrator upiše djecu u skupinu i za svaku obitelj ispiše QR kod. S tim kodom obitelj ulazi u aplikaciju, bez korisničkog imena i lozinke. Izgubi li ga, dobije novi, a stari prestaje vrijediti.',
+				copy: 'BubbleBoard administrator upiše djecu u skupinu i za svaku obitelj ispiše QR kod. S tim kodom obitelj ulazi u aplikaciju, bez korisničkog imena i lozinke. Izgubi li ga, dobije novi, a stari prestaje vrijediti.',
 				screen:
 					'Skupina Mjehurići s osmero djece, uz svako dijete ime obitelji, te gumbi za dodavanje djeteta i zamjenu QR kodova.'
 			}
@@ -315,7 +315,7 @@ export const hr = {
 			},
 			{
 				title: 'Koliko dugo',
-				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojiteljica, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, stranice s informacijama dok ih administrator ne promijeni ili obriše, imena dok ih administrator ne ukloni, a prijava uređaja do 90 dana bez korištenja. Razgovori se, sa svojim datotekama, čuvaju dok je obitelj član skupine ili dok odgojiteljica ne obriše zatvoreni razgovor. Ponude individualnih razgovora i rezervacije brišu se 90 dana nakon posljednjeg termina u ponudi. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
+				copy: 'Obavijesti ostaju onoliko dana koliko odabere odgojiteljica, od 1 do 90, fotografija oglasne ploče dok se ne zamijeni, stranice s informacijama dok ih vrtić ne promijeni ili obriše, imena dok ih vrtić ne ukloni, a prijava uređaja do 90 dana bez korištenja. Razgovori se, sa svojim datotekama, čuvaju dok je obitelj član skupine ili dok odgojiteljica ne obriše zatvoreni razgovor. Ponude individualnih razgovora i rezervacije brišu se 90 dana nakon posljednjeg termina u ponudi. Obrisani zapisi ostaju u povijesti baze podataka do 30 dana.'
 			},
 			{
 				title: 'Obavijesti na uređaju',
@@ -589,9 +589,9 @@ export const hr = {
 			copy: 'Otvorite početnu stranicu BubbleBoarda i skenirajte svoj QR kod.',
 			action: 'Idi na BubbleBoard'
 		},
-		adminOnly: {
-			title: 'Ovu stranicu mogu otvoriti samo administratori',
-			copy: 'Ako vam ovdje nešto treba, obratite se administratoru u vrtiću.'
+		headOnly: {
+			title: 'Ovu stranicu može otvoriti samo BubbleBoard administrator',
+			copy: 'Ako vam ovdje nešto treba, obratite se BubbleBoard administratoru u vrtiću.'
 		},
 		notFound: {
 			title: 'Nije pronađeno',
@@ -615,7 +615,7 @@ export const hr = {
 		},
 		unreadable: {
 			title: 'Neki se zapisi nisu otvorili',
-			copy: 'BubbleBoard na ovom uređaju nije mogao otvoriti neke zapise vašeg vrtića. Pokušajte ponovno, a ako se to ponavlja, javite administratoru.'
+			copy: 'BubbleBoard na ovom uređaju nije mogao otvoriti neke zapise vašeg vrtića. Pokušajte ponovno, a ako se to ponavlja, javite BubbleBoard administratoru.'
 		},
 		staffOnly: {
 			title: 'Ova je stranica za odgojiteljice',
@@ -671,7 +671,8 @@ export const hr = {
 			continue: 'Nastavi',
 			leaveFirst: 'Najprije ispišite ili spremite oba QR koda, a zatim označite kvadratić.',
 			kinds: {
-				admin: 'Administratorski QR kod',
+				head: 'QR kod BubbleBoard administratora',
+				lead: 'QR kod voditeljice skupine',
 				teacher: 'QR kod odgojiteljice',
 				recovery: 'QR kod za oporavak',
 				family: 'Obiteljski QR kod'
@@ -681,7 +682,7 @@ export const hr = {
 			about: 'Obavijesti i fotografije iz vrtića.',
 			private: 'Ne dijelite ovaj QR kod. Ako ga izgubite, vrtić će vam dati novi.',
 			recovery:
-				'Rezervni QR kod za slučaj da se izgube svi administratorski QR kodovi: tada se samo njime mogu zamijeniti izgubljeni QR kodovi i dodavati djeca, odgojiteljice i skupine. Tko ga ima, može sve što i administrator, zato ga čuvajte pod ključem u vrtiću, odvojeno od svakodnevnih QR kodova.',
+				'Rezervni QR kod za slučaj da se izgube svi QR kodovi BubbleBoard administratora: tada se samo njime mogu zamijeniti izgubljeni QR kodovi i dodavati djeca, odgojiteljice i skupine. Tko ga ima, može sve što i BubbleBoard administrator, zato ga čuvajte pod ključem u vrtiću, odvojeno od svakodnevnih QR kodova.',
 			qr: (name: string) => `QR kod: ${name}`,
 			replace: 'Zamijeni QR kod',
 			replaceTitle: (name: string) => `Zamijeniti QR kod „${name}”?`,
@@ -703,16 +704,17 @@ export const hr = {
 			}
 		},
 		manage: {
-			title: 'Administracija',
-			admin: 'Evo vašeg vrtića.',
+			title: 'Upravljanje',
+			head: 'Evo vašeg vrtića.',
 			teacher: 'Evo vaših skupina.',
 			classrooms: 'Skupine',
 			addClassroom: 'Dodaj skupinu',
 			classroomName: 'Naziv skupine',
 			teachers: 'Odgojiteljice',
 			teachersDetail: 'Imena, skupine i QR kodovi',
-			emptyAdmin: 'Započnite dodavanjem prve skupine.',
-			emptyTeacher: 'Još niste dodani ni u jednu skupinu. Može vas dodati administrator.'
+			emptyHead: 'Započnite dodavanjem prve skupine.',
+			emptyTeacher:
+				'Još niste dodani ni u jednu skupinu. Može vas dodati BubbleBoard administrator.'
 		},
 		classroom: {
 			children: 'Djeca',
@@ -774,6 +776,7 @@ export const hr = {
 			cards: 'Obiteljski QR kodovi',
 			noCards: 'Još nema obiteljskog QR koda. Dodajte ga kako bi se obitelj mogla povezati.',
 			also: (children: string[]) => `Vrijedi i za: ${list(children)}`,
+			alsoElsewhere: 'Vrijedi i u drugoj skupini',
 			removeCardTitle: (name: string) => `Ukloniti QR kod „${name}”?`,
 			removeCardShared: (children: string[]) => `QR kod i dalje vrijedi za: ${list(children)}.`,
 			removeCardLast:
@@ -792,31 +795,40 @@ export const hr = {
 					? `Obiteljski QR kodovi koji će prestati raditi: ${list(cards)}.`
 					: 'To se ne može poništiti.'
 		},
+		// Što pojedina članica osoblja smije, na njezinu QR kodu, na popisu odgojiteljica i u njezinu obrascu.
+		roles: {
+			teacher: 'Odgojiteljica',
+			lead: 'Voditeljica skupine',
+			head: 'BubbleBoard administrator'
+		},
 		teachers: {
 			title: 'Odgojiteljice',
 			add: 'Dodaj odgojiteljicu',
-			admin: 'Administrator',
 			you: 'vi',
 			noClassrooms: 'Bez skupine',
 			recoveryTitle: 'Za hitne slučajeve',
-			recoveryDetail: 'Otvara sve ako se izgube svi administratorski QR kodovi.'
+			recoveryDetail: 'Otvara sve ako se izgube svi QR kodovi BubbleBoard administratora.'
 		},
 		teacher: {
 			newTitle: 'Dodaj odgojiteljicu',
 			name: 'Ime',
 			classrooms: 'Skupine',
 			noClassrooms: 'Još nema skupina.',
-			admin: 'Administrator',
-			adminHint: 'Može dodavati skupine, odgojiteljice i djecu te otvoriti svaku skupinu.',
-			selfAdmin: 'Ovo može promijeniti drugi administrator.',
+			role: 'Što smije',
+			teacherHint: 'Objavljuje obavijesti i fotografije u svojim skupinama.',
+			leadHint:
+				'Sve što i odgojiteljica, a uz to u svojim skupinama upisuje djecu, izrađuje obiteljske QR kodove i uređuje postavke poruka roditelja.',
+			headHint:
+				'Sve što i voditeljica skupine, i to u svakoj skupini, a uz to dodaje skupine, odgojiteljice i stranice s informacijama.',
+			selfRole: 'Ovo može promijeniti drugi BubbleBoard administrator.',
 			create: 'Izradi QR kod',
 			remove: 'Ukloni odgojiteljicu',
 			removeTitle: () => 'Ukloniti odgojiteljicu?',
 			removeCopy: (name: string) =>
 				`${name} više neće moći otvoriti BubbleBoard, a uređaji s tim QR kodom bit će odjavljeni.`,
-			self: 'Ovo ste vi. Ukloniti vas može drugi administrator.',
+			self: 'Ovo ste vi. Ukloniti vas može drugi BubbleBoard administrator.',
 			recovery:
-				'Rezervni QR kod za slučaj da se izgube svi administratorski QR kodovi. Tada se samo njime mogu zamijeniti izgubljeni QR kodovi, a bez njega nitko ne bi mogao dodavati djecu, odgojiteljice ni skupine. Budući da može sve što i administrator, čuvajte ga pod ključem u vrtiću, odvojeno od svakodnevnih QR kodova, i zamijenite ga ako ga je netko drugi možda vidio.'
+				'Rezervni QR kod za slučaj da se izgube svi QR kodovi BubbleBoard administratora. Tada se samo njime mogu zamijeniti izgubljeni QR kodovi, a bez njega nitko ne bi mogao dodavati djecu, odgojiteljice ni skupine. Budući da može sve što i BubbleBoard administrator, čuvajte ga pod ključem u vrtiću, odvojeno od svakodnevnih QR kodova, i zamijenite ga ako ga je netko drugi možda vidio.'
 		},
 		options: {
 			title: 'Opcije',
@@ -865,7 +877,7 @@ export const hr = {
 			title: 'Info',
 			empty:
 				'Ovdje još nema ničega. Kad vrtić doda informacije za sve, na primjer radno vrijeme ili kontakte, pojavit će se ovdje.',
-			emptyAdmin:
+			emptyHead:
 				'Ovdje još nema ničega. Dodajte stranicu za svaku temu koju svi u vrtiću trebaju znati, na primjer radno vrijeme, kontakte ili prehranu, po želji s datotekama.',
 			add: 'Dodaj stranicu',
 			newTitle: 'Nova stranica',
@@ -913,7 +925,8 @@ export const hr = {
 			announceHint: 'Za promjenu koju svi trebaju vidjeti. Obavijest se vraća na vrh ploče.',
 			post: 'Objavi obavijest',
 			save: 'Spremi promjene',
-			noClassrooms: 'Obavijesti možete objavljivati kad vas administrator doda u skupinu.'
+			noClassrooms:
+				'Obavijesti možete objavljivati kad vas BubbleBoard administrator doda u skupinu.'
 		},
 		polls: {
 			add: 'Dodaj anketu',
@@ -970,6 +983,9 @@ export const hr = {
 			blocked:
 				'Obavijesti za BubbleBoard su blokirane. Dopustite ih u postavkama uređaja, pa ih ovdje uključite.',
 			title: 'Obavijesti',
+			classrooms: 'Skupine o kojima želite čuti',
+			classroomsHint:
+				'Vodite sve skupine, pa odaberite o kojima želite čuti. Skupina dodana kasnije javlja vam se dok je ne isključite.',
 			on: 'Uključene: ovaj uređaj javlja nove obavijesti.',
 			off: 'Isključene na ovom uređaju.',
 			unsupported: 'Ovaj preglednik ne može prikazivati obavijesti BubbleBoarda.'
@@ -1164,7 +1180,7 @@ export const hr = {
 				'BubbleBoard trenutno nije dostupan. Provjerite internetsku vezu i pokušajte ponovno.',
 			'signed-out': 'Ovaj je uređaj odjavljen. Za nastavak ponovno skenirajte QR kod.',
 			'unreadable-records':
-				'Neki zapisi vašeg vrtića nisu se otvorili na ovom uređaju. Pokušajte ponovno, a ako se to ponavlja, javite administratoru.',
+				'Neki zapisi vašeg vrtića nisu se otvorili na ovom uređaju. Pokušajte ponovno, a ako se to ponavlja, javite BubbleBoard administratoru.',
 			'unknown-card': 'Ovaj QR kod više ne radi. Zatražite novi u vrtiću.',
 			'ended-card':
 				'Ovaj je QR kod već iskorišten ili mu je prošao rok. Zatražite novi od osobe koja vam ga je dala.',
@@ -1180,8 +1196,8 @@ export const hr = {
 			'already-set-up': 'BubbleBoard je ovdje već postavljen. Povežite se svojim QR kodom.',
 			'setup-unavailable':
 				'Postavljanje na ovoj instalaciji još nije spremno. Obratite se osobi koja je instalirala BubbleBoard.',
-			'last-admin':
-				'BubbleBoardu treba barem jedan administrator. Najprije nekoga drugog postavite za administratora.',
+			'last-head':
+				'BubbleBoardu treba barem jedan BubbleBoard administrator. Najprije nekoga drugog postavite za administratora.',
 			'not-empty': 'Najprije premjestite ili uklonite djecu iz ove skupine.',
 			'empty-name': 'Ime ne može ostati prazno. Upišite ga i pokušajte ponovno.',
 			stale:

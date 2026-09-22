@@ -29,7 +29,7 @@
 			kindergarten ??= await createKindergarten(name);
 			await app.setUp(token, kindergarten);
 			cards = [
-				{ secret: kindergarten.admin.secret, name: kindergarten.admin.name, kind: 'admin' },
+				{ secret: kindergarten.head.secret, name: kindergarten.head.name, kind: 'head' },
 				{ secret: kindergarten.recovery.secret, name: '', kind: 'recovery' }
 			];
 		});

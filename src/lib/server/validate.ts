@@ -19,6 +19,7 @@ import type {
 	NoticeKey,
 	PollAnswer,
 	Setup,
+	StaffRole,
 	TeacherChange
 } from '$lib/api';
 import { fromBase64Url } from '$lib/base64url';
@@ -169,6 +170,9 @@ export function familyCards(body: Fields): FamilyCard[] {
 	return cards.length && distinct ? cards : invalid();
 }
 
+/** The classrooms a head wants to hear about, each once. */
+export const classroomIds = (body: Fields) => ids(body.classrooms);
+
 export function setup(body: Fields): Setup {
 	if (typeof body.token !== 'string' || body.token.length > 256) invalid();
 	const teachers = list(body.teachers, (value) => {
@@ -204,7 +208,7 @@ function newInfoKey(value: unknown): NewInfoKey {
 	return distinct ? { infoKeyForStaff: wrappedKey(key.infoKeyForStaff), classrooms } : invalid();
 }
 
-/** An info page as an admin's device saves it, with the files its content holds, each once. */
+/** An info page as the head's device saves it, with the files its content holds, each once. */
 export const infoPageChange = (body: Fields): InfoPageChange => ({
 	content: infoContent(body.content),
 	files: ids(body.files, maxNoticeFiles)
@@ -222,11 +226,18 @@ export function infoOrder(body: Fields) {
 	return new Set(pages).size === pages.length ? pages : invalid();
 }
 
-const teacher = (body: Fields) => ({
-	admin: flag(body.admin),
-	profile: profile(body.profile),
-	classrooms: ids(body.classrooms)
-});
+const roles: StaffRole[] = ['teacher', 'lead', 'head'];
+const staffRole = (value: unknown) =>
+	roles.includes(value as StaffRole) ? (value as StaffRole) : invalid();
+
+/** A teacher's role with the classrooms she holds. The head holds them all, so she's given none. */
+function teacher(body: Fields) {
+	const role = staffRole(body.role);
+	const classrooms = ids(body.classrooms);
+	return role === 'head' && classrooms.length
+		? invalid()
+		: { role, profile: profile(body.profile), classrooms };
+}
 
 export const teacherChange = (body: Fields): TeacherChange => ({
 	revision: revision(body.revision),

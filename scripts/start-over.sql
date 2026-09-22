@@ -2,7 +2,7 @@
 -- Everything stored is lost, and every card stops working. Board photos and the files of notices and info pages
 -- stay in R2, where nothing can open them without the old keys, until the daily cleanup deletes them, since no
 -- record names them anymore. The installation row goes first: once it's gone, the database no longer insists on
--- keeping an admin.
+-- keeping a head of the kindergarten.
 DELETE FROM installation;
 DELETE FROM notices;
 DELETE FROM info_pages;

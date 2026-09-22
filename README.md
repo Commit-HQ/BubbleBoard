@@ -46,7 +46,7 @@ npm run setup-link:local
 npm run dev
 ```
 
-Open the setup link the third command prints, enter a name, and you're the first admin of your own tiny kindergarten. The full walkthrough is in [docs/development.md](docs/development.md).
+Open the setup link the third command prints, enter a name, and you're the head of your own tiny kindergarten. The full walkthrough is in [docs/development.md](docs/development.md).
 
 ## Built small on purpose
 

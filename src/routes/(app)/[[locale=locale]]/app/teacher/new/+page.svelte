@@ -17,7 +17,7 @@
 	async function create(values: TeacherValues) {
 		const secret = await app.addTeacher(values);
 		const detail = listNames(data.locale, namesOf(app.catalog.classrooms, values.classrooms));
-		const kind = cardKind({ admin: values.admin, recovery: false });
+		const kind = cardKind({ role: values.role, recovery: false });
 		printed = [{ secret, name: values.name, kind, detail }];
 	}
 </script>
@@ -32,7 +32,7 @@
 	<Screen
 		locale={data.locale}
 		title={t.teacher.newTitle}
-		need="admin"
+		need="head"
 		back={appPath(data.locale, 'teachers')}
 	>
 		<TeacherForm locale={data.locale} submitLabel={t.teacher.create} onsubmit={create} />

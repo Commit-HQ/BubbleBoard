@@ -9,7 +9,7 @@
 	import { alert, button, field, formText, queryParam, surface } from '$lib/app/ui';
 	import Icon from '$lib/components/Icon.svelte';
 	import { errorMessage, messages } from '$lib/i18n';
-	import { byId } from '$lib/kindergarten';
+	import { byId, type Child } from '$lib/kindergarten';
 	import { appPath } from '$lib/paths';
 	import type { PageProps } from './$types';
 
@@ -20,9 +20,10 @@
 	let { data }: PageProps = $props();
 	const app = getApp();
 	const t = $derived(messages[data.locale].app);
-	const classroom = $derived(
-		app.catalog.classrooms.find(({ id }) => id === queryParam('classroom'))
-	);
+	const found = $derived(app.catalog.classrooms.find(({ id }) => id === queryParam('classroom')));
+	// A teacher who doesn't run the classroom gets the same answer as for a classroom that isn't there:
+	// there's nothing here for her to do either way.
+	const classroom = $derived(found && app.manages(found.id) ? found : undefined);
 	const task = new Task();
 	let cardFor = $state<'new' | 'sibling'>('new');
 	/** Covered until a consent form says otherwise. */
@@ -50,6 +51,22 @@
 		if (!leaving) return;
 		leaveAnyway = true;
 		await goto(leaving);
+	}
+
+	/**
+	 * A brother or sister, with the classroom they're in, and a word when their family's QR code also
+	 * reaches a classroom this device doesn't see.
+	 */
+	function siblingLabel(sibling: Child) {
+		const where = byId(app.catalog.classrooms, sibling.classroom).name;
+		const elsewhere = app.catalog.families.some(
+			(family) =>
+				sibling.families.includes(family.id) &&
+				family.classrooms.some((id) => !app.catalog.classrooms.some((c) => c.id === id))
+		);
+		return elsewhere
+			? `${sibling.name} (${where}) · ${t.child.alsoElsewhere}`
+			: `${sibling.name} (${where})`;
 	}
 
 	async function submit(event: SubmitEvent & { currentTarget: EventTarget & HTMLFormElement }) {
@@ -91,7 +108,7 @@
 	<Screen
 		locale={data.locale}
 		title={classroom ? t.newChild.title : t.notFound.title}
-		need="admin"
+		need="staff"
 		back={classroom && appPath(data.locale, 'classroom', { id: classroom.id })}
 	>
 		{#if classroom}
@@ -151,7 +168,7 @@
 							<select class={field.input} name="sibling" required>
 								{#each app.catalog.children as sibling (sibling.id)}
 									<option value={sibling.id}>
-										{sibling.name} ({byId(app.catalog.classrooms, sibling.classroom).name})
+										{siblingLabel(sibling)}
 									</option>
 								{/each}
 							</select>

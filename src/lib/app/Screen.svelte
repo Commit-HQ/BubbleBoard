@@ -11,8 +11,8 @@
 
 	// The frame of an app page below home: a way back, a title, and the page once this device may see it.
 	// The way back leads home, or to `back` for a page inside another. `need` is what the device must be:
-	// staff, an admin, connected with any card, or nothing, for settings. With `rename`, a pencil beside the
-	// title opens a field that renames what the title names.
+	// staff, the head of the kindergarten, connected with any card, or nothing, for settings. With `rename`,
+	// a pencil beside the title opens a field that renames what the title names.
 	let {
 		locale,
 		title,
@@ -26,7 +26,7 @@
 		title: string;
 		subtitle?: string;
 		back?: string;
-		need?: 'nothing' | 'connected' | 'staff' | 'admin';
+		need?: 'nothing' | 'connected' | 'staff' | 'head';
 		rename?: { label: string; save: (name: string) => Promise<unknown> };
 		children: Snippet;
 	} = $props();
@@ -92,8 +92,8 @@
 	{@render content()}
 {:else if app.status === 'family' && need !== 'connected'}
 	<Panel icon="smile" title={t.staffOnly.title} copy={t.staffOnly.copy} children={home} />
-{:else if app.status === 'staff' && need === 'admin' && !app.admin}
-	<Panel icon="lock" title={t.adminOnly.title} copy={t.adminOnly.copy} children={home} />
+{:else if app.status === 'staff' && need === 'head' && !app.head}
+	<Panel icon="lock" title={t.headOnly.title} copy={t.headOnly.copy} children={home} />
 {:else if app.connected}
 	{@render content()}
 {:else}

@@ -9,7 +9,7 @@
 	import type { PageProps } from './$types';
 
 	// Where staff manage the kindergarten, from the header: a tile for each of their classrooms, or every
-	// classroom for admins, who also add classrooms here and, in a section of their own, open the teachers.
+	// classroom for the head, who also adds classrooms here and, in a section of their own, opens the teachers.
 	let { data }: PageProps = $props();
 	const app = getApp();
 	const t = $derived(messages[data.locale].app);
@@ -27,11 +27,11 @@
 <Screen
 	locale={data.locale}
 	title={t.manage.title}
-	subtitle={app.admin ? t.manage.admin : t.manage.teacher}
+	subtitle={app.head ? t.manage.head : t.manage.teacher}
 >
 	<section class="grid gap-3" aria-labelledby="classrooms-title">
 		<!-- Teachers only have classrooms here, which the subtitle names already. -->
-		<h2 id="classrooms-title" class={app.admin ? 'text-2xl' : 'sr-only'}>
+		<h2 id="classrooms-title" class={app.head ? 'text-2xl' : 'sr-only'}>
 			{t.manage.classrooms}
 		</h2>
 		<ul class="grid grid-cols-2 gap-3 sm:gap-4">
@@ -49,14 +49,14 @@
 					</a>
 				</li>
 			{/each}
-			{#if app.admin}<AddClassroomTile locale={data.locale} />{/if}
+			{#if app.head}<AddClassroomTile locale={data.locale} />{/if}
 		</ul>
 		{#if !app.catalog.classrooms.length}
-			<p class="text-muted">{app.admin ? t.manage.emptyAdmin : t.manage.emptyTeacher}</p>
+			<p class="text-muted">{app.head ? t.manage.emptyHead : t.manage.emptyTeacher}</p>
 		{/if}
 	</section>
 
-	{#if app.admin}
+	{#if app.head}
 		<section class="grid gap-3 border-t border-ink/10 pt-6" aria-labelledby="teachers-title">
 			<h2 id="teachers-title" class="text-2xl">{t.manage.teachers}</h2>
 			<ul class="grid gap-2">

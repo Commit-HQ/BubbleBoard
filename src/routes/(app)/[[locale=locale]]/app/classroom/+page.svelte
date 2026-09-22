@@ -28,6 +28,8 @@
 		app.catalog.teachers.filter((teacher) => classroom && teacher.classrooms.includes(classroom.id))
 	);
 	const messaging = $derived(app.messagePolicies.find((policy) => policy.classroom === id));
+	/** Whether this device runs the classroom: a head, or the group lead it belongs to. */
+	const manages = $derived(classroom !== undefined && app.manages(classroom.id));
 	let open = $state<'delete' | 'replace' | 'confirmReplace' | 'messages'>();
 	/** The families whose cards are chosen to be replaced. */
 	let chosen = $state<string[]>([]);
@@ -83,7 +85,7 @@
 		title={classroom?.name ?? t.notFound.title}
 		back={appPath(data.locale, 'manage')}
 		subtitle={classroom && t.counts.children(children.length)}
-		rename={classroom && app.admin
+		rename={classroom && app.head
 			? {
 					label: t.manage.classroomName,
 					save: (name) => app.renameClassroom(classroom.id, name)
@@ -91,16 +93,16 @@
 			: undefined}
 	>
 		{#if classroom}
-			{#if app.admin}
+			{#if manages}
 				<p class="-mt-4 text-muted">
 					{teachers.length
 						? t.classroom.teachers(teachers.map((teacher) => teacher.name))
 						: t.classroom.noTeachers}
 				</p>
 			{/if}
-			{#if app.admin || families.length}
+			{#if manages || families.length}
 				<div class="flex flex-wrap gap-2">
-					{#if app.admin}
+					{#if manages}
 						<a
 							class={button.primary}
 							href={appPath(data.locale, 'child/new', { classroom: classroom.id })}
@@ -108,7 +110,7 @@
 							<Icon name="plus" class="size-4" />{t.classroom.addChild}
 						</a>
 					{/if}
-					{#if app.admin && families.length}
+					{#if manages && families.length}
 						<button
 							class={button.secondary}
 							type="button"
@@ -118,7 +120,7 @@
 							<Icon name="refresh" class="size-4" />{t.classroom.replaceCards}
 						</button>
 					{/if}
-					{#if app.admin && !children.length}
+					{#if app.head && !children.length}
 						<button class={button.danger} type="button" onclick={() => (open = 'delete')}>
 							<Icon name="trash" class="size-4" />{t.classroom.delete}
 						</button>
@@ -176,8 +178,8 @@
 				{/if}
 			</section>
 
-			{#if app.admin && messaging}
-				<!-- Under the children, where an admin comes to settle the classroom rather than to look
+			{#if manages && messaging}
+				<!-- Under the children, where staff come to settle the classroom rather than to look
 				someone up: the week at a glance, and the form itself only once it's asked for. -->
 				<section class="grid gap-3" aria-labelledby="messaging-title">
 					<h2 id="messaging-title" class="text-2xl">{t.messaging.settings}</h2>

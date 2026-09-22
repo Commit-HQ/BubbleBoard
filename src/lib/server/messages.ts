@@ -11,8 +11,8 @@ import {
 	type MessageRecord,
 	type MessageSettings
 } from '$lib/messages';
-import { transaction, visibleClassrooms } from './database';
-import type { Admin } from './session';
+import { checkClassrooms, transaction, visibleClassrooms } from './database';
+import type { Manager } from './session';
 import { deleteMarked, getObject, putObject, type ObjectStore } from './storage';
 import { fields, flag, invalid, list, revision } from './validate';
 
@@ -81,8 +81,9 @@ export async function settingsFor(db: D1Database, classroom: string): Promise<Me
 		.first<SettingsRow>();
 	return settingsOf(classroom, row ?? undefined);
 }
-export async function saveSettings(db: D1Database, admin: Admin, value: MessageSettings) {
-	if (!admin.admin) error(403, 'forbidden');
+/** Settles a classroom's messaging: the head anywhere, a group lead in the classrooms she holds. */
+export async function saveSettings(db: D1Database, manager: Manager, value: MessageSettings) {
+	await checkClassrooms(db, manager, [value.classroom]);
 	const result = await db
 		.prepare(
 			`INSERT INTO message_settings(classroom_id,enabled,monthly_limit,schedule,revision)
@@ -163,7 +164,7 @@ export async function inbox(db: D1Database, who: Identity, now = Date.now()): Pr
 		.prepare(`SELECT id FROM classrooms WHERE id IN (${sql})`)
 		.bind(...params)
 		.all<{ id: string }>();
-	// Every classroom's policy in two queries, whatever an admin's kindergarten holds: what each classroom
+	// Every classroom's policy in two queries, whatever a head's kindergarten holds: what each classroom
 	// settled, and what this family has spent in each of them this month.
 	const settings = await db
 		.prepare(`SELECT ${settingsColumns} FROM message_settings WHERE classroom_id IN (${sql})`)

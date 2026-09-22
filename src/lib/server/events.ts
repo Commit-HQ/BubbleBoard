@@ -157,11 +157,12 @@ async function editable(db: D1Database, staff: Staff, id: string, draft = false)
 	if (!row || row.expiresAt <= Date.now()) error(404, 'not-found');
 	await checkClassrooms(db, staff, [row.classroom]);
 	// An event still being prepared belongs to the one card preparing it, photos and all. Once it's up it
-	// belongs to whoever may change it: its author, or any admin, as a notice does.
+	// belongs to whoever may change it: its author, the head, or the lead of its classroom, as a notice
+	// does. The classroom is one the staff member holds already, so for a lead there's nothing more to ask.
 	const own =
 		draft && row.postedAt === null
 			? row.credential === staff.credential
-			: staff.admin || row.teacher === staff.teacher;
+			: staff.role !== 'teacher' || row.teacher === staff.teacher;
 	if (!own) error(403, 'forbidden');
 	return row;
 }

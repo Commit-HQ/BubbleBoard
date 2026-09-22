@@ -4,8 +4,8 @@ import { database, isSetupToken, limitAttempts, startSession } from '$lib/server
 import { readJson, setup } from '$lib/server/validate';
 import type { RequestHandler } from './$types';
 
-// The first setup, allowed by the installation's setup token (README). It stores the admin's card and the
-// recovery card, and connects this device with the admin's card.
+// The first setup, allowed by the installation's setup token (README). It stores the first head's card and
+// the recovery card, both heads, and connects this device with the head's card.
 export const POST: RequestHandler = async (event) => {
 	await limitAttempts(event);
 	const { token, teachers } = setup(await readJson(event.request));

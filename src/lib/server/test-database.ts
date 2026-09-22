@@ -4,16 +4,31 @@ import type { ObjectStore, StorageLimits } from './storage';
 
 type Statement = { sql: string; params: SQLInputValue[] };
 
-/** The part of D1's API the server uses, over an in-memory SQLite database with the migrations applied. */
-export function localDatabase() {
-	const sqlite = new DatabaseSync(':memory:');
-	sqlite.exec('PRAGMA foreign_keys = ON');
-	// Every migration, in order, as D1 applies them.
+/** The SQLite behind a local database, with the migrations applied to it so far. */
+type Engine = { sqlite: DatabaseSync; applied: Set<string> };
+const engines = new WeakMap<D1Database, Engine>();
+
+/**
+ * Applies the migrations a database hasn't had yet, up to and including the one whose number is `upTo`, in
+ * the order D1 applies them. A test that starts before a migration applies it later to see what it does to
+ * the records that were already there.
+ */
+export function migrate(db: D1Database, upTo = '9999') {
+	const engine = engines.get(db);
+	if (!engine) throw new Error('Not a local database');
 	for (const file of readdirSync('migrations')
 		.filter((name) => name.endsWith('.sql'))
 		.sort()) {
-		sqlite.exec(readFileSync(`migrations/${file}`, 'utf8'));
+		if (file.slice(0, 4) > upTo || engine.applied.has(file)) continue;
+		engine.sqlite.exec(readFileSync(`migrations/${file}`, 'utf8'));
+		engine.applied.add(file);
 	}
+}
+
+/** The part of D1's API the server uses, over an in-memory SQLite database with the migrations applied. */
+export function localDatabase(upTo?: string) {
+	const sqlite = new DatabaseSync(':memory:');
+	sqlite.exec('PRAGMA foreign_keys = ON');
 	const execute = ({ sql, params }: Statement) => {
 		const prepared = sqlite.prepare(sql);
 		if (prepared.columns().length) {
@@ -40,7 +55,10 @@ export function localDatabase() {
 			throw cause;
 		}
 	};
-	return { prepare: (sql: string) => statement(sql), batch } as unknown as D1Database;
+	const db = { prepare: (sql: string) => statement(sql), batch } as unknown as D1Database;
+	engines.set(db, { sqlite, applied: new Set() });
+	migrate(db, upTo);
+	return db;
 }
 
 /**

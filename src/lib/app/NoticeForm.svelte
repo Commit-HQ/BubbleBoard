@@ -23,7 +23,7 @@
 	import { alert, button, field, surface } from './ui';
 
 	// A notice's text on its paper, poll, files, classrooms, and days, to post or change. Teachers post to their
-	// own classrooms and admins to any. The editor's toolbar chooses the paper, which it shows the text on.
+	// own classrooms. The editor's toolbar chooses the paper, which it shows the text on.
 	let { locale, notice, onsaved }: { locale: Locale; notice?: Notice; onsaved: () => void } =
 		$props();
 
