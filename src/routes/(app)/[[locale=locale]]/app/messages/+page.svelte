@@ -58,6 +58,9 @@
 	let closing = $state(false);
 	let removing = $state(false);
 	let confirming = $state(false);
+	/** The message being changed in the composer, and the one whose deletion is being confirmed. */
+	let editing = $state.raw<OpenMessage>();
+	let deleting = $state.raw<OpenMessage>();
 	/** The files a teacher attaches to the message being written, sealed as each was attached. */
 	let files = $state.raw<(NoticeFile | NewFile)[]>([]);
 	let attaching = $state(false);
@@ -86,6 +89,37 @@
 	const allowed = $derived(left !== undefined);
 	const closingIn = $derived(left !== undefined && left <= closingSoon ? left : undefined);
 	const canSend = $derived(staff || (allowed && (!charged || remaining > 0)));
+	/**
+	 * Who this device writes as, which is what makes a message its own to change: a teacher's own messages,
+	 * not a colleague's, and, on a family device, the family's, which all of its devices share.
+	 */
+	const mineAuthor = $derived(
+		staff ? (app.me ? `teacher:${app.me.id}` : '') : `family:${app.messageFamily ?? ''}`
+	);
+	const ownMessage = (row: OpenMessage) => !!mineAuthor && row.author === mineAuthor;
+	/**
+	 * Whether the other side has written since a message: an answer is to the words that were there, so the
+	 * message stays as it was answered. Newer messages are always on the page, so the loaded rows suffice.
+	 */
+	const answered = (row: OpenMessage) =>
+		rows.some(
+			(later) =>
+				later.sequence > row.sequence && later.author.slice(0, 7) !== row.author.slice(0, 7)
+		);
+	/**
+	 * Whether the viewer may still change one of their own messages: while the inquiry is open and nobody has
+	 * answered it, and, for a family, until a teacher has opened the conversation as far as it. The server
+	 * decides each of these for itself; this only keeps Edit off messages where it wouldn't go through.
+	 */
+	const canChange = (row: OpenMessage) =>
+		!!thread &&
+		!thread.closed &&
+		!row.deletedAt &&
+		ownMessage(row) &&
+		!answered(row) &&
+		(staff || row.sequence > thread.seenSequence);
+	/** Only teachers delete a message, and only their own: a family's inquiry stays where it was sent. */
+	const canRemove = (row: OpenMessage) => staff && canChange(row);
 	const filtered = $derived(
 		app.conversations.filter(
 			(item) =>
@@ -155,6 +189,8 @@
 			text = '';
 			subject = '';
 			pending = undefined;
+			editing = undefined;
+			deleting = undefined;
 			failure = undefined;
 			rows = [];
 			more = false;
@@ -219,9 +255,47 @@
 	/** Families are asked once more when a message spends an inquiry, so none goes by mistake. */
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
-		if (busy || filesTask.busy || !text.trim() || !canSend || (creating && !subject.trim())) return;
-		if (charged && !creating) confirming = true;
+		if (busy || filesTask.busy || !text.trim()) return;
+		// An edit costs nothing and asks nothing: the sending hours and the allowance are about new messages.
+		if (editing) void saveEdit();
+		else if (!canSend || (creating && !subject.trim())) return;
+		else if (charged && !creating) confirming = true;
 		else void send();
+	}
+
+	/** Puts a message's own words back into the composer, where sending saves the edit instead of a message. */
+	function startEditing(row: OpenMessage) {
+		editing = row;
+		text = row.text;
+		attaching = false;
+		files = [];
+		failure = undefined;
+	}
+
+	function stopEditing() {
+		editing = undefined;
+		text = '';
+	}
+
+	async function saveEdit() {
+		const message = editing!;
+		const version = viewVersion;
+		busy = true;
+		failure = undefined;
+		try {
+			await app.editMessage(thread!, message, text.trim());
+			if (version !== viewVersion) return;
+			stopEditing();
+		} catch (cause) {
+			if (version === viewVersion) failure = errorCode(cause);
+		} finally {
+			if (version === viewVersion) busy = false;
+		}
+	}
+
+	async function removeMessage() {
+		await app.deleteMessage(thread!, deleting!);
+		deleting = undefined;
 	}
 
 	async function send() {
@@ -352,6 +426,8 @@
 							name={bubbleName(row.author, row.name, thread.family)}
 							openPicture={(file) => app.messagePicture(thread.id, row, file)}
 							saveDocument={(file) => app.saveMessageFile(thread.id, row, file)}
+							onedit={canChange(row) ? () => startEditing(row) : undefined}
+							onremove={canRemove(row) ? () => (deleting = row) : undefined}
 						/>
 					{/each}
 				</ol>
@@ -360,7 +436,18 @@
 					<p class="mt-5 text-muted">{t.closedCopy}</p>
 				{:else}
 					<form class="sticky bottom-4 mt-5 grid gap-2" onsubmit={submit}>
-						{#if !staff && policy}
+						{#if editing}
+							<div
+								class="flex flex-wrap items-center justify-between gap-2 rounded-3xl frosted px-4 py-2"
+							>
+								<p class="text-sm text-muted">
+									{t.editing}{#if !staff}&nbsp;· {t.editHint}{/if}
+								</p>
+								<button class={button.quiet} type="button" onclick={stopEditing}>
+									{t.cancelEditing}
+								</button>
+							</div>
+						{:else if !staff && policy}
 							<MessagePolicy
 								locale={data.locale}
 								{policy}
@@ -369,13 +456,13 @@
 								closing={closingIn}
 							/>
 						{/if}
-						{#if staff && (attaching || files.length)}
+						{#if staff && !editing && (attaching || files.length)}
 							<div class="rounded-3xl frosted p-4">
 								<AttachFiles locale={data.locale} task={filesTask} bind:files disabled={busy} />
 							</div>
 						{/if}
 						<div class="flex items-end gap-2 rounded-3xl frosted p-2">
-							{#if staff && !attaching && !files.length}
+							{#if staff && !editing && !attaching && !files.length}
 								<button
 									class={button.icon}
 									type="button"
@@ -395,12 +482,12 @@
 									maxlength="4000"
 									placeholder={t.write}
 									bind:value={text}
-									disabled={busy || !canSend}></textarea>
+									disabled={busy || (!editing && !canSend)}></textarea>
 							</label>
 							<button
 								class={button.iconPrimary}
-								aria-label={t.send}
-								disabled={busy || filesTask.busy || !canSend || !text.trim()}
+								aria-label={editing ? t.saveEditing : t.send}
+								disabled={busy || filesTask.busy || (!editing && !canSend) || !text.trim()}
 							>
 								<Icon name="arrowUp" />
 							</button>
@@ -513,7 +600,7 @@
 						href={appPath(data.locale, 'messages', { id: item.id })}
 						initial={initialOf(withName(item))}
 						subject={item.subject}
-						preview={item.preview}
+						preview={item.deletedAt ? t.deletedMessage : item.preview}
 						detail={[about(item, pickClassroom), item.closed ? t.closedStatus : undefined]
 							.filter(Boolean)
 							.join(' · ')}
@@ -560,6 +647,16 @@
 			danger
 			onconfirm={remove}
 			onclose={() => (removing = false)}
+		/>
+	{:else if deleting}
+		<ConfirmDialog
+			locale={data.locale}
+			title={t.removeMessageTitle}
+			copy={t.removeMessageCopy}
+			confirmLabel={t.removeMessage}
+			danger
+			onconfirm={removeMessage}
+			onclose={() => (deleting = undefined)}
 		/>
 	{:else if confirming}
 		<ConfirmDialog

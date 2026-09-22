@@ -18,7 +18,9 @@ it('resets a non-overlapping refresh so missing messages remain reachable throug
 		sequence,
 		content: '',
 		author: 'teacher:1',
-		postedAt: 0
+		postedAt: 0,
+		editedAt: null,
+		deletedAt: null
 	});
 	const history = Array.from({ length: 110 }, (_, i) => message(i + 1));
 	const refreshed = mergeRecentMessages(history.slice(0, 50), history.slice(-50));
@@ -52,7 +54,10 @@ it('reuses decrypted inbox content while updating metadata and decrypting change
 		createdAt: 0,
 		postedAt: 1,
 		lastSequence: 1,
-		readSequence: 0
+		readSequence: 0,
+		seenSequence: 0,
+		editedAt: null,
+		deletedAt: null
 	};
 	const previous = { key, conversation: await openConversation(record, key) };
 	const next = {
@@ -105,7 +110,15 @@ it('binds private content to its family key, classroom, message and conversation
 		'message',
 		'conversation'
 	);
-	const row = { id: 'message', sequence: 1, author: 'teacher:id', content, postedAt: 0 };
+	const row = {
+		id: 'message',
+		sequence: 1,
+		author: 'teacher:id',
+		content,
+		postedAt: 0,
+		editedAt: null,
+		deletedAt: null
+	};
 	expect((await openMessage(row, key, 'classroom', 'conversation')).text).toBe('Private reply');
 	await expect(
 		openMessage(row, (await createContentKey()).key, 'classroom', 'conversation')
@@ -142,4 +155,27 @@ it('groups messages by the kindergarten’s day, not the device’s', () => {
 	// Midnight in Zagreb, an hour before UTC's, starts the next day for everyone.
 	expect(messageClock(Date.parse('2026-09-17T22:30Z')).date).toBe('2026-09-18');
 	expect(messageClock(Date.parse('2026-09-17T21:30Z')).date).toBe('2026-09-17');
+});
+
+it('opens a deleted message as the placeholder, without decrypting anything', async () => {
+	const { key } = await createContentKey();
+	const decrypt = vi.spyOn(crypto.subtle, 'decrypt');
+	try {
+		const row = {
+			id: 'message',
+			sequence: 1,
+			author: 'teacher:id',
+			// A deleted message's ciphertext is gone, so there is nothing an envelope could be read from.
+			content: '',
+			postedAt: 0,
+			editedAt: null,
+			deletedAt: 5
+		};
+		const opened = await openMessage(row, key, 'classroom', 'conversation');
+		expect(opened).toMatchObject({ text: '', name: '', deletedAt: 5 });
+		expect(opened.files).toBeUndefined();
+		expect(decrypt).not.toHaveBeenCalled();
+	} finally {
+		decrypt.mockRestore();
+	}
 });

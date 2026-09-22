@@ -20,10 +20,14 @@ export type ConversationRecord = {
 	createdAt: number;
 	lastSequence: number;
 	readSequence: number;
+	/** How far the other side has read: what tells a family whether its latest message is still its own to change. */
+	seenSequence: number;
 	content: string;
 	messageId: string;
 	author: string;
 	postedAt: number;
+	editedAt: number | null;
+	deletedAt: number | null;
 };
 export type MessageRecord = {
 	id: string;
@@ -31,6 +35,9 @@ export type MessageRecord = {
 	author: string;
 	content: string;
 	postedAt: number;
+	/** When its author last changed its words, and when it was deleted; a deleted message carries no content. */
+	editedAt: number | null;
+	deletedAt: number | null;
 };
 /**
  * A message as its envelope holds it: its words, the name of the teacher who wrote it, and the files a
@@ -143,6 +150,9 @@ export async function openMessage(
 	classroom: string,
 	conversation: string
 ): Promise<OpenMessage> {
+	// A deleted message keeps its place in the conversation, but its content is gone, so there's nothing to
+	// open: it reads as the placeholder the app shows where the bubble was, with no words and no files.
+	if (record.deletedAt) return { ...record, text: '', name: '' };
 	const data = fields(
 		await decryptData(record.content, key, {
 			purpose: 'private-message',
@@ -195,7 +205,9 @@ export async function openConversation(
 						content: record.content,
 						author: record.author,
 						sequence: record.lastSequence,
-						postedAt: record.postedAt
+						postedAt: record.postedAt,
+						editedAt: record.editedAt,
+						deletedAt: record.deletedAt
 					},
 					key,
 					record.classroom,

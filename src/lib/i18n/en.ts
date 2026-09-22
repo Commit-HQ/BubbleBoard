@@ -1093,6 +1093,17 @@ export const en = {
 			remove: 'Delete inquiry',
 			removeTitle: 'Delete this inquiry?',
 			removeCopy: 'The conversation is deleted for the family too. This cannot be undone.',
+			editMessage: 'Edit',
+			editing: 'Editing message',
+			saveEditing: 'Save changes',
+			cancelEditing: 'Cancel',
+			editHint: 'You can change a message until a teacher opens it.',
+			edited: 'edited',
+			removeMessage: 'Delete',
+			removeMessageTitle: 'Delete this message?',
+			removeMessageCopy:
+				'Its text and any files go for the family too, and “Message deleted” stays in its place. This cannot be undone.',
+			deletedMessage: 'Message deleted',
 			empty: 'No inquiries match this view.',
 			emptyTitle: 'No messages yet',
 			emptyCopy: 'Private conversations with your classroom’s teachers happen here.',
@@ -1155,6 +1166,9 @@ export const en = {
 			'messages-disabled': 'Parent messaging is turned off for this classroom.',
 			'messages-hours': 'Sending is outside the classroom’s hours. Your text has been kept.',
 			'messages-limit': 'You have used this month’s inquiries.',
+			'message-seen': 'A teacher has already opened this message, so it can’t be changed any more.',
+			'message-answered':
+				'This message has already been answered, so it can’t be changed any more.',
 			'messages-schedule': 'A day’s To time must come after its From time.',
 			'messages-closed':
 				'This inquiry has been closed. Refresh the list to see the current status.',

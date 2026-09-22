@@ -671,6 +671,45 @@ export class App {
 		}
 	}
 
+	/**
+	 * Changes the words of a message already sent. The envelope is sealed again as the same message, with the
+	 * name and the files it already carries, because an edit changes the text and nothing else; the server
+	 * leaves its files alone. The conversation and the inbox are loaded again, so the chat and the preview in
+	 * the list both show the new words.
+	 */
+	async editMessage(conversation: Conversation, message: OpenMessage, text: string) {
+		const key = await this.messageKey(conversation.family);
+		const content = await sealMessage(
+			{
+				text,
+				name: message.name,
+				...(message.files?.length ? { files: message.files } : {})
+			},
+			key,
+			conversation.classroom,
+			message.id,
+			conversation.id
+		);
+		try {
+			await this.#signedIn(() =>
+				request('PUT', `/api/messages/${conversation.id}/${message.id}`, { content })
+			);
+		} finally {
+			await this.loadMessages();
+		}
+	}
+
+	/** Takes one of this teacher's own messages away, leaving the placeholder the conversation shows. */
+	async deleteMessage(conversation: Conversation, message: OpenMessage) {
+		try {
+			await this.#signedIn(() =>
+				request('DELETE', `/api/messages/${conversation.id}/${message.id}`)
+			);
+		} finally {
+			await this.loadMessages();
+		}
+	}
+
 	/** Fetches and decrypts one of a message's documents, and saves it on this device under its name. */
 	saveMessageFile(conversation: string, message: OpenMessage, file: NoticeFile) {
 		return this.#saveFile(messageFilePath(conversation, message.id, file.id), file);

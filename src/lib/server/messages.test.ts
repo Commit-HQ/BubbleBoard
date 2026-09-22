@@ -6,6 +6,8 @@ import { defaultSchedule, messageClock, sendingAllowed } from '$lib/messages';
 import {
 	closeConversation,
 	deleteConversation,
+	deleteMessage,
+	editMessage,
 	inbox,
 	markRead,
 	parseSettings,
@@ -402,6 +404,144 @@ describe('files on inquiries', () => {
 		await closeConversation(f.db, f.staff, first.id);
 		await deleteConversation(f.db, store, f.staff, first.id);
 		expect(objects.size).toBe(0);
+	});
+});
+describe('changing one message', () => {
+	it('lets a teacher change their own words, and nobody else’s, while the inquiry is open', async () => {
+		const f = await fixture(),
+			first = f.inquiry();
+		const message = createId();
+		await startConversation(f.db, f.staff, first, monday);
+		await reply(f.db, f.staff, first.id, message, 'sealed first try', [], monday);
+		await editMessage(f.db, f.staff, first.id, message, 'sealed again', monday + 1000);
+		const changed = (await readMessages(f.db, f.staff, first.id)).at(-1)!;
+		expect(changed).toMatchObject({ content: 'sealed again', editedAt: monday + 1000 });
+		// A colleague shares the conversation but not the message; the family it was written to has no say.
+		for (const who of [f.admin, f.parent])
+			await expect(
+				editMessage(f.db, who, first.id, message, 'not theirs', monday)
+			).rejects.toMatchObject({ status: 403, body: { message: 'forbidden' } });
+		// A closed inquiry is read-only, as it is for new messages.
+		await closeConversation(f.db, f.staff, first.id);
+		await expect(
+			editMessage(f.db, f.staff, first.id, message, 'too late', monday)
+		).rejects.toMatchObject({ status: 409, body: { message: 'messages-closed' } });
+	});
+	it('lets a family change its message until a teacher opens the conversation that far', async () => {
+		const f = await fixture(),
+			first = f.inquiry();
+		expect(await startConversation(f.db, f.parent, first, monday)).toBe(true);
+		await editMessage(f.db, f.parent, first.id, first.message, 'sealed rewrite', monday + 1000);
+		const opening = await readMessages(f.db, f.parent, first.id);
+		expect(opening[0]).toMatchObject({ content: 'sealed rewrite', editedAt: monday + 1000 });
+		// Changing it spent nothing: the message it changed already spent what it cost.
+		expect((await inbox(f.db, f.parent, monday)).policies[0].used).toBe(1);
+		// A teacher answers and reads only the answer's own sequence, leaving the family's message unopened
+		// on a colleague's device; read progress below it still leaves it the family's to change.
+		const answer = createId();
+		await reply(f.db, f.staff, first.id, answer, 'sealed answer', [], monday);
+		const second = createId();
+		await reply(f.db, f.parent, first.id, second, 'sealed second', [], monday);
+		await markRead(f.db, f.staff, first.id, opening[0].sequence);
+		const later = await readMessages(f.db, f.parent, first.id);
+		await editMessage(f.db, f.parent, first.id, second, 'sealed second again', monday + 2000);
+		expect(later.at(-1)!.id).toBe(second);
+		// Opening the conversation as far as that message ends it: what a teacher has read has been read.
+		await markRead(f.db, f.staff, first.id, later.at(-1)!.sequence);
+		await expect(
+			editMessage(f.db, f.parent, first.id, second, 'sealed once more', monday)
+		).rejects.toMatchObject({ status: 409, body: { message: 'message-seen' } });
+		// The one the teacher read at the start is past that mark too.
+		await expect(
+			editMessage(f.db, f.parent, first.id, first.message, 'sealed once more', monday)
+		).rejects.toMatchObject({ status: 409, body: { message: 'message-seen' } });
+		// Each side's inbox says how far the other has read, which is what tells a family this.
+		const family = (await inbox(f.db, f.parent, monday)).conversations[0];
+		expect(family.seenSequence).toBe(later.at(-1)!.sequence);
+		const teacher = (await inbox(f.db, f.staff, monday)).conversations[0];
+		expect(teacher.seenSequence).toBe(0);
+		await markRead(f.db, f.parent, first.id, later.at(-1)!.sequence);
+		expect((await inbox(f.db, f.staff, monday)).conversations[0].seenSequence).toBe(
+			later.at(-1)!.sequence
+		);
+	});
+	it('deletes a teacher’s own message as a placeholder, with its files, and never a family’s', async () => {
+		const f = await fixture();
+		const { objects, store } = objectStore();
+		const first = f.inquiry();
+		await startConversation(f.db, f.parent, first, monday);
+		const message = createId(),
+			file = createId();
+		await uploadMessageFile(f.db, store, f.staff, first.id, message, file, new Uint8Array([7]));
+		await reply(f.db, f.staff, first.id, message, 'sealed with a file', [file], monday);
+		expect(objects.size).toBe(1);
+		// A family deletes nothing of its own, and a teacher deletes nothing of a colleague's.
+		await expect(
+			deleteMessage(f.db, store, f.parent, first.id, first.message, monday)
+		).rejects.toMatchObject({ status: 403 });
+		await expect(
+			deleteMessage(f.db, store, f.admin, first.id, message, monday)
+		).rejects.toMatchObject({ status: 403 });
+		await deleteMessage(f.db, store, f.staff, first.id, message, monday + 1000);
+		const rows = await readMessages(f.db, f.parent, first.id);
+		// The row stayed where it was, so the conversation's order and both sides' read progress are intact.
+		expect(rows).toHaveLength(2);
+		expect(rows[1]).toMatchObject({ id: message, content: '', deletedAt: monday + 1000 });
+		expect((await f.db.prepare('SELECT * FROM message_files').all()).results).toHaveLength(0);
+		expect(objects.size).toBe(0);
+		await expect(
+			messageFileBytes(f.db, store, f.parent, first.id, message, file)
+		).rejects.toMatchObject({ status: 404 });
+		// There is nothing left of it to change or delete again.
+		for (const refused of [
+			editMessage(f.db, f.staff, first.id, message, 'sealed anew', monday),
+			deleteMessage(f.db, store, f.staff, first.id, message, monday)
+		])
+			await expect(refused).rejects.toMatchObject({ status: 409, body: { message: 'stale' } });
+		// The inbox shows the placeholder in the preview while the deleted message is the latest.
+		const latest = (await inbox(f.db, f.parent, monday)).conversations[0];
+		expect(latest).toMatchObject({ messageId: message, content: '', deletedAt: monday + 1000 });
+	});
+	it('keeps a message as it was once the other side answered it', async () => {
+		const f = await fixture();
+		const { store } = objectStore();
+		const first = f.inquiry();
+		await startConversation(f.db, f.parent, first, monday);
+		// Two teacher messages in a row: the family has answered neither, so both are still the teacher's.
+		const question = createId(),
+			afterthought = createId();
+		await reply(f.db, f.staff, first.id, question, 'sealed question', [], monday);
+		await reply(f.db, f.staff, first.id, afterthought, 'sealed more', [], monday);
+		await editMessage(f.db, f.staff, first.id, question, 'sealed question again', monday + 1000);
+		// The family answers, and the words it answered stay: neither changed nor deleted.
+		const answer = createId();
+		await reply(f.db, f.parent, first.id, answer, 'sealed answer', [], monday);
+		for (const refused of [
+			editMessage(f.db, f.staff, first.id, question, 'sealed once more', monday),
+			editMessage(f.db, f.staff, first.id, afterthought, 'sealed once more', monday),
+			deleteMessage(f.db, store, f.staff, first.id, afterthought, monday)
+		])
+			await expect(refused).rejects.toMatchObject({
+				status: 409,
+				body: { message: 'message-answered' }
+			});
+		// The family's answer is its own until a teacher writes back, or opens it.
+		await editMessage(f.db, f.parent, first.id, answer, 'sealed answer again', monday + 2000);
+		await reply(f.db, f.staff, first.id, createId(), 'sealed reply', [], monday);
+		await expect(
+			editMessage(f.db, f.parent, first.id, answer, 'sealed too late', monday)
+		).rejects.toMatchObject({ status: 409, body: { message: 'message-answered' } });
+	});
+	it('refuses a message that isn’t in the conversation the device asked about', async () => {
+		const f = await fixture(),
+			first = f.inquiry(),
+			other = f.inquiry();
+		await startConversation(f.db, f.staff, first, monday);
+		await saveSettings(f.db, f.admin, { ...f.settings, monthlyLimit: 3, revision: 1 });
+		await startConversation(f.db, f.parent, other, monday);
+		await expect(
+			editMessage(f.db, f.staff, other.id, first.message, 'sealed', monday)
+		).rejects.toMatchObject({ status: 404, body: { message: 'not-found' } });
 	});
 });
 describe('sending schedule', () => {

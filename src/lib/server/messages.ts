@@ -145,6 +145,18 @@ const spent = `(SELECT COUNT(*) FROM messages m JOIN conversations c ON c.id=m.c
 /** Whether a teacher wrote the last message of a conversation, which makes the family's answer free. */
 const answered = `COALESCE((SELECT substr(author,1,8)='teacher:' FROM messages
  WHERE conversation_id=? ORDER BY sequence DESC LIMIT 1),0)`;
+/**
+ * How far the other side has read a conversation, which is what tells a family whether one of its messages is
+ * still its own to change: a teacher who has opened the conversation past a message has read it. Teachers read
+ * one conversation each for themselves, so the furthest any of them reached is the one that counts; a family's
+ * devices share one mark. A conversation nobody on the other side has opened yet counts as read to nothing.
+ */
+const seenSequence = (who: Identity) =>
+	who.kind === 'family'
+		? `COALESCE((SELECT MAX(sequence) FROM conversation_reads
+ WHERE conversation_id=c.id AND substr(reader,1,8)='teacher:'),0)`
+		: `COALESCE((SELECT sequence FROM conversation_reads
+ WHERE conversation_id=c.id AND reader='family:'||c.family_id),0)`;
 export async function inbox(db: D1Database, who: Identity, now = Date.now()): Promise<Inbox> {
 	const [sql, params] = visibleClassrooms(who);
 	const classrooms = await db
@@ -177,7 +189,8 @@ export async function inbox(db: D1Database, who: Identity, now = Date.now()): Pr
 	const { results } = await db
 		.prepare(
 			`SELECT c.id,c.family_id AS family,c.classroom_id AS classroom,c.title,c.closed,c.created_at AS createdAt,
- m.sequence AS lastSequence,COALESCE(r.sequence,0) AS readSequence,m.content,m.id AS messageId,m.author,m.posted_at AS postedAt
+ m.sequence AS lastSequence,COALESCE(r.sequence,0) AS readSequence,${seenSequence(who)} AS seenSequence,
+ m.content,m.id AS messageId,m.author,m.posted_at AS postedAt,m.edited_at AS editedAt,m.deleted_at AS deletedAt
  FROM conversations c JOIN messages m ON m.sequence=(SELECT MAX(sequence) FROM messages WHERE conversation_id=c.id)
  LEFT JOIN conversation_reads r ON r.conversation_id=c.id AND r.reader=?
  WHERE c.classroom_id IN (${sql}) ${who.kind === 'family' ? 'AND c.family_id=?' : ''}
@@ -445,7 +458,8 @@ export async function readMessages(
 	await conversationFor(db, who, id);
 	const { results } = await db
 		.prepare(
-			'SELECT id,sequence,author,content,posted_at AS postedAt FROM messages WHERE conversation_id=? AND sequence<? ORDER BY sequence DESC LIMIT 50'
+			`SELECT id,sequence,author,content,posted_at AS postedAt,edited_at AS editedAt,deleted_at AS deletedAt
+ FROM messages WHERE conversation_id=? AND sequence<? ORDER BY sequence DESC LIMIT 50`
 		)
 		.bind(id, before)
 		.all<MessageRecord>();
@@ -461,6 +475,121 @@ export async function markRead(db: D1Database, who: Identity, id: string, sequen
 		)
 		.bind(id, actor(who), id, sequence)
 		.run();
+}
+/**
+ * A message of an open conversation is only its author's to change, only while it's still there, and only
+ * until the other side answers it: an answer is to the words that were there, so changing or deleting them
+ * afterwards would leave it answering nothing. Authors are `family:…` and `teacher:…`, whose first seven
+ * letters tell the two sides apart.
+ */
+const ownMessage = `id=? AND conversation_id=? AND author=? AND deleted_at IS NULL
+ AND EXISTS(SELECT 1 FROM conversations WHERE id=? AND closed=0)
+ AND NOT EXISTS(SELECT 1 FROM messages n WHERE n.conversation_id=messages.conversation_id
+ AND n.sequence>messages.sequence AND substr(n.author,1,7)<>substr(messages.author,1,7))`;
+/**
+ * A family's message stops being its own to change once a teacher has opened the conversation as far as it:
+ * what a teacher has read has been read, and taking the words out from under them would leave the two sides
+ * remembering different conversations. The condition sits in the change itself, so a teacher opening the
+ * conversation at that moment wins rather than leaving a gap between the check and the write.
+ */
+const unseenMessage = `NOT EXISTS(SELECT 1 FROM conversation_reads r
+ WHERE r.conversation_id=messages.conversation_id AND substr(r.reader,1,8)='teacher:'
+ AND r.sequence>=messages.sequence)`;
+/**
+ * Why a change to one message wrote nothing: everything the change insisted on, asked again, so the device is
+ * told what actually stands rather than a bare refusal. Reaching the end means the conversation moved under a
+ * page written before it did, which loading it again shows.
+ */
+async function explainMessageChange(
+	db: D1Database,
+	who: Identity,
+	conversation: string,
+	message: string
+): Promise<never> {
+	const row = await db
+		.prepare(
+			'SELECT sequence,author,deleted_at AS deletedAt FROM messages WHERE id=? AND conversation_id=?'
+		)
+		.bind(message, conversation)
+		.first<{ sequence: number; author: string; deletedAt: number | null }>();
+	if (!row) error(404, 'not-found');
+	if (row.author !== actor(who)) error(403, 'forbidden');
+	const closed = await db
+		.prepare('SELECT 1 FROM conversations WHERE id=? AND closed=1')
+		.bind(conversation)
+		.first();
+	if (closed) error(409, 'messages-closed');
+	if (who.kind === 'family' && !row.deletedAt) {
+		const seen = await db
+			.prepare(
+				`SELECT 1 FROM conversation_reads WHERE conversation_id=?
+ AND substr(reader,1,8)='teacher:' AND sequence>=?`
+			)
+			.bind(conversation, row.sequence)
+			.first();
+		if (seen) error(409, 'message-seen');
+	}
+	if (!row.deletedAt) {
+		const answered = await db
+			.prepare(
+				`SELECT 1 FROM messages WHERE conversation_id=? AND sequence>? AND substr(author,1,7)<>?`
+			)
+			.bind(conversation, row.sequence, row.author.slice(0, 7))
+			.first();
+		if (answered) error(409, 'message-answered');
+	}
+	error(409, 'stale');
+}
+/**
+ * Changes the words of a message its author already sent. Only the text changes: the files it carries stay as
+ * they are, which is why the client seals the same envelope again with the new text and the server never sees
+ * a files list here. An edit spends no allowance, since the message it changes already spent what it cost.
+ * Once the other side has answered, the message stays as it was answered (`ownMessage`).
+ */
+export async function editMessage(
+	db: D1Database,
+	who: Identity,
+	conversation: string,
+	message: string,
+	content: string,
+	now = Date.now()
+) {
+	await conversationFor(db, who, conversation);
+	const result = await db
+		.prepare(
+			`UPDATE messages SET content=?,edited_at=? WHERE ${ownMessage}
+ ${who.kind === 'family' ? `AND ${unseenMessage}` : ''}`
+		)
+		.bind(content, now, message, conversation, actor(who), conversation)
+		.run();
+	if (!result.meta.changes) await explainMessageChange(db, who, conversation, message);
+}
+/**
+ * Takes one of a teacher's own messages away. The row stays where it is, so the conversation's order, its
+ * sequences, and both sides' read progress are untouched; its ciphertext is gone, and the files it carried go
+ * with it, as deleting the whole inquiry frees them. The app shows the placeholder in the bubble's place.
+ * Families delete nothing: a message a teacher may already have acted on doesn't disappear.
+ */
+export async function deleteMessage(
+	db: D1Database,
+	store: ObjectStore,
+	who: Identity,
+	conversation: string,
+	message: string,
+	now = Date.now()
+) {
+	if (who.kind !== 'staff') error(403, 'forbidden');
+	await conversationFor(db, who, conversation);
+	const [result] = await transaction(db, [
+		db
+			.prepare(`UPDATE messages SET content='',deleted_at=? WHERE ${ownMessage}`)
+			.bind(now, message, conversation, actor(who), conversation),
+		// Only when the message was actually emptied, so a refused delete leaves its files where they are.
+		db.prepare('DELETE FROM message_files WHERE message_id=? AND changes()=1').bind(message)
+	]);
+	if (!result.meta.changes) await explainMessageChange(db, who, conversation, message);
+	// Its file rows are gone, so their bytes are on their way out (migrations/0020_message_files.sql).
+	await deleteMarked(db, store.bucket);
 }
 export async function closeConversation(db: D1Database, who: Identity, id: string) {
 	if (who.kind !== 'staff') error(403, 'forbidden');
