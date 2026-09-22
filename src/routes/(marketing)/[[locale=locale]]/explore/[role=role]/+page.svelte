@@ -2,6 +2,7 @@
 	import shareImage from '$lib/assets/photos/share.jpg';
 	import ActionLink from '$lib/components/ActionLink.svelte';
 	import Bubble from '$lib/components/Bubble.svelte';
+	import Faq from '$lib/components/Faq.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Screenshot from '$lib/components/Screenshot.svelte';
 	import { replaceState } from '$app/navigation';
@@ -200,6 +201,8 @@
 		<p class="sr-only" aria-live="polite">{announced}</p>
 		<p class="max-w-2xl text-sm text-muted">{t.sample}</p>
 	</section>
+
+	<Faq locale={data.locale} />
 
 	<section
 		class="relative isolate overflow-hidden rounded-4xl glass bg-linear-135 from-apricot/15 via-blush/10 to-accent/15 px-6 py-12 text-center sm:px-12 sm:py-16"
