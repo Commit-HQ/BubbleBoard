@@ -7,7 +7,6 @@
 	import { getApp, Task } from './state.svelte';
 	import { alert, button, everyHalfMinute, field, surface } from './ui';
 	import ConfirmDialog from './ConfirmDialog.svelte';
-	import RefreshButton from './RefreshButton.svelte';
 	let { locale }: { locale: Locale } = $props();
 	const app = getApp(),
 		task = new Task();
@@ -125,7 +124,6 @@
 				}}
 				aria-expanded={showForm}>{showForm ? t.cancelForm : t.offer}</button
 			>{/if}
-		<RefreshButton label={t.refresh} onrefresh={() => app.loadMeetings()} />
 	</div>
 	{#if notice}<p role="status" class="rounded-2xl bg-white/70 p-4 font-semibold">{notice}</p>{/if}
 	{#if app.meetingsError}<p class={alert} role="alert">

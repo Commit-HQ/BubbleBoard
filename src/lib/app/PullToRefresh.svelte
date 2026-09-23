@@ -3,9 +3,9 @@
 	import { onMount } from 'svelte';
 	import { getApp } from './state.svelte';
 
-	// Pulling home down from its top loads the board again, as in other apps: the installed app has no reload
-	// button. Meanwhile the browser's own pull, which would reload the whole app, and the page's bounce are
-	// off. An arrow under the header turns with the pull and spins while the board loads. It moves through its
+	// Pulling any page down from its top loads everything again, as in other apps: the installed app has no
+	// reload button, and the pages have none of their own. The browser's own pull, which would reload the whole
+	// app, and the page's bounce are off. An arrow under the header turns with the pull and spins while it loads. It moves through its
 	// style property, which the CSP allows, unlike style attributes, and it's only a picture of the gesture, so
 	// screen readers skip it.
 	const app = getApp();

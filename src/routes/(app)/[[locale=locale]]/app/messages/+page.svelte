@@ -5,7 +5,6 @@
 	import InquiryLink from '$lib/app/InquiryLink.svelte';
 	import MessageBubble from '$lib/app/MessageBubble.svelte';
 	import MessagePolicy from '$lib/app/MessagePolicy.svelte';
-	import RefreshButton from '$lib/app/RefreshButton.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp, Task, type SealedMessage } from '$lib/app/state.svelte';
 	import { alert, button, everyHalfMinute, field, queryParam, surface } from '$lib/app/ui';
@@ -558,7 +557,6 @@
 			<a class={button.primary} href={appPath(data.locale, 'messages', { new: '1' })}>
 				<Icon name="plus" class="size-4" />{t.new}
 			</a>
-			<RefreshButton label={t.refresh} onrefresh={() => app.loadMessages()} />
 		</div>
 
 		{#if app.conversations.length}

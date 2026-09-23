@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { afterNavigate } from '$app/navigation';
 	import { page, updated } from '$app/state';
+	import PullToRefresh from '$lib/app/PullToRefresh.svelte';
 	import { App, setApp } from '$lib/app/state.svelte';
 	import BuildLabel from '$lib/components/BuildLabel.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -67,8 +68,10 @@
 </script>
 
 <svelte:window onhashchange={() => app.openLink()} />
-<!-- Back in view, such as after a tap on a notification, the app loads the board again. -->
+<!-- Back in view, such as after a tap on a notification, or pulled down from the top, the app loads
+everything again. -->
 <svelte:document onvisibilitychange={backInView} />
+<PullToRefresh />
 
 <svelte:head>
 	<!-- A plain title: tab titles and browser history shouldn't hold children's or families' names. -->

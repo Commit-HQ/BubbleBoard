@@ -7,12 +7,11 @@
 	import DeviceNameCard from './DeviceNameCard.svelte';
 	import MeetingsCard from './MeetingsCard.svelte';
 	import NotificationCard from './NotificationCard.svelte';
-	import PullToRefresh from './PullToRefresh.svelte';
 	import { getApp } from './state.svelte';
 	import { button } from './ui';
 
 	// Everyone's home is the board of their classrooms, where staff also put up new notices and photos of the
-	// corkboard, and pulling it down loads it again. Staff are greeted by name for the time of day; a family
+	// corkboard. Staff are greeted by name for the time of day; a family
 	// device can't read the name on its QR code, which is encrypted for staff, and the recovery card has none,
 	// so they aren't greeted. Managing the kindergarten has its own page, opened from the header.
 	let { locale }: { locale: Locale } = $props();
@@ -26,8 +25,6 @@
 </script>
 
 <svelte:document onvisibilitychange={() => (hour = new Date().getHours())} />
-
-<PullToRefresh />
 
 <section class="grid gap-8">
 	<div class="relative isolate">
