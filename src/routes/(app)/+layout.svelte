@@ -16,10 +16,15 @@
 	const t = $derived(messages[data.locale]);
 	// One state for every app page, kept while moving between pages and languages. Starting takes a card
 	// or setup token from the address bar, which needs the router: it's ready just after the first
-	// navigation's callbacks, so the start waits a tick.
+	// navigation's callbacks, so the start waits a tick. The app starts on whichever navigation brings it in,
+	// not only a page load: Back from the landing page (the footer link) returns without one.
 	const app = setApp(new App());
-	afterNavigate(({ type }) => {
-		if (type === 'enter') tick().then(() => app.start());
+	let started = false;
+	afterNavigate(() => {
+		if (!started) {
+			started = true;
+			tick().then(() => app.start());
+		}
 		// A new deploy found while a page was half written (`backInView`) is loaded on arrival at the next
 		// page, once that page's own question on the way out, if any, is behind.
 		else if (updated.current) location.reload();
