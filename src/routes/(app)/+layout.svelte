@@ -152,13 +152,9 @@ everything again. -->
 	<footer
 		class="flex flex-wrap justify-between gap-x-6 gap-y-2 px-2 pb-6 text-sm text-muted print:hidden"
 	>
-		<!-- In a window of its own: the installed app has no way back from the landing pages. -->
-		<a
-			class="hover:text-ink"
-			href={homePath(data.locale)}
-			target="_blank"
-			rel="noopener noreferrer"
-		>
+		<!-- In the same window, so Back returns to the app. The landing page is in the installed app's scope, so
+		a new window would open inside the app with no history, and Back on Android would close the app. -->
+		<a class="hover:text-ink" href={homePath(data.locale)}>
 			<span aria-hidden="true">🫧</span>
 			{t.app.about}
 		</a>
