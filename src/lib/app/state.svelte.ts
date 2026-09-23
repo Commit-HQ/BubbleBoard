@@ -1200,7 +1200,7 @@ export class App {
 		void this.loadMeetings();
 		void this.#keepNotifications(!refresh);
 		if (!refresh) void this.#readHiddenCards();
-		if (!refresh && this.status === 'family') void this.loadDevices().catch(() => {});
+		if (this.status === 'family') void this.loadDevices().catch(() => {});
 	}
 
 	/**
