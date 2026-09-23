@@ -1,14 +1,13 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import Icon from '$lib/components/Icon.svelte';
+	import Icon, { type IconName } from '$lib/components/Icon.svelte';
 	import type { Region } from '$lib/events/editor';
-	import { stickers, type Sticker } from '$lib/events/stickers';
 	import { messages, type Locale } from '$lib/i18n';
-	import { button, field } from './ui';
+	import { button, choice, field } from './ui';
 
 	// What the teacher decides about one cover, under the photo: a crop of the original so the face can be
-	// told apart without hiding every sticker, then the classroom's children, keeping it covered instead, and
-	// the sticker it wears. Nothing here suggests who a face might be, and nothing changes what a family may see.
+	// told apart without hiding every sticker, then the classroom's children, and keeping it covered or making it
+	// invisible instead. Nothing here suggests who a face might be, and nothing changes what a family may see.
 	let {
 		locale,
 		url,
@@ -17,12 +16,10 @@
 		regions,
 		selected,
 		children,
-		remaining,
 		feedback,
 		onassign,
-		oncoverrest,
 		onremove,
-		onsticker
+		oninvisible
 	}: {
 		locale: Locale;
 		url: string;
@@ -31,21 +28,16 @@
 		regions: Region[];
 		selected?: Region;
 		children: { id: string; name: string }[];
-		/** How many faces of this photo still need a name or a cover decision. */
-		remaining: number;
 		/** What just happened, said once for everyone rather than only for screen readers. */
 		feedback: string;
 		onassign: (child: string | null) => void;
-		oncoverrest: () => void;
 		onremove: () => void;
-		onsticker: (sticker: Sticker) => void;
+		oninvisible: (invisible: boolean) => void;
 	} = $props();
 
 	const t = $derived(messages[locale].app.eventEditor);
 	const id = $props.id();
 	let search = $state('');
-	/** The eighteen stickers fill a phone's screen, so they wait behind the one the cover is wearing. */
-	let picking = $state(false);
 	// A long list gets a search box; a classroom of a dozen names doesn't need one.
 	const searchable = $derived(children.length > 8);
 	const shown = $derived(
@@ -70,60 +62,38 @@
 		...shown.filter((child) => !elsewhere.has(child.id)),
 		...shown.filter((child) => elsewhere.has(child.id))
 	]);
-	// A new face starts with an empty search and the stickers put away, so the whole classroom is there again.
-	// Moving or restyling the same cover leaves what was typed alone.
+	// A new face starts with an empty search, so the whole classroom is there again. Moving or restyling the same cover leaves what was typed alone.
 	let searched = untrack(() => selected?.id);
 	$effect(() => {
 		if (selected?.id !== searched) {
 			searched = selected?.id;
 			search = '';
-			picking = false;
 		}
 	});
 </script>
 
-{#snippet stickerChoice(cover: Region)}
-	<div class="grid justify-items-start gap-2">
-		<button
-			type="button"
-			class={button.secondary}
-			aria-expanded={picking}
-			aria-controls="{id}-stickers"
-			onclick={() => (picking = !picking)}
-		>
-			<img src={stickers[cover.sticker ?? 'smile']} alt="" class="size-6" />{t.sticker}
-		</button>
-		<div
-			id="{id}-stickers"
-			class="flex flex-wrap items-center gap-2"
-			hidden={!picking}
-			role="group"
-			aria-label={t.sticker}
-		>
-			{#each Object.entries(stickers) as [name, source] (name)}
-				<!-- A ring marks the chosen sticker, which forced colours would otherwise flatten. -->
-				<button
-					type="button"
-					class="grid size-11 place-items-center rounded-full ring-1 ring-ink/10 transition hover:bg-ink/5 aria-pressed:ring-3 aria-pressed:ring-accent"
-					aria-label={t.stickerNames[name as Sticker]}
-					title={t.stickerNames[name as Sticker]}
-					aria-pressed={(cover.sticker ?? 'smile') === name}
-					onclick={() => {
-						onsticker(name as Sticker);
-						picking = false;
-					}}
-				>
-					<img src={source} alt="" class="size-7" />
-				</button>
-			{/each}
-		</div>
-	</div>
+{#snippet option(
+	pressed: boolean,
+	onclick: () => void,
+	icon: IconName,
+	title: string,
+	hint: string
+)}
+	<button type="button" class="{choice.card} items-start" aria-pressed={pressed} {onclick}>
+		<span class="{choice.circle} mt-0.5"><Icon name="check" class={choice.check} /></span>
+		<span class="min-w-0">
+			<span class="flex items-center gap-1.5 font-semibold"
+				><Icon name={icon} class="size-4 shrink-0" />{title}</span
+			>
+			<span class="mt-0.5 block text-sm text-muted">{hint}</span>
+		</span>
+	</button>
 {/snippet}
 
 <div class="grid gap-4 rounded-3xl glass p-5">
 	{#if selected?.fixed}
 		<!-- A face kept covered when the photo went up has no picture anywhere: there is nothing to show under
-		     the cover and nobody it could be named, so the cover stays and only its sticker can change. -->
+		     the cover and nobody it could be named, so the cover stays; only its sticker, in the toolbar, can change. -->
 		<div class="flex items-start gap-3">
 			<Icon name="eyeOff" class="mt-1 size-5 shrink-0 text-muted" />
 			<div class="min-w-0">
@@ -131,7 +101,6 @@
 				<p class="mt-1 text-sm text-muted">{t.fixedCover}</p>
 			</div>
 		</div>
-		{@render stickerChoice(selected)}
 	{:else if selected}
 		<div class="flex items-center gap-4">
 			<svg
@@ -187,26 +156,20 @@
 			{#if !shown.length}<p class="text-muted">{t.empty}</p>{/if}
 		</div>
 
-		<button
-			type="button"
-			class="{button.secondary} justify-self-start"
-			aria-pressed={selected.covered}
-			onclick={() => onassign(null)}
-		>
-			<Icon name="eyeOff" class="size-4" />{t.covered}
-		</button>
-
-		{@render stickerChoice(selected)}
+		<!-- The two things a cover can be other than an ordinary one, each saying when to use it. -->
+		<div class="grid gap-2 sm:grid-cols-2">
+			{@render option(selected.covered, () => onassign(null), 'eyeOff', t.covered, t.coveredHint)}
+			{@render option(
+				!!selected.invisible,
+				() => oninvisible(!selected.invisible),
+				'eye',
+				t.invisible,
+				t.invisibleHint
+			)}
+		</div>
 	{:else}
 		<h3 class="font-sans text-lg font-semibold">{t.who}</h3>
 		<p class="text-muted">{regions.length ? t.pick : t.noCovers}</p>
-	{/if}
-	<!-- With a few faces left over, saying they are simply not to be shown is one tap and always the safe
-	     direction: it names nobody, and the photo still waits for the teacher's own review. -->
-	{#if remaining > 1}
-		<button type="button" class="{button.secondary} justify-self-start" onclick={oncoverrest}>
-			<Icon name="eyeOff" class="size-4" />{t.coverRest(remaining)}
-		</button>
 	{/if}
 	<p
 		class={feedback ? 'flex items-center gap-2 text-sm font-semibold text-muted' : 'sr-only'}

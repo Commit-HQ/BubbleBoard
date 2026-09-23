@@ -13,7 +13,7 @@ import {
 	openContentKey,
 	UnreadableError
 } from '$lib/crypto';
-import { boundedRect, insideRect, maxRegions, type Region, type Rect } from './editor';
+import { boundedRect, insideRect, maxRegions, painted, type Region, type Rect } from './editor';
 import { stickers, type Sticker } from './stickers';
 import {
 	editorSide,
@@ -226,7 +226,25 @@ export async function preparePackage(
 			staffKeys[part] = face.raw;
 		}
 		// A cover may hang off the photo's edge; its patch, and every overlap, is only the part on the photo.
-		const inside = regions.map((r) => ({ ...r, ...insideRect(r, width, height) }));
+		const covers = painted(regions);
+		const inside = covers.map((r) => ({ ...r, ...insideRect(r, width, height) }));
+		// An invisible cover hides nothing, so it has no face to seal: its patch is one see-through pixel,
+		// granted to the child's families only so their device marks the photo as one their child is in, and
+		// kept for staff so the cover comes back when the photo is opened again. Readers draw it and change
+		// nothing, which is why the format needed no new field.
+		for (const region of regions) {
+			if (covers.includes(region)) continue;
+			const child = children.find((c) => c.id === region.child);
+			if (!child) throw new UnreadableError();
+			const { x, y } = insideRect(region, width, height);
+			await addPatch(
+				region.id,
+				{ x, y, width: 1, height: 1 },
+				new Uint8ClampedArray(4),
+				child.families,
+				false
+			);
+		}
 		for (const region of inside) {
 			if (!region.child) continue;
 			const child = children.find((c) => c.id === region.child);
@@ -258,7 +276,7 @@ export async function preparePackage(
 				involved.every((c) => shared.has(c.id))
 			);
 		}
-		const safe = await safePreview(blob, regions, { pixels: original, width, height });
+		const safe = await safePreview(blob, covers, { pixels: original, width, height });
 		const type = baseTypes.find((known) => known === safe.type);
 		if (!type) throw new Error(`Unusable encoding: ${safe.type}`);
 		const base = toBase64Url(await bytes(safe));
@@ -409,7 +427,9 @@ export function restoredRegions(
 		};
 		if (typeof r.sticker === 'string' && r.sticker in stickers)
 			region.sticker = r.sticker as Sticker;
+		if (r.invisible === true && region.child) region.invisible = true;
 		if (!opened.has(id)) {
+			delete region.invisible;
 			region.child = null;
 			region.covered = true;
 			region.fixed = true;

@@ -195,6 +195,19 @@ describe('restoring a published photo for the editor', () => {
 			[damaged, null, true, true, 'fox', 'detected']
 		]);
 	});
+	it('brings an invisible cover back only with its child and its patch', () => {
+		const [open, lost] = [createId(), createId()];
+		const regions = restoredRegions(
+			[mark(open, { invisible: true }), mark(lost, { invisible: true })],
+			200,
+			200,
+			new Set([open])
+		);
+		expect(regions.map((r) => [r.child, r.invisible, r.covered])).toEqual([
+			['ana', true, false],
+			[null, undefined, true]
+		]);
+	});
 	it('bounds each cover to the photo and refuses what cannot be a cover', () => {
 		const id = createId();
 		const [region] = restoredRegions([mark(id, { x: 190, width: 30 })], 200, 200, new Set([id]));

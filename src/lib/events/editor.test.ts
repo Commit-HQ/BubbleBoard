@@ -5,10 +5,11 @@ import {
 	insideRect,
 	commit,
 	coverPixels,
-	coverRest,
 	detectionRegion,
 	emptyEdit,
+	makeInvisible,
 	manualRegion,
+	painted,
 	redo,
 	undo,
 	unresolved
@@ -29,22 +30,21 @@ describe('event photo editing', () => {
 		expect(history.present.regions[0].covered).toBe(true);
 		expect(history.present.regions[1].child).toBe('child-2');
 	});
-	it('covers every face still waiting in one step a teacher can undo', () => {
+	it('keeps an invisible cover waiting for a name and paints it only while nobody is named', () => {
 		let history = commit(emptyEdit(), [
-			manualRegion('a', 200, 200, 40, 40),
-			manualRegion('b', 200, 200, 120, 40),
-			manualRegion('c', 200, 200, 40, 120)
+			manualRegion('a', 200, 200),
+			manualRegion('b', 200, 200, 20)
 		]);
-		history = assign(history, 'a', 'child-1');
-		history.present = { ...history.present, reviewed: true };
-		const covered = coverRest(history);
-		expect(unresolved(covered.present)).toBe(0);
-		expect(covered.present.selected).toBeNull();
-		// Naming is never touched, and the photo still has to be reviewed by hand.
-		expect(covered.present.regions[0]).toMatchObject({ child: 'child-1', covered: false });
-		expect(covered.present.regions.slice(1).every((r) => r.covered && !r.child)).toBe(true);
-		expect(covered.present.reviewed).toBe(false);
-		expect(undo(covered).present.regions).toEqual(history.present.regions);
+		history = assign(history, 'a', null);
+		history = makeInvisible(history, 'a', true);
+		expect(history.present.regions[0]).toMatchObject({ invisible: true, covered: false });
+		expect(unresolved(history.present)).toBe(2);
+		expect(painted(history.present.regions)).toHaveLength(2);
+		history = assign(history, 'a', 'child');
+		expect(history.present.regions[0]).toMatchObject({ invisible: true, child: 'child' });
+		expect(painted(history.present.regions).map((r) => r.id)).toEqual(['b']);
+		// Keeping a face covered always makes it a real cover again.
+		expect(assign(history, 'a', null).present.regions[0].invisible).toBe(false);
 	});
 	it('does not carry a review through a change, undo, or redo', () => {
 		let history = commit(emptyEdit(), [manualRegion('a', 100, 100)]);

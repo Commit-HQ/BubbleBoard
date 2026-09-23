@@ -188,7 +188,7 @@ export const en = {
 					},
 					{
 						q: 'What is “Keep covered” for?',
-						a: 'A face you don’t assign to any child stays covered for everyone, whatever the consents say. Use it for someone who isn’t from the classroom, such as a passer-by, a parent, or a sibling. And when you aren’t sure who is in the photo. There is also a button that covers every remaining unlabelled face at once.'
+						a: 'A face you don’t assign to any child stays covered for everyone, whatever the consents say. Use it for someone who isn’t from the classroom, such as a passer-by, a parent, or a sibling. And when you aren’t sure who is in the photo.'
 					},
 					{
 						q: 'A parent changed their consent after I published. What happens?',
@@ -582,7 +582,7 @@ export const en = {
 				n === 1
 					? '1 face still needs a name or a cover decision.'
 					: `${n} faces still need a name or a cover decision.`,
-			addCover: 'Add cover',
+			addCover: 'Cover',
 			who: 'Who is in this photo?',
 			pick: 'Tap a face on the photo to say who it is.',
 			crop: 'Original crop — visible only while editing',
@@ -590,9 +590,12 @@ export const en = {
 			already: 'Already in this photo',
 			empty: 'No children match.',
 			covered: 'Keep covered',
-			coverRest: (n: number) => `Keep the remaining ${n} faces covered`,
-			coveredRest: (n: number) => `${n} faces are now kept covered.`,
+			coveredHint:
+				'For someone who isn’t from the classroom, such as a parent, a sibling or a passer-by, or when you aren’t sure who it is. The face stays covered for everyone.',
 			removeCover: 'Remove cover',
+			invisible: 'Invisible cover',
+			invisibleHint:
+				'For a child whose face can’t be seen, such as from behind. Choose the child too: nothing is drawn over them, but their family still finds the photo among their child’s.',
 			fixedCover:
 				'This face was kept covered when the photo was published, so its picture is gone. The cover stays where it is; only its sticker can change.',
 			sticker: 'Sticker',
@@ -658,8 +661,6 @@ export const en = {
 				'The covers changed here are dropped and the photo stays up exactly as it is.',
 			moveEarlier: 'Move earlier',
 			moveLater: 'Move later',
-			orderHint:
-				'Photos are shown in this order, and the first one is the photo the board card shows. Drag a photo in the row, or use Move earlier and Move later.',
 			removePublished: 'Take photo off',
 			removePublishedCopy:
 				'Families will no longer see this photo. Anyone who already saved it keeps their copy.',

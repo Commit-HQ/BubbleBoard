@@ -13,6 +13,11 @@ export type Region = Rect & {
 	 * when it went up, so its pixels exist nowhere, or a patch that wouldn't open. It stays exactly where it is.
 	 */
 	fixed?: boolean;
+	/**
+	 * A cover that hides nothing, for a named child whose face can't be seen, such as one photographed from
+	 * behind: the photo is published as it is there, and the child's family still finds it among theirs.
+	 */
+	invisible?: boolean;
 	minWidth: number;
 	minHeight: number;
 };
@@ -121,7 +126,9 @@ export function commit(
 
 export function assign(history: History, id: string, child: string | null): History {
 	const regions = history.present.regions.map((region) =>
-		region.id === id ? { ...region, child, covered: child === null } : region
+		region.id === id
+			? { ...region, child, covered: child === null, invisible: child !== null && region.invisible }
+			: region
 	);
 	const index = regions.findIndex((region) => region.id === id);
 	const ordered = [...regions.slice(index + 1), ...regions.slice(0, index)];
@@ -129,19 +136,21 @@ export function assign(history: History, id: string, child: string | null): Hist
 	return commit(history, regions, next?.id ?? null);
 }
 
-/**
- * Keeps every face still waiting covered, in one step. Hiding is the safe direction, so a teacher who has
- * named the children they know may say the rest are not to be shown, and the photo still asks to be reviewed.
- */
-export function coverRest(history: History): History {
+/** Makes a cover invisible, or a real cover again. An invisible cover still waits for a child's name. */
+export function makeInvisible(history: History, id: string, invisible: boolean): History {
 	return commit(
 		history,
 		history.present.regions.map((region) =>
-			!region.child && !region.covered ? { ...region, covered: true } : region
-		),
-		null
+			region.id === id
+				? { ...region, invisible, covered: invisible ? false : region.covered }
+				: region
+		)
 	);
 }
+
+/** The covers painted over the photo: every one but an invisible cover on a named child. */
+export const painted = (regions: Region[]) =>
+	regions.filter((region) => !(region.invisible && region.child));
 
 export function undo(history: History): History {
 	const previous = history.past.at(-1);

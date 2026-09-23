@@ -180,7 +180,7 @@ export const hr = {
 					},
 					{
 						q: 'Čemu služi „Ostavi prekriveno”?',
-						a: 'Lice koje ne dodijelite nijednom djetetu ostaje prekriveno svima, bez obzira na privole. Koristite to za nekoga tko nije iz skupine, na primjer prolaznika, roditelja, brata ili sestru. I kad niste sigurni tko je na fotografiji. Ima i gumb koji odjednom prekrije sva još neoznačena lica.'
+						a: 'Lice koje ne dodijelite nijednom djetetu ostaje prekriveno svima, bez obzira na privole. Koristite to za nekoga tko nije iz skupine, na primjer prolaznika, roditelja, brata ili sestru. I kad niste sigurni tko je na fotografiji.'
 					},
 					{
 						q: 'Roditelj je promijenio privolu nakon objave. Što se događa?',
@@ -561,7 +561,7 @@ export const hr = {
 			face: (n: number) => `Lice ${n}`,
 			remaining: (n: number) =>
 				`Još ${count(n, 'lice', 'lica', 'lica')} treba označiti ili ostaviti ${form(n, 'prekrivenim', 'prekrivenima', 'prekrivenima')}.`,
-			addCover: 'Dodaj pokrov',
+			addCover: 'Pokrov',
 			who: 'Tko je na slici?',
 			pick: 'Dodirnite lice na fotografiji i odaberite tko je to.',
 			crop: 'Izrez originala — vidljiv samo tijekom uređivanja',
@@ -569,9 +569,12 @@ export const hr = {
 			already: 'Već na slici',
 			empty: 'Nema djece koja odgovaraju pretrazi.',
 			covered: 'Ostavi prekriveno',
-			coverRest: (n: number) => `Ostavi preostala lica prekrivenima (${n})`,
-			coveredRest: (n: number) => `Prekriveno je još ${count(n, 'lice', 'lica', 'lica')}.`,
+			coveredHint:
+				'Za nekoga tko nije iz skupine, na primjer roditelja, brata ili sestru ili prolaznika, ili kad niste sigurni tko je to. Lice ostaje prekriveno za sve.',
 			removeCover: 'Ukloni pokrov',
+			invisible: 'Nevidljivi pokrov',
+			invisibleHint:
+				'Za dijete kojem se ne vidi lice, na primjer kad je snimljeno s leđa. Odaberite i dijete: ništa ga ne prekriva, ali njegova obitelj i dalje pronalazi fotografiju među fotografijama svojeg djeteta.',
 			fixedCover:
 				'Ovo je lice ostalo prekriveno kad je fotografija objavljena, pa njegove slike više nema. Pokrov ostaje gdje jest; može mu se promijeniti samo naljepnica.',
 			sticker: 'Naljepnica',
@@ -639,8 +642,6 @@ export const hr = {
 				'Ovdje promijenjeni pokrovi se odbacuju, a fotografija ostaje objavljena točno kakva jest.',
 			moveEarlier: 'Pomakni prije',
 			moveLater: 'Pomakni poslije',
-			orderHint:
-				'Fotografije se prikazuju ovim redoslijedom, a prva je ona koju pokazuje kartica na ploči. Povucite fotografiju u nizu ili upotrijebite Pomakni prije i Pomakni poslije.',
 			removePublished: 'Makni fotografiju',
 			removePublishedCopy:
 				'Obitelji više neće vidjeti ovu fotografiju. Tko ju je već spremio, zadržava svoju kopiju.',

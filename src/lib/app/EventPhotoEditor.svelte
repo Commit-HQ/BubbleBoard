@@ -7,13 +7,14 @@
 		assign,
 		boundedRect,
 		commit,
-		coverRest,
 		detectionRegion,
 		dropMissing,
 		emptyEdit,
+		makeInvisible,
 		manualRegion,
 		maxRegions,
 		overlaps,
+		painted,
 		redo,
 		undo,
 		unresolved,
@@ -51,6 +52,7 @@
 	import FaceCanvas from './FaceCanvas.svelte';
 	import FaceNames from './FaceNames.svelte';
 	import FacePanel from './FacePanel.svelte';
+	import StickerPicker from './StickerPicker.svelte';
 	import LeaveGuard from './LeaveGuard.svelte';
 	import { getApp, Task } from './state.svelte';
 	import { alert, button, field, filePicker, segment, surface } from './ui';
@@ -223,11 +225,10 @@
 				kept.some((photo) => photo !== start.kept.find((was) => was.id === photo.id)))
 	);
 	const detailsDone = $derived(!!classroom && !!title.trim() && !!date && editorReady);
-	const overlap = $derived(
-		edit?.regions.some((one, index) =>
-			edit.regions.slice(index + 1).some((two) => overlaps(one, two))
-		) ?? false
-	);
+	const overlap = $derived.by(() => {
+		const covers = edit ? painted(edit.regions) : [];
+		return covers.some((one, index) => covers.slice(index + 1).some((two) => overlaps(one, two)));
+	});
 	const roster = $derived(children.map((c) => `${c.id}:${c.name}`).join('|'));
 	let lastRoster = untrack(() => roster);
 	$effect(() => {
@@ -458,12 +459,10 @@
 		original = false;
 		feedback = child ? t.assigned(nameOf(child)) : '';
 	}
-	function coverTheRest() {
-		if (!photo || !edit) return;
-		const left = unresolved(edit);
-		setHistory(coverRest(photo.history));
+	function setInvisible(invisible: boolean) {
+		if (!photo || !selected || selected.fixed) return;
+		setHistory(makeInvisible(photo.history, selected.id, invisible));
 		original = false;
-		feedback = t.coveredRest(left);
 	}
 	function setSticker(sticker: Sticker) {
 		if (!photo || !edit || !selected) return;
@@ -998,7 +997,6 @@
 					{@render addButton(button.secondary, t.addMore)}
 				</div>
 				<EventPhotoStrip {locale} photos={gallery} {current} onpick={switchPhoto} onmove={move} />
-				<p class={field.hint}>{t.orderHint}</p>
 			{/if}
 
 			{#if loading}
@@ -1057,6 +1055,7 @@
 						>
 							<Icon name="plus" class="size-4" />{t.addCover}
 						</button>
+						<StickerPicker {locale} cover={selected} onsticker={setSticker} />
 						<button
 							type="button"
 							class="{button.icon} disabled:opacity-40"
@@ -1139,12 +1138,10 @@
 					regions={edit.regions}
 					{selected}
 					{children}
-					remaining={unresolved(edit)}
 					{feedback}
 					onassign={nameFace}
-					oncoverrest={coverTheRest}
 					onremove={removeCover}
-					onsticker={setSticker}
+					oninvisible={setInvisible}
 				/>
 
 				{#if overlap}<p class="rounded-2xl bg-apricot/20 p-3 text-sm">{t.overlap}</p>{/if}

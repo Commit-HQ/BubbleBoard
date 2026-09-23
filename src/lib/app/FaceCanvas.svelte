@@ -326,16 +326,22 @@
 						ry={region.height / 2}
 					/>
 				</clipPath>
-				{@render shape(region, { fill: '#f7d470' })}
-				<image
-					href={stickerUrl(region.sticker)}
-					x={region.x}
-					y={region.y}
-					width={region.width}
-					height={region.height}
-					preserveAspectRatio="none"
-					clip-path="url(#cover-{region.id})"
-				/>
+				<!-- An invisible cover hides nothing, so it is only an outline over the photo, with a faint fill that
+				     keeps its middle tappable. -->
+				{#if region.invisible}
+					{@render shape(region, { fill: '#ffffff', 'fill-opacity': 0.15 })}
+				{:else}
+					{@render shape(region, { fill: '#f7d470' })}
+					<image
+						href={stickerUrl(region.sticker)}
+						x={region.x}
+						y={region.y}
+						width={region.width}
+						height={region.height}
+						preserveAspectRatio="none"
+						clip-path="url(#cover-{region.id})"
+					/>
+				{/if}
 				{@render shape(region, {
 					fill: 'none',
 					stroke: '#29253d',
@@ -347,6 +353,7 @@
 					fill: 'none',
 					stroke: region.child ? '#15803d' : region.covered ? '#29253d' : '#ffb36b',
 					'stroke-width': selected === region.id ? 5 : 3,
+					'stroke-dasharray': region.invisible ? '10 6' : 'none',
 					'vector-effect': 'non-scaling-stroke'
 				})}
 				<text
