@@ -147,17 +147,17 @@ const spent = `(SELECT COUNT(*) FROM messages m JOIN conversations c ON c.id=m.c
 const answered = `COALESCE((SELECT substr(author,1,8)='teacher:' FROM messages
  WHERE conversation_id=? ORDER BY sequence DESC LIMIT 1),0)`;
 /**
- * How far the other side has read a conversation, which is what tells a family whether one of its messages is
- * still its own to change: a teacher who has opened the conversation past a message has read it. Teachers read
- * one conversation each for themselves, so the furthest any of them reached is the one that counts; a family's
- * devices share one mark. A conversation nobody on the other side has opened yet counts as read to nothing.
+ * How far teachers have read a conversation, which is what tells a family whether one of its messages is still
+ * its own to change: a teacher who has opened the conversation past a message has read it. Teachers read one
+ * conversation each for themselves, so the furthest any of them reached is the one that counts, and one nobody
+ * has opened yet counts as read to nothing. Staff change their messages whatever the family has read, so they
+ * get nothing here.
  */
 const seenSequence = (who: Identity) =>
 	who.kind === 'family'
 		? `COALESCE((SELECT MAX(sequence) FROM conversation_reads
  WHERE conversation_id=c.id AND substr(reader,1,8)='teacher:'),0)`
-		: `COALESCE((SELECT sequence FROM conversation_reads
- WHERE conversation_id=c.id AND reader='family:'||c.family_id),0)`;
+		: '0';
 export async function inbox(db: D1Database, who: Identity, now = Date.now()): Promise<Inbox> {
 	const [sql, params] = visibleClassrooms(who);
 	const classrooms = await db
@@ -477,29 +477,37 @@ export async function markRead(db: D1Database, who: Identity, id: string, sequen
 		.bind(id, actor(who), id, sequence)
 		.run();
 }
+/** Whether a message's conversation is still open. */
+const stillOpen =
+	'EXISTS(SELECT 1 FROM conversations WHERE id=messages.conversation_id AND closed=0)';
+/**
+ * Whether the other side has written since the message. Authors are `family:…` and `teacher:…`, whose first
+ * seven letters tell the two sides apart.
+ */
+const answeredSince = `EXISTS(SELECT 1 FROM messages n WHERE n.conversation_id=messages.conversation_id
+ AND n.sequence>messages.sequence AND substr(n.author,1,7)<>substr(messages.author,1,7))`;
+/** Whether a teacher has opened the conversation as far as the message. */
+const seenByTeacher = `EXISTS(SELECT 1 FROM conversation_reads r
+ WHERE r.conversation_id=messages.conversation_id AND substr(r.reader,1,8)='teacher:'
+ AND r.sequence>=messages.sequence)`;
 /**
  * A message of an open conversation is only its author's to change, only while it's still there, and only
  * until the other side answers it: an answer is to the words that were there, so changing or deleting them
- * afterwards would leave it answering nothing. Authors are `family:…` and `teacher:…`, whose first seven
- * letters tell the two sides apart.
+ * afterwards would leave it answering nothing.
  */
 const ownMessage = `id=? AND conversation_id=? AND author=? AND deleted_at IS NULL
- AND EXISTS(SELECT 1 FROM conversations WHERE id=? AND closed=0)
- AND NOT EXISTS(SELECT 1 FROM messages n WHERE n.conversation_id=messages.conversation_id
- AND n.sequence>messages.sequence AND substr(n.author,1,7)<>substr(messages.author,1,7))`;
+ AND ${stillOpen} AND NOT ${answeredSince}`;
 /**
  * A family's message stops being its own to change once a teacher has opened the conversation as far as it:
  * what a teacher has read has been read, and taking the words out from under them would leave the two sides
  * remembering different conversations. The condition sits in the change itself, so a teacher opening the
  * conversation at that moment wins rather than leaving a gap between the check and the write.
  */
-const unseenMessage = `NOT EXISTS(SELECT 1 FROM conversation_reads r
- WHERE r.conversation_id=messages.conversation_id AND substr(r.reader,1,8)='teacher:'
- AND r.sequence>=messages.sequence)`;
+const unseenMessage = `NOT ${seenByTeacher}`;
 /**
- * Why a change to one message wrote nothing: everything the change insisted on, asked again, so the device is
- * told what actually stands rather than a bare refusal. Reaching the end means the conversation moved under a
- * page written before it did, which loading it again shows.
+ * Why a change to one message wrote nothing: the conditions the change insisted on, read in one go, so the
+ * device is told what actually stands rather than a bare refusal. Reaching the end means the conversation
+ * moved under a page written before it did, which loading it again shows.
  */
 async function explainMessageChange(
 	db: D1Database,
@@ -509,35 +517,23 @@ async function explainMessageChange(
 ): Promise<never> {
 	const row = await db
 		.prepare(
-			'SELECT sequence,author,deleted_at AS deletedAt FROM messages WHERE id=? AND conversation_id=?'
+			`SELECT author,deleted_at AS deletedAt,NOT ${stillOpen} AS closed,${seenByTeacher} AS seen,
+ ${answeredSince} AS answered FROM messages WHERE id=? AND conversation_id=?`
 		)
 		.bind(message, conversation)
-		.first<{ sequence: number; author: string; deletedAt: number | null }>();
+		.first<{
+			author: string;
+			deletedAt: number | null;
+			closed: number;
+			seen: number;
+			answered: number;
+		}>();
 	if (!row) error(404, 'not-found');
 	if (row.author !== actor(who)) error(403, 'forbidden');
-	const closed = await db
-		.prepare('SELECT 1 FROM conversations WHERE id=? AND closed=1')
-		.bind(conversation)
-		.first();
-	if (closed) error(409, 'messages-closed');
-	if (who.kind === 'family' && !row.deletedAt) {
-		const seen = await db
-			.prepare(
-				`SELECT 1 FROM conversation_reads WHERE conversation_id=?
- AND substr(reader,1,8)='teacher:' AND sequence>=?`
-			)
-			.bind(conversation, row.sequence)
-			.first();
-		if (seen) error(409, 'message-seen');
-	}
+	if (row.closed) error(409, 'messages-closed');
 	if (!row.deletedAt) {
-		const answered = await db
-			.prepare(
-				`SELECT 1 FROM messages WHERE conversation_id=? AND sequence>? AND substr(author,1,7)<>?`
-			)
-			.bind(conversation, row.sequence, row.author.slice(0, 7))
-			.first();
-		if (answered) error(409, 'message-answered');
+		if (who.kind === 'family' && row.seen) error(409, 'message-seen');
+		if (row.answered) error(409, 'message-answered');
 	}
 	error(409, 'stale');
 }
@@ -561,7 +557,7 @@ export async function editMessage(
 			`UPDATE messages SET content=?,edited_at=? WHERE ${ownMessage}
  ${who.kind === 'family' ? `AND ${unseenMessage}` : ''}`
 		)
-		.bind(content, now, message, conversation, actor(who), conversation)
+		.bind(content, now, message, conversation, actor(who))
 		.run();
 	if (!result.meta.changes) await explainMessageChange(db, who, conversation, message);
 }
@@ -584,7 +580,7 @@ export async function deleteMessage(
 	const [result] = await transaction(db, [
 		db
 			.prepare(`UPDATE messages SET content='',deleted_at=? WHERE ${ownMessage}`)
-			.bind(now, message, conversation, actor(who), conversation),
+			.bind(now, message, conversation, actor(who)),
 		// Only when the message was actually emptied, so a refused delete leaves its files where they are.
 		db.prepare('DELETE FROM message_files WHERE message_id=? AND changes()=1').bind(message)
 	]);

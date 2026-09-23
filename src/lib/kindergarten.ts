@@ -352,12 +352,12 @@ export function planFamilyLinks(
 	for (const child of children) {
 		for (const family of child.families) wanted.get(family)?.add(child.classroom);
 	}
+	const had = new Map(current.map((family) => [family.id, family.classrooms]));
 	for (const [family, classrooms] of wanted) {
-		for (const classroom of current.find(({ id }) => id === family)?.classrooms ?? []) {
+		for (const classroom of had.get(family) ?? []) {
 			if (!visible.has(classroom)) classrooms.add(classroom);
 		}
 	}
-	const had = new Map(current.map((family) => [family.id, family.classrooms]));
 	const plan = {
 		addMemberships: [] as MembershipKey[],
 		removeMemberships: [] as MembershipKey[],
@@ -377,6 +377,16 @@ export function planFamilyLinks(
 		}
 	}
 	return plan;
+}
+
+/** Whether a family's QR code also opens a classroom outside the catalog, one a group lead doesn't see. */
+export function reachesElsewhere(
+	catalog: Pick<Catalog, 'classrooms'>,
+	family: Pick<Family, 'classrooms'>
+) {
+	return family.classrooms.some(
+		(classroom) => !catalog.classrooms.some(({ id }) => id === classroom)
+	);
 }
 
 /** A family's Family Key on a staff device, opened from its copy for staff. */

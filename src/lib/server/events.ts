@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { Identity, Staff, FamilyIdentity } from '$lib/api';
 import type { ConsentRow, EventRecord } from '$lib/events/types';
-import { checkClassrooms, transaction, visibleClassrooms } from './database';
+import { checkClassrooms, managesOthers, transaction, visibleClassrooms } from './database';
 import { getObject, putObject, deleteMarked, type ObjectStore } from './storage';
 import { day } from '$lib/notices';
 
@@ -162,9 +162,17 @@ async function editable(db: D1Database, staff: Staff, id: string, draft = false)
 	const own =
 		draft && row.postedAt === null
 			? row.credential === staff.credential
-			: staff.role !== 'teacher' || row.teacher === staff.teacher;
+			: managesOthers(staff) || row.teacher === staff.teacher;
 	if (!own) error(403, 'forbidden');
 	return row;
+}
+/**
+ * Refuses a commit naming a photo whose bytes aren't in R2. A failed put can leave the photo counted without
+ * them, so each is looked for before the commit that names it.
+ */
+async function checkStored(store: ObjectStore, id: string, files: string[]) {
+	const stored = await Promise.all(files.map((file) => store.bucket.head(`events/${id}/${file}`)));
+	if (stored.some((object) => !object)) error(409, 'stale');
 }
 export async function uploadEventFile(
 	db: D1Database,
@@ -192,9 +200,7 @@ export async function publishEvent(
 ) {
 	const row = await editable(db, staff, id, true);
 	if (row.postedAt !== null) return { published: false, classroom: row.classroom };
-	// A failed R2 put can leave a counted object; HEAD every file before the atomic commit.
-	const stored = await Promise.all(files.map((file) => store.bucket.head(`events/${id}/${file}`)));
-	if (stored.some((object) => !object)) error(409, 'stale');
+	await checkStored(store, id, files);
 	const now = Date.now();
 	const result = await transaction(db, [
 		...files.map((file) =>
@@ -228,21 +234,18 @@ export async function changeEvent(
 	days: number,
 	added?: { catalog: number; consent: number }
 ) {
-	const row = await editable(db, staff, id);
+	const [row, held] = await Promise.all([
+		editable(db, staff, id),
+		db.prepare('SELECT id FROM event_files WHERE event_id=?').bind(id).all<{ id: string }>()
+	]);
 	if (row.postedAt === null) error(404, 'not-found');
 	// An event is its photos: one that keeps none is deleted instead, which takes its bytes with it.
 	if (!files.length) error(400, 'invalid');
-	const held = await db
-		.prepare('SELECT id FROM event_files WHERE event_id=?')
-		.bind(id)
-		.all<{ id: string }>();
 	const kept = new Set(held.results.map((file) => file.id));
 	const coming = files.filter((file) => !kept.has(file));
 	// Only a change that brings photos is held to the revisions, and it can't be made without them.
 	const revisions = coming.length ? (added ?? error(400, 'invalid')) : undefined;
-	// A failed R2 put can leave a counted object; HEAD every new file before the atomic commit.
-	const stored = await Promise.all(coming.map((file) => store.bucket.head(`events/${id}/${file}`)));
-	if (stored.some((object) => !object)) error(409, 'stale');
+	await checkStored(store, id, coming);
 	const now = Date.now();
 	const result = await transaction(db, [
 		// `event_publish` compares the revisions only as an event first goes up, so a change that brings new

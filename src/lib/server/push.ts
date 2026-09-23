@@ -1,8 +1,8 @@
-import { error, type RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent } from '@sveltejs/kit';
 import type { Staff } from '../api';
 import { fromBase64Url, toBase64Url } from '../base64url';
 import { pushCode, type PushKind } from '../push';
-import { includesAll, transaction } from './database';
+import { transaction } from './database';
 import type { Head } from './session';
 
 // Notifications for new notices, board photos, messages and meeting times: Web Push (RFC 8030), signed with
@@ -240,14 +240,14 @@ export async function mutedClassrooms(db: D1Database, staff: Staff) {
  * there anymore means the device read the kindergarten before it was deleted, so it's told to read again.
  */
 export async function setMutedClassrooms(db: D1Database, head: Head, classrooms: string[]) {
-	if (!(await includesAll(db, classrooms, 'SELECT id FROM classrooms'))) error(409, 'stale');
+	// The foreign key refuses a classroom that's gone, which `transaction` answers as stale.
 	await transaction(db, [
 		db.prepare('DELETE FROM teacher_muted_classrooms WHERE teacher_id = ?').bind(head.teacher),
-		...classrooms.map((classroom) =>
-			db
-				.prepare('INSERT INTO teacher_muted_classrooms (teacher_id, classroom_id) VALUES (?, ?)')
-				.bind(head.teacher, classroom)
-		)
+		db
+			.prepare(
+				'INSERT INTO teacher_muted_classrooms (teacher_id, classroom_id) SELECT ?, value FROM json_each(?)'
+			)
+			.bind(head.teacher, JSON.stringify(classrooms))
 	]);
 }
 
@@ -312,6 +312,14 @@ async function queue(
 	for (let start = 0; start < messages.length; start += 100) {
 		await env.NOTIFICATIONS.sendBatch(messages.slice(start, start + 100));
 	}
+}
+
+/**
+ * Lets notifications go out after the response, so whoever made the change doesn't wait for them, and a
+ * notification that couldn't be queued never fails a change that's already made.
+ */
+export function notifyLater(event: RequestEvent, sending: Promise<void>) {
+	event.platform?.ctx.waitUntil(sending.catch(() => {}));
 }
 
 /**

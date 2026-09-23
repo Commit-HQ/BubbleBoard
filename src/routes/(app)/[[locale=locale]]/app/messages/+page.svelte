@@ -103,8 +103,7 @@
 	 */
 	const answered = (row: OpenMessage) =>
 		rows.some(
-			(later) =>
-				later.sequence > row.sequence && later.author.slice(0, 7) !== row.author.slice(0, 7)
+			(later) => later.sequence > row.sequence && byTeacher(later.author) !== byTeacher(row.author)
 		);
 	/**
 	 * Whether the viewer may still change one of their own messages: while the inquiry is open and nobody has

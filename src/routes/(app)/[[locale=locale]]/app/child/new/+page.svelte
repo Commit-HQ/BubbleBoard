@@ -1,15 +1,14 @@
 <script lang="ts">
-	import { beforeNavigate, goto } from '$app/navigation';
 	import CardSheet, { type PrintableCard } from '$lib/app/CardSheet.svelte';
 	import ChoiceTile from '$lib/app/ChoiceTile.svelte';
-	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
 	import FaceSharing from '$lib/app/FaceSharing.svelte';
+	import LeaveGuard from '$lib/app/LeaveGuard.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp, Task, type ChildValues } from '$lib/app/state.svelte';
 	import { alert, button, field, formText, queryParam, surface } from '$lib/app/ui';
 	import Icon from '$lib/components/Icon.svelte';
 	import { errorMessage, messages } from '$lib/i18n';
-	import { byId, type Child } from '$lib/kindergarten';
+	import { byId, reachesElsewhere, type Child } from '$lib/kindergarten';
 	import { appPath } from '$lib/paths';
 	import type { PageProps } from './$types';
 
@@ -34,24 +33,8 @@
 	let added = $state<string>();
 	let unprinted = $state.raw<(PrintableCard & { child: string })[]>([]);
 	let printing = $state(false);
-	/** Where someone was going when asked whether to leave cards unprinted. */
-	let leaving = $state<URL>();
-	let leaveAnyway = false;
 	let nameInput = $state<HTMLInputElement>();
 	let cardNameInput = $state<HTMLInputElement>();
-
-	beforeNavigate((navigation) => {
-		if (!unprinted.length || leaveAnyway) return;
-		navigation.cancel();
-		// Closing the tab or leaving the site gets the browser's own question instead.
-		if (!navigation.willUnload && navigation.to) leaving = navigation.to.url;
-	});
-
-	async function leave() {
-		if (!leaving) return;
-		leaveAnyway = true;
-		await goto(leaving);
-	}
 
 	/**
 	 * A brother or sister, with the classroom they're in, and a word when their family's QR code also
@@ -60,9 +43,7 @@
 	function siblingLabel(sibling: Child) {
 		const where = byId(app.catalog.classrooms, sibling.classroom).name;
 		const elsewhere = app.catalog.families.some(
-			(family) =>
-				sibling.families.includes(family.id) &&
-				family.classrooms.some((id) => !app.catalog.classrooms.some((c) => c.id === id))
+			(family) => sibling.families.includes(family.id) && reachesElsewhere(app.catalog, family)
 		);
 		return elsewhere
 			? `${sibling.name} (${where}) · ${t.child.alsoElsewhere}`
@@ -216,15 +197,11 @@
 	</Screen>
 {/if}
 
-{#if leaving}
-	<ConfirmDialog
-		locale={data.locale}
-		title={t.newChild.leaveTitle}
-		copy={t.newChild.leaveCopy}
-		confirmLabel={t.newChild.leave}
-		cancelLabel={t.newChild.stay}
-		safe
-		onconfirm={leave}
-		onclose={() => (leaving = undefined)}
-	/>
-{/if}
+<LeaveGuard
+	locale={data.locale}
+	title={t.newChild.leaveTitle}
+	copy={t.newChild.leaveCopy}
+	leave={t.newChild.leave}
+	stay={t.newChild.stay}
+	ask={() => unprinted.length > 0}
+/>

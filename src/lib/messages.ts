@@ -20,7 +20,7 @@ export type ConversationRecord = {
 	createdAt: number;
 	lastSequence: number;
 	readSequence: number;
-	/** How far the other side has read: what tells a family whether its latest message is still its own to change. */
+	/** For a family, how far teachers have read: what tells it whether its latest message is still its own to change. */
 	seenSequence: number;
 	content: string;
 	messageId: string;

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { beforeNavigate, goto } from '$app/navigation';
 	import { createId } from '$lib/crypto';
 	import type { NewFile, NoticeFile } from '$lib/files';
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
@@ -7,7 +6,7 @@
 	import type { Paper } from '$lib/notices';
 	import { untrack } from 'svelte';
 	import AttachFiles from './AttachFiles.svelte';
-	import ConfirmDialog from './ConfirmDialog.svelte';
+	import LeaveGuard from './LeaveGuard.svelte';
 	import NoticeEditor from './NoticeEditor.svelte';
 	import { getApp, Task } from './state.svelte';
 	import { alert, button, field, surface } from './ui';
@@ -40,9 +39,7 @@
 	let ready = $state(false);
 	/** What the form held once the editor opened, to tell whether leaving loses anything. */
 	let opened: string | undefined;
-	/** Where someone was going when asked whether to leave what they wrote. */
-	let leaving = $state<URL>();
-	let leaveAnyway = false;
+	let guard = $state<ReturnType<typeof LeaveGuard>>();
 
 	/** Everything the form holds, as one string to compare. */
 	function held() {
@@ -54,22 +51,6 @@
 		if (ready) opened ??= untrack(held);
 	});
 
-	beforeNavigate((navigation) => {
-		if (leaveAnyway) return;
-		// While saving, the page stays until the info page is saved; it would be lost with it otherwise.
-		const changed = opened !== undefined && held() !== opened;
-		if (!task.busy && !changed) return;
-		navigation.cancel();
-		// Closing the tab or leaving the site gets the browser's own question instead.
-		if (!task.busy && !navigation.willUnload && navigation.to) leaving = navigation.to.url;
-	});
-
-	async function leave() {
-		if (!leaving) return;
-		leaveAnyway = true;
-		await goto(leaving);
-	}
-
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
 		const body = editor?.getDocument();
@@ -78,7 +59,7 @@
 		else {
 			task.run(async () => {
 				await app.saveInfoPage(start.id, { paper, body, files }, page);
-				leaveAnyway = true;
+				guard?.release();
 				onsaved();
 			});
 		}
@@ -111,15 +92,11 @@
 	</button>
 </form>
 
-{#if leaving}
-	<ConfirmDialog
-		{locale}
-		title={t.leaveForm.title}
-		copy={t.leaveForm.copy}
-		confirmLabel={t.leaveForm.leave}
-		cancelLabel={t.leaveForm.stay}
-		safe
-		onconfirm={leave}
-		onclose={() => (leaving = undefined)}
-	/>
-{/if}
+<!-- While saving, the page stays until the info page is saved; it would be lost with it otherwise. -->
+<LeaveGuard
+	bind:this={guard}
+	{locale}
+	{...t.leaveForm}
+	ask={() => opened !== undefined && held() !== opened}
+	hold={() => task.busy}
+/>

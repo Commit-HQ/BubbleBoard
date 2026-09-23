@@ -5,7 +5,7 @@ import { objectStore } from '$lib/indexeddb';
 
 // Notifications on this device (decisions.md). The server pushes nothing but a nudge, and the service
 // worker shows the same words for every one, in the language notifications were turned on in, which this
-// keeps in IndexedDB for it, along with whether Not now put away home's card that turns them on.
+// keeps in IndexedDB for it.
 
 export type NotificationState = 'unsupported' | 'blocked' | 'off' | 'on';
 
@@ -26,15 +26,6 @@ const settings = objectStore('bubbleboard-notifications', 'settings');
 export async function notificationLocale() {
 	const locale = await settings('readonly', (store) => store.get('locale'));
 	return isLocale(locale) ? locale : undefined;
-}
-
-/** Whether Not now put away home's card that turns notifications on, on this device. */
-export async function homeCardHidden() {
-	return (await settings('readonly', (store) => store.get('homeCardHidden'))) === true;
-}
-
-export async function hideHomeCard(hidden = true) {
-	await settings('readwrite', (store) => void store.put(hidden, 'homeCardHidden'));
 }
 
 /**

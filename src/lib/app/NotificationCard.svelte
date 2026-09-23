@@ -12,14 +12,14 @@
 	const t = $derived(messages[locale].app.notifications);
 </script>
 
-{#if !app.notificationCardHidden && (app.notifications === 'off' || app.notifications === 'blocked')}
+{#if !app.hiddenCards.includes('notifications') && (app.notifications === 'off' || app.notifications === 'blocked')}
 	<section class="{surface} flex items-start gap-4" aria-labelledby="notifications-card">
 		<IconTile icon="bell" />
 		<div class="min-w-0">
 			<h2 id="notifications-card" class="text-2xl">{t.cardTitle}</h2>
 			<p class="mt-2 text-muted">{app.notifications === 'blocked' ? t.blocked : t.cardCopy}</p>
 			<NotificationSwitch {locale}>
-				<button class={button.quiet} type="button" onclick={() => app.hideNotificationCard()}>
+				<button class={button.quiet} type="button" onclick={() => app.hideCard('notifications')}>
 					{t.notNow}
 				</button>
 			</NotificationSwitch>

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
-	import shareImage from '$lib/assets/photos/share.jpg';
 	import ActionLink from '$lib/components/ActionLink.svelte';
 	import Bubble from '$lib/components/Bubble.svelte';
 	import Faq from '$lib/components/Faq.svelte';
@@ -8,16 +7,15 @@
 	import IconTile from '$lib/components/IconTile.svelte';
 	import Photo from '$lib/components/Photo.svelte';
 	import Screenshot from '$lib/components/Screenshot.svelte';
-	import { locales, messages } from '$lib/i18n';
-	import { appPath, explorePath, homePath } from '$lib/paths';
-	import { absoluteUrl, contactEmail, repositoryUrl } from '$lib/project';
+	import { messages } from '$lib/i18n';
+	import { appPath, explorePath } from '$lib/paths';
+	import { contactEmail, repositoryUrl } from '$lib/project';
 	import type { PageProps } from './$types';
 
 	type Item = { title: string; copy: string };
 
 	let { data }: PageProps = $props();
 	const t = $derived(messages[data.locale]);
-	const url = $derived(absoluteUrl(homePath(data.locale)));
 	const writeToUs = $derived(
 		`mailto:${contactEmail}?subject=${encodeURIComponent(t.kindergartens.subject)}`
 	);
@@ -27,35 +25,13 @@
 	<title>BubbleBoard · {t.title}</title>
 	<meta name="description" content={t.description} />
 
-	<!-- Link previews in messaging apps and social networks. -->
-	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content="BubbleBoard" />
 	<meta property="og:title" content="BubbleBoard · {t.title}" />
 	<meta property="og:description" content={t.description} />
-	<meta property="og:url" content={url} />
-	<meta property="og:locale" content={t.ogLocale} />
-	{#each locales.filter((locale) => locale !== data.locale) as locale (locale)}
-		<meta property="og:locale:alternate" content={messages[locale].ogLocale} />
-	{/each}
-	<meta property="og:image" content={absoluteUrl(shareImage)} />
-	<meta property="og:image:width" content="1200" />
-	<meta property="og:image:height" content="630" />
-	<meta property="og:image:alt" content={t.hero.photoAlt} />
-	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
 {#snippet intro(id: string, title: string, copy: string)}
 	<h2 id="{id}-title" class="mb-4 max-w-2xl text-4xl sm:text-5xl">{title}</h2>
 	<p class="max-w-md text-lg text-muted">{copy}</p>
-{/snippet}
-
-{#snippet tour(href: string, label: string)}
-	<a
-		class="mt-6 inline-flex min-h-11 items-center gap-2 font-semibold underline-offset-4 hover:underline"
-		{href}
-	>
-		{label}<Icon name="arrowRight" class="size-4 shrink-0 text-accent" />
-	</a>
 {/snippet}
 
 {#snippet feature(icon: IconName, item: Item)}
@@ -222,7 +198,12 @@
 	>
 		<div class="lg:pt-6">
 			{@render intro('teachers', t.teachers.title, t.teachers.copy)}
-			{@render tour(explorePath(data.locale, 'teachers'), t.teachers.tour)}
+			<a
+				class="mt-6 inline-flex min-h-11 items-center gap-2 font-semibold underline-offset-4 hover:underline"
+				href={explorePath(data.locale, 'teachers')}
+			>
+				{t.teachers.tour}<Icon name="arrowRight" class="size-4 shrink-0 text-accent" />
+			</a>
 		</div>
 		<ul class="grid gap-4 sm:grid-cols-2">
 			{@render feature('eye', t.teachers.preview)}

@@ -1,10 +1,10 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
 	import type { OpenEvent } from '$lib/events/types';
-	import { formatDateTime, formatDay, messages, type Locale } from '$lib/i18n';
+	import { messages, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
-	import ConfirmDialog from './ConfirmDialog.svelte';
-	import NoticeBody from './NoticeBody.svelte';
+	import EventActions from './EventActions.svelte';
+	import EventHeading from './EventHeading.svelte';
 	import { getApp, type Picture } from './state.svelte';
 	import { button, surface } from './ui';
 
@@ -20,18 +20,7 @@
 	const until = $derived(
 		new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(event.expiresAt)
 	);
-	/** Who put the event up and when, and whether it was changed since, as a notice's card says it. */
-	const details = $derived(
-		[
-			event.value.author,
-			formatDateTime(locale, event.postedAt),
-			event.editedAt ? t.edited : undefined
-		]
-			.filter(Boolean)
-			.join(' · ')
-	);
 	let card = $state<HTMLElement>();
-	let confirming = $state(false);
 	let cover = $state.raw<Picture>();
 	let failed = $state(false);
 
@@ -71,14 +60,7 @@
 </script>
 
 <article class="{surface} grid gap-3" bind:this={card}>
-	<header class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm text-muted">
-		<p>{t.title} · {formatDay(locale, event.value.date)}</p>
-		<p>{details}</p>
-	</header>
-	<h2 class="text-3xl">{event.value.title}</h2>
-	{#if event.value.description.content.length}
-		<NoticeBody blocks={event.value.description.content} />
-	{/if}
+	<EventHeading {locale} {event} />
 	{#if !tooOld && !failed}
 		<a
 			class="block aspect-[4/3] overflow-hidden rounded-3xl bg-ink/5 sm:aspect-[16/9]"
@@ -94,27 +76,7 @@
 	<p class="text-sm text-muted">{t.untilShort(until)}</p>
 	{#if app.canChangeEvent(event)}
 		<div class="-ml-3 flex flex-wrap gap-2">
-			<a class={button.quiet} href={appPath(locale, 'event/edit', { id: event.id })}>
-				<Icon name="pencil" class="size-4" />{t.edit}
-			</a>
-			<button class={button.danger} type="button" onclick={() => (confirming = true)}>
-				<Icon name="trash" class="size-4" />{t.remove}
-			</button>
+			<EventActions {locale} {event} />
 		</div>
 	{/if}
 </article>
-
-{#if confirming}
-	<ConfirmDialog
-		{locale}
-		title={t.remove}
-		copy={t.removeHint}
-		confirmLabel={t.remove}
-		danger
-		onconfirm={async () => {
-			await app.deleteEvent(event);
-			confirming = false;
-		}}
-		onclose={() => (confirming = false)}
-	/>
-{/if}

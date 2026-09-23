@@ -85,7 +85,7 @@ migrations/             D1 schema
 scripts/                Deploying, setup links, the notifications key, and starting over
 static/                 Public static files: app icons and third-party notices
 worker/                 The Worker's entry: SvelteKit, sending notifications, daily cleanup
-docs/                   Hosting, development, status, decisions, architecture, formats, specification
+docs/                   Hosting, development, decisions, architecture, formats, specification
 _headers                Security headers for prerendered pages and assets
 .env.example            Build-time settings to copy into .env
 .github/workflows/      Validation pipeline (never deploys)

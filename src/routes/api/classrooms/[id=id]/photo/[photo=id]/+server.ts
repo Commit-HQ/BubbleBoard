@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { photoBytes, putUpPhoto, takeDownPhoto } from '$lib/server/photos';
-import { announce } from '$lib/server/push';
+import { announce, notifyLater } from '$lib/server/push';
 import {
 	database,
 	objectStore,
@@ -30,7 +30,7 @@ export const PUT: RequestHandler = async (event) => {
 	const { id, photo } = event.params;
 	const store = objectStore(event);
 	const photos = await putUpPhoto(database(event), store, staff, id, photo, bytes, details);
-	await announce(event, [id], await sessionHash(event));
+	notifyLater(event, announce(event, [id], await sessionHash(event)));
 	return json(photos);
 };
 

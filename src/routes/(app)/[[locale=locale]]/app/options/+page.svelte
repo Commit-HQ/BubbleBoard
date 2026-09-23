@@ -25,20 +25,14 @@
 	const m = $derived(messages[data.locale]);
 	const t = $derived(m.app);
 	let confirming = $state(false);
+	const classroomIds = $derived(app.catalog.classrooms.map(({ id }) => id));
 	/**
-	 * The classrooms the head hears about, the other side of the muted ones the server keeps. She belongs to
-	 * no classroom, so without this she'd hear about every one of them.
+	 * The classrooms the head hears about: every one she hasn't muted. A tick shows here at once, and the
+	 * muted ones the app holds win again whenever they change.
 	 */
-	let notified = $state<string[]>([]);
+	let notified = $derived(classroomIds.filter((id) => !app.mutedClassrooms.includes(id)));
 	const notifyTask = new Task();
 	let notifySaved = $state(false);
-
-	// The server's word always wins: what it sent on connecting, and what it sends back after a save.
-	$effect(() => {
-		notified = app.catalog.classrooms
-			.map(({ id }) => id)
-			.filter((id) => !app.mutedClassrooms.includes(id));
-	});
 
 	/**
 	 * A row of tick boxes has nothing to submit, so each tick saves on its own. A tick made while a save is
@@ -47,11 +41,11 @@
 	let saving: Promise<void> | undefined;
 	function saveNotified() {
 		notifySaved = false;
-		const wanted = [...notified];
+		const muted = classroomIds.filter((id) => !notified.includes(id));
 		const previous = saving ?? Promise.resolve();
 		saving = previous.then(() =>
 			notifyTask.run(async () => {
-				await app.setNotifiedClassrooms(wanted);
+				await app.muteClassrooms(muted);
 				notifySaved = true;
 			})
 		);

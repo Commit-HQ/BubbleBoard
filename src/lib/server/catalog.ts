@@ -19,7 +19,14 @@ import type {
 	TeacherChange
 } from '$lib/api';
 import { hashAuthToken } from '$lib/crypto';
-import { checkClassrooms, includesAll, isHead, transaction, visibleClassrooms } from './database';
+import {
+	checkClassrooms,
+	includesAll,
+	isHead,
+	transaction,
+	visibleClassrooms,
+	visibleFamilies
+} from './database';
 import { familyInfo, staffInfo } from './info';
 import { board } from './notices';
 import { boardPhotos } from './photos';
@@ -310,29 +317,25 @@ async function ownChild(db: D1Database, manager: Manager, id: string) {
  * family that spans other groups counts, card and all — replacing it is how a lost card is settled.
  */
 async function ownFamilies(db: D1Database, manager: Manager, families: string[]) {
-	const [visible, params] = visibleClassrooms(manager);
-	const within = isHead(manager)
-		? 'SELECT id FROM families'
-		: `SELECT family_id FROM family_classrooms WHERE classroom_id IN (${visible})`;
-	if (!(await includesAll(db, families, within, isHead(manager) ? [] : params))) {
-		error(404, 'not-found');
-	}
+	if (!(await includesAll(db, families, ...visibleFamilies(manager)))) error(404, 'not-found');
 }
 
 /** Changes a child along with its family links. New families exist before the child refers to them. */
 async function changeChildren(
 	db: D1Database,
 	manager: Manager,
-	links: FamilyLinks,
+	links: FamilyLinks & { classroom?: string },
 	child: D1PreparedStatement,
 	after: D1PreparedStatement[] = []
 ) {
-	// Every membership the change touches is in a classroom the manager holds. A new family is linked by
-	// one of these, so it needs no check of its own.
+	// The classroom the child goes into, and every membership the change touches, is one the manager holds,
+	// checked together. A new family is linked by one of these, so it needs no check of its own.
+	const memberships = [...links.addMemberships, ...links.removeMemberships];
 	await checkClassrooms(db, manager, [
-		...new Set(
-			[...links.addMemberships, ...links.removeMemberships].map(({ classroom }) => classroom)
-		)
+		...new Set([
+			...(links.classroom ? [links.classroom] : []),
+			...memberships.map(({ classroom }) => classroom)
+		])
 	]);
 	const [visible, params] = visibleClassrooms(manager);
 	await transaction(db, [
@@ -368,7 +371,6 @@ async function changeChildren(
 }
 
 export async function addChild(db: D1Database, manager: Manager, child: NewChild) {
-	await checkClassrooms(db, manager, [child.classroom]);
 	return changeChildren(
 		db,
 		manager,
@@ -387,7 +389,6 @@ export async function changeChild(
 	change: ChildChange
 ) {
 	await ownChild(db, manager, id);
-	await checkClassrooms(db, manager, [change.classroom]);
 	return changeChildren(
 		db,
 		manager,

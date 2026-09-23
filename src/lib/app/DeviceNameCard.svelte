@@ -14,7 +14,7 @@
 	const current = $derived(app.devices.find((device) => device.current));
 </script>
 
-{#if !app.deviceNameCardHidden && current && !current.name}
+{#if !app.hiddenCards.includes('device-name') && current && !current.name}
 	<section class="{surface} flex items-start gap-4">
 		<IconTile icon="phone" />
 		<div class="min-w-0 flex-1">
@@ -27,7 +27,7 @@
 				cancelLabel={t.devices.notNow}
 				focus={false}
 				onsubmit={(name) => app.nameDevice(name)}
-				oncancel={() => app.hideDeviceNameCard()}
+				oncancel={() => app.hideCard('device-name')}
 			/>
 		</div>
 	</section>

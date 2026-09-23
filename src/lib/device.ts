@@ -36,12 +36,13 @@ export async function forgetCard() {
 	});
 }
 
+/** What this device keeps about how the app opens: its start card, and the home cards put away. */
+const launch = objectStore('bubbleboard-launch', 'settings');
+
 /**
  * Whether the Home Screen app on iPhone and iPad used the card in the address it opens at, the card link it
  * was added from (src/lib/install.ts). Signing out keeps it, so the app doesn't connect again by itself.
  */
-const launch = objectStore('bubbleboard-launch', 'settings');
-
 export async function startCardUsed() {
 	return (await launch('readonly', (store) => store.get('startCardUsed'))) === true;
 }
@@ -50,13 +51,20 @@ export async function markStartCardUsed() {
 	await launch('readwrite', (store) => void store.put(true, 'startCardUsed'));
 }
 
-/** Whether Not now put away home's card that asks who uses this device. Signing out brings it back. */
-export async function nameCardHidden() {
-	return (await launch('readonly', (store) => store.get('nameCardHidden'))) === true;
+/**
+ * Home's cards that Not now puts away on this device: the one that turns notifications on, and the one that
+ * asks who uses the device. Signing out brings them back.
+ */
+export const homeCards = ['notifications', 'device-name'] as const;
+export type HomeCard = (typeof homeCards)[number];
+
+export async function hiddenHomeCards() {
+	const hidden = await launch('readonly', (store) => store.get('hiddenHomeCards'));
+	return Array.isArray(hidden) ? homeCards.filter((card) => hidden.includes(card)) : [];
 }
 
-export async function hideNameCard(hidden = true) {
-	await launch('readwrite', (store) => void store.put(hidden, 'nameCardHidden'));
+export async function keepHiddenHomeCards(cards: readonly HomeCard[]) {
+	await launch('readwrite', (store) => void store.put([...cards], 'hiddenHomeCards'));
 }
 
 /** A device connected for this device's family, with who uses it once someone said. */

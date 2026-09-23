@@ -170,9 +170,6 @@ export function familyCards(body: Fields): FamilyCard[] {
 	return cards.length && distinct ? cards : invalid();
 }
 
-/** The classrooms a head wants to hear about, each once. */
-export const classroomIds = (body: Fields) => ids(body.classrooms);
-
 export function setup(body: Fields): Setup {
 	if (typeof body.token !== 'string' || body.token.length > 256) invalid();
 	const teachers = list(body.teachers, (value) => {

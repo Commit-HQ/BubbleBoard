@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { beforeNavigate, goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
 	import { createId } from '$lib/crypto';
 	import type { NewFile, NoticeFile } from '$lib/files';
@@ -18,8 +17,8 @@
 	import AttachFiles from './AttachFiles.svelte';
 	import CheckCard from './CheckCard.svelte';
 	import Checklist from './Checklist.svelte';
-	import ConfirmDialog from './ConfirmDialog.svelte';
 	import DaysChoice from './DaysChoice.svelte';
+	import LeaveGuard from './LeaveGuard.svelte';
 	import NoticeEditor from './NoticeEditor.svelte';
 	import { getApp, Task } from './state.svelte';
 	import { alert, button, field, surface } from './ui';
@@ -81,9 +80,7 @@
 	let ready = $state(false);
 	/** What the form held once the editor opened, to tell whether leaving loses anything. */
 	let opened: string | undefined;
-	/** Where someone was going when asked whether to leave what they wrote. */
-	let leaving = $state<URL>();
-	let leaveAnyway = false;
+	let guard = $state<ReturnType<typeof LeaveGuard>>();
 
 	/** Everything the form holds, as one string to compare. */
 	function held() {
@@ -96,22 +93,6 @@
 	$effect(() => {
 		if (ready) opened ??= untrack(held);
 	});
-
-	beforeNavigate((navigation) => {
-		if (leaveAnyway) return;
-		// While saving, the page stays until the notice is up; the notice would be lost with it otherwise.
-		const changed = opened !== undefined && held() !== opened;
-		if (!task.busy && !changed) return;
-		navigation.cancel();
-		// Closing the tab or leaving the site gets the browser's own question instead.
-		if (!task.busy && !navigation.willUnload && navigation.to) leaving = navigation.to.url;
-	});
-
-	async function leave() {
-		if (!leaving) return;
-		leaveAnyway = true;
-		await goto(leaving);
-	}
 
 	/** Whether saving clears the answers given: families would see the counts, or stop seeing them. */
 	const clearsAnswers = $derived(
@@ -148,7 +129,7 @@
 			const values = { classrooms: [...chosen], paper, days, body, announce, poll, files };
 			task.run(async () => {
 				await app.saveNotice(start.id, values, notice);
-				leaveAnyway = true;
+				guard?.release();
 				onsaved();
 			});
 		}
@@ -242,15 +223,11 @@
 	<p class="text-muted">{t.notices.noClassrooms}</p>
 {/if}
 
-{#if leaving}
-	<ConfirmDialog
-		{locale}
-		title={t.leaveForm.title}
-		copy={t.leaveForm.copy}
-		confirmLabel={t.leaveForm.leave}
-		cancelLabel={t.leaveForm.stay}
-		safe
-		onconfirm={leave}
-		onclose={() => (leaving = undefined)}
-	/>
-{/if}
+<!-- While saving, the page stays until the notice is up; the notice would be lost with it otherwise. -->
+<LeaveGuard
+	bind:this={guard}
+	{locale}
+	{...t.leaveForm}
+	ask={() => opened !== undefined && held() !== opened}
+	hold={() => task.busy}
+/>

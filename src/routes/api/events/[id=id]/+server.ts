@@ -3,7 +3,7 @@ import { database, objectStore, requireStaff, sessionHash } from '$lib/server/se
 import { readJson, ids, sealed, invalid, days, revision } from '$lib/server/validate';
 import { maxEventPhotos } from '$lib/events/limits';
 import { maxEventContentBytes } from '$lib/events/types';
-import { announce } from '$lib/server/push';
+import { announce, notifyLater } from '$lib/server/push';
 import type { RequestHandler } from './$types';
 export const PUT: RequestHandler = async (event) => {
 	const staff = await requireStaff(event),
@@ -21,7 +21,7 @@ export const PUT: RequestHandler = async (event) => {
 		days(b.days)
 	);
 	if (result.published)
-		await announce(event, [result.classroom], await sessionHash(event), 'photos');
+		notifyLater(event, announce(event, [result.classroom], await sessionHash(event), 'photos'));
 	return new Response(null, { status: 204 });
 };
 // Changing an event that's up: its words, its days, and which photos it holds. It doesn't notify anyone

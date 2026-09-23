@@ -57,6 +57,23 @@ export function visibleClassrooms(viewer: Identity): [string, string[]] {
 }
 
 /**
+ * The families someone sees, as a subquery and its parameters: a family only itself, a teacher or a group lead
+ * the families in her classrooms, and a head every family.
+ */
+export function visibleFamilies(viewer: Identity): [string, string[]] {
+	if (viewer.kind === 'family') return ['SELECT ?', [viewer.family]];
+	if (isHead(viewer)) return ['SELECT id FROM families', []];
+	const [classrooms, params] = visibleClassrooms(viewer);
+	return [`SELECT family_id FROM family_classrooms WHERE classroom_id IN (${classrooms})`, params];
+}
+
+/**
+ * Whether a staff member settles what others put up in the classrooms she holds: notices, events and meeting
+ * times. The head and a group lead do; a teacher changes only her own.
+ */
+export const managesOthers = (staff: Staff) => staff.role !== 'teacher';
+
+/**
  * Refuses classrooms a staff member can't put notices or photos up in: the ones she holds, or any for a head.
  * Each classroom comes once. A device that offers another has records from before a classroom was deleted or
  * its teacher moved, so it's told to load them again.

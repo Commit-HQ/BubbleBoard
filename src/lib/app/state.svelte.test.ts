@@ -4,13 +4,13 @@ vi.mock('$app/state', () => ({ page: { url: new URL('https://example.test/app') 
 vi.mock('$lib/device', () => ({
 	saveCard: async () => {},
 	forgetCard: async () => {},
-	hideNameCard: async () => {}
+	homeCards: ['notifications', 'device-name'],
+	hiddenHomeCards: async () => [],
+	keepHiddenHomeCards: async () => {}
 }));
 vi.mock('$lib/notifications', () => ({
 	forgetSubscription: async () => {},
-	notificationState: async () => 'off',
-	homeCardHidden: async () => false,
-	hideHomeCard: async () => {}
+	notificationState: async () => 'off'
 }));
 vi.mock('$lib/crypto', async (original) => ({
 	...(await original<object>()),

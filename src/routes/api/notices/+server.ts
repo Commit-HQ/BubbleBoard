@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { postNotice } from '$lib/server/notices';
-import { announce } from '$lib/server/push';
+import { announce, notifyLater } from '$lib/server/push';
 import { database, requireStaff, sessionHash } from '$lib/server/session';
 import { newNotice, readJson } from '$lib/server/validate';
 import type { RequestHandler } from './$types';
@@ -13,9 +13,7 @@ export const POST: RequestHandler = async (event) => {
 	const { board, posted } = await postNotice(database(event), staff, notice);
 	if (posted) {
 		const classrooms = notice.classrooms.map(({ classroom }) => classroom);
-		event.platform?.ctx.waitUntil(
-			announce(event, classrooms, await sessionHash(event)).catch(() => {})
-		);
+		notifyLater(event, announce(event, classrooms, await sessionHash(event)));
 	}
 	return json(board);
 };

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import shareImage from '$lib/assets/photos/share.jpg';
 	import ActionLink from '$lib/components/ActionLink.svelte';
 	import Bubble from '$lib/components/Bubble.svelte';
 	import Faq from '$lib/components/Faq.svelte';
@@ -8,7 +7,6 @@
 	import { replaceState } from '$app/navigation';
 	import { messages } from '$lib/i18n';
 	import { appPath, explorePath, exploreRoles, homePath, type ExploreRole } from '$lib/paths';
-	import { absoluteUrl } from '$lib/project';
 	import type { PageProps } from './$types';
 
 	// A walk through the app for parents or for teachers: one screen a step, in a kindergarten that's set up
@@ -85,15 +83,8 @@
 <svelte:head>
 	<title>BubbleBoard · {t.title}</title>
 	<meta name="description" content={t.description} />
-	<meta property="og:type" content="website" />
-	<meta property="og:site_name" content="BubbleBoard" />
 	<meta property="og:title" content="BubbleBoard · {t.title}" />
 	<meta property="og:description" content={t.description} />
-	<meta property="og:url" content={absoluteUrl(explorePath(data.locale, role))} />
-	<meta property="og:image" content={absoluteUrl(shareImage)} />
-	<meta property="og:image:width" content="1200" />
-	<meta property="og:image:height" content="630" />
-	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
 <div class="flex flex-col gap-10 pt-8 pb-20 lg:gap-14 lg:pt-12 lg:pb-28">
@@ -131,6 +122,9 @@
 			{#each steps as step, index (step.shot)}
 				{@const number = index + 1}
 				{@const last = number === steps.length}
+				{@const next = last
+					? { href: explorePath(data.locale, other), label: t.other[role] }
+					: { href: `#step-${number + 1}`, label: t.next }}
 				<li
 					id="step-{number}"
 					class="grid w-full shrink-0 snap-center scroll-mt-24 content-start gap-x-16 gap-y-8 rounded-4xl glass p-6 sm:p-10 lg:grid-cols-[auto_1fr] lg:content-center lg:items-center lg:px-16 lg:py-10"
@@ -177,17 +171,13 @@
 							step leads to the other walk. -->
 							<a
 								class="{round} bg-ink! text-white sm:hidden"
-								href={last ? explorePath(data.locale, other) : `#step-${number + 1}`}
-								aria-label={last ? t.other[role] : t.next}
+								href={next.href}
+								aria-label={next.label}
 							>
 								<Icon name="arrowRight" class="size-5" />
 							</a>
 							<span class="max-sm:hidden">
-								<ActionLink
-									href={last ? explorePath(data.locale, other) : `#step-${number + 1}`}
-									label={last ? t.other[role] : t.next}
-									icon="arrowRight"
-								/>
+								<ActionLink href={next.href} label={next.label} icon="arrowRight" />
 							</span>
 						</nav>
 					</div>

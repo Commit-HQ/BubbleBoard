@@ -6,7 +6,7 @@ import {
 	readMessages,
 	reply
 } from '$lib/server/messages';
-import { announceConversation } from '$lib/server/push';
+import { announceConversation, notifyLater } from '$lib/server/push';
 import { database, objectStore, requireIdentity, sessionHash } from '$lib/server/session';
 import { id, ids, readJson, sealed } from '$lib/server/validate';
 import { maxNoticeFiles } from '$lib/files';
@@ -31,9 +31,7 @@ export const POST: RequestHandler = async (event) => {
 		ids(body.files ?? [], maxNoticeFiles)
 	);
 	if (inserted)
-		event.platform?.ctx.waitUntil(
-			announceConversation(event, event.params.id, await sessionHash(event))
-		);
+		notifyLater(event, announceConversation(event, event.params.id, await sessionHash(event)));
 	return new Response(null, { status: 204 });
 };
 export const PUT: RequestHandler = async (event) => {

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
 	import type { StaffRole } from '$lib/api';
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import type { Teacher } from '$lib/kindergarten';
@@ -31,23 +30,29 @@
 	const t = $derived(messages[locale].app.teacher);
 	const roles = $derived(messages[locale].app.roles);
 	const task = new Task();
-	let chosen = $state(startingClassrooms());
-	let role = $state<StaffRole>(startingRole());
-	/** The catalog revision the form read her at, so saving fails as stale if another head changed her since. */
-	let revision = $state(untrack(() => app.catalog.revision));
-
-	/** The role the form starts with, read once, like the ticked classrooms below. */
-	function startingRole(): StaffRole {
-		return teacher?.role ?? 'teacher';
-	}
+	const roleOptions: StaffRole[] = ['teacher', 'lead', 'head'];
+	const hints = $derived<Record<StaffRole, string>>({
+		teacher: t.teacherHint,
+		lead: t.leadHint,
+		head: t.headHint
+	});
 
 	/**
-	 * The ticked classrooms the form starts with. The teacher page mounts a form for its one teacher, and
-	 * reading the teacher in here, once, tells Svelte that's intended.
+	 * What the form starts with: her role and ticked classrooms, and the catalog revision they were read at, so
+	 * saving fails as stale if another head changed her since. The teacher page mounts a form for its one
+	 * teacher, and reading her in here, once, tells Svelte that's intended.
 	 */
-	function startingClassrooms() {
-		return [...(teacher?.classrooms ?? [])];
+	function starting() {
+		return {
+			role: teacher?.role ?? 'teacher',
+			chosen: [...(teacher?.classrooms ?? [])],
+			revision: app.catalog.revision
+		};
 	}
+	const start = starting();
+	let chosen = $state(start.chosen);
+	let role = $state<StaffRole>(start.role);
+	let revision = $state(start.revision);
 
 	async function submit(event: SubmitEvent & { currentTarget: EventTarget & HTMLFormElement }) {
 		event.preventDefault();
@@ -96,27 +101,15 @@
 	{:else}
 		<div class="grid gap-2" role="radiogroup" aria-label={t.role}>
 			<span class="font-semibold">{t.role}</span>
-			<RadioCard
-				name="role"
-				label={roles.teacher}
-				hint={t.teacherHint}
-				checked={role === 'teacher'}
-				onchange={() => (role = 'teacher')}
-			/>
-			<RadioCard
-				name="role"
-				label={roles.lead}
-				hint={t.leadHint}
-				checked={role === 'lead'}
-				onchange={() => (role = 'lead')}
-			/>
-			<RadioCard
-				name="role"
-				label={roles.head}
-				hint={t.headHint}
-				checked={role === 'head'}
-				onchange={() => (role = 'head')}
-			/>
+			{#each roleOptions as option (option)}
+				<RadioCard
+					name="role"
+					label={roles[option]}
+					hint={hints[option]}
+					checked={role === option}
+					onchange={() => (role = option)}
+				/>
+			{/each}
 		</div>
 	{/if}
 	<!-- A head is in no classroom, so there's nothing to tick for her. -->

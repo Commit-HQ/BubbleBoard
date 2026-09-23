@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto, beforeNavigate } from '$app/navigation';
+	import { goto } from '$app/navigation';
 	import { onDestroy, onMount, tick, untrack } from 'svelte';
 	import { createId } from '$lib/crypto';
 	import { LocalFaceDetector } from '$lib/events/detector';
@@ -51,6 +51,7 @@
 	import FaceCanvas from './FaceCanvas.svelte';
 	import FaceNames from './FaceNames.svelte';
 	import FacePanel from './FacePanel.svelte';
+	import LeaveGuard from './LeaveGuard.svelte';
 	import { getApp, Task } from './state.svelte';
 	import { alert, button, field, filePicker, segment, surface } from './ui';
 
@@ -147,11 +148,9 @@
 	let enlarged = $state('');
 	/** The photo's heading, brought back to the top of the screen whenever another photo is opened. */
 	let heading = $state<HTMLElement>();
-	/** Where someone was going when asked whether to leave work this device hasn't kept. */
 	/** The photo opened large in the review, which sits above a grid that may be several screens long. */
 	let largeView = $state<HTMLElement>();
-	let leaving = $state<URL>();
-	let leaveAnyway = false;
+	let guard = $state<ReturnType<typeof LeaveGuard>>();
 	/** The card this device is connected with, which the kept event is tied to. A change is never kept. */
 	const credential = editing ? undefined : app.myCredential;
 	/** The unfinished event this device kept, while the teacher chooses whether to go on with it. */
@@ -237,15 +236,17 @@
 		}
 	});
 	// The photos already up stay open while they're being looked at here, as they do in the gallery, and each
-	// is composed on this device once, for its thumbnail and for the card that words it.
-	$effect(() => (event ? app.showEventPictures(event) : undefined));
-	$effect(() => {
+	// is composed on this device once, for its thumbnail and for the card that words it. The page mounts a new
+	// editor for each event, and a refresh hands over the same event as a new object, so this runs once, with
+	// the event as the steps started from.
+	onMount(() => {
 		if (!event) return;
-		const list = event.value.photos;
+		const shown = event;
+		const hide = app.showEventPictures(shown);
 		let cancelled = false;
 		void (async () => {
-			for (const photo of list) {
-				const picture = await app.eventPicture(event, photo.id).catch(() => undefined);
+			for (const photo of start.kept) {
+				const picture = await app.eventPicture(shown, photo.id).catch(() => undefined);
 				if (cancelled) return;
 				// One that wouldn't open is remembered as having none, so its card says so rather than waiting.
 				opened = { ...opened, [photo.id]: picture?.url ?? '' };
@@ -253,6 +254,7 @@
 		})();
 		return () => {
 			cancelled = true;
+			hide();
 		};
 	});
 	// The unfinished event, kept on the device as the teacher works and put back when the page opens again.
@@ -678,31 +680,10 @@
 				photos = [];
 				draft = undefined;
 				// Saved: what's left here is no longer worth a question on the way out.
-				leaveAnyway = true;
+				guard?.release();
 				await goto(appPath(locale));
 			})
 			.finally(() => (sending = false));
-	}
-	beforeNavigate((navigation) => {
-		// An event being sent stays until it's up; closing the tab still gets the browser's own question.
-		if (sending && !leaveAnyway) {
-			navigation.cancel();
-			return;
-		}
-		// Only work the device hasn't kept is worth a warning; a saved event waits here on the way back.
-		if ((!photos.length && !unsaved) || draftSaved || leaveAnyway) return;
-		navigation.cancel();
-		// Closing the tab or leaving the site gets the browser's own question instead.
-		if (!navigation.willUnload && navigation.to) leaving = navigation.to.url;
-	});
-	async function leave() {
-		if (!leaving) return;
-		leaveAnyway = true;
-		try {
-			await goto(leaving);
-		} finally {
-			leaveAnyway = false;
-		}
 	}
 	onDestroy(() => {
 		disposed = true;
@@ -760,10 +741,7 @@
 			accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
 			multiple
 			onchange={addPhotos}
-			disabled={!classroom ||
-				loading ||
-				!!detecting ||
-				photos.length + kept.length >= maxEventPhotos}
+			disabled={!classroom || loading || !!detecting || total >= maxEventPhotos}
 		/>
 	</label>
 {/snippet}
@@ -785,6 +763,18 @@
 	</div>
 {/snippet}
 
+{#snippet caption(value: string, onwrite: (words: string) => void)}
+	<label class={field.label}>
+		<span class={field.name}>{t.caption}</span>
+		<input
+			class={field.input}
+			maxlength={maxEventPhotoText}
+			{value}
+			placeholder={t.captionPlaceholder}
+			oninput={(event) => onwrite(event.currentTarget.value)}
+		/>
+	</label>
+{/snippet}
 {#snippet photoView(item: Photo, source: string, label: string)}
 	<!-- Inside a tile the button carries the name, so the picture itself is left out of the reading. -->
 	<svg
@@ -937,19 +927,9 @@
 							{opened[shown.id] === '' ? e.failed : e.loading}
 						</p>
 					{/if}
-					<label class={field.label}>
-						<span class={field.name}>{t.caption}</span>
-						<input
-							class={field.input}
-							maxlength={maxEventPhotoText}
-							value={shown.text ?? ''}
-							placeholder={t.captionPlaceholder}
-							oninput={(written) => {
-								const words = written.currentTarget.value;
-								kept = kept.map((k) => (k.id === shown!.id ? { ...k, text: words } : k));
-							}}
-						/>
-					</label>
+					{@render caption(shown.text ?? '', (words) => {
+						kept = kept.map((k) => (k.id === shown?.id ? { ...k, text: words } : k));
+					})}
 				</div>
 			{:else if photo && edit}
 				{@render ordering(photo.id, false)}
@@ -1061,19 +1041,7 @@
 
 				{#if overlap}<p class="rounded-2xl bg-apricot/20 p-3 text-sm">{t.overlap}</p>{/if}
 
-				<label class={field.label}>
-					<span class={field.name}>{t.caption}</span>
-					<input
-						class={field.input}
-						maxlength={maxEventPhotoText}
-						value={photo.text}
-						placeholder={t.captionPlaceholder}
-						oninput={(event) => {
-							const written = event.currentTarget.value;
-							update(photo!.id, (p) => ({ ...p, text: written }));
-						}}
-					/>
-				</label>
+				{@render caption(photo.text, (words) => update(photo!.id, (p) => ({ ...p, text: words })))}
 
 				<div class="flex flex-wrap items-center gap-3">
 					{#if edit.reviewed}
@@ -1254,17 +1222,17 @@
 			onclose={() => (takingOff = '')}
 		/>
 	{/if}
-
-	{#if leaving}
-		<ConfirmDialog
-			{locale}
-			title={t.leaveTitle}
-			copy={t.leaveCopy}
-			confirmLabel={t.leave}
-			cancelLabel={t.stay}
-			safe
-			onconfirm={leave}
-			onclose={() => (leaving = undefined)}
-		/>
-	{/if}
 {/if}
+
+<!-- An event being sent stays until it's up. Otherwise only work the device hasn't kept is worth a warning; a
+saved event waits here on the way back. -->
+<LeaveGuard
+	bind:this={guard}
+	{locale}
+	title={t.leaveTitle}
+	copy={t.leaveCopy}
+	leave={t.leave}
+	stay={t.stay}
+	ask={() => (photos.length > 0 || unsaved) && !draftSaved}
+	hold={() => sending}
+/>

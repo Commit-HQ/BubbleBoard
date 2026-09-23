@@ -59,16 +59,18 @@ import {
 } from '$lib/crypto';
 import {
 	forgetCard,
-	hideNameCard,
+	hiddenHomeCards,
+	homeCards,
+	keepHiddenHomeCards,
 	loadCard,
 	markStartCardUsed,
-	nameCardHidden,
 	openDevices,
 	saveCard,
 	sealDeviceName,
 	startCardUsed,
 	type DeviceCard,
-	type FamilyDevice
+	type FamilyDevice,
+	type HomeCard
 } from '$lib/device';
 import { CodedError, errorCode } from '$lib/errors';
 import { openFile, openPicture, saveFile, type NewFile, type NoticeFile } from '$lib/files';
@@ -116,8 +118,6 @@ import {
 } from '$lib/kindergarten';
 import {
 	forgetSubscription,
-	hideHomeCard,
-	homeCardHidden,
 	notificationState,
 	sendSubscription,
 	turnOff,
@@ -360,15 +360,17 @@ export class App {
 		if (snapshot.catalog !== this.catalog.revision) throw new ApiError(409, 'stale');
 		const children = this.catalog.children.filter((c) => c.classroom === classroom);
 		const shared = await sharing(children, snapshot.rows, (f) => this.messageKey(f));
-		const id = into?.id ?? createId();
-		const made = into ? undefined : await createContentKey();
-		const key = made?.key ?? into!.key;
-		const envelope = made
-			? await encryptData({ key: made.raw }, byId(this.myClassrooms, classroom).groupKey, {
-					purpose: 'event-key',
-					event: id
-				})
-			: undefined;
+		let id: string, key: CryptoKey, envelope: string | undefined;
+		if (into) ({ id, key } = into);
+		else {
+			id = createId();
+			const made = await createContentKey();
+			key = made.key;
+			envelope = await encryptData({ key: made.raw }, byId(this.myClassrooms, classroom).groupKey, {
+				purpose: 'event-key',
+				event: id
+			});
+		}
 		const files = [];
 		let total = 0;
 		for (const photo of photos) {
@@ -416,15 +418,7 @@ export class App {
 		days: number,
 		progress: (n: number) => void
 	) {
-		// Sealed before anything is sent: words too long for the manifest are refused here rather than after
-		// every photo has been uploaded. The name of whoever publishes goes inside, as a notice's does; the
-		// recovery card publishes without one.
-		const author = this.myName;
-		const content = await encryptData(author ? { ...value, author } : value, draft.key, {
-			purpose: 'event-content',
-			event: draft.id
-		});
-		if (envelopeSize(content)! > maxEventContentBytes) throw new CodedError('event-too-long');
+		const content = await this.#sealEvent(draft.id, draft.key, value, this.myName);
 		// Retry the same immutable draft after a lost response. A new consent revision requires a new preview.
 		await this.#signedIn(() =>
 			request('POST', '/api/events', {
@@ -434,15 +428,7 @@ export class App {
 				consent: draft.consent
 			})
 		);
-		for (const [index, file] of draft.files.entries()) {
-			await this.#signedIn(() =>
-				request('PUT', `/api/events/${draft.id}/files/${file.id}`, file.sealed)
-			).catch((cause) => {
-				if (!(cause instanceof ApiError && (cause.code === 'stored' || cause.code === 'stale')))
-					throw cause;
-			});
-			progress(index + 1);
-		}
+		await this.#uploadEventFiles(draft.id, draft.files, progress);
 		await this.#signedIn(() =>
 			request('PUT', `/api/events/${draft.id}`, {
 				content,
@@ -467,21 +453,8 @@ export class App {
 		added: EventDraft | undefined,
 		progress: (n: number) => void
 	) {
-		const author = event.value.author;
-		const content = await encryptData(author ? { ...value, author } : value, event.key, {
-			purpose: 'event-content',
-			event: event.id
-		});
-		if (envelopeSize(content)! > maxEventContentBytes) throw new CodedError('event-too-long');
-		for (const [index, file] of (added?.files ?? []).entries()) {
-			await this.#signedIn(() =>
-				request('PUT', `/api/events/${event.id}/files/${file.id}`, file.sealed)
-			).catch((cause) => {
-				if (!(cause instanceof ApiError && (cause.code === 'stored' || cause.code === 'stale')))
-					throw cause;
-			});
-			progress(index + 1);
-		}
+		const content = await this.#sealEvent(event.id, event.key, value, event.value.author);
+		await this.#uploadEventFiles(event.id, added?.files ?? [], progress);
 		await this.#signedIn(() =>
 			request('PATCH', `/api/events/${event.id}`, {
 				content,
@@ -492,6 +465,31 @@ export class App {
 			})
 		);
 		await this.loadEvents();
+	}
+	/**
+	 * Seals an event's words under its key before anything is sent, so words too long for the manifest are
+	 * refused here rather than after every photo has gone up. The name of whoever published it goes inside,
+	 * as a notice's does; the recovery card publishes without one.
+	 */
+	async #sealEvent(id: string, key: CryptoKey, value: EventContent, author: string | undefined) {
+		const content = await encryptData(author ? { ...value, author } : value, key, {
+			purpose: 'event-content',
+			event: id
+		});
+		if (envelopeSize(content)! > maxEventContentBytes) throw new CodedError('event-too-long');
+		return content;
+	}
+	/** Uploads an event's sealed photos. One stored already by an attempt whose answer was lost counts as sent. */
+	async #uploadEventFiles(id: string, files: EventDraft['files'], progress: (n: number) => void) {
+		for (const [index, file] of files.entries()) {
+			await this.#signedIn(() =>
+				request('PUT', `/api/events/${id}/files/${file.id}`, file.sealed)
+			).catch((cause) => {
+				if (!(cause instanceof ApiError && (cause.code === 'stored' || cause.code === 'stale')))
+					throw cause;
+			});
+			progress(index + 1);
+		}
 	}
 	/** One of an event's photos, composed for whoever holds this card, and kept while the event is open. */
 	eventPicture(event: OpenEvent, photo: string) {
@@ -513,7 +511,8 @@ export class App {
 
 	/**
 	 * Keeps the open event's photos while it's open, and lets go of them when it closes: what it gives back
-	 * closes them, so a gallery uses it as it is, `$effect(() => app.showEventPictures(event))`.
+	 * closes them. A refresh hands over the same event as a new object, so a page calls it once per event id,
+	 * not every time the object changes, or each refresh lets go of the photos and opens them again.
 	 */
 	showEventPictures(event: OpenEvent) {
 		this.#eventPictures = new Set(
@@ -840,7 +839,7 @@ export class App {
 				slots: times,
 				invites
 			};
-			await this.#send('POST', '/api/meetings', offer, async () => {});
+			await this.#send('POST', '/api/meetings', offer);
 		};
 		// Any change to children or teachers moves the revision on. A stale answer loads the catalog again, so
 		// the offer is made once more over the new one.
@@ -882,8 +881,8 @@ export class App {
 	installPrompt = $state.raw<InstallPrompt>();
 	/** Whether this device gets a notification for new notices. */
 	notifications = $state<NotificationState>('unsupported');
-	/** Whether Not now put away home's card that turns notifications on. */
-	notificationCardHidden = $state(true);
+	/** Home's cards Not now put away on this device. Each stays away until the device has said which. */
+	hiddenCards = $state.raw<readonly HomeCard[]>(homeCards);
 	/**
 	 * The classrooms a head chose not to hear about. She belongs to none, so she hears about every classroom
 	 * that isn't in here, a classroom added later included. Empty for anyone else.
@@ -895,8 +894,6 @@ export class App {
 	familyClassrooms = $state.raw<FamilyClassroom[]>([]);
 	/** The devices connected for a family device's family, this one among them, once they've loaded. */
 	devices = $state.raw<FamilyDevice[]>([]);
-	/** Whether Not now put away home's card that asks who uses this device. */
-	deviceNameCardHidden = $state(true);
 	/** The notices this device sees, the most recently announced first. */
 	board = $state.raw<Notice[]>([]);
 	/** How many notices didn't open on this device. */
@@ -1101,11 +1098,8 @@ export class App {
 			const card = this.#card;
 			if (!this.connected || !card) return;
 			try {
-				// The session is the one the app opened with, so its subscription isn't sent again, and the photo
-				// labels it brought up to date stay as they are.
 				await this.#open(await request<Access>('GET', '/api/session'), card, {
-					resend: false,
-					sync: false,
+					refresh: true,
 					version
 				});
 				if (version !== this.#connectionVersion) return;
@@ -1119,7 +1113,8 @@ export class App {
 		} while (this.#stale);
 	}
 
-	async #resume() {
+	/** Opens the app with the stored card, or, with `refresh`, loads it again over the session it opened with. */
+	async #resume(refresh = false) {
 		const version = this.#connectionVersion;
 		const card = this.#card;
 		if (!card) {
@@ -1127,7 +1122,7 @@ export class App {
 			return;
 		}
 		try {
-			await this.#open(await request<Access>('GET', '/api/session'), card, { version });
+			await this.#open(await request<Access>('GET', '/api/session'), card, { refresh, version });
 		} catch (cause) {
 			if (version !== this.#connectionVersion) return;
 			if (isDisconnection(cause)) await this.#disconnect('signed-out');
@@ -1135,10 +1130,15 @@ export class App {
 		}
 	}
 
+	/**
+	 * Shows what a session gives this device. A `refresh` is over the session the app opened with, so what
+	 * opening does once is left as it is: the push subscription isn't sent again, the photo labels opening
+	 * brought up to date stay, and a family's devices wait for Settings to be opened.
+	 */
 	async #open(
 		access: Access,
 		card: DeviceCard,
-		{ resend = true, sync = true, version = this.#connectionVersion } = {}
+		{ refresh = false, version = this.#connectionVersion } = {}
 	) {
 		if (version !== this.#connectionVersion) return;
 		if (this.#card?.credential !== card.credential) this.#clearMeetings();
@@ -1188,34 +1188,44 @@ export class App {
 		void this.loadEvents();
 		// Changes to children keep the photo labels up to date, so they're brought up to date once, as the app
 		// opens, rather than written again on every refresh.
-		if (sync && this.status === 'staff')
+		if (!refresh && this.status === 'staff')
 			for (const classroom of this.myClassrooms)
 				void this.syncPhotoChildren(classroom.id).catch(() => {});
 		void this.loadMessages();
 		void this.loadMeetings();
-		void this.#keepNotifications(resend);
-		if (this.status === 'family') void this.loadDevices().catch(() => {});
+		void this.#keepNotifications(!refresh);
+		if (!refresh) void this.#readHiddenCards();
+		if (!refresh && this.status === 'family') void this.loadDevices().catch(() => {});
 	}
 
 	/**
-	 * Reads whether notifications are on and whether their card on home was put away. With `resend`, it also
-	 * sends the subscription, which keeps it with the current session and renews one made with an earlier key.
+	 * Reads whether notifications are on. With `resend`, it also sends the subscription, which keeps it with
+	 * the current session and renews one made with an earlier key.
 	 */
 	async #keepNotifications(resend: boolean) {
 		const version = this.#connectionVersion;
-		const [state, hidden] = await Promise.all([
-			notificationState().catch(() => 'unsupported' as const),
-			homeCardHidden().catch(() => false)
-		]);
+		const state = await notificationState().catch(() => 'unsupported' as const);
 		if (version !== this.#connectionVersion) return;
 		this.notifications = state;
-		this.notificationCardHidden = hidden;
 		if (resend && state === 'on') {
 			const sent = await sendSubscription().catch(() => state);
 			// Unless notifications were turned on or off in the meantime.
 			if (version === this.#connectionVersion && this.notifications === state)
 				this.notifications = sent;
 		}
+	}
+
+	/** Reads which of home's cards this device put away. Without storage, every one shows. */
+	async #readHiddenCards() {
+		const version = this.#connectionVersion;
+		const hidden = await hiddenHomeCards().catch(() => []);
+		if (version === this.#connectionVersion) this.hiddenCards = hidden;
+	}
+
+	/** Puts one of home's cards away on this device. Without storage, it comes back next time. */
+	hideCard(card: HomeCard) {
+		this.hiddenCards = [...this.hiddenCards, card];
+		keepHiddenHomeCards(this.hiddenCards).catch(() => {});
 	}
 
 	async #load(records: Kindergarten, teacher = this.me?.id) {
@@ -1303,14 +1313,14 @@ export class App {
 		method: 'POST' | 'PUT' | 'DELETE',
 		path: string,
 		body: unknown,
-		open: (response: T) => Promise<void>,
+		open?: (response: T) => Promise<void>,
 		headers?: Record<string, string>
 	) {
 		const version = this.#connectionVersion;
 		try {
 			await this.#signedIn(async () => {
 				const response = await request<T>(method, path, body, headers);
-				if (version === this.#connectionVersion) await open(response);
+				if (version === this.#connectionVersion) await open?.(response);
 			});
 		} catch (cause) {
 			if (version !== this.#connectionVersion) throw cause;
@@ -1319,7 +1329,7 @@ export class App {
 				cause instanceof ApiError &&
 				['stale', 'not-found', 'forbidden'].includes(cause.code)
 			) {
-				await this.#resume();
+				await this.#resume(true);
 			}
 			throw cause;
 		}
@@ -1367,8 +1377,7 @@ export class App {
 		this.mutedClassrooms = [];
 		this.familyClassrooms = [];
 		this.devices = [];
-		this.deviceNameCardHidden = true;
-		this.notificationCardHidden = true;
+		this.hiddenCards = homeCards;
 		this.board = [];
 		this.unreadableNotices = 0;
 		this.photos = [];
@@ -1378,15 +1387,12 @@ export class App {
 		this.notice = notice;
 		this.status = 'disconnected';
 		// The unfinished event goes with the card: the next person to connect here must never see it.
-		// Whoever connects next is asked who uses the device, whatever was answered before.
+		// Whoever connects next sees home's cards again, and is asked who uses the device, whatever was
+		// answered before.
 		await Promise.all(
-			[
-				forgetCard(),
-				forgetSubscription(),
-				clearDraft(),
-				hideNameCard(false),
-				hideHomeCard(false)
-			].map((done) => done.catch(() => {}))
+			[forgetCard(), forgetSubscription(), clearDraft(), keepHiddenHomeCards([])].map((done) =>
+				done.catch(() => {})
+			)
 		);
 	}
 
@@ -1466,16 +1472,13 @@ export class App {
 		return { secret: card.secret, until };
 	}
 
-	/** Loads the devices connected for this device's family, and whether home still asks who uses this one. */
+	/** Loads the devices connected for this device's family. */
 	async loadDevices() {
 		const version = this.#connectionVersion;
-		const [{ devices }, hidden] = await Promise.all([
-			this.#signedIn(() => request<{ devices: Device[] }>('GET', '/api/devices')),
-			nameCardHidden().catch(() => false)
-		]);
-		if (version !== this.#connectionVersion) return;
-		this.deviceNameCardHidden = hidden;
-		await this.#showDevices(devices);
+		const { devices } = await this.#signedIn(() =>
+			request<{ devices: Device[] }>('GET', '/api/devices')
+		);
+		if (version === this.#connectionVersion) await this.#showDevices(devices);
 	}
 
 	async #showDevices(records: Device[]) {
@@ -1503,13 +1506,6 @@ export class App {
 		await this.#showDevices(devices);
 	}
 
-	/** Puts away home's card that asks who uses this device. Settings keep the name. */
-	hideDeviceNameCard() {
-		this.deviceNameCardHidden = true;
-		// Without storage, the card comes back next time.
-		hideNameCard().catch(() => {});
-	}
-
 	/** Turns notifications on, from a tap: the permission request can't wait for anything before it. */
 	async turnOnNotifications(locale: Locale) {
 		this.notifications = await this.#signedIn(() => turnOn(locale));
@@ -1521,21 +1517,12 @@ export class App {
 	}
 
 	/**
-	 * Says which classrooms a head wants to hear about. The server keeps the others, so a classroom added
-	 * afterwards notifies her until she takes it off the list.
+	 * Says which classrooms a head hears nothing from, so a classroom added afterwards notifies her until she
+	 * mutes it too.
 	 */
-	async setNotifiedClassrooms(classrooms: string[]) {
-		await this.#signedIn(() => request('PUT', '/api/push/classrooms', { classrooms }));
-		this.mutedClassrooms = this.catalog.classrooms
-			.map(({ id }) => id)
-			.filter((id) => !classrooms.includes(id));
-	}
-
-	/** Puts away home's card that turns notifications on, on this device. Settings keep the switch. */
-	hideNotificationCard() {
-		this.notificationCardHidden = true;
-		// Without storage, the card comes back next time.
-		hideHomeCard().catch(() => {});
+	async muteClassrooms(muted: string[]) {
+		await this.#signedIn(() => request('PUT', '/api/push/classrooms', { muted }));
+		this.mutedClassrooms = muted;
 	}
 
 	/** Stores the first setup and connects this device with the head's card. */
@@ -1568,13 +1555,12 @@ export class App {
 		return this.#change('DELETE', `/api/classrooms/${id}`);
 	}
 
-	/** Returns the new teacher's card secret, to print. A head runs every classroom, so she's given none. */
+	/** Returns the new teacher's card secret, to print. */
 	async addTeacher({ name, role, classrooms }: TeacherValues) {
 		const id = createId();
 		const card = await staffCard(this.#staff);
 		const profile = await teacherProfile(this.#staff.staffKey, id, name);
-		const held = role === 'head' ? [] : classrooms;
-		const teacher = { id, role, classrooms: held, profile, credential: card.credential };
+		const teacher = { id, role, classrooms, profile, credential: card.credential };
 		await this.#change('POST', '/api/teachers', teacher);
 		return card.secret;
 	}
@@ -1585,13 +1571,7 @@ export class App {
 	 */
 	async changeTeacher(id: string, { name, role, classrooms, revision }: TeacherValues) {
 		const profile = await teacherProfile(this.#staff.staffKey, id, name);
-		const held = role === 'head' ? [] : classrooms;
-		await this.#change('PUT', `/api/teachers/${id}`, {
-			revision,
-			role,
-			classrooms: held,
-			profile
-		});
+		await this.#change('PUT', `/api/teachers/${id}`, { revision, role, classrooms, profile });
 	}
 
 	removeTeacher(id: string) {
@@ -1754,14 +1734,9 @@ export class App {
 	async replaceFamilyCards(families: Family[]) {
 		const { staffKey } = this.#staff;
 		const cards = await Promise.all(families.map((family) => familyCard(staffKey, family)));
-		await this.#send(
-			'POST',
-			'/api/families/cards',
-			{
-				cards: cards.map(({ credential }, index) => ({ family: families[index].id, credential }))
-			},
-			async () => {}
-		);
+		await this.#send('POST', '/api/families/cards', {
+			cards: cards.map(({ credential }, index) => ({ family: families[index].id, credential }))
+		});
 		return cards.map(({ secret }) => secret);
 	}
 

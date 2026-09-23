@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { inbox, startConversation } from '$lib/server/messages';
-import { announceConversation } from '$lib/server/push';
+import { announceConversation, notifyLater } from '$lib/server/push';
 import { database, requireIdentity, sessionHash } from '$lib/server/session';
 import { id, ids, readJson, sealed } from '$lib/server/validate';
 import { maxNoticeFiles } from '$lib/files';
@@ -20,7 +20,6 @@ export const POST: RequestHandler = async (event) => {
 		files: ids(body.files ?? [], maxNoticeFiles)
 	};
 	const inserted = await startConversation(database(event), who, value);
-	if (inserted)
-		event.platform?.ctx.waitUntil(announceConversation(event, value.id, await sessionHash(event)));
+	if (inserted) notifyLater(event, announceConversation(event, value.id, await sessionHash(event)));
 	return json({ id: value.id });
 };

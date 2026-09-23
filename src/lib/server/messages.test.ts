@@ -467,15 +467,9 @@ describe('changing one message', () => {
 		await expect(
 			editMessage(f.db, f.parent, first.id, first.message, 'sealed once more', monday)
 		).rejects.toMatchObject({ status: 409, body: { message: 'message-seen' } });
-		// Each side's inbox says how far the other has read, which is what tells a family this.
+		// The family's inbox says how far teachers have read, which is what tells it this.
 		const family = (await inbox(f.db, f.parent, monday)).conversations[0];
 		expect(family.seenSequence).toBe(later.at(-1)!.sequence);
-		const teacher = (await inbox(f.db, f.staff, monday)).conversations[0];
-		expect(teacher.seenSequence).toBe(0);
-		await markRead(f.db, f.parent, first.id, later.at(-1)!.sequence);
-		expect((await inbox(f.db, f.staff, monday)).conversations[0].seenSequence).toBe(
-			later.at(-1)!.sequence
-		);
 	});
 	it('deletes a teacher’s own message as a placeholder, with its files, and never a family’s', async () => {
 		const f = await fixture();

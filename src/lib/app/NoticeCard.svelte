@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
-	import { errorMessage, formatDateTime, listNames, messages, type Locale } from '$lib/i18n';
+	import { byline, errorMessage, listNames, messages, type Locale } from '$lib/i18n';
 	import { namesOf } from '$lib/kindergarten';
 	import type { Notice } from '$lib/notices';
 	import { appPath } from '$lib/paths';
@@ -20,13 +20,7 @@
 	const task = new Task();
 	/** Who put the notice up and when, and whether it was edited since. */
 	const details = $derived(
-		[
-			notice.author,
-			formatDateTime(locale, notice.announcedAt),
-			notice.editedAt ? t.edited : undefined
-		]
-			.filter(Boolean)
-			.join(' · ')
+		byline(locale, notice.author, notice.announcedAt, notice.editedAt ? t.edited : undefined)
 	);
 	const unseen = $derived(app.status === 'family' && !app.isSeen(notice));
 	/** On a staff device, the families the notice is for, and those of them that marked it as seen. */

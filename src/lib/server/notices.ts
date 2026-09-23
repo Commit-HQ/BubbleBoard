@@ -11,7 +11,13 @@ import type {
 	VoteRecord
 } from '$lib/api';
 import { day } from '$lib/notices';
-import { checkClassrooms, isHead, transaction, visibleClassrooms } from './database';
+import {
+	checkClassrooms,
+	managesOthers,
+	transaction,
+	visibleClassrooms,
+	visibleFamilies
+} from './database';
 import { deleteMarked, getObject, putObject, type ObjectStore } from './storage';
 
 // The board: notices as envelopes, with the classrooms they're for (docs/access-format.md). The server
@@ -23,20 +29,6 @@ import { deleteMarked, getObject, putObject, type ObjectStore } from './storage'
 // too when its poll shows the counts. A notice names the files it carries: their encrypted bytes are
 // uploaded before it's saved, and deleted once it no longer names them. Reads leave out notices past their days, which the daily cleanup
 // deletes with their files (cleanup.ts).
-
-/**
- * The families whose marks and answers on notices someone sees, as a query and its parameters: a family
- * only its own, a teacher or a lead the families in her classrooms, and the head every family.
- */
-function visibleFamilies(viewer: Identity): [string, string[]] {
-	if (viewer.kind === 'family') return ['SELECT ?', [viewer.family]];
-	if (isHead(viewer)) return ['SELECT id FROM families', []];
-	return [
-		`SELECT family_id FROM family_classrooms WHERE classroom_id IN
-		(SELECT classroom_id FROM teacher_classrooms WHERE teacher_id = ?)`,
-		[viewer.teacher]
-	];
-}
 
 /**
  * The notices someone sees that are still up, the most recently announced first. Each comes once, with its
@@ -170,20 +162,17 @@ export async function postNotice(db: D1Database, staff: Staff, notice: NewNotice
  * leaves it to its author or the head.
  */
 async function changeable(db: D1Database, staff: Staff, id: string) {
+	const [classrooms, params] = visibleClassrooms(staff);
 	const notice = await db
 		.prepare(
 			`SELECT teacher_id AS teacher, posted_at AS postedAt, NOT EXISTS (SELECT 1 FROM notice_classrooms
-			WHERE notice_id = notices.id AND classroom_id NOT IN
-			(SELECT classroom_id FROM teacher_classrooms WHERE teacher_id = ?3)) AS onlyHers
-			FROM notices WHERE id = ?1 AND expires_at > ?2`
+			WHERE notice_id = notices.id AND classroom_id NOT IN (${classrooms})) AS onlyHers
+			FROM notices WHERE id = ? AND expires_at > ?`
 		)
-		.bind(id, Date.now(), staff.teacher)
+		.bind(...params, id, Date.now())
 		.first<{ teacher: string | null; postedAt: number; onlyHers: number }>();
 	if (!notice) error(404, 'not-found');
-	const own =
-		isHead(staff) ||
-		notice.teacher === staff.teacher ||
-		(staff.role === 'lead' && notice.onlyHers === 1);
+	const own = notice.teacher === staff.teacher || (managesOthers(staff) && notice.onlyHers === 1);
 	if (!own) error(403, 'forbidden');
 	return notice;
 }

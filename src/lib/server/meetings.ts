@@ -7,7 +7,7 @@ import {
 	type NewMeetingOffer
 } from '$lib/meetings';
 import { isId } from '$lib/crypto';
-import { checkClassrooms, transaction, visibleClassrooms } from './database';
+import { checkClassrooms, managesOthers, transaction, visibleClassrooms } from './database';
 import { fields, id, invalid, list, revision, sealed } from './validate';
 
 /** A time offered: it must be ahead, within the year, and long enough to meet in but not a whole afternoon. */
@@ -154,7 +154,7 @@ export async function changeMeeting(
 		values = [body.child, id, body.version, now, slot.classroom, body.child, who.family];
 	} else {
 		// The head and the classroom's lead settle any teacher's times there; a teacher only her own.
-		if (who.kind === 'staff' && who.role === 'teacher' && slot.teacher !== who.teacher)
+		if (who.kind === 'staff' && !managesOthers(who) && slot.teacher !== who.teacher)
 			error(403, 'forbidden');
 		if (body.action === 'remove') {
 			if (who.kind !== 'staff') error(403, 'forbidden');
@@ -227,7 +227,7 @@ export async function removeMeetingDay(
 		)
 		.bind(
 			body.classroom,
-			who.role === 'teacher' ? 0 : 1,
+			Number(managesOthers(who)),
 			who.teacher,
 			start,
 			end,

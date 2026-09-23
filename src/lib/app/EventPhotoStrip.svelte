@@ -1,15 +1,13 @@
 <script module lang="ts">
 	import type { History } from '$lib/events/editor';
-	/** One photo of the gallery as the strip shows it, which the editor puts together in its order. */
-	export type Thumb = {
-		id: string;
-		/** The photo as this device composed it, or nothing while one already up is still opening. */
-		url?: string;
-		/** A photo already up: nothing about it can be reviewed, so it shows a lock instead. */
-		published?: boolean;
-		history?: History;
-		detection?: string;
-	};
+	/**
+	 * One photo of the gallery as the strip shows it, which the editor puts together in its order: one being
+	 * prepared now, with what's marked on it, or one already up. Nothing about that one can be reviewed, so it
+	 * shows a lock instead, and it has no picture while it's still opening.
+	 */
+	export type Thumb =
+		| { id: string; url: string; published?: false; history: History; detection: string }
+		| { id: string; url?: string; published: true };
 </script>
 
 <script lang="ts">
@@ -62,14 +60,14 @@
 	let edge = 0,
 		sliding: number | undefined;
 
-	function waiting(item: Thumb) {
-		return item.history?.present.reviewed ? 0 : unresolved(item.history!.present);
+	function waiting({ history }: { history: History }) {
+		return history.present.reviewed ? 0 : unresolved(history.present);
 	}
 	function status(item: Thumb) {
 		if (item.published) return t.published;
 		if (item.detection === 'pending') return t.detecting;
-		if (item.history!.present.reviewed) return t.reviewed;
-		const left = unresolved(item.history!.present);
+		if (item.history.present.reviewed) return t.reviewed;
+		const left = unresolved(item.history.present);
 		return left ? t.remaining(left) : t.reviewNeeded;
 	}
 	/** Which place in the row the pointer is over: the first thumb whose middle it hasn't passed. */
@@ -195,7 +193,7 @@
 						<Icon name="lock" class="size-3.5" />
 					{:else if item.detection === 'pending'}
 						<span class="size-2 rounded-full bg-white/70"></span>
-					{:else if item.history!.present.reviewed}
+					{:else if item.history.present.reviewed}
 						<Icon name="check" class="size-3.5" />
 					{:else if waiting(item)}
 						<span class="text-apricot">{waiting(item)}</span>

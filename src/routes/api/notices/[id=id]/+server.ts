@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { changeNotice, deleteNotice } from '$lib/server/notices';
-import { announce } from '$lib/server/push';
+import { announce, notifyLater } from '$lib/server/push';
 import { database, objectStore, requireStaff, sessionHash } from '$lib/server/session';
 import { noticeChange, readJson } from '$lib/server/validate';
 import type { RequestHandler } from './$types';
@@ -16,9 +16,7 @@ export const PUT: RequestHandler = async (event) => {
 	const board = await changeNotice(database(event), bucket, staff, event.params.id, change);
 	if (change.announce) {
 		const classrooms = change.classrooms.map(({ classroom }) => classroom);
-		event.platform?.ctx.waitUntil(
-			announce(event, classrooms, await sessionHash(event)).catch(() => {})
-		);
+		notifyLater(event, announce(event, classrooms, await sessionHash(event)));
 	}
 	return json(board);
 };

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import favicon from '$lib/assets/favicon.svg';
+	import shareImage from '$lib/assets/photos/share.jpg';
 	import BuildLabel from '$lib/components/BuildLabel.svelte';
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
 	import LanguageSwitch from '$lib/components/LanguageSwitch.svelte';
@@ -39,6 +40,20 @@
 		hreflang="x-default"
 		href={absoluteUrl(localizedPath(page.url.pathname, defaultLocale))}
 	/>
+
+	<!-- Link previews in messaging apps and social networks. Each page adds its own title and description. -->
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content="BubbleBoard" />
+	<meta property="og:url" content={absoluteUrl(page.url.pathname)} />
+	<meta property="og:locale" content={t.ogLocale} />
+	{#each locales.filter((locale) => locale !== data.locale) as locale (locale)}
+		<meta property="og:locale:alternate" content={messages[locale].ogLocale} />
+	{/each}
+	<meta property="og:image" content={absoluteUrl(shareImage)} />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:image:alt" content={t.hero.photoAlt} />
+	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
 <a

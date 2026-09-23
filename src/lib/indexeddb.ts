@@ -1,6 +1,6 @@
-// IndexedDB for what a device keeps: its card and whether the Home Screen app used the card it opens with
-// (device.ts), and its notification settings (notifications.ts), each in a database of its own with one
-// object store. Browser-only.
+// IndexedDB for what a device keeps: its card, whether the Home Screen app used the card it opens with, and
+// the home cards put away (device.ts), and its notification settings (notifications.ts), each in a database
+// of its own with one object store. Browser-only.
 
 /** Transactions on a database's one store, which the first use creates. Each returns what `use` read. */
 export function objectStore(database: string, name: string, options?: IDBObjectStoreParameters) {

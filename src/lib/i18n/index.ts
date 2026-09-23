@@ -49,6 +49,14 @@ export function formatDateTime(locale: Locale, time: number) {
 	return messages[locale].app.dateTime(day, month, date.getFullYear(), clock);
 }
 
+/**
+ * Who put something up and when, and the word saying it was changed since when it was, as the byline of a
+ * notice's or an event's card.
+ */
+export function byline(locale: Locale, author: string | undefined, time: number, edited?: string) {
+	return [author, formatDateTime(locale, time), edited].filter(Boolean).join(' · ');
+}
+
 /** A day on its own, such as an event's date, from its `YYYY-MM-DD` form (`app.date`). */
 export function formatDay(locale: Locale, iso: string) {
 	// Read as local time: `new Date('2026-09-20')` is UTC midnight, which is the day before in the west.

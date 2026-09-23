@@ -5,10 +5,10 @@
 	import { thumbnail } from '$lib/events/images';
 	import type { OpenEvent } from '$lib/events/types';
 	import { savePicture, savePictures } from '$lib/files';
-	import { errorMessage, formatDateTime, formatDay, messages, type Locale } from '$lib/i18n';
+	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
-	import ConfirmDialog from './ConfirmDialog.svelte';
-	import NoticeBody from './NoticeBody.svelte';
+	import EventActions from './EventActions.svelte';
+	import EventHeading from './EventHeading.svelte';
 	import PictureViewer from './PictureViewer.svelte';
 	import { getApp, Task, type Picture } from './state.svelte';
 	import { alert, button, surface } from './ui';
@@ -38,7 +38,6 @@
 	let position = $state(-1);
 	let onlyMine = $state(false);
 	let prepared = $state(0);
-	let confirming = $state(false);
 	/** Wakes the loop below when a photo that wouldn't open is asked for again; set while it's running. */
 	let again: (() => void) | undefined;
 
@@ -131,30 +130,11 @@
 	const until = $derived(
 		new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long' }).format(event.expiresAt)
 	);
-	/** Who put the event up and when, and whether it was changed since, as a notice's card says it. */
-	const details = $derived(
-		[
-			event.value.author,
-			formatDateTime(locale, event.postedAt),
-			event.editedAt ? t.edited : undefined
-		]
-			.filter(Boolean)
-			.join(' · ')
-	);
 </script>
 
 <div class="grid gap-5">
 	<div class="{surface} grid gap-3">
-		<header
-			class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm text-muted"
-		>
-			<p>{t.title} · {formatDay(locale, event.value.date)}</p>
-			<p>{details}</p>
-		</header>
-		<h2 class="text-3xl">{event.value.title}</h2>
-		{#if event.value.description.content.length}
-			<NoticeBody blocks={event.value.description.content} />
-		{/if}
+		<EventHeading {locale} {event} />
 	</div>
 
 	{#if tooOld}
@@ -227,12 +207,7 @@
 			<Icon name="download" class="size-4" />{photos.length > 1 ? t.downloadAll : t.download}
 		</button>
 		{#if app.canChangeEvent(event)}
-			<a class={button.quiet} href={appPath(locale, 'event/edit', { id: event.id })}>
-				<Icon name="pencil" class="size-4" />{t.edit}
-			</a>
-			<button type="button" class={button.danger} onclick={() => (confirming = true)}>
-				<Icon name="trash" class="size-4" />{t.remove}
-			</button>
+			<EventActions {locale} {event} {onremoved} />
 		{/if}
 	</div>
 
@@ -256,21 +231,5 @@
 		caption={photos[at].text}
 		gallery={{ index: position, count: shown.length, onmove: move }}
 		onclose={() => (position = -1)}
-	/>
-{/if}
-
-{#if confirming}
-	<ConfirmDialog
-		{locale}
-		title={t.remove}
-		copy={t.removeHint}
-		confirmLabel={t.remove}
-		danger
-		onconfirm={async () => {
-			await app.deleteEvent(event);
-			confirming = false;
-			onremoved();
-		}}
-		onclose={() => (confirming = false)}
 	/>
 {/if}

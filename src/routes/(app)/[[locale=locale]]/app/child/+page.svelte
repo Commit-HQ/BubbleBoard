@@ -10,7 +10,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import IconTile from '$lib/components/IconTile.svelte';
 	import { errorMessage, listNames, messages } from '$lib/i18n';
-	import { byId, namesOf, type Child, type Family } from '$lib/kindergarten';
+	import { byId, namesOf, reachesElsewhere, type Child, type Family } from '$lib/kindergarten';
 	import { appPath } from '$lib/paths';
 	import type { PageProps } from './$types';
 
@@ -65,13 +65,6 @@
 			sharingSaved = true;
 		});
 		if (sharingTask.error) sharing = undefined;
-	}
-
-	/** Whether the family's QR code also opens a classroom this device doesn't see. */
-	function reachesElsewhere(family: Family) {
-		return family.classrooms.some(
-			(classroom) => !app.catalog.classrooms.some((candidate) => candidate.id === classroom)
-		);
 	}
 
 	/** The family's other children that this device can see. */
@@ -193,7 +186,7 @@
 									{/if}
 									<!-- The QR code also opens a classroom this device doesn't see, so replacing or
 									removing it reaches further than this page shows. -->
-									{#if reachesElsewhere(family)}
+									{#if reachesElsewhere(app.catalog, family)}
 										<p class="text-sm text-muted">{t.child.alsoElsewhere}</p>
 									{/if}
 								</div>
