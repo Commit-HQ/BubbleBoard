@@ -601,7 +601,6 @@ export const hr = {
 			undo: 'Poništi',
 			redo: 'Vrati poništeno',
 			zoom: 'Povećanje',
-			assigned: (name: string) => `Označeno: ${name}`,
 			reviewed: 'Pregledano',
 			review: 'Pregledano, sljedeća fotografija',
 			nextPhoto: 'Sljedeća fotografija',

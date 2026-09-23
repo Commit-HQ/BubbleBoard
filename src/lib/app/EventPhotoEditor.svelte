@@ -457,7 +457,7 @@
 		if (!photo || !selected || selected.fixed) return;
 		setHistory(assign(photo.history, selected.id, child));
 		original = false;
-		feedback = child ? t.assigned(nameOf(child)) : '';
+		feedback = '';
 	}
 	function setInvisible(invisible: boolean) {
 		if (!photo || !selected || selected.fixed) return;

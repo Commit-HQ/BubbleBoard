@@ -622,7 +622,6 @@ export const en = {
 			undo: 'Undo',
 			redo: 'Redo',
 			zoom: 'Zoom',
-			assigned: (name: string) => `Named: ${name}`,
 			reviewed: 'Reviewed',
 			review: 'Reviewed, next photo',
 			nextPhoto: 'Next photo',

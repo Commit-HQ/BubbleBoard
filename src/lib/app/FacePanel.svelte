@@ -40,12 +40,14 @@
 	let search = $state('');
 	// A long list gets a search box; a classroom of a dozen names doesn't need one.
 	const searchable = $derived(children.length > 8);
+	// Alphabetical, in the language the app is in, so a name is found where the eye expects it.
 	const shown = $derived(
-		searchable && search
+		(searchable && search
 			? children.filter((child) =>
 					child.name.toLocaleLowerCase(locale).includes(search.toLocaleLowerCase(locale))
 				)
-			: children
+			: [...children]
+		).sort((a, b) => a.name.localeCompare(b.name, locale))
 	);
 	const named = $derived(children.find((child) => child.id === selected?.child)?.name);
 	const number = $derived(regions.findIndex((region) => region.id === selected?.id) + 1);
@@ -55,14 +57,13 @@
 			regions.filter((region) => region.id !== selected?.id && region.child).map((r) => r.child)
 		)
 	);
-	// Children the teacher has not put in this photo yet come first, and the ones they have already named drop
-	// to the end, each group in the classroom's own order. This follows what the teacher has done, never
-	// anything read from the face itself: a face never suggests who a child is.
-	const ordered = $derived([
-		...shown.filter((child) => !elsewhere.has(child.id)),
-		...shown.filter((child) => elsewhere.has(child.id))
-	]);
-	// A new face starts with an empty search, so the whole classroom is there again. Moving or restyling the same cover leaves what was typed alone.
+	// Children the teacher has not put in this photo yet come first, and the ones they have already named
+	// drop to a row of their own under them, each group in alphabetical order. This follows what the teacher
+	// has done, never anything read from the face itself: a face never suggests who a child is.
+	const waiting = $derived(shown.filter((child) => !elsewhere.has(child.id)));
+	const already = $derived(shown.filter((child) => elsewhere.has(child.id)));
+	// A new face starts with an empty search, so the whole classroom is there again. Moving or restyling the
+	// same cover leaves what was typed alone.
 	let searched = untrack(() => selected?.id);
 	$effect(() => {
 		if (selected?.id !== searched) {
@@ -71,6 +72,20 @@
 		}
 	});
 </script>
+
+{#snippet pick(child: { id: string; name: string })}
+	<button
+		type="button"
+		class="{button.chip} gap-1.5"
+		aria-pressed={selected?.child === child.id}
+		onclick={() => onassign(child.id)}
+	>
+		{child.name}
+		{#if elsewhere.has(child.id)}
+			<Icon name="check" class="size-3.5 opacity-60" /><span class="sr-only">— {t.already}</span>
+		{/if}
+	</button>
+{/snippet}
 
 {#snippet option(
 	pressed: boolean,
@@ -137,22 +152,16 @@
 			</label>
 		{/if}
 
-		<div class="flex max-h-56 flex-wrap gap-2 overflow-y-auto" role="group" aria-label={t.who}>
-			{#each ordered as child (child.id)}
-				<button
-					type="button"
-					class="{button.chip} gap-1.5"
-					aria-pressed={selected.child === child.id}
-					onclick={() => onassign(child.id)}
-				>
-					{child.name}
-					{#if elsewhere.has(child.id)}
-						<Icon name="check" class="size-3.5 opacity-60" /><span class="sr-only"
-							>— {t.already}</span
-						>
-					{/if}
-				</button>
+		<div class="flex flex-wrap gap-2" role="group" aria-label={t.who}>
+			{#each waiting as child (child.id)}
+				{@render pick(child)}
 			{/each}
+			{#if already.length}
+				<p class="mt-1 basis-full text-sm font-semibold text-muted">{t.already}</p>
+				{#each already as child (child.id)}
+					{@render pick(child)}
+				{/each}
+			{/if}
 			{#if !shown.length}<p class="text-muted">{t.empty}</p>{/if}
 		</div>
 
