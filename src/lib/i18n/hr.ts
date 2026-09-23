@@ -982,7 +982,7 @@ export const hr = {
 			copyLink: 'Kopiraj poveznicu',
 			copied: 'Poveznica je kopirana.',
 			shareText:
-				'Priključite se BubbleBoardu našeg vrtića. Otvorite poveznicu u Safariju ili Chromeu; vrijedi 24 sata.',
+				'Priključite se BubbleBoardu našeg vrtića. Ova poveznica vrijedi 24 sata.',
 			connectAgain:
 				'Ovaj je uređaj povezan prije nego što je mogao dodavati druge. Da biste s njega dodavali uređaje, odjavite ga pa ga ponovno povežite obiteljskim QR kodom. Ako obiteljski QR kod više nemate, nemojte se odjavljivati, nego najprije zamolite vrtić za novi.'
 		},
