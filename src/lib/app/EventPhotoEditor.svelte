@@ -43,7 +43,7 @@
 	import type { EventDraft } from '$lib/events/publishing';
 	import { nextSticker, type Sticker } from '$lib/events/stickers';
 	import { appPath } from '$lib/paths';
-	import { errorCode } from '$lib/errors';
+	import { CodedError, errorCode } from '$lib/errors';
 	import Icon from '$lib/components/Icon.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import EventDetails from './EventDetails.svelte';
@@ -625,6 +625,14 @@
 			step = 'review';
 			return;
 		}
+		// A change keeps its event's ID, so a photo prepared again takes a new ID of its own. A save refused
+		// after its photos went up leaves them stored, and the same ID would publish that earlier version.
+		if (editing) {
+			const renamed = new Map(photos.map((p) => [p.id, createId()]));
+			photos = photos.map((p) => ({ ...p, id: renamed.get(p.id)! }));
+			order = order.map((id) => renamed.get(id) ?? id);
+			current = renamed.get(current) ?? current;
+		}
 		return task.run(async () => {
 			const prepared = await app.prepareEvent(
 				classroom,
@@ -633,7 +641,7 @@
 				event
 			);
 			if (disposed) return;
-			if (!allReviewed) throw new Error('stale');
+			if (!allReviewed) throw new CodedError('stale');
 			draft = prepared;
 			step = 'review';
 		});
@@ -663,11 +671,12 @@
 			.run(async () => {
 				if (event) await app.changeEvent(event, value, days, prepared, (n) => (progress = n));
 				else if (prepared) await app.publishEvent(prepared, value, days, (n) => (progress = n));
+				// The event is up whether or not the page is still open, so its kept copy goes either way.
+				if (credential) await clearDraft();
 				if (disposed) return;
 				for (const p of photos) revoke(p.url);
 				photos = [];
 				draft = undefined;
-				if (credential) await clearDraft();
 				// Saved: what's left here is no longer worth a question on the way out.
 				leaveAnyway = true;
 				await goto(appPath(locale));
@@ -675,6 +684,11 @@
 			.finally(() => (sending = false));
 	}
 	beforeNavigate((navigation) => {
+		// An event being sent stays until it's up; closing the tab still gets the browser's own question.
+		if (sending && !leaveAnyway) {
+			navigation.cancel();
+			return;
+		}
 		// Only work the device hasn't kept is worth a warning; a saved event waits here on the way back.
 		if ((!photos.length && !unsaved) || draftSaved || leaveAnyway) return;
 		navigation.cancel();

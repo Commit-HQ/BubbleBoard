@@ -6,12 +6,16 @@ import { newNotice, readJson } from '$lib/server/validate';
 import type { RequestHandler } from './$types';
 
 // Staff post to the classrooms they hold, the head to any. The notice's families and teachers get a
-// notification, and the response is the board as the poster sees it.
+// notification, once, after the response, and the response is the board as the poster sees it.
 export const POST: RequestHandler = async (event) => {
 	const staff = await requireStaff(event);
 	const notice = newNotice(await readJson(event.request));
-	const board = await postNotice(database(event), staff, notice);
-	const classrooms = notice.classrooms.map(({ classroom }) => classroom);
-	await announce(event, classrooms, await sessionHash(event));
+	const { board, posted } = await postNotice(database(event), staff, notice);
+	if (posted) {
+		const classrooms = notice.classrooms.map(({ classroom }) => classroom);
+		event.platform?.ctx.waitUntil(
+			announce(event, classrooms, await sessionHash(event)).catch(() => {})
+		);
+	}
 	return json(board);
 };

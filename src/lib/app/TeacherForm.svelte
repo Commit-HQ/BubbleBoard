@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import type { StaffRole } from '$lib/api';
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import type { Teacher } from '$lib/kindergarten';
@@ -32,6 +33,8 @@
 	const task = new Task();
 	let chosen = $state(startingClassrooms());
 	let role = $state<StaffRole>(startingRole());
+	/** The catalog revision the form read her at, so saving fails as stale if another head changed her since. */
+	let revision = $state(untrack(() => app.catalog.revision));
 
 	/** The role the form starts with, read once, like the ticked classrooms below. */
 	function startingRole(): StaffRole {
@@ -46,7 +49,7 @@
 		return [...(teacher?.classrooms ?? [])];
 	}
 
-	function submit(event: SubmitEvent & { currentTarget: EventTarget & HTMLFormElement }) {
+	async function submit(event: SubmitEvent & { currentTarget: EventTarget & HTMLFormElement }) {
 		event.preventDefault();
 		const form = new FormData(event.currentTarget);
 		const name = formText(form, 'name');
@@ -57,7 +60,18 @@
 				: app.catalog.classrooms
 						.filter((classroom) => chosen.includes(classroom.id))
 						.map((classroom) => classroom.id);
-		task.run(() => onsubmit({ name, role, classrooms }));
+		await task.run(async () => {
+			await onsubmit({ name, role, classrooms, revision });
+			// The records came back with this change in them, so the next save is made over them.
+			revision = app.catalog.revision;
+		});
+		// Someone else got there first: the reload brought her as they left her in through `teacher`, so the
+		// form shows that and can be saved again.
+		if (task.error === 'stale' && teacher) {
+			role = teacher.role;
+			chosen = [...teacher.classrooms];
+			revision = app.catalog.revision;
+		}
 	}
 </script>
 

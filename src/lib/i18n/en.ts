@@ -111,10 +111,10 @@ export const en = {
 	},
 	security: {
 		title: 'What’s shared in your classroom stays there.',
-		copy: 'Photos, messages, and children’s names are locked on your phone before they’re sent. Only the families and teachers in your classroom can unlock them.',
+		copy: 'Photos, messages, and children’s names are locked on your phone before they’re sent. Only the families in your classroom and your kindergarten’s staff can unlock them.',
 		group: {
 			title: 'Only your classroom',
-			copy: 'Notices and photos are seen by all the families and teachers in your classroom. Private conversations are seen only by you and your teachers.'
+			copy: 'Notices and photos are seen by all the families and teachers in your classroom. Private conversations are seen only by you, your classroom’s teachers, and your kindergarten’s BubbleBoard administrator.'
 		},
 		lock: {
 			title: 'Locked on your phone first',
@@ -135,7 +135,7 @@ export const en = {
 				items: [
 					{
 						q: 'I lost my QR code. Do I have to go to the kindergarten right away?',
-						a: 'No. If at least one of your devices is still connected, open Settings on it and choose “Add a device”. A new QR code appears. Scan it within 24 hours and the device is connected. Only when no device is connected any more, ask the kindergarten for a new family QR code. A new code signs out all your devices, so you connect them again.'
+						a: 'No. Devices that are already connected keep working. For a new device, open Settings on a connected device and choose “Add a device”, then scan the QR code that appears with the new device within 24 hours. If you think someone else may have found your QR code, or no device is connected any more, ask the kindergarten for a new family QR code. A new code signs out all your devices, so you connect them again.'
 					},
 					{
 						q: 'I bought a new phone. How do I connect it?',
@@ -167,7 +167,7 @@ export const en = {
 					},
 					{
 						q: 'Why do notices and photos disappear from the app?',
-						a: 'The teacher chooses how many days each post stays, from one to ninety. BubbleBoard is a notice board, not an archive. What expires is deleted, so the app takes up little space. That is why a kindergarten can keep it for free, with no subscription and no costs growing year after year. Save the photos you want to keep to your phone while they are in the app.'
+						a: 'The teacher chooses how many days each post stays, from one to ninety. BubbleBoard is a notice board, not an archive. What expires is deleted, so the app takes up little space. That is why the kindergarten pays no subscription, and the costs don’t grow year after year. Save the photos you want to keep to your phone while they are in the app.'
 					},
 					{
 						q: 'I have several children, maybe in different classrooms. Do I need several QR codes?',
@@ -180,7 +180,7 @@ export const en = {
 				items: [
 					{
 						q: 'Do I have to print every QR code?',
-						a: 'No. When a parent comes to pick up their child, add the family QR code and the parent scans it from your screen. You can also save it as a PDF or a screenshot and send it to the parent the way you usually write to each other. The code is shown only once, so save it if the parent isn’t there. If you lose it, “Replace QR code” makes a new one.'
+						a: 'No. When a parent comes to pick up their child, the group lead or the administrator adds the family QR code and the parent scans it from their screen. The code is shown only once. If the parent isn’t there, “Replace QR code” makes a new one to print later. Don’t send a family QR code in a chat: whoever has it sees everything that family sees.'
 					},
 					{
 						q: 'Parents say they can’t send inquiries. Why?',
@@ -196,7 +196,7 @@ export const en = {
 					},
 					{
 						q: 'I lost my own QR code. What now?',
-						a: 'The BubbleBoard administrator opens Manage, then Teachers, and chooses “Replace QR code” next to your name. Your role and classrooms stay. The old code stops working. If every administrator code is lost, the kindergarten has a recovery QR code.'
+						a: 'The BubbleBoard administrator opens Manage, then Teachers, then your name, and chooses “Replace QR code”. Your role and classrooms stay. The old code stops working. If every administrator code is lost, the kindergarten has a recovery QR code.'
 					},
 					{
 						q: 'How long do notices and photos stay?',
@@ -221,11 +221,11 @@ export const en = {
 					},
 					{
 						q: 'How do the stickers on faces work? Is it just a layer over the photo?',
-						a: 'No. A sticker isn’t a layer that could be removed. Before anything is sent, the teacher’s phone cuts every marked face out of the photo and writes blank pixels in its place. That makes the base photo, in which the faces simply aren’t there. Each cut-out face is encrypted separately, with a key of its own, and only the families allowed to see it get that key: always the child’s own family, and the other families in the classroom once that family allows it. A face the teacher keeps covered is never sent at all. When you open a photo, your phone unlocks the base photo and the face pieces it has keys for, and puts them back together itself. Where there is no key, the sticker stays. The original photo never leaves the teacher’s phone, and the server has neither the photo nor a single face in readable form.'
+						a: 'No. A sticker isn’t a layer that could be removed. Before anything is sent, the teacher’s phone cuts every marked face out of the photo and draws a sticker in its place. That makes the base photo, in which the faces simply aren’t there. Each cut-out face is encrypted separately, with a key of its own, and that key goes to the kindergarten’s staff and the families allowed to see it: always the child’s own family, and the other families in the classroom once that family allows it. A face the teacher keeps covered is never sent at all. When you open a photo, your phone unlocks the base photo and the face pieces it has keys for, and puts them back together itself. Where there is no key, the sticker stays. The original photo never leaves the teacher’s phone, and the server has neither the photo nor a single face in readable form.'
 					},
 					{
 						q: 'Why do posts expire?',
-						a: 'So the kindergarten stays on the free plan. Storage is free up to a certain size, and expiring posts keep it below that limit for good, however many years the app runs. Expired posts and their files are removed by a daily cleanup.'
+						a: 'So storage stays within the free plan. Storage is free up to a certain size, and expiring posts keep it below that limit for good, however many years the app runs. Expired posts and their files are removed by a daily cleanup.'
 					},
 					{
 						q: 'How does signing in without a password work?',
@@ -323,7 +323,7 @@ export const en = {
 			{
 				shot: 'parent-poll',
 				title: 'Read it? Say so with one tap',
-				copy: 'A trip to Tvrđa tomorrow? When you’ve read the notice, tap “Mark as seen” and the teachers know you saw it. If they ask whether your child is coming, answer the poll with one tap.',
+				copy: 'A trip to Tvrđa tomorrow? When you’ve read the notice, tap “Mark as seen” and the teachers know you saw it. If they ask whether your child is coming, choose an answer in the poll and confirm it.',
 				screen:
 					'A yellow notice about a trip to Tvrđa, with a poll: “Yes, we’re coming” has 5 votes and “No, not this time” has 1. Below it, the notice is marked as seen.'
 			},
@@ -374,7 +374,7 @@ export const en = {
 			{
 				shot: 'teacher-seen',
 				title: 'See who has read it',
-				copy: 'No more asking at the door whether the notice arrived. Under each one you see which families have read it and which haven’t yet. With a poll, you also see which family answered what. Only you teachers see that. Parents see only how many chose each answer.',
+				copy: 'No more asking at the door whether the notice arrived. Under each one you see which families have read it and which haven’t yet. With a poll, you also see which family answered what. Only you teachers see that. If you turn it on for a poll, parents see how many families chose each answer, but not who.',
 				screen:
 					'The trip notice as a teacher sees it: each poll answer with the families that chose it, the two families without an answer, and “Seen by 6 of 8 families”.'
 			},
@@ -707,8 +707,8 @@ export const en = {
 			closed: 'Past',
 			summary: 'View available times and your reservations.',
 			staffSummary: 'Offer times and see who has booked.',
-			freeCount: 'available',
-			bookedCount: 'booked',
+			freeCount: (n: number) => `${n} available`,
+			bookedCount: (n: number) => `${n} booked`,
 			remaining: 'Any minutes left at the end are not offered.',
 			cancelForm: 'Close form'
 		},
@@ -882,6 +882,12 @@ export const en = {
 			replaceConfirmCopy:
 				'The old QR codes stop working, and every device that used them is signed out.'
 		},
+		leaveForm: {
+			title: 'Leave without saving?',
+			copy: 'What you wrote will not be saved.',
+			leave: 'Leave',
+			stay: 'Stay'
+		},
 		newChild: {
 			title: 'Add child',
 			name: 'Child’s name',
@@ -998,7 +1004,7 @@ export const en = {
 			copied: 'Link copied.',
 			shareText: 'Join our kindergarten’s BubbleBoard. The link works for 24 hours.',
 			connectAgain:
-				'This device was connected before it could add others. To add devices from it, sign out, then connect it again with your family QR code.'
+				'This device was connected before it could add others. To add devices from it, sign out, then connect it again with your family QR code. If you no longer have the family QR code, don’t sign out; ask your kindergarten for a new one first.'
 		},
 		// In a family device's Settings: the devices connected for the family, with who uses each, above adding
 		// another, and home's card that asks who uses this one.
@@ -1324,6 +1330,8 @@ export const en = {
 			'file-type':
 				'BubbleBoard can’t attach that kind of file. Attach a PDF, a document, or a picture.',
 			'file-too-large': 'That file is larger than 10 MB. Attach a smaller one.',
+			'too-large':
+				'This is too large to send. Remove a few photos or shorten the text, then try again.',
 			'too-many-files': 'You can attach up to 10 files.',
 			'unreadable-file':
 				'This file didn’t open on this device. Ask your kindergarten to attach it again.',

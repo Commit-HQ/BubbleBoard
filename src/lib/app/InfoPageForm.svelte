@@ -1,9 +1,13 @@
 <script lang="ts">
+	import { beforeNavigate, goto } from '$app/navigation';
+	import { createId } from '$lib/crypto';
 	import type { NewFile, NoticeFile } from '$lib/files';
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import type { InfoPage } from '$lib/info';
 	import type { Paper } from '$lib/notices';
+	import { untrack } from 'svelte';
 	import AttachFiles from './AttachFiles.svelte';
+	import ConfirmDialog from './ConfirmDialog.svelte';
 	import NoticeEditor from './NoticeEditor.svelte';
 	import { getApp, Task } from './state.svelte';
 	import { alert, button, field, surface } from './ui';
@@ -25,7 +29,8 @@
 	 * page, and reading the page in here, once, tells Svelte that's intended.
 	 */
 	function starting() {
-		return { paper: page?.paper ?? 'white', files: page?.files ?? [] };
+		// The ID the page is added under, the same however often saving is tried.
+		return { paper: page?.paper ?? 'white', files: page?.files ?? [], id: page?.id ?? createId() };
 	}
 	const start = starting();
 	let paper = $state<Paper>(start.paper);
@@ -33,6 +38,37 @@
 	let files = $state.raw<(NoticeFile | NewFile)[]>(start.files);
 	let editor = $state<ReturnType<typeof NoticeEditor>>();
 	let ready = $state(false);
+	/** What the form held once the editor opened, to tell whether leaving loses anything. */
+	let opened: string | undefined;
+	/** Where someone was going when asked whether to leave what they wrote. */
+	let leaving = $state<URL>();
+	let leaveAnyway = false;
+
+	/** Everything the form holds, as one string to compare. */
+	function held() {
+		const body = editor?.getDocument() ?? null;
+		return JSON.stringify([body, paper, files.map((file) => file.id)]);
+	}
+
+	$effect(() => {
+		if (ready) opened ??= untrack(held);
+	});
+
+	beforeNavigate((navigation) => {
+		if (leaveAnyway) return;
+		// While saving, the page stays until the info page is saved; it would be lost with it otherwise.
+		const changed = opened !== undefined && held() !== opened;
+		if (!task.busy && !changed) return;
+		navigation.cancel();
+		// Closing the tab or leaving the site gets the browser's own question instead.
+		if (!task.busy && !navigation.willUnload && navigation.to) leaving = navigation.to.url;
+	});
+
+	async function leave() {
+		if (!leaving) return;
+		leaveAnyway = true;
+		await goto(leaving);
+	}
 
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
@@ -41,7 +77,8 @@
 		else if (!body) task.error = 'info-too-long';
 		else {
 			task.run(async () => {
-				await app.saveInfoPage({ paper, body, files }, page);
+				await app.saveInfoPage(start.id, { paper, body, files }, page);
+				leaveAnyway = true;
 				onsaved();
 			});
 		}
@@ -73,3 +110,16 @@
 		{task.busy ? t.actions.working : page ? t.info.save : t.info.add}
 	</button>
 </form>
+
+{#if leaving}
+	<ConfirmDialog
+		{locale}
+		title={t.leaveForm.title}
+		copy={t.leaveForm.copy}
+		confirmLabel={t.leaveForm.leave}
+		cancelLabel={t.leaveForm.stay}
+		safe
+		onconfirm={leave}
+		onclose={() => (leaving = undefined)}
+	/>
+{/if}

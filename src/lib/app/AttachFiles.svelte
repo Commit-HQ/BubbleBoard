@@ -10,6 +10,7 @@
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
 	import FileLabel from './FileLabel.svelte';
 	import type { Task } from './state.svelte';
+	import { onDestroy } from 'svelte';
 	import { alert, button, field, filePicker } from './ui';
 
 	// The files in the form of a notice or an info page: those it carries already, and files picked here, each made
@@ -30,8 +31,15 @@
 
 	const t = $derived(messages[locale].app.files);
 	const id = $props.id();
+	// A file made ready after the form has gone, such as when the messages page moves to another conversation,
+	// belongs to nothing: it mustn't join the files of whatever comes next.
+	let disposed = false;
+	onDestroy(() => (disposed = true));
 
-	/** Makes the files picked ready to attach, one at a time, as long as there's room for them. */
+	/**
+	 * Makes the files picked ready to attach, one at a time, as long as there's room for them. A file that can't
+	 * be attached is left out and the rest still come; the first one left out says why.
+	 */
 	function attach(event: Event & { currentTarget: EventTarget & HTMLInputElement }) {
 		const input = event.currentTarget;
 		const picked = [...(input.files ?? [])];
@@ -41,7 +49,19 @@
 			return;
 		}
 		task.run(async () => {
-			for (const file of picked) files = [...files, await prepareFile(file)];
+			let failure: unknown;
+			for (const file of picked) {
+				try {
+					// Ready first, then added to the files as they are now, which a removal meanwhile may have changed.
+					const ready = await prepareFile(file);
+					if (disposed) return;
+					files = [...files, ready];
+				} catch (cause) {
+					if (disposed) return;
+					failure ??= cause;
+				}
+			}
+			if (failure) throw failure;
 		});
 	}
 </script>

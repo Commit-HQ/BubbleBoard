@@ -33,8 +33,8 @@ export async function homeCardHidden() {
 	return (await settings('readonly', (store) => store.get('homeCardHidden'))) === true;
 }
 
-export async function hideHomeCard() {
-	await settings('readwrite', (store) => void store.put(true, 'homeCardHidden'));
+export async function hideHomeCard(hidden = true) {
+	await settings('readwrite', (store) => void store.put(hidden, 'homeCardHidden'));
 }
 
 /**
@@ -47,7 +47,13 @@ export function notify(
 	tag: string,
 	data?: unknown
 ) {
-	return registration.showNotification(title, { icon: '/icons/icon-192.png', tag, data });
+	// One tag for each kind keeps a single notification of it, and `renotify` still sounds for the newer one.
+	return registration.showNotification(title, {
+		icon: '/icons/icon-192.png',
+		tag,
+		data,
+		renotify: true
+	} as NotificationOptions);
 }
 
 /**

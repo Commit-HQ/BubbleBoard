@@ -166,7 +166,13 @@ export type SealedMessage = {
 	start: boolean;
 	payload: Record<string, unknown>;
 };
-export type TeacherValues = { name: string; role: StaffRole; classrooms: string[] };
+/** A staff member as a form holds her, with the catalog revision the form read her at. */
+export type TeacherValues = {
+	name: string;
+	role: StaffRole;
+	classrooms: string[];
+	revision: number;
+};
 export type ChildValues = { name: string; classroom: string; share: boolean } & (
 	{ cardName: string } | { sibling: string }
 );
@@ -229,6 +235,17 @@ async function readable<T>(reading: Promise<T>, code: string) {
 		throw cause instanceof UnreadableError ? new CodedError(code, { cause }) : cause;
 	}
 }
+
+/** Why a card never connects, however often it's tried: the app's reading of it, or the server's answer. */
+const cardRefusals = [
+	'invalid-card',
+	'mistyped',
+	'other-installation',
+	'invalid',
+	'unknown-card',
+	'ended-card',
+	'unreadable'
+];
 
 /** The session ended, or the card no longer opens its keys: only the card can connect the device again. */
 function isDisconnection(cause: unknown) {
@@ -799,28 +816,38 @@ export class App {
 	}
 	async publishMeetings(classroom: string, slots: { start: number; end: number }[]) {
 		const id = createId();
-		const children = this.catalog.children.filter((child) => child.classroom === classroom);
-		const invites = await Promise.all(
-			children.flatMap((child) =>
-				child.families.map(async (family) => ({
-					child: child.id,
-					family,
-					label: await encryptData({ name: child.name }, await this.messageKey(family), {
-						purpose: 'meeting-invite',
-						classroom: id,
-						child: child.id
-					})
-				}))
-			)
-		);
-		const offer: NewMeetingOffer = {
-			id,
-			classroom,
-			revision: this.catalog.revision,
-			slots: slots.map((slot) => ({ ...slot, id: createId() })),
-			invites
+		const times = slots.map((slot) => ({ ...slot, id: createId() }));
+		/** Invites the classroom's children as the catalog has them now, over its revision. */
+		const publish = async () => {
+			const children = this.catalog.children.filter((child) => child.classroom === classroom);
+			const invites = await Promise.all(
+				children.flatMap((child) =>
+					child.families.map(async (family) => ({
+						child: child.id,
+						family,
+						label: await encryptData({ name: child.name }, await this.messageKey(family), {
+							purpose: 'meeting-invite',
+							classroom: id,
+							child: child.id
+						})
+					}))
+				)
+			);
+			const offer: NewMeetingOffer = {
+				id,
+				classroom,
+				revision: this.catalog.revision,
+				slots: times,
+				invites
+			};
+			await this.#send('POST', '/api/meetings', offer, async () => {});
 		};
-		await this.#signedIn(() => request('POST', '/api/meetings', offer));
+		// Any change to children or teachers moves the revision on. A stale answer loads the catalog again, so
+		// the offer is made once more over the new one.
+		await publish().catch((cause) => {
+			if (errorCode(cause) !== 'stale') throw cause;
+			return publish();
+		});
 		await this.loadMeetings();
 	}
 	async removeMeetingDay(classroom: string, date: string, slots: MeetingSlot[]) {
@@ -1030,7 +1057,10 @@ export class App {
 		if (!onAppleHomeScreen()) return this.useCard(card);
 		if (await startCardUsed().catch(() => false)) return;
 		await this.useCard(card);
-		if (this.cardError !== 'offline') await markStartCardUsed().catch(() => {});
+		// A card that failed for a reason of the moment, such as no connection or a busy server, is tried again
+		// at the next launch.
+		if (this.cardError === undefined || cardRefusals.includes(this.cardError))
+			await markStartCardUsed().catch(() => {});
 	}
 
 	/** A link opened in a tab already showing the app changes only the fragment, so the page doesn't load again. */
@@ -1071,9 +1101,11 @@ export class App {
 			const card = this.#card;
 			if (!this.connected || !card) return;
 			try {
-				// The session is the one the app opened with, so its subscription isn't sent again.
+				// The session is the one the app opened with, so its subscription isn't sent again, and the photo
+				// labels it brought up to date stay as they are.
 				await this.#open(await request<Access>('GET', '/api/session'), card, {
 					resend: false,
+					sync: false,
 					version
 				});
 				if (version !== this.#connectionVersion) return;
@@ -1106,7 +1138,7 @@ export class App {
 	async #open(
 		access: Access,
 		card: DeviceCard,
-		{ resend = true, version = this.#connectionVersion } = {}
+		{ resend = true, sync = true, version = this.#connectionVersion } = {}
 	) {
 		if (version !== this.#connectionVersion) return;
 		if (this.#card?.credential !== card.credential) this.#clearMeetings();
@@ -1154,7 +1186,9 @@ export class App {
 		// The inbox grows with every conversation the kindergarten has ever had, so the board doesn't wait for
 		// it: it fills in beside the rest, and the pages that show it follow `messagesVersion`.
 		void this.loadEvents();
-		if (this.status === 'staff')
+		// Changes to children keep the photo labels up to date, so they're brought up to date once, as the app
+		// opens, rather than written again on every refresh.
+		if (sync && this.status === 'staff')
 			for (const classroom of this.myClassrooms)
 				void this.syncPhotoChildren(classroom.id).catch(() => {});
 		void this.loadMessages();
@@ -1281,7 +1315,10 @@ export class App {
 		} catch (cause) {
 			if (version !== this.#connectionVersion) throw cause;
 			if (errorCode(cause) === 'unreadable-records') this.status = 'unreadable';
-			else if (cause instanceof ApiError && ['stale', 'not-found'].includes(cause.code)) {
+			else if (
+				cause instanceof ApiError &&
+				['stale', 'not-found', 'forbidden'].includes(cause.code)
+			) {
 				await this.#resume();
 			}
 			throw cause;
@@ -1331,6 +1368,7 @@ export class App {
 		this.familyClassrooms = [];
 		this.devices = [];
 		this.deviceNameCardHidden = true;
+		this.notificationCardHidden = true;
 		this.board = [];
 		this.unreadableNotices = 0;
 		this.photos = [];
@@ -1342,9 +1380,13 @@ export class App {
 		// The unfinished event goes with the card: the next person to connect here must never see it.
 		// Whoever connects next is asked who uses the device, whatever was answered before.
 		await Promise.all(
-			[forgetCard(), forgetSubscription(), clearDraft(), hideNameCard(false)].map((done) =>
-				done.catch(() => {})
-			)
+			[
+				forgetCard(),
+				forgetSubscription(),
+				clearDraft(),
+				hideNameCard(false),
+				hideHomeCard(false)
+			].map((done) => done.catch(() => {}))
 		);
 	}
 
@@ -1537,9 +1579,12 @@ export class App {
 		return card.secret;
 	}
 
-	async changeTeacher(id: string, { name, role, classrooms }: TeacherValues) {
+	/**
+	 * Changes a staff member over the revision her form was read at, so a change another head made meanwhile
+	 * fails as stale instead of being overwritten.
+	 */
+	async changeTeacher(id: string, { name, role, classrooms, revision }: TeacherValues) {
 		const profile = await teacherProfile(this.#staff.staffKey, id, name);
-		const { revision } = this.catalog;
 		const held = role === 'head' ? [] : classrooms;
 		await this.#change('PUT', `/api/teachers/${id}`, {
 			revision,
@@ -1709,10 +1754,13 @@ export class App {
 	async replaceFamilyCards(families: Family[]) {
 		const { staffKey } = this.#staff;
 		const cards = await Promise.all(families.map((family) => familyCard(staffKey, family)));
-		await this.#signedIn(() =>
-			request('POST', '/api/families/cards', {
+		await this.#send(
+			'POST',
+			'/api/families/cards',
+			{
 				cards: cards.map(({ credential }, index) => ({ family: families[index].id, credential }))
-			})
+			},
+			async () => {}
 		);
 		return cards.map(({ secret }) => secret);
 	}
@@ -1779,10 +1827,10 @@ export class App {
 	 * the name of whoever posted the notice; the recovery card posts without one. A poll goes inside the
 	 * notice, with a key of its own while families see its counts, and the server learns only that it has one
 	 * and whether it shows the counts, as it learns nothing of its files' names and keys. Files attached in the
-	 * form were sealed then, and are uploaded one at a time once the notice fits.
+	 * form were sealed then, and are uploaded one at a time once the notice fits. The form keeps the `id` it
+	 * posts under, so trying again after a lost answer doesn't post the notice twice.
 	 */
-	async saveNotice(values: NoticeValues, notice?: Notice) {
-		const id = notice?.id ?? createId();
+	async saveNotice(id: string, values: NoticeValues, notice?: Notice) {
 		const author = notice ? notice.author : this.myName;
 		const files = this.#contentFiles(values.files);
 		const content: NoticeContent = { paper: values.paper, body: values.body };
@@ -1827,11 +1875,11 @@ export class App {
 	 * Adds an info page after the others, or changes `page`, sealed with the Info Key, or for the kindergarten's first
 	 * page under a new key for staff and for every classroom, all of which the head's device sees. The server learns
 	 * nothing of a page's text, paper, or files' names and keys. Files attached in the form were sealed then, and are
-	 * uploaded one at a time first.
+	 * uploaded one at a time first. The form keeps the page's `id`, so trying again after a lost answer doesn't
+	 * add the page twice.
 	 */
-	async saveInfoPage(values: InfoPageValues, page?: InfoPage) {
+	async saveInfoPage(id: string, values: InfoPageValues, page?: InfoPage) {
 		const { staffKey } = this.#staff;
-		const id = page?.id ?? createId();
 		const files = this.#contentFiles(values.files);
 		const content: InfoPageContent = { paper: values.paper, body: values.body };
 		if (files.length) content.files = files;

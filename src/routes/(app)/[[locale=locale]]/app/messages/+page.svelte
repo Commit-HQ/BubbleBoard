@@ -188,6 +188,10 @@
 			busy = false;
 			text = '';
 			subject = '';
+			// The family and the files picked for one message never go with the next one to someone else.
+			family = '';
+			files = [];
+			attaching = false;
 			pending = undefined;
 			editing = undefined;
 			deleting = undefined;
@@ -211,9 +215,9 @@
 		scrolledTo = last;
 		end?.scrollIntoView({ block: 'end' });
 	});
-	everyHalfMinute((visible) => {
+	everyHalfMinute((looking) => {
 		now = Date.now();
-		if (visible && app.connected && !busy) void app.loadMessages();
+		if (looking && app.connected && !busy) void app.loadMessages();
 	});
 	// A conversation left behind stops taking what its last load brings back.
 	onMount(() => () => {

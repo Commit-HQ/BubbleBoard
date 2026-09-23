@@ -77,9 +77,9 @@
 	const time = (s: { start: number; end: number }) =>
 		`${meetingTime(locale, s.start)}–${meetingTime(locale, s.end)}`;
 	onMount(() => void app.loadMeetings());
-	everyHalfMinute((visible) => {
+	everyHalfMinute((looking) => {
 		now = Date.now();
-		if (visible) void app.loadMeetings();
+		if (looking) void app.loadMeetings();
 	});
 	function toggle(start: number) {
 		excluded = excluded.includes(start)

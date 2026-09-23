@@ -117,12 +117,31 @@ export function queryParam(name: string) {
 
 /**
  * Moves a screen's clock on every half minute for as long as it's up, saying whether anyone is looking, so
- * that screens which count minutes down also ask for fresh records — but only while they're on show.
+ * that screens which count minutes down also ask for fresh records — but only while they're on show and
+ * someone has touched the page in the last five minutes. A tab left open all day stops asking; the first
+ * touch after that asks straight away.
  */
-export function everyHalfMinute(tick: (visible: boolean) => void) {
+export function everyHalfMinute(tick: (looking: boolean) => void) {
 	onMount(() => {
-		const timer = setInterval(() => tick(document.visibilityState === 'visible'), 30000);
-		return () => clearInterval(timer);
+		const idleAfter = 5 * 60000;
+		let active = Date.now();
+		const looking = () => document.visibilityState === 'visible' && Date.now() - active < idleAfter;
+		const touched = () => {
+			const idle = !looking();
+			active = Date.now();
+			if (idle && document.visibilityState === 'visible') tick(true);
+		};
+		// Coming back to the page counts as being there; the app refreshes on its own when it's shown again.
+		const shown = () => (active = Date.now());
+		const events = ['pointerdown', 'pointermove', 'keydown', 'wheel'];
+		for (const name of events) addEventListener(name, touched, { passive: true });
+		document.addEventListener('visibilitychange', shown);
+		const timer = setInterval(() => tick(looking()), 30000);
+		return () => {
+			clearInterval(timer);
+			for (const name of events) removeEventListener(name, touched);
+			document.removeEventListener('visibilitychange', shown);
+		};
 	});
 }
 

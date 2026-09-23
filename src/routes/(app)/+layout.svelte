@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { afterNavigate } from '$app/navigation';
-	import { page } from '$app/state';
+	import { page, updated } from '$app/state';
 	import { App, setApp } from '$lib/app/state.svelte';
 	import BuildLabel from '$lib/components/BuildLabel.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -19,19 +19,35 @@
 	const app = setApp(new App());
 	afterNavigate(({ type }) => {
 		if (type === 'enter') tick().then(() => app.start());
+		// A new deploy found while a page was half written (`backInView`) is loaded on arrival at the next
+		// page, once that page's own question on the way out, if any, is behind.
+		else if (updated.current) location.reload();
 	});
-	// The service worker says when a notification comes or is tapped (src/service-worker.ts), so the board
-	// shows what's new straight away when the app is open in view, or once it's back in view (`App.refresh`).
+	// The service worker says when a notification comes or is tapped, and what about (src/service-worker.ts),
+	// so what's new shows straight away when the app is open in view, or once it's back in view
+	// (`App.refresh`). A message changes only the conversations, so only they load again.
 	onMount(() => {
 		const container = navigator.serviceWorker;
 		if (!container) return;
 		const reload = ({ data }: MessageEvent) => {
-			if (data === 'board') app.refresh({ now: true });
+			if (data?.type !== 'push') return;
+			if (data.kind === 'message') {
+				if (app.connected) app.loadMessages();
+			} else app.refresh({ now: true });
 		};
 		container.addEventListener('message', reload);
 		container.startMessages();
 		return () => container.removeEventListener('message', reload);
 	});
+
+	// An installed app can stay open for weeks, so back in view it asks whether a new version has been
+	// deployed since it loaded. If so, the board loads the new one straight away, and any other page, where
+	// something may be half written, on arrival at the next page (`afterNavigate` above).
+	async function backInView() {
+		app.refresh();
+		if (document.visibilityState !== 'visible' || !(await updated.check())) return;
+		if (page.url.pathname === appPath(data.locale)) location.reload();
+	}
 
 	const inbox = $derived(appPath(data.locale, 'messages'));
 	const manage = $derived(appPath(data.locale, 'manage'));
@@ -52,7 +68,7 @@
 
 <svelte:window onhashchange={() => app.openLink()} />
 <!-- Back in view, such as after a tap on a notification, the app loads the board again. -->
-<svelte:document onvisibilitychange={() => app.refresh()} />
+<svelte:document onvisibilitychange={backInView} />
 
 <svelte:head>
 	<!-- A plain title: tab titles and browser history shouldn't hold children's or families' names. -->

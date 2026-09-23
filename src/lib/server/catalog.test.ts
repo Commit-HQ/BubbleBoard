@@ -819,12 +819,31 @@ describe('notices', () => {
 			conflict('stale')
 		);
 		const own = notice([bubbles]);
-		expect(ids(await postNotice(db, teacher, own))).toEqual([own.id]);
+		expect(await postNotice(db, teacher, own)).toMatchObject({ posted: true });
+		expect(ids(await board(db, teacher))).toEqual([own.id]);
 		const elsewhere = notice([owls]);
-		expect(ids(await postNotice(db, head, elsewhere)).sort()).toEqual(
+		expect(ids((await postNotice(db, head, elsewhere)).board).sort()).toEqual(
 			[own.id, elsewhere.id].sort()
 		);
 		expect(ids(await board(db, teacher))).toEqual([own.id]);
+	});
+
+	it('posted again, as after an answer that never came, stay as they are and announce nothing', async () => {
+		const db = localDatabase();
+		const { head } = await setUpKindergarten(db);
+		const bubbles = await addClassroomTo(db, head);
+		const [author, colleague] = [
+			await addTeacherTo(db, head, [bubbles]),
+			await addTeacherTo(db, head, [bubbles])
+		];
+		const posted = notice([bubbles]);
+		await postNotice(db, author, posted);
+
+		const again = await postNotice(db, author, posted);
+		expect(again.posted).toBe(false);
+		expect(ids(again.board)).toEqual([posted.id]);
+		await expect(postNotice(db, colleague, posted)).rejects.toMatchObject({ status: 400 });
+		expect(await count(db)).toBe(1);
 	});
 
 	it('reach each family once, with the keys of its own classrooms only', async () => {
@@ -893,7 +912,7 @@ describe('notices', () => {
 			vi.setSystemTime(1_000_000);
 			await postNotice(db, head, first);
 			vi.setSystemTime(2_000_000);
-			expect(ids(await postNotice(db, head, second))).toEqual([second.id, first.id]);
+			expect(ids((await postNotice(db, head, second)).board)).toEqual([second.id, first.id]);
 			vi.setSystemTime(3_000_000);
 			expect(ids(await changeNotice(db, bucket, head, first.id, change([bubbles])))).toEqual([
 				second.id,
@@ -1234,6 +1253,13 @@ describe('info pages', () => {
 			info: { pages: [{ id: first.id }, { id: second.id }] },
 			classrooms: [{ id: bubbles, infoKey: `key for ${bubbles}` }]
 		});
+
+		// A page added again, as after an answer that never came, stays as it is, the first one with its key too.
+		expect(ids(await addInfoPage(db, head, { ...first, key: newKey([bubbles, owls]) }))).toEqual([
+			first.id,
+			second.id
+		]);
+		expect(ids(await addInfoPage(db, head, second))).toEqual([first.id, second.id]);
 	});
 
 	it('take a new classroom with a copy of the Info Key only once there is one', async () => {
@@ -1412,6 +1438,20 @@ describe('storage', () => {
 		// A key stored already keeps its bytes.
 		await expect(putObject(db, store, 'a', bytes(10))).rejects.toMatchObject(conflict('stored'));
 		expect(await storedBytes(db)).toBe(60);
+		expect([...objects.keys()]).toEqual(['a']);
+	});
+
+	it('forgets a key whose bytes R2 didn’t take, so another try stores them', async () => {
+		const db = localDatabase();
+		const { store, objects } = localStore();
+		const failing = {
+			...store,
+			bucket: { put: () => Promise.reject(new Error('R2')) } as unknown as R2Bucket
+		};
+		await expect(putObject(db, failing, 'a', bytes(10))).rejects.toThrow('R2');
+		expect(await storedBytes(db)).toBe(0);
+		await putObject(db, store, 'a', bytes(10));
+		expect(await storedBytes(db)).toBe(10);
 		expect([...objects.keys()]).toEqual(['a']);
 	});
 

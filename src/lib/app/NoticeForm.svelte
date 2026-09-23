@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { beforeNavigate, goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
 	import { createId } from '$lib/crypto';
 	import type { NewFile, NoticeFile } from '$lib/files';
@@ -13,10 +14,11 @@
 		type Paper,
 		type PollOption
 	} from '$lib/notices';
-	import { tick } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import AttachFiles from './AttachFiles.svelte';
 	import CheckCard from './CheckCard.svelte';
 	import Checklist from './Checklist.svelte';
+	import ConfirmDialog from './ConfirmDialog.svelte';
 	import DaysChoice from './DaysChoice.svelte';
 	import NoticeEditor from './NoticeEditor.svelte';
 	import { getApp, Task } from './state.svelte';
@@ -58,7 +60,9 @@
 				blankOption(),
 				blankOption()
 			],
-			files: notice?.files ?? []
+			files: notice?.files ?? [],
+			// The ID the notice posts under, the same however often saving is tried.
+			id: notice?.id ?? createId()
 		};
 	}
 	const start = starting();
@@ -75,6 +79,39 @@
 	let files = $state.raw<(NoticeFile | NewFile)[]>(start.files);
 	let editor = $state<ReturnType<typeof NoticeEditor>>();
 	let ready = $state(false);
+	/** What the form held once the editor opened, to tell whether leaving loses anything. */
+	let opened: string | undefined;
+	/** Where someone was going when asked whether to leave what they wrote. */
+	let leaving = $state<URL>();
+	let leaveAnyway = false;
+
+	/** Everything the form holds, as one string to compare. */
+	function held() {
+		const body = editor?.getDocument() ?? null;
+		const answers = options.map(({ id, text }) => [id, text]);
+		const ids = files.map((file) => file.id);
+		return JSON.stringify([body, paper, days, chosen, announce, polling, counting, answers, ids]);
+	}
+
+	$effect(() => {
+		if (ready) opened ??= untrack(held);
+	});
+
+	beforeNavigate((navigation) => {
+		if (leaveAnyway) return;
+		// While saving, the page stays until the notice is up; the notice would be lost with it otherwise.
+		const changed = opened !== undefined && held() !== opened;
+		if (!task.busy && !changed) return;
+		navigation.cancel();
+		// Closing the tab or leaving the site gets the browser's own question instead.
+		if (!task.busy && !navigation.willUnload && navigation.to) leaving = navigation.to.url;
+	});
+
+	async function leave() {
+		if (!leaving) return;
+		leaveAnyway = true;
+		await goto(leaving);
+	}
 
 	/** Whether saving clears the answers given: families would see the counts, or stop seeing them. */
 	const clearsAnswers = $derived(
@@ -110,7 +147,8 @@
 			const poll = polling ? { options: answers, counts: counting } : undefined;
 			const values = { classrooms: [...chosen], paper, days, body, announce, poll, files };
 			task.run(async () => {
-				await app.saveNotice(values, notice);
+				await app.saveNotice(start.id, values, notice);
+				leaveAnyway = true;
 				onsaved();
 			});
 		}
@@ -202,4 +240,17 @@
 	</form>
 {:else}
 	<p class="text-muted">{t.notices.noClassrooms}</p>
+{/if}
+
+{#if leaving}
+	<ConfirmDialog
+		{locale}
+		title={t.leaveForm.title}
+		copy={t.leaveForm.copy}
+		confirmLabel={t.leaveForm.leave}
+		cancelLabel={t.leaveForm.stay}
+		safe
+		onconfirm={leave}
+		onclose={() => (leaving = undefined)}
+	/>
 {/if}

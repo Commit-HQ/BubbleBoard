@@ -65,7 +65,13 @@ export async function putObject(
 			throw cause;
 		});
 	if (!meta.changes) error(507, 'storage-full');
-	await bucket.put(key, bytes);
+	try {
+		await bucket.put(key, bytes);
+	} catch (cause) {
+		// Bytes that never arrived aren't stored, so the key and its bytes are free again for another try.
+		await db.prepare('DELETE FROM stored_objects WHERE key = ?').bind(key).run();
+		throw cause;
+	}
 }
 
 /** An object's bytes as a response, counted against the month's downloads. */

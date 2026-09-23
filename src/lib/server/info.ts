@@ -79,6 +79,9 @@ function insertFiles(db: D1Database, page: string, files: string[]) {
  * Either way, the device is told to load its records again.
  */
 export async function addInfoPage(db: D1Database, head: Head, page: NewInfoPage) {
+	// A page added already, sent again because the answer never reached her device, is left as it is.
+	const added = await db.prepare('SELECT 1 FROM info_pages WHERE id = ?').bind(page.id).first();
+	if (added) return staffInfo(db);
 	const row = await db
 		.prepare('SELECT COUNT(*) AS count FROM info_pages')
 		.first<{ count: number }>();

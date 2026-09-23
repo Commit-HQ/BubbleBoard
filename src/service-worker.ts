@@ -11,8 +11,8 @@ import { pushKind, type PushKind } from '$lib/push';
 // BubbleBoard's service worker handles notifications only: no caching and no offline copies
 // (decisions.md). A push carries one letter saying what happened and nothing more, so the words are
 // these, in the language notifications were turned on in, and every push shows one, as Safari requires. The
-// app's open windows load the board again, straight away in view or once back in view
-// (src/lib/app/state.svelte.ts), and a tap brings one forward, or opens one, on the page it's about.
+// app's open windows are told what happened and load what it changed, straight away in view or once back in
+// view (src/routes/(app)/+layout.svelte), and a tap brings one forward, or opens one, on the page it's about.
 
 const worker = self as unknown as ServiceWorkerGlobalScope;
 
@@ -62,13 +62,15 @@ worker.addEventListener('push', (event) => {
 						path: appPath(locale, pages[kind])
 					})
 				),
-			appWindows().then((windows) => windows.forEach((client) => client.postMessage('board')))
+			appWindows().then((windows) =>
+				windows.forEach((client) => client.postMessage({ type: 'push', kind }))
+			)
 		])
 	);
 });
 
 /** A tap brings a window forward on the page the notification is about, or opens one there. */
-async function openPage(path: string) {
+async function openPage(path: string, kind: string) {
 	const [open] = await appWindows();
 	if (!open) {
 		await worker.clients.openWindow(path);
@@ -76,9 +78,9 @@ async function openPage(path: string) {
 	}
 	await open.focus();
 	// A window is wherever it was last left, which is rarely the page the notification is about, so it's
-	// sent there and loads the board on the way. A window already on that page loads the board again
-	// instead, as does one this worker doesn't control yet and so can't send: asleep, it may have missed
-	// the push.
+	// sent there and loads the board on the way. A window already on that page loads what the notification
+	// is about again instead, as does one this worker doesn't control yet and so can't send: asleep, it may
+	// have missed the push.
 	const elsewhere = new URL(open.url).pathname !== path;
 	const sent =
 		elsewhere &&
@@ -86,10 +88,13 @@ async function openPage(path: string) {
 			.navigate(path)
 			.then(() => true)
 			.catch(() => false));
-	if (!sent) open.postMessage('board');
+	if (!sent) open.postMessage({ type: 'push', kind });
 }
 
 worker.addEventListener('notificationclick', (event) => {
 	event.notification.close();
-	event.waitUntil(openPage(event.notification.data?.path ?? appPath(defaultLocale)));
+	// The tag is the kind (`notify` above).
+	event.waitUntil(
+		openPage(event.notification.data?.path ?? appPath(defaultLocale), event.notification.tag)
+	);
 });

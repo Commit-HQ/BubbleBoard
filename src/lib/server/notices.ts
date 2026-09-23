@@ -124,14 +124,26 @@ function insertFiles(db: D1Database, notice: string, files: string[]) {
 	);
 }
 
+/**
+ * Posts a notice, and says whether it's new. A notice she posted already, sent again because the answer
+ * never reached her device, leaves the board as it is; one with another author's id is refused.
+ */
 export async function postNotice(db: D1Database, staff: Staff, notice: NewNotice) {
+	const repeated = await db
+		.prepare('SELECT teacher_id AS teacher FROM notices WHERE id = ?')
+		.bind(notice.id)
+		.first<{ teacher: string | null }>();
+	if (repeated) {
+		if (repeated.teacher !== staff.teacher) error(400, 'invalid');
+		return { board: await board(db, staff), posted: false };
+	}
 	await checkClassrooms(
 		db,
 		staff,
 		notice.classrooms.map(({ classroom }) => classroom)
 	);
 	const now = Date.now();
-	return changeBoard(db, staff, [
+	const posted = await changeBoard(db, staff, [
 		db
 			.prepare(
 				'INSERT INTO notices (id, teacher_id, content, poll, poll_counts, posted_at, announced_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
@@ -149,6 +161,7 @@ export async function postNotice(db: D1Database, staff: Staff, notice: NewNotice
 		...insertKeys(db, notice.id, notice.classrooms),
 		...insertFiles(db, notice.id, notice.files)
 	]);
+	return { board: posted, posted: true };
 }
 
 /**

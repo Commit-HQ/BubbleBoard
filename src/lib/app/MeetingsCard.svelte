@@ -25,9 +25,8 @@
 					locale,
 					mine.end
 				)}
-			{:else if staff && app.meetingsLoaded}{upcoming.filter((s) => s.booked).length}
-				{t.bookedCount} · {upcoming.filter((s) => !s.booked).length}
-				{t.freeCount}
+			{:else if staff && app.meetingsLoaded}{t.bookedCount(upcoming.filter((s) => s.booked).length)}
+				· {t.freeCount(upcoming.filter((s) => !s.booked).length)}
 			{:else}{staff ? t.staffSummary : t.summary}{/if}
 		</p>
 		{#if mine}<p class="mt-1 text-muted">

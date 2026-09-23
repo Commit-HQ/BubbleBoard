@@ -16,7 +16,9 @@ export const PUT: RequestHandler = async (event) => {
 	const board = await changeNotice(database(event), bucket, staff, event.params.id, change);
 	if (change.announce) {
 		const classrooms = change.classrooms.map(({ classroom }) => classroom);
-		await announce(event, classrooms, await sessionHash(event));
+		event.platform?.ctx.waitUntil(
+			announce(event, classrooms, await sessionHash(event)).catch(() => {})
+		);
 	}
 	return json(board);
 };

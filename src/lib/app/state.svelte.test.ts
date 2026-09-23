@@ -9,7 +9,8 @@ vi.mock('$lib/device', () => ({
 vi.mock('$lib/notifications', () => ({
 	forgetSubscription: async () => {},
 	notificationState: async () => 'off',
-	homeCardHidden: async () => false
+	homeCardHidden: async () => false,
+	hideHomeCard: async () => {}
 }));
 vi.mock('$lib/crypto', async (original) => ({
 	...(await original<object>()),

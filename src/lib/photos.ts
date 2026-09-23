@@ -46,21 +46,26 @@ export async function preparePhoto(photo: Blob) {
 	const image = await openImage(photo).catch((cause) => {
 		throw new CodedError('unusable-photo', { cause });
 	});
-	const webp = await writesWebp();
-	let type: string | undefined;
-	for (const { side, quality } of sizes) {
-		const context = drawSmaller(image, side);
-		if (!context) break;
-		// A JPEG has no see-through pixels to look for.
-		type ??= webp
-			? 'image/webp'
-			: photo.type !== 'image/jpeg' && seeThrough(context)
-				? 'image/png'
-				: 'image/jpeg';
-		const encoded = await context.canvas.convertToBlob({ type, quality });
-		if (encoded.size <= maxPhotoBytes) return encoded;
+	try {
+		const webp = await writesWebp();
+		let type: string | undefined;
+		for (const { side, quality } of sizes) {
+			const context = drawSmaller(image, side);
+			if (!context) break;
+			// A JPEG has no see-through pixels to look for.
+			type ??= webp
+				? 'image/webp'
+				: photo.type !== 'image/jpeg' && seeThrough(context)
+					? 'image/png'
+					: 'image/jpeg';
+			const encoded = await context.canvas.convertToBlob({ type, quality });
+			if (encoded.size <= maxPhotoBytes) return encoded;
+		}
+		throw new CodedError('unusable-photo');
+	} finally {
+		// A HEIC photo's bitmap holds its full-size pixels until it's closed.
+		if (typeof ImageBitmap !== 'undefined' && image instanceof ImageBitmap) image.close();
 	}
-	throw new CodedError('unusable-photo');
 }
 
 /**

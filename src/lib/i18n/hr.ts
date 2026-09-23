@@ -103,10 +103,10 @@ export const hr = {
 	},
 	security: {
 		title: 'Što je u skupini, ostaje u skupini.',
-		copy: 'Fotografije, poruke i imena djece zaključaju se na vašem mobitelu prije nego što se pošalju. Otključati ih mogu samo obitelji i odgojiteljice vaše skupine.',
+		copy: 'Fotografije, poruke i imena djece zaključaju se na vašem mobitelu prije nego što se pošalju. Otključati ih mogu samo obitelji vaše skupine i osoblje vašeg vrtića.',
 		group: {
 			title: 'Samo vaša skupina',
-			copy: 'Obavijesti i fotografije vide sve obitelji i odgojiteljice vaše skupine. Privatne razgovore vidite samo vi i vaše odgojiteljice.'
+			copy: 'Obavijesti i fotografije vide sve obitelji i odgojiteljice vaše skupine. Privatne razgovore vidite samo vi, odgojiteljice vaše skupine i BubbleBoard administrator vrtića.'
 		},
 		lock: {
 			title: 'Zaključano već na mobitelu',
@@ -127,7 +127,7 @@ export const hr = {
 				items: [
 					{
 						q: 'Izgubila sam QR kod. Moram li odmah u vrtić?',
-						a: 'Ne. Ako je bar jedan vaš uređaj još povezan, na njemu otvorite Opcije i odaberite „Dodaj uređaj”. Prikaže se novi QR kod. Skenirajte ga u roku od 24 sata i uređaj je povezan. Samo ako više nijedan uređaj nije povezan, zamolite vrtić za novi obiteljski QR kod. Novi kod odjavljuje sve vaše uređaje, pa ih povežete ponovno.'
+						a: 'Ne. Uređaji koji su već povezani rade i dalje. Za novi uređaj na povezanom uređaju otvorite Opcije i odaberite „Dodaj uređaj”, pa novim uređajem u roku od 24 sata skenirajte QR kod koji se pojavi. Ako mislite da je vaš QR kod mogao pronaći netko drugi, ili vam više nijedan uređaj nije povezan, zamolite vrtić za novi obiteljski QR kod. Novi kod odjavljuje sve vaše uređaje, pa ih ponovno povežete.'
 					},
 					{
 						q: 'Kupila sam novi mobitel. Kako ga povežem?',
@@ -159,7 +159,7 @@ export const hr = {
 					},
 					{
 						q: 'Zašto obavijesti i fotografije nestaju iz aplikacije?',
-						a: 'Odgojiteljica za svaku objavu bira koliko dana ostaje, od jednog do devedeset. BubbleBoard je oglasna ploča, ne arhiva. Što istekne, briše se, pa aplikacija zauzima malo prostora. Zato je vrtić može držati besplatno, bez pretplate i bez troškova koji bi rasli iz godine u godinu. Fotografije koje želite zadržati spremite na mobitel dok su u aplikaciji.'
+						a: 'Odgojiteljica za svaku objavu bira koliko dana ostaje, od jednog do devedeset. BubbleBoard je oglasna ploča, ne arhiva. Što istekne, briše se, pa aplikacija zauzima malo prostora. Zato vrtić ne plaća pretplatu, a troškovi ne rastu iz godine u godinu. Fotografije koje želite zadržati spremite na mobitel dok su u aplikaciji.'
 					},
 					{
 						q: 'Imam više djece, možda i u različitim skupinama. Trebam li više QR kodova?',
@@ -172,11 +172,11 @@ export const hr = {
 				items: [
 					{
 						q: 'Moram li svaki QR kod ispisati?',
-						a: 'Ne. Kad roditelj dođe po dijete, dodajte obiteljski QR kod i roditelj ga skenira s vašeg ekrana. Možete ga i spremiti kao PDF ili sliku zaslona i poslati roditelju kako se inače dopisujete. Kod se prikazuje samo jednom, pa ga spremite ako roditelj nije tu. Ako ga izgubite, „Zamijeni QR kod” napravi novi.'
+						a: 'Ne. Kad roditelj dođe po dijete, voditeljica skupine ili administrator doda obiteljski QR kod i roditelj ga skenira s njihova zaslona. Kod se prikazuje samo jednom. Ako roditelj nije tu, „Zamijeni QR kod” kasnije napravi novi za ispis. Obiteljski QR kod ne šaljite porukama: tko ga ima, vidi sve što vidi ta obitelj.'
 					},
 					{
 						q: 'Roditelji kažu da ne mogu slati upite. Zašto?',
-						a: 'Poruke se uključuju za svaku skupinu posebno. U skupini, pod „Poruke roditelja”, voditeljica skupine ili BubbleBoard administratorica uključi slanje, odredi broj upita mjesečno i sate kad roditelji smiju pisati. Dok se ne uključi, roditelji ne mogu slati poruke, ni odgovarati na vaše. Vi im možete pisati uvijek.'
+						a: 'Poruke se uključuju za svaku skupinu posebno. U skupini, pod „Poruke roditelja”, voditeljica skupine ili BubbleBoard administrator uključi slanje, odredi broj upita mjesečno i sate kad roditelji smiju pisati. Dok se ne uključi, roditelji ne mogu slati poruke, ni odgovarati na vaše. Vi im možete pisati uvijek.'
 					},
 					{
 						q: 'Čemu služi „Ostavi prekriveno”?',
@@ -188,15 +188,15 @@ export const hr = {
 					},
 					{
 						q: 'Izgubila sam svoj QR kod. Što sad?',
-						a: 'BubbleBoard administratorica u Upravljanju, pod Odgojiteljice, odabere „Zamijeni QR kod” uz vaše ime. Vaša uloga i skupine ostaju. Stari kod prestaje raditi. Ako se izgube svi administratorski kodovi, vrtić ima QR kod za oporavak.'
+						a: 'BubbleBoard administrator u Upravljanju otvori Odgojiteljice, zatim vaše ime, i odabere „Zamijeni QR kod”. Vaša uloga i skupine ostaju. Stari kod prestaje raditi. Ako se izgube svi administratorski kodovi, vrtić ima QR kod za oporavak.'
 					},
 					{
 						q: 'Koliko dugo ostaju obavijesti i fotografije?',
 						a: 'Koliko odaberete pri objavi: 1, 3, 7, 14, 30, 60 ili 90 dana. Unaprijed je odabrano 30. Rok možete promijeniti i poslije. Fotografija oglasne ploče i stranice pod Info nemaju rok. Ostaju dok ih ne zamijenite ili obrišete.'
 					},
 					{
-						q: 'Što ja vidim, a što voditeljica i administratorica?',
-						a: 'Vi vidite djecu, obitelji i objave svojih skupina. Voditeljica skupine u svojim skupinama još dodaje djecu i obiteljske QR kodove i uključuje poruke roditelja. BubbleBoard administratorica vidi sve skupine, dodaje odgojiteljice i skupine i piše stranice pod Info.'
+						q: 'Što ja vidim, a što voditeljica i administrator?',
+						a: 'Vi vidite djecu, obitelji i objave svojih skupina. Voditeljica skupine u svojim skupinama još dodaje djecu i obiteljske QR kodove i uključuje poruke roditelja. BubbleBoard administrator vidi sve skupine, dodaje odgojiteljice i skupine i piše stranice pod Info.'
 					}
 				]
 			},
@@ -213,11 +213,11 @@ export const hr = {
 					},
 					{
 						q: 'Kako rade naljepnice na licima? Je li to samo sloj preko slike?',
-						a: 'Nije. Naljepnica nije sloj koji bi se mogao maknuti. Prije slanja mobitel odgojiteljice svako označeno lice izreže iz fotografije i na njegovo mjesto upiše prazne piksele. Tako nastaje osnovna slika, u kojoj lica jednostavno nema. Svako izrezano lice zasebno je šifrirano, svojim ključem, i ključ dobiju samo obitelji koje ga smiju vidjeti: uvijek obitelj tog djeteta, a ostale obitelji iz skupine tek kad njegova obitelj to dopusti. Lice koje odgojiteljica ostavi prekriveno nikad se ni ne šalje. Kad otvorite fotografiju, vaš mobitel otključa osnovnu sliku i one dijelove s licima za koje ima ključ, pa ih sam slaže natrag. Gdje nema ključa, ostaje naljepnica. Izvorna fotografija nikad ne napušta mobitel odgojiteljice, a server nema ni sliku ni ijedno lice u čitljivom obliku.'
+						a: 'Nije. Naljepnica nije sloj koji bi se mogao maknuti. Prije slanja mobitel odgojiteljice svako označeno lice izreže iz fotografije i na njegovo mjesto nacrta naljepnicu. Tako nastaje osnovna slika, u kojoj lica jednostavno nema. Svako izrezano lice zasebno je šifrirano, svojim ključem, a ključ dobiju osoblje vrtića i obitelji koje ga smiju vidjeti: uvijek obitelj tog djeteta, a ostale obitelji iz skupine tek kad njegova obitelj to dopusti. Lice koje odgojiteljica ostavi prekriveno nikad se ni ne šalje. Kad otvorite fotografiju, vaš mobitel otključa osnovnu sliku i one dijelove s licima za koje ima ključ, pa ih sam slaže natrag. Gdje nema ključa, ostaje naljepnica. Izvorna fotografija nikad ne napušta mobitel odgojiteljice, a server nema ni sliku ni ijedno lice u čitljivom obliku.'
 					},
 					{
 						q: 'Zašto objave imaju rok trajanja?',
-						a: 'Da bi vrtić ostao u besplatnom paketu. Pohrana je besplatna do određene veličine, a objave koje istječu drže je trajno ispod te granice, koliko god godina aplikacija radila. Istekle objave i njihove datoteke briše dnevno čišćenje.'
+						a: 'Da bi pohrana ostala unutar besplatnog paketa. Pohrana je besplatna do određene veličine, a objave koje istječu drže je trajno ispod te granice, koliko god godina aplikacija radila. Istekle objave i njihove datoteke briše dnevno čišćenje.'
 					},
 					{
 						q: 'Kako radi prijava bez lozinke?',
@@ -313,7 +313,7 @@ export const hr = {
 			{
 				shot: 'parent-poll',
 				title: 'Pročitali ste? Javite jednim dodirom',
-				copy: 'Sutra je izlet u Tvrđu? Kad pročitate obavijest, dodirnite „Označi kao pročitano“ i odgojiteljice znaju da ste je vidjeli. Pitaju li ide li vaše dijete, odgovorite u anketi jednim dodirom.',
+				copy: 'Sutra je izlet u Tvrđu? Kad pročitate obavijest, dodirnite „Označi kao pročitano“ i odgojiteljice znaju da ste je vidjeli. Ako pitaju ide li vaše dijete, odaberite odgovor u anketi i potvrdite ga.',
 				screen:
 					'Žuta obavijest o izletu u Tvrđu s anketom: „Da, dolazimo“ ima 5 glasova, a „Ne, ovaj put ne“ 1. Ispod piše da je obavijest pročitana.'
 			},
@@ -364,7 +364,7 @@ export const hr = {
 			{
 				shot: 'teacher-seen',
 				title: 'Vidite tko je pročitao',
-				copy: 'Ne morate više pitati na vratima je li obavijest stigla. Ispod svake vidite koje su je obitelji pročitale, a koje još nisu. Kod ankete vidite i koja je obitelj što odgovorila. To vidite samo vi odgojiteljice. Roditelji vide samo broj odgovora.',
+				copy: 'Ne morate više pitati na vratima je li obavijest stigla. Ispod svake vidite koje su je obitelji pročitale, a koje još nisu. Kod ankete vidite i koja je obitelj što odgovorila. To vidite samo vi odgojiteljice. Ako to uključite u anketi, roditelji vide koliko je obitelji odabralo koji odgovor, ali ne i tko.',
 				screen:
 					'Obavijest o izletu kako je vidi odgojiteljica: uz svaki odgovor ankete obitelji koje su ga odabrale, dvije obitelji bez odgovora i „Pročitano: 6 od 8 obitelji“.'
 			},
@@ -509,9 +509,10 @@ export const hr = {
 			back: 'Natrag na ploču',
 			expired: 'Događaj nije dostupan ili je istekao.',
 			stale:
-				'Dopuštenja ili popis djece promijenili su se. Vrati se na uređivanje i ponovno pripremi pregled.',
+				'Dopuštenja ili popis djece promijenili su se. Vratite se na uređivanje i ponovno pripremite pregled.',
 			review: 'Pregled i objava',
-			ready: 'Pregledaj pokrivenost svih lica i pogled odabrane obitelji prije objave.',
+			ready:
+				'Prije objave provjerite je li svako lice prekriveno i kako fotografije vidi odabrana obitelj.',
 			failed: 'Fotografiju nije moguće otvoriti.',
 			tooOld:
 				'Softver ovog uređaja prestar je za prikaz fotografija s događaja. Ažurirajte ga ili otvorite BubbleBoard na novijem mobitelu ili računalu.',
@@ -532,35 +533,36 @@ export const hr = {
 			local:
 				'Fotografije ostaju na ovom uređaju i ništa se ne šalje dok ne objavite. Nedovršeni događaj ovdje čeka 7 dana.',
 			classroom: 'Skupina',
-			classroomLocked: 'Ukloni fotografije da bi događaj pripremio za drugu skupinu.',
+			classroomLocked: 'Uklonite fotografije ako događaj želite pripremiti za drugu skupinu.',
 			continue: 'Nastavi',
 			backToDetails: 'Natrag na događaj',
 			tools: 'Alati za fotografiju',
 			add: 'Dodaj fotografije',
 			addMore: 'Dodaj još',
-			limit: (photos: number, mb: number) => `Odaberi do ${photos} fotografija, svaku do ${mb} MB.`,
-			none: 'Dodaj fotografije događaja. Otvaraju se samo na ovom uređaju; ništa se još ne šalje.',
+			limit: (photos: number, mb: number) =>
+				`Odaberite do ${count(photos, 'fotografije', 'fotografije', 'fotografija')}, svaku do ${mb} MB.`,
+			none: 'Dodajte fotografije događaja. Otvaraju se samo na ovom uređaju i još se ništa ne šalje.',
 			loading: 'Pripremamo fotografije…',
 			adding: (n: number, total: number) => `Pripremamo fotografiju ${n} od ${total}…`,
 			photos: 'Fotografije',
 			caption: 'Nekoliko riječi o ovoj fotografiji',
 			captionPlaceholder: 'Nije obavezno',
-			progress: (done: number, total: number) => `Pregledano ${done} od ${total} fotografija`,
-			detecting: 'Tražim lica…',
-			failed: 'Detekcija lica nije dostupna. Dodaj pokrove ručno i pregledaj cijelu fotografiju.',
+			progress: (done: number, total: number) =>
+				`Pregledano ${done} od ${count(total, 'fotografije', 'fotografije', 'fotografija')}`,
+			detecting: 'Tražimo lica…',
+			failed:
+				'Automatsko pronalaženje lica ne radi. Dodajte pokrove ručno i pregledajte cijelu fotografiju.',
 			retry: 'Ponovi detekciju',
 			manual: 'Nastavi ručno',
-			noFaces: 'Nisu pronađena lica. Pregledaj cijelu fotografiju i sama prekrij svako lice.',
-			noCovers: 'Još ništa nije prekriveno. Dodaj pokrov preko svakog lica.',
+			noFaces: 'Nisu pronađena lica. Pregledajte cijelu fotografiju i sami prekrijte svako lice.',
+			noCovers: 'Još ništa nije prekriveno. Dodajte pokrov preko svakog lica.',
 			photo: (n: number, total: number) => `Fotografija ${n} od ${total}`,
 			face: (n: number) => `Lice ${n}`,
 			remaining: (n: number) =>
-				n === 1
-					? 'Još 1 lice treba označiti ili ostaviti prekrivenim.'
-					: `Još ${n} lica treba označiti ili ostaviti prekrivenima.`,
+				`Još ${count(n, 'lice', 'lica', 'lica')} treba označiti ili ostaviti ${form(n, 'prekrivenim', 'prekrivenima', 'prekrivenima')}.`,
 			addCover: 'Dodaj pokrov',
 			who: 'Tko je na slici?',
-			pick: 'Dodirni lice na fotografiji da bi rekao tko je to.',
+			pick: 'Dodirnite lice na fotografiji i odaberite tko je to.',
 			crop: 'Izrez originala — vidljiv samo tijekom uređivanja',
 			search: 'Pronađi dijete',
 			already: 'Već na slici',
@@ -599,13 +601,14 @@ export const hr = {
 			nextPhoto: 'Sljedeća fotografija',
 			reviewNeeded: 'Potreban pregled',
 			overlap:
-				'Neki se pokrovi preklapaju. Zajednički dio vidi samo obitelj koja smije vidjeti sva lica u tom dijelu. Provjeri rubove.',
+				'Neki se pokrovi preklapaju. Zajednički dio vidi samo obitelj koja smije vidjeti sva lica u tom dijelu. Provjerite rubove.',
 			removePhoto: 'Ukloni fotografiju',
 			removePhotoCopy: 'Ova fotografija i sve označeno na njoj nestaju iz nacrta.',
 			back: 'Natrag na fotografije',
 			backToGrid: 'Natrag na sve fotografije',
-			previewFailed: 'Pregled nije moguće pripremiti. Vrati se na fotografije i pokušaj ponovno.',
-			unusable: 'Fotografiju nije moguće otvoriti. Odaberi JPEG, PNG, WebP ili HEIC fotografiju.',
+			previewFailed:
+				'Pregled nije moguće pripremiti. Vratite se na fotografije i pokušajte ponovno.',
+			unusable: 'Fotografiju nije moguće otvoriti. Odaberite JPEG, PNG, WebP ili HEIC fotografiju.',
 			leaveTitle: 'Napustiti događaj?',
 			leaveCopy:
 				'Ovaj uređaj još nije spremio fotografije ni ono što je na njima označeno, pa bi bili izgubljeni.',
@@ -613,8 +616,8 @@ export const hr = {
 			stay: 'Ostani',
 			allReviewed: 'Sve su fotografije pregledane.',
 			tooManyFaces:
-				'Na fotografiji je previše pokrova. Odaberi drugu fotografiju ili ukloni pogrešne detekcije.',
-			rosterChanged: 'Popis djece u skupini se promijenio. Ponovno provjeri oznake.',
+				'Na fotografiji je previše pokrova. Odaberite drugu fotografiju ili uklonite pokrove koji nisu na licima.',
+			rosterChanged: 'Popis djece u skupini se promijenio. Ponovno provjerite oznake.',
 			draftFound: 'Nedovršeni događaj',
 			draftFoundCopy: (n: number) =>
 				`Na ovom uređaju čeka nedovršeni događaj s ${count(n, 'fotografijom', 'fotografije', 'fotografija')}.`,
@@ -687,8 +690,8 @@ export const hr = {
 			closed: 'Prošlo',
 			summary: 'Pogledajte slobodne termine i svoje rezervacije.',
 			staffSummary: 'Ponudite termine i pratite prijave roditelja.',
-			freeCount: 'slobodno',
-			bookedCount: 'rezervirano',
+			freeCount: (n: number) => count(n, 'slobodan', 'slobodna', 'slobodnih'),
+			bookedCount: (n: number) => count(n, 'rezerviran', 'rezervirana', 'rezerviranih'),
 			remaining: 'Preostale minute na kraju raspona neće biti ponuđene.',
 			cancelForm: 'Zatvori obrazac'
 		},
@@ -859,6 +862,12 @@ export const hr = {
 			replaceConfirmCopy:
 				'Stari QR kodovi prestaju raditi, a svi uređaji koji su ih koristili bit će odjavljeni.'
 		},
+		leaveForm: {
+			title: 'Napustiti bez spremanja?',
+			copy: 'Ono što ste napisali neće biti spremljeno.',
+			leave: 'Napusti',
+			stay: 'Ostani'
+		},
 		newChild: {
 			title: 'Dodaj dijete',
 			name: 'Ime djeteta',
@@ -973,7 +982,7 @@ export const hr = {
 			copied: 'Poveznica je kopirana.',
 			shareText: 'Priključite se BubbleBoardu našeg vrtića. Poveznica vrijedi 24 sata.',
 			connectAgain:
-				'Ovaj je uređaj povezan prije nego što je mogao dodavati druge. Da biste s njega dodavali uređaje, odjavite ga pa ga ponovno povežite obiteljskim QR kodom.'
+				'Ovaj je uređaj povezan prije nego što je mogao dodavati druge. Da biste s njega dodavali uređaje, odjavite ga pa ga ponovno povežite obiteljskim QR kodom. Ako obiteljski QR kod više nemate, nemojte se odjavljivati, nego najprije zamolite vrtić za novi.'
 		},
 		devices: {
 			title: 'Povezani uređaji',
@@ -1288,6 +1297,8 @@ export const hr = {
 			'file-type':
 				'Takvu datoteku BubbleBoard ne može priložiti. Priložite PDF, dokument ili sliku.',
 			'file-too-large': 'Ta je datoteka veća od 10 MB. Priložite manju.',
+			'too-large':
+				'Ovo je preveliko za slanje. Uklonite nekoliko fotografija ili skratite tekst pa pokušajte ponovno.',
 			'too-many-files': 'Možete priložiti najviše 10 datoteka.',
 			'unreadable-file':
 				'Datoteka se nije otvorila na ovom uređaju. Zamolite vrtić da je ponovno priloži.',

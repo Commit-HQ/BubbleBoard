@@ -17,6 +17,7 @@ function commit() {
 		return 'unknown';
 	}
 }
+const built = commit();
 
 export default defineConfig({
 	plugins: [
@@ -30,7 +31,10 @@ export default defineConfig({
 			// The adapter writes its fetch handler where wrangler.build.jsonc says, and worker/index.js, the
 			// Worker's entry in wrangler.jsonc, adds the queue and scheduled handlers to it.
 			adapter: adapter({ config: 'wrangler.build.jsonc' }),
-			version: { name: commit() },
+			// The version an open app compares with the server's to tell a new deploy has come
+			// (src/routes/(app)/+layout.svelte). It's new with every build, even from the same commit, so a
+			// rebuild with uncommitted changes counts too; the footer takes the commit alone, from __COMMIT__.
+			version: { name: `${built}.${Date.now().toString(36)}` },
 			csp: {
 				mode: 'hash',
 				// Styles, fonts, and connections fall back to default-src, and SvelteKit adds hashes for its
@@ -57,6 +61,7 @@ export default defineConfig({
 			}
 		})
 	],
+	define: { __COMMIT__: JSON.stringify(built) },
 	build: {
 		// Emit every asset as a hashed file instead of a data: URI, so the CSP can stay 'self'-only.
 		assetsInlineLimit: 0
