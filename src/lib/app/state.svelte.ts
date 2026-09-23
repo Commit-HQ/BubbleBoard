@@ -15,6 +15,12 @@ import type {
 	EventContent
 } from '$lib/events/types';
 import { clearDraft } from '$lib/events/draft';
+import {
+	cachePicture,
+	cachedPicture,
+	clearCachedPictures,
+	keepCachedPictures
+} from '$lib/events/cache';
 import { maxEventBytes } from '$lib/events/limits';
 import { maxEventContentBytes, maxEventFileBytes } from '$lib/events/types';
 import type { EventDraft } from '$lib/events/publishing';
@@ -213,6 +219,12 @@ export type Picture = {
 	mine?: boolean;
 };
 
+/** Where `#picture` finds a copy of a picture the device kept, and keeps one it just opened. */
+type KeptPictures = {
+	load: () => Promise<Omit<Picture, 'url'> | undefined>;
+	save: (picture: Omit<Picture, 'url'>) => void;
+};
+
 const emptyCatalog: Catalog = {
 	revision: 0,
 	classrooms: [],
@@ -335,8 +347,13 @@ export class App {
 			this.eventsError = opened.some((r) => r.status === 'rejected')
 				? 'unreadable-photo'
 				: undefined;
-			// An event that came down takes its card's photo with it.
+			// An event that came down takes its card's photo with it, and its photos this device kept go too.
 			this.#keepPictures();
+			void keepCachedPictures(
+				this.events.flatMap((event) =>
+					event.value.photos.map((photo) => eventFilePath(event.id, photo.id))
+				)
+			);
 		} catch (cause) {
 			if (version === this.#connectionVersion) this.eventsError = errorCode(cause);
 		}
@@ -493,16 +510,32 @@ export class App {
 			progress(index + 1);
 		}
 	}
-	/** One of an event's photos, composed for whoever holds this card, and kept while the event is open. */
+	/**
+	 * One of an event's photos, composed for whoever holds this card, and kept while the event is open. The
+	 * device also keeps what it composed, for this card, so opening the event again doesn't compose it again
+	 * (src/lib/events/cache.ts).
+	 */
 	eventPicture(event: OpenEvent, photo: string) {
-		return this.#picture(eventFilePath(event.id, photo), (sealed) =>
-			renderPackage(
-				event.id,
-				photo,
-				sealed,
-				event.key,
-				this.#familyCard ? { family: this.#familyCard.familyKey } : { staff: this.#staff.staffKey }
-			)
+		const path = eventFilePath(event.id, photo);
+		const credential = this.#card?.credential;
+		return this.#picture(
+			path,
+			(sealed) =>
+				renderPackage(
+					event.id,
+					photo,
+					sealed,
+					event.key,
+					this.#familyCard
+						? { family: this.#familyCard.familyKey }
+						: { staff: this.#staff.staffKey }
+				),
+			credential === undefined
+				? undefined
+				: {
+						load: () => cachedPicture(path, credential),
+						save: ({ blob, mine = false }) => void cachePicture(path, credential, { blob, mine })
+					}
 		);
 	}
 
@@ -1391,13 +1424,17 @@ export class App {
 		this.#keepPictures();
 		this.notice = notice;
 		this.status = 'disconnected';
-		// The unfinished event goes with the card: the next person to connect here must never see it.
-		// Whoever connects next sees home's cards again, and is asked who uses the device, whatever was
-		// answered before.
+		// The unfinished event and the event photos kept here go with the card: the next person to connect
+		// here must never see them. Whoever connects next sees home's cards again, and is asked who uses the
+		// device, whatever was answered before.
 		await Promise.all(
-			[forgetCard(), forgetSubscription(), clearDraft(), keepHiddenHomeCards([])].map((done) =>
-				done.catch(() => {})
-			)
+			[
+				forgetCard(),
+				forgetSubscription(),
+				clearDraft(),
+				clearCachedPictures(),
+				keepHiddenHomeCards([])
+			].map((done) => done.catch(() => {}))
 		);
 	}
 
@@ -1935,13 +1972,22 @@ export class App {
 
 	/**
 	 * A picture, fetched from where it's kept and opened the first time it's shown, and kept while it's up. One
-	 * that didn't open is tried again the next time it's shown.
+	 * that didn't open is tried again the next time it's shown. With `kept`, a copy the device kept is shown
+	 * instead of fetching, and one just opened is kept, without waiting for it to be.
 	 */
-	#picture(path: string, open: (sealed: Uint8Array<ArrayBuffer>) => Promise<Omit<Picture, 'url'>>) {
+	#picture(
+		path: string,
+		open: (sealed: Uint8Array<ArrayBuffer>) => Promise<Omit<Picture, 'url'>>,
+		kept?: KeptPictures
+	) {
 		let picture = this.#pictures.get(path);
 		if (!picture) {
 			picture = this.#signedIn(async () => {
-				const opened = await open(await requestBytes(path));
+				let opened = await kept?.load();
+				if (!opened) {
+					opened = await open(await requestBytes(path));
+					kept?.save(opened);
+				}
 				return { ...opened, url: URL.createObjectURL(opened.blob) };
 			});
 			this.#pictures.set(path, picture);

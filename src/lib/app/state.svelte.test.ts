@@ -26,8 +26,30 @@ vi.mock('$lib/info', async (original) => ({
 	...(await original<object>()),
 	openInfoForStaff: async () => ({ pages: [], unreadable: 0 })
 }));
-vi.mock('$lib/api', async (original) => ({ ...(await original<object>()), request: vi.fn() }));
-import { request, ApiError } from '$lib/api';
+vi.mock('$lib/api', async (original) => ({
+	...(await original<object>()),
+	request: vi.fn(),
+	requestBytes: vi.fn()
+}));
+vi.mock('$lib/events/cache', () => ({
+	cachedPicture: vi.fn(async () => undefined),
+	cachePicture: vi.fn(async () => {}),
+	keepCachedPictures: vi.fn(async () => {}),
+	clearCachedPictures: vi.fn(async () => {})
+}));
+vi.mock('$lib/events/package', async (original) => ({
+	...(await original<object>()),
+	renderPackage: vi.fn()
+}));
+import { request, requestBytes, ApiError } from '$lib/api';
+import {
+	cachePicture,
+	cachedPicture,
+	clearCachedPictures,
+	keepCachedPictures
+} from '$lib/events/cache';
+import { renderPackage } from '$lib/events/package';
+import type { OpenEvent } from '$lib/events/types';
 import { openCatalog } from '$lib/kindergarten';
 import { App } from './state.svelte';
 
@@ -112,4 +134,38 @@ it('does not let an old request failure disconnect a newly connected card', asyn
 	await refreshing;
 	expect(app.status).toBe('staff');
 	expect(app.myName).toBe('Private name');
+});
+
+const event = {
+	id: 'event',
+	key: {},
+	value: { photos: [{ id: 'photo' }] }
+} as unknown as OpenEvent;
+const photoPath = '/api/events/event/files/photo';
+it('shows an event photo this card kept without fetching it', async () => {
+	const app = await connected();
+	const blob = new Blob(['kept']);
+	vi.mocked(cachedPicture).mockResolvedValueOnce({ blob, mine: true });
+	const picture = await app.eventPicture(event, 'photo');
+	expect(cachedPicture).toHaveBeenCalledWith(photoPath, 'credential');
+	expect(picture).toMatchObject({ blob, mine: true });
+	expect(requestBytes).not.toHaveBeenCalled();
+	expect(renderPackage).not.toHaveBeenCalled();
+});
+it('keeps an event photo it composed for this card', async () => {
+	const app = await connected();
+	const blob = new Blob(['composed']);
+	vi.mocked(requestBytes).mockResolvedValueOnce(new Uint8Array(1));
+	vi.mocked(renderPackage).mockResolvedValueOnce({ blob, mine: false });
+	const picture = await app.eventPicture(event, 'photo');
+	expect(picture.blob).toBe(blob);
+	expect(cachePicture).toHaveBeenCalledWith(photoPath, 'credential', { blob, mine: false });
+});
+it('keeps only the photos of the events on the board, and none once the card goes', async () => {
+	const app = await connected();
+	vi.mocked(request).mockResolvedValueOnce([] as never);
+	await app.loadEvents();
+	expect(keepCachedPictures).toHaveBeenCalledWith([]);
+	await app.signOut();
+	expect(clearCachedPictures).toHaveBeenCalled();
 });

@@ -56,7 +56,8 @@
 		return untrack(() => app.showEventPictures(event));
 	});
 	// One photo at a time, nearest the one being looked at first, and nothing at all once the family has left
-	// the page or opened another event. A photo already open comes back from the app without being fetched.
+	// the page or opened another event. A photo already open comes back from the app without being fetched, and
+	// one this device composed before comes back from the device (src/lib/events/cache.ts).
 	$effect(() => {
 		void eventId;
 		return untrack(() => {

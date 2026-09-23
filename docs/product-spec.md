@@ -1418,6 +1418,8 @@ This applies to:
 
 A deleted publication must not remain visible merely because an older local response still exists.
 
+Event photos are the one application-controlled content cache: each photo a device composes is kept in IndexedDB for the card that composed it. Every successful load of the board's events removes the photos of events no longer listed, whether deleted, expired, or no longer authorized, and disconnecting clears the cache ([event format](events-format.md)).
+
 This does not and cannot recall a file that a user intentionally saved outside the application.
 
 ---
