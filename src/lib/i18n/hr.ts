@@ -1165,6 +1165,7 @@ export const hr = {
 			toolbar: 'Oblikovanje',
 			loading: 'Otvaramo uređivač…',
 			bold: 'Podebljano',
+			underline: 'Podcrtano',
 			bulletList: 'Popis s oznakama',
 			orderedList: 'Numerirani popis',
 			link: 'Poveznica',

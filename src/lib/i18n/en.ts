@@ -1194,6 +1194,7 @@ export const en = {
 			toolbar: 'Formatting',
 			loading: 'Opening the editor…',
 			bold: 'Bold',
+			underline: 'Underline',
 			bulletList: 'Bulleted list',
 			orderedList: 'Numbered list',
 			link: 'Link',

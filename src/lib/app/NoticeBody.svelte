@@ -14,6 +14,8 @@
 		{@const [mark, ...rest] = marks}
 		{#if mark.type === 'bold'}
 			<strong>{@render marked(text, rest)}</strong>
+		{:else if mark.type === 'underline'}
+			<u>{@render marked(text, rest)}</u>
 		{:else}
 			<a href={mark.attrs.href} target="_blank" rel="noopener noreferrer"
 				>{@render marked(text, rest)}</a

@@ -9,7 +9,7 @@
 
 	// The editor of notices, info pages and an event's words: Tiptap 3, imported when this component mounts, so only
 	// the pages where they're written download it (decisions.md, Editor). Its schema holds what boards render:
-	// paragraphs, lists, bold, and links. With a `paper`, its toolbar also chooses that background, the colour the
+	// paragraphs, lists, bold, underline, and links. With a `paper`, its toolbar also chooses that background, the colour the
 	// text is written on; without one, as for an event, the text is simply written on white. Tiptap's injected
 	// stylesheet is off for the CSP, with its rules in app.css. Emoji come from the keyboard.
 	let {
@@ -34,6 +34,7 @@
 	/** The formatting at the selection, for the toolbar. */
 	let active = $state.raw({
 		bold: false,
+		underline: false,
 		bulletList: false,
 		orderedList: false,
 		link: false
@@ -63,7 +64,6 @@
 						horizontalRule: false,
 						italic: false,
 						strike: false,
-						underline: false,
 						link: {
 							openOnClick: false,
 							autolink: true,
@@ -97,6 +97,7 @@
 	function show(current: Editor) {
 		active = {
 			bold: current.isActive('bold'),
+			underline: current.isActive('underline'),
 			bulletList: current.isActive('bulletList'),
 			orderedList: current.isActive('orderedList'),
 			link: current.isActive('link')
@@ -183,6 +184,9 @@
 		aria-label={t.toolbar}
 	>
 		{@render tool('bold', t.bold, active.bold, () => run((chain) => chain.toggleBold()))}
+		{@render tool('underline', t.underline, active.underline, () =>
+			run((chain) => chain.toggleUnderline())
+		)}
 		{@render tool('list', t.bulletList, active.bulletList, () =>
 			run((chain) => chain.toggleBulletList())
 		)}

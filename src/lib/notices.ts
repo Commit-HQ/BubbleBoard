@@ -32,7 +32,8 @@ export const day = 24 * 60 * 60 * 1000;
 export const papers = ['white', 'yellow', 'peach', 'pink', 'lilac', 'blue', 'green'] as const;
 export type Paper = (typeof papers)[number];
 
-export type NoticeMark = { type: 'bold' } | { type: 'link'; attrs: { href: string } };
+export type NoticeMark =
+	{ type: 'bold' } | { type: 'underline' } | { type: 'link'; attrs: { href: string } };
 export type NoticeInline =
 	{ type: 'text'; text: string; marks?: NoticeMark[] } | { type: 'hardBreak' };
 export type NoticeBlock =
@@ -103,7 +104,7 @@ export function readDocument(value: unknown): NoticeDocument {
 	const node = (item: unknown) => (++nodes > maxNodes ? fail() : fields(item));
 	const mark = (item: unknown): NoticeMark | undefined => {
 		const { type, attrs } = fields(item);
-		if (type === 'bold') return { type };
+		if (type === 'bold' || type === 'underline') return { type };
 		if (type === 'link') return { type, attrs: { href: readHref(fields(attrs).href) } };
 		return type === 'colour' || type === 'italic' ? undefined : fail();
 	};

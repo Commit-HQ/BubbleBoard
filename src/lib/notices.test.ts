@@ -233,7 +233,7 @@ describe('notice text', () => {
 	it('keeps lists and links, and drops attributes the app doesn’t use and the text colours and italics notices had', () => {
 		const written = doc(
 			paragraph(
-				text('Picnic', { type: 'bold' }, { type: 'italic' }),
+				text('Picnic', { type: 'bold' }, { type: 'underline' }, { type: 'italic' }),
 				{ type: 'hardBreak' },
 				text('map', {
 					type: 'link',
@@ -247,7 +247,7 @@ describe('notice text', () => {
 		expect(readDocument(written)).toEqual(
 			doc(
 				paragraph(
-					text('Picnic', { type: 'bold' }),
+					text('Picnic', { type: 'bold' }, { type: 'underline' }),
 					{ type: 'hardBreak' },
 					text('map', { type: 'link', attrs: { href: 'https://example.com/map' } })
 				),
