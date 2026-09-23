@@ -571,6 +571,8 @@ export const hr = {
 			coverRest: (n: number) => `Ostavi preostala lica prekrivenima (${n})`,
 			coveredRest: (n: number) => `Prekriveno je još ${count(n, 'lice', 'lica', 'lica')}.`,
 			removeCover: 'Ukloni pokrov',
+			fixedCover:
+				'Ovo je lice ostalo prekriveno kad je fotografija objavljena, pa njegove slike više nema. Pokrov ostaje gdje jest; može mu se promijeniti samo naljepnica.',
 			sticker: 'Naljepnica',
 			stickerNames: {
 				smile: 'Smješko',
@@ -627,7 +629,13 @@ export const hr = {
 				'Nove fotografije ostaju na ovom uređaju dok ne spremite promjene. Promjena se ne čuva ovdje, pa je dovršite odjednom.',
 			published: 'Fotografije koje su već objavljene',
 			publishedHint:
-				'Pokrovi na ovim fotografijama više se ne mogu mijenjati. Kad se fotografija objavi, zaključava se tako da svaka obitelj vidi samo ono što smije, a izvorna fotografija bez pokrova nigdje se ne čuva. Možete joj promijeniti opis ili je maknuti. Ako pokrov treba ispraviti, maknite fotografiju i dodajte je ponovno.',
+				'Ova je fotografija objavljena ovakva kakva jest. Možete joj promijeniti opis, maknuti je ili ponovno otvoriti pokrove: fotografija se sastavlja na ovom uređaju, a kad spremite, obitelji na njezinu mjestu vide novu inačicu. Lice koje je pri objavi ostalo prekriveno zauvijek je izgubljeno i ostaje prekriveno.',
+			editCovers: 'Uredi pokrove',
+			reopened:
+				'Ova je fotografija već objavljena. Spremanjem je zamjenjuje ova inačica, provjerena prema trenutačnim odlukama obitelji. Tko ju je već spremio, zadržava svoju kopiju.',
+			keepPublished: 'Odbaci uređivanje',
+			keepPublishedCopy:
+				'Ovdje promijenjeni pokrovi se odbacuju, a fotografija ostaje objavljena točno kakva jest.',
 			moveEarlier: 'Pomakni prije',
 			moveLater: 'Pomakni poslije',
 			orderHint:

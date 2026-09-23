@@ -4,6 +4,7 @@ import {
 	readChoice,
 	readLabel,
 	renderPackage,
+	restorePackage,
 	sealChoice,
 	sharing
 } from '$lib/events/package';
@@ -536,6 +537,19 @@ export class App {
 						load: () => cachedPicture(path, credential),
 						save: ({ blob, mine = false }) => void cachePicture(path, credential, { blob, mine })
 					}
+		);
+	}
+
+	/**
+	 * One of an event's photos put back together for the editor, with its covers: the whole picture less the
+	 * faces kept covered when it went up (`restorePackage`). Only a staff device holds the key that does this.
+	 */
+	async openEventPhoto(event: OpenEvent, photo: string) {
+		const staffKey = this.#staff.staffKey;
+		const sealed = await this.#signedIn(() => requestBytes(eventFilePath(event.id, photo)));
+		return readable(
+			restorePackage(event.id, photo, sealed, event.key, staffKey),
+			'unreadable-photo'
 		);
 	}
 

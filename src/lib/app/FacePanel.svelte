@@ -82,8 +82,57 @@
 	});
 </script>
 
+{#snippet stickerChoice(cover: Region)}
+	<div class="grid justify-items-start gap-2">
+		<button
+			type="button"
+			class={button.secondary}
+			aria-expanded={picking}
+			aria-controls="{id}-stickers"
+			onclick={() => (picking = !picking)}
+		>
+			<img src={stickers[cover.sticker ?? 'smile']} alt="" class="size-6" />{t.sticker}
+		</button>
+		<div
+			id="{id}-stickers"
+			class="flex flex-wrap items-center gap-2"
+			hidden={!picking}
+			role="group"
+			aria-label={t.sticker}
+		>
+			{#each Object.entries(stickers) as [name, source] (name)}
+				<!-- A ring marks the chosen sticker, which forced colours would otherwise flatten. -->
+				<button
+					type="button"
+					class="grid size-11 place-items-center rounded-full ring-1 ring-ink/10 transition hover:bg-ink/5 aria-pressed:ring-3 aria-pressed:ring-accent"
+					aria-label={t.stickerNames[name as Sticker]}
+					title={t.stickerNames[name as Sticker]}
+					aria-pressed={(cover.sticker ?? 'smile') === name}
+					onclick={() => {
+						onsticker(name as Sticker);
+						picking = false;
+					}}
+				>
+					<img src={source} alt="" class="size-7" />
+				</button>
+			{/each}
+		</div>
+	</div>
+{/snippet}
+
 <div class="grid gap-4 rounded-3xl glass p-5">
-	{#if selected}
+	{#if selected?.fixed}
+		<!-- A face kept covered when the photo went up has no picture anywhere: there is nothing to show under
+		     the cover and nobody it could be named, so the cover stays and only its sticker can change. -->
+		<div class="flex items-start gap-3">
+			<Icon name="eyeOff" class="mt-1 size-5 shrink-0 text-muted" />
+			<div class="min-w-0">
+				<h3 class="font-sans text-lg font-semibold">{t.face(number)}</h3>
+				<p class="mt-1 text-sm text-muted">{t.fixedCover}</p>
+			</div>
+		</div>
+		{@render stickerChoice(selected)}
+	{:else if selected}
 		<div class="flex items-center gap-4">
 			<svg
 				viewBox={`${selected.x} ${selected.y} ${selected.width} ${selected.height}`}
@@ -143,41 +192,7 @@
 			</button>
 		</div>
 
-		<div class="grid justify-items-start gap-2">
-			<button
-				type="button"
-				class={button.secondary}
-				aria-expanded={picking}
-				aria-controls="{id}-stickers"
-				onclick={() => (picking = !picking)}
-			>
-				<img src={stickers[selected.sticker ?? 'smile']} alt="" class="size-6" />{t.sticker}
-			</button>
-			<div
-				id="{id}-stickers"
-				class="flex flex-wrap items-center gap-2"
-				hidden={!picking}
-				role="group"
-				aria-label={t.sticker}
-			>
-				{#each Object.entries(stickers) as [name, source] (name)}
-					<!-- A ring marks the chosen sticker, which forced colours would otherwise flatten. -->
-					<button
-						type="button"
-						class="grid size-11 place-items-center rounded-full ring-1 ring-ink/10 transition hover:bg-ink/5 aria-pressed:ring-3 aria-pressed:ring-accent"
-						aria-label={t.stickerNames[name as Sticker]}
-						title={t.stickerNames[name as Sticker]}
-						aria-pressed={(selected.sticker ?? 'smile') === name}
-						onclick={() => {
-							onsticker(name as Sticker);
-							picking = false;
-						}}
-					>
-						<img src={source} alt="" class="size-7" />
-					</button>
-				{/each}
-			</div>
-		</div>
+		{@render stickerChoice(selected)}
 	{:else}
 		<h3 class="font-sans text-lg font-semibold">{t.who}</h3>
 		<p class="text-muted">{regions.length ? t.pick : t.noCovers}</p>

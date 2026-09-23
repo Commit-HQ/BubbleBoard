@@ -7,7 +7,7 @@ import {
 	encryptBytes,
 	decryptBytes
 } from '$lib/crypto';
-import { sharing, facePixels, openEvent } from './package';
+import { sharing, facePixels, openEvent, restoredRegions } from './package';
 import { mostEventPhotos } from './types';
 import type { EventRecord } from './types';
 
@@ -157,5 +157,55 @@ describe('event privacy', () => {
 				})
 			).rejects.toThrow();
 		});
+	});
+});
+
+describe('restoring a published photo for the editor', () => {
+	const mark = (id: string, more: Record<string, unknown> = {}) => ({
+		id,
+		x: 10,
+		y: 20,
+		width: 30,
+		height: 40,
+		child: 'ana',
+		covered: false,
+		source: 'detected',
+		sticker: 'fox',
+		minWidth: 4,
+		minHeight: 4,
+		...more
+	});
+	it('keeps the covers whose faces came back and fixes the rest where they are', () => {
+		const named = createId(),
+			kept = createId(),
+			damaged = createId();
+		const regions = restoredRegions(
+			[
+				mark(named),
+				mark(kept, { child: null, covered: true, sticker: 'nothing', source: 'manual' }),
+				mark(damaged)
+			],
+			200,
+			200,
+			new Set([named])
+		);
+		expect(regions.map((r) => [r.id, r.child, r.covered, r.fixed, r.sticker, r.source])).toEqual([
+			[named, 'ana', false, undefined, 'fox', 'detected'],
+			[kept, null, true, true, undefined, 'manual'],
+			[damaged, null, true, true, 'fox', 'detected']
+		]);
+	});
+	it('bounds each cover to the photo and refuses what cannot be a cover', () => {
+		const id = createId();
+		const [region] = restoredRegions([mark(id, { x: 190, width: 30 })], 200, 200, new Set([id]));
+		expect([region.x, region.width, region.minWidth]).toEqual([170, 30, 4]);
+		for (const bad of [
+			[mark('nope')],
+			[mark(id), mark(id)],
+			[mark(id, { width: 0 })],
+			[mark(id, { x: 1.5 })],
+			'covers'
+		])
+			expect(() => restoredRegions(bad, 200, 200, new Set([id]))).toThrow();
 	});
 });

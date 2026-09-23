@@ -131,7 +131,8 @@
 		const region = regions.find((r) => r.id === target?.getAttribute('data-region'));
 		const already = region?.id === selected;
 		if (region) onselect(region.id);
-		if (region && !already) return;
+		// A fixed cover can be looked at but not moved: pressing on it selects it and nothing more.
+		if (region && (!already || region.fixed)) return;
 		drag = {
 			pointer: event.pointerId,
 			start: point(event),
@@ -243,6 +244,7 @@
 		};
 		if (direction[event.key]) {
 			event.preventDefault();
+			if (region.fixed) return;
 			const [x, y] = direction[event.key];
 			onchange(
 				region.id,
@@ -288,7 +290,7 @@
 			<g
 				role="button"
 				tabindex="0"
-				class="cursor-grab"
+				class={region.fixed ? 'cursor-pointer' : 'cursor-grab'}
 				aria-label={regionLabel(index + 1)}
 				aria-pressed={selected === region.id}
 				data-region={region.id}
@@ -339,7 +341,7 @@
 					fill="#29253d"
 					font-weight="600">{index + 1}</text
 				>
-				{#if selected === region.id}
+				{#if selected === region.id && !region.fixed}
 					<!-- A thumb needs about 44 pixels of it, however small the cover is drawn, so each corner carries an
 					     invisible circle that size around its small dot. On a small cover the circles shrink to a third
 					     of it instead of swallowing it, leaving the middle free to drag. -->

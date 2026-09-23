@@ -7,6 +7,11 @@ export type Region = Rect & {
 	child: string | null;
 	covered: boolean;
 	source: 'manual' | 'detected';
+	/**
+	 * A cover on a photo put back together from its published form whose face didn't come back: kept covered
+	 * when it went up, so its pixels exist nowhere, or a patch that wouldn't open. It stays exactly where it is.
+	 */
+	fixed?: boolean;
 	minWidth: number;
 	minHeight: number;
 };

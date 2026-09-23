@@ -591,6 +591,8 @@ export const en = {
 			coverRest: (n: number) => `Keep the remaining ${n} faces covered`,
 			coveredRest: (n: number) => `${n} faces are now kept covered.`,
 			removeCover: 'Remove cover',
+			fixedCover:
+				'This face was kept covered when the photo was published, so its picture is gone. The cover stays where it is; only its sticker can change.',
 			sticker: 'Sticker',
 			stickerNames: {
 				smile: 'Smile',
@@ -645,7 +647,13 @@ export const en = {
 				'New photos stay on this device until you save the changes. A change isn’t kept here, so finish it in one go.',
 			published: 'Photos already up',
 			publishedHint:
-				'The covers on these photos can no longer be changed. When a photo is published it is locked so that each family sees only what it may, and the original without covers isn’t kept anywhere. You can change its words or take it off. To fix a cover, take the photo off and add it again.',
+				'This photo is up as it was published. You can change its words, take it off, or open its covers again: the photo is put back together on this device, and once you save, families see the new version in its place. A face kept covered when it was published is gone for good and stays covered.',
+			editCovers: 'Edit covers',
+			reopened:
+				'This photo is already up. Saving replaces it with this version, checked against the families’ current choices. Anyone who already saved the photo keeps their copy.',
+			keepPublished: 'Drop the edit',
+			keepPublishedCopy:
+				'The covers changed here are dropped and the photo stays up exactly as it is.',
 			moveEarlier: 'Move earlier',
 			moveLater: 'Move later',
 			orderHint:

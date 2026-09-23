@@ -60,10 +60,11 @@
 	// this device, and the unfinished event waits on it too, so half an hour of work survives a phone call
 	// (src/lib/events/draft.ts, docs/events-editor.md).
 	//
-	// With `event` the same steps change an event that's already up. Its photos are never opened again: they
-	// keep the covers and the consent they were published with, and a change may only reword one or take it
-	// off. Photos added now go through the whole of it, against the consent as it stands today. A change
-	// isn't kept on the device, so it's made in one sitting.
+	// With `event` the same steps change an event that's already up. A photo already up keeps the covers and
+	// the consent it was published with: a change may reword it, take it off, or open its covers again, which
+	// puts the photo back together on this device (src/lib/events/package.ts) and sends it through the whole
+	// of the editor as a new photo in the old one's place, against the consent as it stands today. Photos
+	// added now go the same way. A change isn't kept on the device, so it's made in one sitting.
 	type Photo = {
 		id: string;
 		blob: Blob;
@@ -75,6 +76,8 @@
 		history: History;
 		detection: 'pending' | 'ready' | 'failed' | 'manual';
 		generation: number;
+		/** The photo already up this one was opened from, which comes back if the teacher drops the edit. */
+		replaces?: EventPhoto;
 	};
 	let { locale, event }: { locale: Locale; event?: OpenEvent } = $props();
 	const app = getApp();
@@ -121,6 +124,8 @@
 	let opened = $state.raw<Record<string, string>>({});
 	/** Which of those the teacher is taking off, while they answer whether they mean it. */
 	let takingOff = $state('');
+	/** The photo already up whose covers are being put back together to be opened in the editor. */
+	let reopening = $state('');
 	let details = $state<ReturnType<typeof EventDetails>>();
 	let editorReady = $state(false);
 	let draft = $state.raw<EventDraft>();
@@ -392,7 +397,7 @@
 		enlarged = '';
 	}
 	function changeRegion(id: string, rect: Rect) {
-		if (!photo) return;
+		if (!photo || photo.history.present.regions.find((r) => r.id === id)?.fixed) return;
 		setHistory(
 			commit(
 				photo.history,
@@ -425,7 +430,7 @@
 		original = false;
 	}
 	function nameFace(child: string | null) {
-		if (!photo || !selected) return;
+		if (!photo || !selected || selected.fixed) return;
 		setHistory(assign(photo.history, selected.id, child));
 		original = false;
 		feedback = child ? t.assigned(nameOf(child)) : '';
@@ -447,7 +452,7 @@
 		);
 	}
 	function removeCover() {
-		if (!photo || !selected) return;
+		if (!photo || !selected || selected.fixed) return;
 		setHistory(
 			commit(
 				photo.history,
@@ -578,16 +583,59 @@
 	}
 	function removePhoto() {
 		if (!photo) return;
-		const id = photo.id;
+		const { id, replaces } = photo;
 		if (detecting === id) detector.close();
 		revoke(photo.url);
 		photos = photos.filter((p) => p.id !== id);
-		order = order.filter((other) => other !== id);
+		// A photo opened from one already up goes back to being that one, where it was; any other simply goes.
+		if (replaces) {
+			kept = [...kept, replaces];
+			order = order.map((other) => (other === id ? replaces.id : other));
+		} else order = order.filter((other) => other !== id);
 		// With its last photo gone there is no event left to keep, only a record naming photos that aren't there.
 		if (credential) void (photos.length ? forgetDraftPhoto(id) : clearDraft());
-		switchPhoto(order[0] ?? '');
+		switchPhoto(replaces?.id ?? order[0] ?? '');
 		draft = undefined;
 		removing = false;
+	}
+	/**
+	 * Opens the covers of a photo already up: the photo is put back together from what the Staff Key opens,
+	 * less the faces kept covered when it went up, and from here on it is a photo being prepared, which takes
+	 * the old one's place in the gallery when the change is saved. Nothing happens to the photo that's up
+	 * until then, and dropping the edit puts it back.
+	 */
+	async function reopen(published: EventPhoto) {
+		if (!event || reopening) return;
+		reopening = published.id;
+		error = '';
+		try {
+			const restored = await app.openEventPhoto(event, published.id);
+			if (disposed) return;
+			const item: Photo = {
+				id: createId(),
+				blob: restored.blob,
+				url: url(restored.blob),
+				width: restored.width,
+				height: restored.height,
+				text: published.text ?? '',
+				history: {
+					past: [],
+					future: [],
+					present: { regions: restored.regions, selected: null, reviewed: false }
+				},
+				detection: 'manual',
+				generation: 0,
+				replaces: published
+			};
+			kept = kept.filter((k) => k.id !== published.id);
+			order = order.map((other) => (other === published.id ? item.id : other));
+			photos = [...photos, item];
+			switchPhoto(item.id, false);
+		} catch (cause) {
+			if (!disposed) error = errorMessage(locale, errorCode(cause));
+		} finally {
+			reopening = '';
+		}
 	}
 	// The whole gallery as the chosen audience will see it. The renders are made one after another, because a
 	// phone that composed thirty photos at once would run out of memory, and each tile waits its turn.
@@ -815,13 +863,19 @@
 					<Icon name="trash" class="size-4" />{t.removePublished}
 				</button>
 			{:else}
-				<button
-					type="button"
-					class={button.icon}
-					aria-label={t.removePhoto}
-					title={t.removePhoto}
-					onclick={() => (removing = true)}><Icon name="trash" /></button
-				>
+				{#if photos.find((p) => p.id === id)?.replaces}
+					<button type="button" class={button.quiet} onclick={() => (removing = true)}>
+						<Icon name="undo" class="size-4" />{t.keepPublished}
+					</button>
+				{:else}
+					<button
+						type="button"
+						class={button.icon}
+						aria-label={t.removePhoto}
+						title={t.removePhoto}
+						onclick={() => (removing = true)}><Icon name="trash" /></button
+					>
+				{/if}
 			{/if}
 		</div>
 	</div>
@@ -913,7 +967,7 @@
 			{/if}
 
 			{#if shown}
-				<!-- A photo already up: it is never opened again, so this is all there is to do with it. -->
+				<!-- A photo already up: it stays as it is unless its covers are opened again. -->
 				{@render ordering(shown.id, true)}
 				<div class="{surface} grid gap-3">
 					<div>
@@ -927,12 +981,25 @@
 							{opened[shown.id] === '' ? e.failed : e.loading}
 						</p>
 					{/if}
+					<button
+						type="button"
+						class="{button.secondary} justify-self-start"
+						disabled={!!reopening || loading || !!detecting}
+						onclick={() => reopen(shown!)}
+					>
+						<Icon name="pencil" class="size-4" />{reopening ? a.working : t.editCovers}
+					</button>
 					{@render caption(shown.text ?? '', (words) => {
 						kept = kept.map((k) => (k.id === shown?.id ? { ...k, text: words } : k));
 					})}
 				</div>
 			{:else if photo && edit}
 				{@render ordering(photo.id, false)}
+				{#if photo.replaces}
+					<p class="flex items-start gap-2 text-sm text-muted">
+						<Icon name="info" class="mt-0.5 size-4 shrink-0" />{t.reopened}
+					</p>
+				{/if}
 
 				<!-- The tools are a card of their own, so the photo itself keeps its own square edges. -->
 				<div class="grid gap-3">
@@ -1196,10 +1263,10 @@
 	{#if removing}
 		<ConfirmDialog
 			{locale}
-			title={t.removePhoto}
-			copy={t.removePhotoCopy}
-			confirmLabel={t.removePhoto}
-			danger
+			title={photo?.replaces ? t.keepPublished : t.removePhoto}
+			copy={photo?.replaces ? t.keepPublishedCopy : t.removePhotoCopy}
+			confirmLabel={photo?.replaces ? t.keepPublished : t.removePhoto}
+			danger={!photo?.replaces}
 			onconfirm={async () => removePhoto()}
 			onclose={() => (removing = false)}
 		/>

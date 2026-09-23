@@ -13,7 +13,8 @@ import {
 	openContentKey,
 	UnreadableError
 } from '$lib/crypto';
-import type { Region, Rect } from './editor';
+import { boundedRect, maxRegions, type Region, type Rect } from './editor';
+import { stickers, type Sticker } from './stickers';
 import {
 	editorSide,
 	maxEventPhotoText,
@@ -316,6 +317,102 @@ export async function renderPackage(
 	key: CryptoKey,
 	viewer: { family?: CryptoKey; staff?: CryptoKey; covered?: boolean } = {}
 ): Promise<RenderedPhoto> {
+	const { canvas, mine } = await compose(event, photo, sealed, key, viewer);
+	// What this device shows and saves, put together from the base and the patches it could open. It is
+	// never uploaded, and the pixels it holds have been through an encoder already, so it is compressed too:
+	// a lossless copy of them would be several megabytes for a family to keep.
+	const blob = await canvas.convertToBlob({
+		type: (await writesWebp()) ? 'image/webp' : 'image/jpeg',
+		quality: 0.9
+	});
+	return { blob, mine };
+}
+
+/** A published photo put back together on a staff device, ready for the editor to open as if it were new. */
+export type RestoredPhoto = { blob: Blob; width: number; height: number; regions: Region[] };
+/**
+ * The whole photo as it was before its covers went on, for a teacher who is changing them: the Staff Key opens
+ * every patch, so the base and the patches together are the picture, less the faces that were kept covered,
+ * whose pixels were painted over before the photo went up and exist nowhere. Those covers come back `fixed`,
+ * as does any whose patch wouldn't open, so the editor leaves them where they are. What the editor then
+ * publishes is a new photo in the old one's place, under today's consent (docs/events-format.md).
+ */
+export async function restorePackage(
+	event: string,
+	photo: string,
+	sealed: Uint8Array<ArrayBuffer>,
+	key: CryptoKey,
+	staff: CryptoKey
+): Promise<RestoredPhoto> {
+	const { canvas, marks, opened } = await compose(event, photo, sealed, key, { staff });
+	if (!marks) throw new UnreadableError();
+	const regions = restoredRegions(marks, canvas.width, canvas.height, opened);
+	// The editor's own working copy is a JPEG of this size (images.ts), and this one takes its place.
+	const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.94 });
+	return { blob, width: canvas.width, height: canvas.height, regions };
+}
+
+/**
+ * The covers a staff envelope holds, as far as they can be trusted: each is bounded to the photo, and one
+ * whose face didn't come back (kept covered, or a patch that wouldn't open) is `fixed` where it is.
+ */
+export function restoredRegions(
+	marks: unknown,
+	width: number,
+	height: number,
+	opened: Set<string>
+): Region[] {
+	if (!Array.isArray(marks) || marks.length > maxRegions) throw new UnreadableError();
+	const seen = new Set<string>();
+	return marks.map((mark) => {
+		const r = fields(mark);
+		if (
+			!isId(r.id) ||
+			seen.has(r.id as string) ||
+			![r.x, r.y, r.width, r.height].every(Number.isInteger) ||
+			Number(r.width) < 1 ||
+			Number(r.height) < 1
+		)
+			throw new UnreadableError();
+		const id = r.id as string;
+		seen.add(id);
+		const rect = boundedRect(
+			{ x: r.x as number, y: r.y as number, width: r.width as number, height: r.height as number },
+			width,
+			height
+		);
+		const region: Region = {
+			...rect,
+			id,
+			child: typeof r.child === 'string' && r.child ? r.child : null,
+			covered: r.covered === true,
+			source: r.source === 'detected' ? 'detected' : 'manual',
+			minWidth: Math.min(4, width),
+			minHeight: Math.min(4, height)
+		};
+		if (typeof r.sticker === 'string' && r.sticker in stickers)
+			region.sticker = r.sticker as Sticker;
+		if (!opened.has(id)) {
+			region.child = null;
+			region.covered = true;
+			region.fixed = true;
+		}
+		return region;
+	});
+}
+
+/**
+ * The base with every patch the viewer can open drawn over it, on a canvas of the photo's size. `marks` are
+ * the covers the staff envelope holds, when the viewer is staff and it opened, and `opened` names the patches
+ * that were drawn.
+ */
+async function compose(
+	event: string,
+	photo: string,
+	sealed: Uint8Array<ArrayBuffer>,
+	key: CryptoKey,
+	viewer: { family?: CryptoKey; staff?: CryptoKey; covered?: boolean }
+) {
 	const decoded = await decryptBytes(sealed, key, {
 		purpose: 'event-photo',
 		...context(event, photo)
@@ -345,18 +442,20 @@ export async function renderPackage(
 		base.close();
 	}
 	let staffKeys: Record<string, unknown> = {};
+	let marks: unknown;
 	/** Whether an envelope of this photo opened with this card's Family Key (`RenderedPhoto`). */
 	let mine = false;
+	const opened = new Set<string>();
 	if (viewer.staff && typeof p.staff === 'string') {
 		try {
-			staffKeys = fields(
-				fields(
-					await decryptData(p.staff, viewer.staff, {
-						purpose: 'event-staff',
-						...context(event, photo)
-					})
-				).keys
+			const envelope = fields(
+				await decryptData(p.staff, viewer.staff, {
+					purpose: 'event-staff',
+					...context(event, photo)
+				})
 			);
+			staffKeys = fields(envelope.keys);
+			marks = envelope.regions;
 		} catch {
 			/* Keep covers if damaged. */
 		}
@@ -406,8 +505,10 @@ export async function renderPackage(
 				)
 			);
 			try {
-				if (image.width === width && image.height === height)
+				if (image.width === width && image.height === height) {
 					ctx.drawImage(image, x as number, y as number);
+					opened.add(patch.id as string);
+				}
 			} finally {
 				image.close();
 			}
@@ -415,14 +516,7 @@ export async function renderPackage(
 			/* Unreadable patches leave the safe base in place. */
 		}
 	}
-	// What this device shows and saves, put together from the base and the patches it could open. It is
-	// never uploaded, and the pixels it holds have been through an encoder already, so it is compressed too:
-	// a lossless copy of them would be several megabytes for a family to keep.
-	const blob = await canvas.convertToBlob({
-		type: (await writesWebp()) ? 'image/webp' : 'image/jpeg',
-		quality: 0.9
-	});
-	return { blob, mine };
+	return { canvas, mine, marks, opened };
 }
 export async function openEvent(record: EventRecord, groupKey: CryptoKey): Promise<OpenEvent> {
 	const raw = fields(
