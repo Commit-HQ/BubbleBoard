@@ -522,6 +522,7 @@ export const hr = {
 			filter: 'Koje fotografije prikazati',
 			allPhotos: 'Sve fotografije',
 			withMyChild: 'S vašim djetetom',
+			asMyself: 'Ja, sa svim licima',
 			staysUntil: (date: string) =>
 				`Fotografije ostaju ovdje do ${date}. Spremite one koje želite zadržati.`,
 			untilShort: (date: string) => `Fotografije ostaju ovdje do ${date}.`,

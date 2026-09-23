@@ -11,7 +11,7 @@
 	import EventHeading from './EventHeading.svelte';
 	import PictureViewer from './PictureViewer.svelte';
 	import { getApp, Task, type Picture } from './state.svelte';
-	import { alert, button, surface } from './ui';
+	import { alert, button, field, surface } from './ui';
 
 	// An event's gallery, as a family or a teacher opens it from the board: what it was and when, then every
 	// photo as a small square. Each one is decrypted and put together on this device for whoever holds this
@@ -30,8 +30,28 @@
 	// Kept by the event's ID: a refreshed board hands over the same event as a new object, and that must not
 	// let go of the photos already opened.
 	const eventId = $derived(event.id);
-	/** Staff see every child, so a mark saying whose child is here would mean nothing to them. */
-	const family = $derived(app.status === 'family');
+	/**
+	 * Whose eyes a staff device looks through: its own (`'me'`), every cover on (`'base'`), or a family's
+	 * card. A teacher holds every key, so her own view shows every face; this lets her check what a family
+	 * actually gets after the event is up, the way the review step does before.
+	 */
+	let viewer = $state('me');
+	const asFamily = $derived(app.status === 'staff' && viewer !== 'me');
+	const families = $derived(
+		app.status === 'staff'
+			? app.catalog.families.filter((f) => f.classrooms.includes(event.classroom))
+			: []
+	);
+	const childrenOf = (family: string) =>
+		app.catalog.children
+			.filter((c) => c.classroom === event.classroom && c.families.includes(family))
+			.map((c) => c.name)
+			.join(', ');
+	/**
+	 * Staff see every child, so a mark saying whose child is here would mean nothing to them; looking as a
+	 * family, the mark shows what that family sees.
+	 */
+	const family = $derived(app.status === 'family' || asFamily);
 	/** Each photo as it stands here: opened on this device, still opening, or one that wouldn't open. */
 	let tiles = $state.raw<((Picture & { small: string }) | 'failed' | undefined)[]>([]);
 	/** Which of the photos shown the whole screen is on, or -1 while the gallery is on the page. */
@@ -60,9 +80,19 @@
 	// one this device composed before comes back from the device (src/lib/events/cache.ts).
 	$effect(() => {
 		void eventId;
+		const as = viewer;
 		return untrack(() => {
 			let cancelled = false;
 			tiles = photos.map(() => undefined);
+			position = -1;
+			// A look through a family's eyes is composed here and not kept by the app, so its addresses are
+			// let go of here too; the teacher's own view stays with the app while the event is open.
+			const open = (photo: string) =>
+				as === 'me' ? app.eventPicture(event, photo) : app.eventPictureAs(event, photo, as);
+			const release = (tile: Picture & { small: string }) => {
+				URL.revokeObjectURL(tile.small);
+				if (as !== 'me') URL.revokeObjectURL(tile.url);
+			};
 			void (async () => {
 				while (!cancelled) {
 					const next = nextWaiting(
@@ -75,22 +105,21 @@
 						continue;
 					}
 					// The grid shows a small copy of each photo; the one the device keeps is for the whole screen.
-					const opened = await app
-						.eventPicture(event, photos[next].id)
+					const opened = await open(photos[next].id)
 						.then(async (picture) => ({
 							...picture,
 							small: URL.createObjectURL(await thumbnail(picture.blob))
 						}))
 						.catch(() => 'failed' as const);
 					if (!cancelled) tiles = tiles.map((tile, i) => (i === next ? opened : tile));
-					else if (opened !== 'failed') URL.revokeObjectURL(opened.small);
+					else if (opened !== 'failed') release(opened);
 				}
 			})();
 			return () => {
 				cancelled = true;
 				again?.();
 				again = undefined;
-				for (const tile of tiles) if (typeof tile === 'object') URL.revokeObjectURL(tile.small);
+				for (const tile of tiles) if (typeof tile === 'object') release(tile);
 			};
 		});
 	});
@@ -141,6 +170,19 @@
 	{#if tooOld}
 		<p class={alert} role="alert">{t.tooOld}</p>
 	{:else}
+		{#if families.length}
+			<label class={field.label}>
+				<span class={field.name}>{t.previewAs}</span>
+				<select class={field.input} bind:value={viewer}>
+					<option value="me">{t.asMyself}</option>
+					<option value="base">{t.base}</option>
+					{#each families as item (item.id)}
+						<option value={item.id}>{item.name} — {childrenOf(item.id)}</option>
+					{/each}
+				</select>
+			</label>
+		{/if}
+
 		{#if mine > 0}
 			<div class="flex flex-wrap gap-2" role="group" aria-label={t.filter}>
 				{#each [[false, t.allPhotos], [true, t.withMyChild]] as const as [only, label] (label)}
@@ -212,7 +254,7 @@
 		{/if}
 	</div>
 
-	{#if family}
+	{#if app.status === 'family'}
 		<p class="text-sm text-muted">
 			{t.stickersExplained}
 			<a class="font-semibold underline underline-offset-4" href={appPath(locale, 'options')}

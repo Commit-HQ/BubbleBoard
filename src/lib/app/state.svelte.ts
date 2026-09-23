@@ -541,6 +541,23 @@ export class App {
 	}
 
 	/**
+	 * One of a published event's photos as a family sees it, or with every cover on (`'base'`), composed on a
+	 * staff device with that family's key exactly as the family's own phone composes it. It is never kept:
+	 * the device's copy of the photo is the teacher's own view, and a look through another family's eyes is
+	 * made again each time it's asked for.
+	 */
+	async eventPictureAs(event: OpenEvent, photo: string, viewer: string): Promise<Picture> {
+		const sealed = await this.#signedIn(() => requestBytes(eventFilePath(event.id, photo)));
+		const opened = await renderPackage(
+			event.id,
+			photo,
+			sealed,
+			event.key,
+			viewer === 'base' ? { covered: true } : { family: await this.messageKey(viewer) }
+		);
+		return { ...opened, url: URL.createObjectURL(opened.blob) };
+	}
+	/**
 	 * One of an event's photos put back together for the editor, with its covers: the whole picture less the
 	 * faces kept covered when it went up (`restorePackage`). Only a staff device holds the key that does this.
 	 */

@@ -541,6 +541,8 @@ export const en = {
 			allPhotos: 'All photos',
 			// On the photos this family's own child is in, and on the button that shows only those.
 			withMyChild: 'With your child',
+			// The teacher's own view in the gallery's "Preview as" list, beside "All covers" and each family.
+			asMyself: 'Me, with every face',
 			staysUntil: (date: string) =>
 				`Photos stay here until ${date}. Save the ones you’d like to keep.`,
 			untilShort: (date: string) => `Photos stay here until ${date}.`,
