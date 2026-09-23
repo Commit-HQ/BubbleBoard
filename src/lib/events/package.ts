@@ -29,7 +29,7 @@ import {
 } from './types';
 import { readDocument, type NoticeDocument } from '$lib/notices';
 import { writesWebp } from '$lib/photos';
-import { safePreview } from './images';
+import { safePreview, thumbnail } from './images';
 
 const bytes = async (blob: Blob) => new Uint8Array(await blob.arrayBuffer());
 const context = (event: string, photo: string, part?: string) => ({ event, photo, part });
@@ -326,6 +326,21 @@ export async function renderPackage(
 		quality: 0.9
 	});
 	return { blob, mine };
+}
+
+/**
+ * Only the grid's small copy of a photo, for a staff device looking through a family's eyes: the whole
+ * picture is composed as `renderPackage` composes it, then drawn small without being encoded at full size.
+ */
+export async function renderThumbnail(
+	event: string,
+	photo: string,
+	sealed: Uint8Array<ArrayBuffer>,
+	key: CryptoKey,
+	viewer: { family?: CryptoKey; covered?: boolean }
+): Promise<RenderedPhoto> {
+	const { canvas, mine } = await compose(event, photo, sealed, key, viewer);
+	return { blob: await thumbnail(canvas), mine };
 }
 
 /** A published photo put back together on a staff device, ready for the editor to open as if it were new. */

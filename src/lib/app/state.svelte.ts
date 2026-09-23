@@ -4,6 +4,7 @@ import {
 	readChoice,
 	readLabel,
 	renderPackage,
+	renderThumbnail,
 	restorePackage,
 	sealChoice,
 	sharing
@@ -541,19 +542,46 @@ export class App {
 	}
 
 	/**
-	 * One of a published event's photos as a family sees it, or with every cover on (`'base'`), composed on a
-	 * staff device with that family's key exactly as the family's own phone composes it. It is never kept:
-	 * the device's copy of the photo is the teacher's own view, and a look through another family's eyes is
-	 * made again each time it's asked for.
+	 * A published photo's sealed bytes, fetched once while its event is open. Looking through one family's
+	 * eyes and then another's opens the same bytes with a different key, so a change of view needn't fetch
+	 * the whole gallery again.
+	 */
+	#sealedEventPhoto(event: OpenEvent, photo: string) {
+		const path = eventFilePath(event.id, photo);
+		let sealed = this.#sealedEventPhotos.get(path);
+		if (!sealed) {
+			const fetching = this.#signedIn(() => requestBytes(path));
+			this.#sealedEventPhotos.set(path, fetching);
+			fetching.catch(() => {
+				if (this.#sealedEventPhotos.get(path) === fetching) this.#sealedEventPhotos.delete(path);
+			});
+			sealed = fetching;
+		}
+		return sealed;
+	}
+	async #viewerKeys(viewer: string) {
+		return viewer === 'base' ? { covered: true } : { family: await this.messageKey(viewer) };
+	}
+	/**
+	 * The grid's small copy of a published photo as a family sees it, or with every cover on (`'base'`),
+	 * composed on a staff device with that family's key exactly as the family's own phone composes it.
+	 */
+	async eventThumbnailAs(event: OpenEvent, photo: string, viewer: string) {
+		const sealed = await this.#sealedEventPhoto(event, photo);
+		return renderThumbnail(event.id, photo, sealed, event.key, await this.#viewerKeys(viewer));
+	}
+	/**
+	 * The same photo whole, for the full screen. It is never kept: the device's copy of the photo is the
+	 * teacher's own view, and a look through another family's eyes is made again each time it's asked for.
 	 */
 	async eventPictureAs(event: OpenEvent, photo: string, viewer: string): Promise<Picture> {
-		const sealed = await this.#signedIn(() => requestBytes(eventFilePath(event.id, photo)));
+		const sealed = await this.#sealedEventPhoto(event, photo);
 		const opened = await renderPackage(
 			event.id,
 			photo,
 			sealed,
 			event.key,
-			viewer === 'base' ? { covered: true } : { family: await this.messageKey(viewer) }
+			await this.#viewerKeys(viewer)
 		);
 		return { ...opened, url: URL.createObjectURL(opened.blob) };
 	}
@@ -587,6 +615,7 @@ export class App {
 		this.#keepPictures();
 		return () => {
 			this.#eventPictures.clear();
+			this.#sealedEventPhotos.clear();
 			this.#keepPictures();
 		};
 	}
@@ -1004,6 +1033,8 @@ export class App {
 	#messagePictures = new Set<string>();
 	/** The paths of the open event's photos, which `#keepPictures` keeps while it's open. */
 	#eventPictures = new Set<string>();
+	/** The open event's sealed photos, by path, for a staff device's preview (`#sealedEventPhoto`). */
+	#sealedEventPhotos = new Map<string, Promise<Uint8Array<ArrayBuffer>>>();
 	/** The Family Keys a staff device has opened, by the envelope each came from, until it disconnects. */
 	#familyKeys = new Map<string, Promise<CryptoKey>>();
 
@@ -1437,6 +1468,7 @@ export class App {
 		this.#conversationCache.clear();
 		this.#messagePictures.clear();
 		this.#eventPictures.clear();
+		this.#sealedEventPhotos.clear();
 		this.#clearMeetings();
 		this.conversations = [];
 		this.messagePolicies = [];

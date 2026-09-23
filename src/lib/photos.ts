@@ -101,7 +101,7 @@ export function isHeif(photo: Uint8Array) {
 }
 
 /** An image drawn smaller on a canvas, its longer side at most `side` pixels, where the browser can draw. */
-export function drawSmaller(image: HTMLImageElement | ImageBitmap, side: number) {
+export function drawSmaller(image: HTMLImageElement | ImageBitmap | OffscreenCanvas, side: number) {
 	const [width, height] =
 		image instanceof HTMLImageElement
 			? [image.naturalWidth, image.naturalHeight]

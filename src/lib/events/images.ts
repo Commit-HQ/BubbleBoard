@@ -91,14 +91,15 @@ export type SafeRaster = { pixels: Uint8ClampedArray; width: number; height: num
 /**
  * A small copy of a photo this device has put together, for a gallery's grid. Thirty photos drawn at their
  * full size as thumbnails would each be held decoded, which is more memory than an older phone has to give.
+ * A canvas still being composed is drawn small straight away, without encoding it at full size first.
  */
-export async function thumbnail(picture: Blob) {
-	const image = await createImageBitmap(picture);
+export async function thumbnail(picture: Blob | OffscreenCanvas) {
+	const image = picture instanceof Blob ? await createImageBitmap(picture) : picture;
 	try {
 		const ctx = drawSmaller(image, 480);
 		if (!ctx) throw new Error('Canvas unavailable');
 		return await ctx.canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
 	} finally {
-		image.close();
+		if (image instanceof ImageBitmap) image.close();
 	}
 }

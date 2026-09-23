@@ -160,27 +160,9 @@
 				</form>
 			{/if}
 
-			<section class="grid gap-3" aria-labelledby="children-title">
-				<h2 id="children-title" class="text-2xl">{t.classroom.children}</h2>
-				{#if children.length}
-					<ul class="grid gap-2">
-						{#each children as child (child.id)}
-							<ListLink
-								href={appPath(data.locale, 'child', { id: child.id })}
-								title={child.name}
-								detail={listNames(data.locale, namesOf(app.catalog.families, child.families)) ||
-									t.classroom.noCards}
-							/>
-						{/each}
-					</ul>
-				{:else}
-					<p class="text-muted">{t.classroom.empty}</p>
-				{/if}
-			</section>
-
 			{#if manages && messaging}
-				<!-- Under the children, where staff come to settle the classroom rather than to look
-				someone up: the week at a glance, and the form itself only once it's asked for. -->
+				<!-- Above the children, where staff come to settle the classroom: the week at a
+				glance, and the form itself only once it's asked for. -->
 				<section class="grid gap-3" aria-labelledby="messaging-title">
 					<h2 id="messaging-title" class="text-2xl">{t.messaging.settings}</h2>
 					{#if open === 'messages'}
@@ -215,6 +197,24 @@
 					{/if}
 				</section>
 			{/if}
+
+			<section class="grid gap-3" aria-labelledby="children-title">
+				<h2 id="children-title" class="text-2xl">{t.classroom.children}</h2>
+				{#if children.length}
+					<ul class="grid gap-2">
+						{#each children as child (child.id)}
+							<ListLink
+								href={appPath(data.locale, 'child', { id: child.id })}
+								title={child.name}
+								detail={listNames(data.locale, namesOf(app.catalog.families, child.families)) ||
+									t.classroom.noCards}
+							/>
+						{/each}
+					</ul>
+				{:else}
+					<p class="text-muted">{t.classroom.empty}</p>
+				{/if}
+			</section>
 
 			{#if open === 'delete'}
 				<ConfirmDialog
