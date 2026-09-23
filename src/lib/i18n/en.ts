@@ -1003,7 +1003,8 @@ export const en = {
 			share: 'Share link',
 			copyLink: 'Copy link',
 			copied: 'Link copied.',
-			shareText: 'Join our kindergarten’s BubbleBoard. The link works for 24 hours.',
+			shareText:
+				'Join our kindergarten’s BubbleBoard. Open the link in Safari or Chrome; it works for 24 hours.',
 			connectAgain:
 				'This device was connected before it could add others. To add devices from it, sign out, then connect it again with your family QR code. If you no longer have the family QR code, don’t sign out; ask your kindergarten for a new one first.'
 		},
@@ -1160,16 +1161,25 @@ export const en = {
 			iosShare: 'Tap Share. In Safari, it can be in the ··· menu.',
 			iosAdd: 'Choose Add to Home Screen, then Add.',
 			iosOpen: 'Open BubbleBoard from your Home Screen.',
+			iosNoAdd: 'No “Add to Home Screen”?',
+			safariTitle: 'Open BubbleBoard in Safari',
+			safariCopy:
+				'The browser inside this app can’t add BubbleBoard to your Home Screen. Safari can, and the link takes your code along.',
+			safariMenu: 'Nothing opens? Choose Open in Safari from the ··· menu.',
+			openSafari: 'Open in Safari',
 			androidTitle: 'Install BubbleBoard',
 			androidCopy: 'As an app on your phone, BubbleBoard can tell you when there’s something new.',
 			androidMenu: 'Open your browser’s menu.',
 			androidAdd: 'Choose Install app, or Add to Home screen.',
 			androidOpen: 'Open BubbleBoard from your home screen.',
+			androidStuck: 'If adding it brings you back to this page, install BubbleBoard from Chrome.',
 			install: 'Install',
 			installed: 'BubbleBoard is installed. Open it from your home screen.',
-			inAppTitle: 'Open BubbleBoard in your browser',
-			inAppCopy:
-				'The browser inside this app can’t install BubbleBoard. Open the page in Safari or Chrome, usually from the ··· menu, then scan your QR code again.'
+			chromeTitle: 'Open BubbleBoard in Chrome',
+			chromeCopy:
+				'This browser can’t install BubbleBoard. Chrome can, and the link takes your code along.',
+			chromeMenu: 'Nothing opens? Choose Open in browser, or Open in Chrome, from the ··· menu.',
+			openChrome: 'Open in Chrome'
 		},
 		editor: {
 			toolbar: 'Formatting',

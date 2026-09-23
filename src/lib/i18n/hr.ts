@@ -981,7 +981,8 @@ export const hr = {
 			share: 'Podijeli poveznicu',
 			copyLink: 'Kopiraj poveznicu',
 			copied: 'Poveznica je kopirana.',
-			shareText: 'Priključite se BubbleBoardu našeg vrtića. Poveznica vrijedi 24 sata.',
+			shareText:
+				'Priključite se BubbleBoardu našeg vrtića. Otvorite poveznicu u Safariju ili Chromeu; vrijedi 24 sata.',
 			connectAgain:
 				'Ovaj je uređaj povezan prije nego što je mogao dodavati druge. Da biste s njega dodavali uređaje, odjavite ga pa ga ponovno povežite obiteljskim QR kodom. Ako obiteljski QR kod više nemate, nemojte se odjavljivati, nego najprije zamolite vrtić za novi.'
 		},
@@ -1130,16 +1131,27 @@ export const hr = {
 			iosShare: 'Dodirnite Dijeli. U Safariju je možda u izborniku ···.',
 			iosAdd: 'Odaberite Dodaj na početni zaslon, zatim Dodaj.',
 			iosOpen: 'Otvorite BubbleBoard s početnog zaslona.',
+			iosNoAdd: 'Nema „Dodaj na početni zaslon”?',
+			safariTitle: 'Otvorite BubbleBoard u Safariju',
+			safariCopy:
+				'Preglednik unutar ove aplikacije ne može dodati BubbleBoard na početni zaslon. Safari može, a poveznica u njega prelazi zajedno s vašim kodom.',
+			safariMenu: 'Ne otvara se? U izborniku ··· odaberite Otvori u Safariju.',
+			openSafari: 'Otvori u Safariju',
 			androidTitle: 'Instalirajte BubbleBoard',
 			androidCopy: 'Kao aplikacija na mobitelu, BubbleBoard vam može javiti kad stigne nešto novo.',
 			androidMenu: 'Otvorite izbornik preglednika.',
 			androidAdd: 'Odaberite Instaliraj aplikaciju ili Dodaj na početni zaslon.',
 			androidOpen: 'Otvorite BubbleBoard s početnog zaslona.',
+			androidStuck:
+				'Ako se nakon dodavanja opet otvori ova stranica, instalirajte BubbleBoard iz Chromea.',
 			install: 'Instaliraj',
 			installed: 'BubbleBoard je instaliran. Otvorite ga s početnog zaslona.',
-			inAppTitle: 'Otvorite BubbleBoard u pregledniku',
-			inAppCopy:
-				'Preglednik unutar ove aplikacije ne može instalirati BubbleBoard. Otvorite stranicu u Safariju ili Chromeu, obično iz izbornika ···, pa ponovno skenirajte QR kod.'
+			chromeTitle: 'Otvorite BubbleBoard u Chromeu',
+			chromeCopy:
+				'Ovaj preglednik ne može instalirati BubbleBoard. Chrome može, a poveznica u njega prelazi zajedno s vašim kodom.',
+			chromeMenu:
+				'Ne otvara se? U izborniku ··· odaberite Otvori u pregledniku ili Otvori u Chromeu.',
+			openChrome: 'Otvori u Chromeu'
 		},
 		editor: {
 			toolbar: 'Oblikovanje',

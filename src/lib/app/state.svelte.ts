@@ -85,6 +85,7 @@ import {
 	type OpenedInfo
 } from '$lib/info';
 import {
+	connectsInBrowser,
 	installStep,
 	onAppleHomeScreen,
 	type InstallPlatform,
@@ -278,14 +279,15 @@ function messageFilePath(conversation: string, message: string, file: string) {
 }
 
 /**
- * Takes what a card or setup link carries in the fragment, and removes it from the address bar so it
- * doesn't stay in the history. The router must be ready, which it is a tick after the first navigation.
+ * Reads what a card or setup link carries in the fragment, and, with `take`, removes it from the address
+ * bar so it doesn't stay in the history. The router must be ready, which it is a tick after the first
+ * navigation.
  */
-function takeFragment(): { card?: CardReading; token?: string } {
+function readFragment(take: boolean): { card?: CardReading; token?: string } {
 	const { href, hash, origin } = location;
 	const fields = new URLSearchParams(hash.slice(1));
 	if (!fields.has('card') && !fields.has('token')) return {};
-	replaceState(location.pathname + location.search, page.state);
+	if (take) replaceState(location.pathname + location.search, page.state);
 	return {
 		card: fields.has('card') ? readCard(href, origin) : undefined,
 		token: fields.get('token') ?? undefined
@@ -1010,16 +1012,19 @@ export class App {
 	}
 
 	async start() {
-		// Safari on iPhone and iPad keeps a card's link in the address bar, for the Home Screen app added from
-		// there to open with (src/lib/install.ts). Everywhere else the code leaves the address bar first, even
-		// in a browser that can't use it.
-		this.install = installStep();
-		const { card, token }: ReturnType<typeof takeFragment> =
-			this.install === 'ios' ? {} : takeFragment();
+		// A card's link stays in the address bar wherever the browser doesn't connect itself: Safari on iPhone
+		// and iPad keeps it for the Home Screen app added from there, and a browser that can't install hands
+		// it on, code and all, to Safari or Chrome (src/lib/install.ts). Chrome on Android and computers take
+		// the code out of the address bar first; the other Android browsers leave it, so the way out to Chrome
+		// carries it too.
+		this.install = await installStep();
+		const { card, token }: ReturnType<typeof readFragment> = connectsInBrowser(this.install)
+			? readFragment(this.install !== 'android-other')
+			: {};
 		this.setupToken = token;
 		// Android's install panel shows the browser's prompt when asked; elsewhere the browser keeps its own.
 		addEventListener('beforeinstallprompt', (event) => {
-			if (this.install !== 'android') return;
+			if (this.install !== 'android' && this.install !== 'android-other') return;
 			event.preventDefault();
 			this.installPrompt = event as InstallPrompt;
 		});
@@ -1031,7 +1036,7 @@ export class App {
 		}
 		// Safari and the browsers inside other apps don't share their storage with the installed app, so
 		// nothing connects there: installing comes first.
-		if (this.install === 'ios' || this.install === 'in-app') {
+		if (!connectsInBrowser(this.install)) {
 			this.status = 'install';
 			return;
 		}
@@ -1062,9 +1067,9 @@ export class App {
 
 	/** A link opened in a tab already showing the app changes only the fragment, so the page doesn't load again. */
 	async openLink() {
-		// Safari on iPhone and iPad keeps it in the address bar, as `start` does.
-		if (this.install === 'ios') return;
-		const { card, token } = takeFragment();
+		// Where the browser doesn't connect itself, the link stays in the address bar, as `start` does.
+		if (!connectsInBrowser(this.install)) return;
+		const { card, token } = readFragment(this.install !== 'android-other');
 		if (token) this.setupToken = token;
 		const ready = !['loading', 'unsupported', 'install'].includes(this.status);
 		if (card && ready) await this.useCard(card);
@@ -1182,7 +1187,7 @@ export class App {
 		this.#card = card;
 		this.#familyKeyEnvelope = access.kind === 'family' ? access.wrappedKey : undefined;
 		this.#loadedAt = Date.now();
-		this.status = this.install === 'android' ? 'install' : access.kind;
+		this.status = this.install ? 'install' : access.kind;
 		// The inbox grows with every conversation the kindergarten has ever had, so the board doesn't wait for
 		// it: it fills in beside the rest, and the pages that show it follow `messagesVersion`.
 		void this.loadEvents();
