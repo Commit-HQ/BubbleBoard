@@ -79,6 +79,8 @@
 		/** The photo already up this one was opened from, which comes back if the teacher drops the edit. */
 		replaces?: EventPhoto;
 	};
+	/** A photo of the review grid: one prepared now, which carries its covers, or one already up. */
+	type Reviewed = Pick<Photo, 'id' | 'width' | 'height'> & { history?: History; url?: string };
 	let { locale, event }: { locale: Locale; event?: OpenEvent } = $props();
 	const app = getApp();
 	/**
@@ -192,7 +194,19 @@
 	const shown = $derived(kept.find((p) => p.id === current));
 	const previewsPending = $derived(step === 'review' && photos.some((p) => !previews[p.id]));
 	const previewsFailed = $derived(photos.some((p) => previews[p.id]?.failed));
-	const large = $derived(photos.find((p) => p.id === enlarged));
+	/**
+	 * The whole gallery as the review shows it, in its order: the photos prepared now, and the ones already
+	 * up, which stay as they are and are only looked at, so a change never seems to take them off.
+	 */
+	const reviewing = $derived(
+		order.flatMap((id): Reviewed[] => {
+			const made = photos.find((p) => p.id === id);
+			if (made) return [made];
+			const already = kept.find((p) => p.id === id);
+			return already ? [{ id, width: already.width, height: already.height }] : [];
+		})
+	);
+	const large = $derived(reviewing.find((p) => p.id === enlarged));
 	const nextUnreviewed = $derived(
 		inOrder.find((p) => p.id !== current && !p.history.present.reviewed)?.id
 	);
@@ -652,18 +666,29 @@
 	}
 	// The whole gallery as the chosen audience will see it. The renders are made one after another, because a
 	// phone that composed thirty photos at once would run out of memory, and each tile waits its turn.
+	// A photo already up is composed from what's published, with the chosen family's key, as the gallery does.
 	$effect(() => {
-		const list = photos,
+		const list = reviewing,
 			prepared = draft,
 			recipient = viewer;
 		untrack(forgetPreviews);
-		if (step !== 'review' || !prepared) return;
+		if (step !== 'review') return;
 		let cancelled = false;
 		void (async () => {
 			for (const item of list) {
 				if (cancelled || disposed) return;
 				try {
-					const blob = await app.eventPreview(prepared, item.id, recipient);
+					const blob = item.history
+						? prepared
+							? await app.eventPreview(prepared, item.id, recipient)
+							: undefined
+						: event
+							? await app.eventPictureAs(event, item.id, recipient).then((picture) => {
+									URL.revokeObjectURL(picture.url);
+									return picture.blob;
+								})
+							: undefined;
+					if (!blob) continue;
 					if (cancelled || disposed) return;
 					previews = { ...previews, [item.id]: { url: url(blob) } };
 				} catch {
@@ -836,7 +861,7 @@
 		/>
 	</label>
 {/snippet}
-{#snippet photoView(item: Photo, source: string, label: string)}
+{#snippet photoView(item: Reviewed, source: string, label: string)}
 	<!-- Inside a tile the button carries the name, so the picture itself is left out of the reading. -->
 	<svg
 		viewBox={`0 0 ${item.width} ${item.height}`}
@@ -845,7 +870,10 @@
 		aria-label={label || undefined}
 	>
 		<image href={source} x="0" y="0" width={item.width} height={item.height} />
-		{#if !original}<FaceNames regions={item.history.present.regions} name={nameOf} />{/if}
+		{#if !original && item.history}<FaceNames
+				regions={item.history.present.regions}
+				name={nameOf}
+			/>{/if}
 	</svg>
 {/snippet}
 
@@ -1174,7 +1202,7 @@
 				</p>
 			</div>
 
-			{#if draft}
+			{#if draft || editing}
 				<label class={field.label}>
 					<span class={field.name}>{e.previewAs}</span>
 					<select class={field.input} bind:value={viewer}>
@@ -1197,12 +1225,12 @@
 				{@const shot = previews[large.id]}
 				<div bind:this={largeView} class="grid gap-3">
 					<div class="flex flex-wrap items-center justify-between gap-2">
-						{@render viewSwitch()}
+						{#if large.history}{@render viewSwitch()}{:else}<span></span>{/if}
 						<button type="button" class={button.secondary} onclick={() => (enlarged = '')}>
 							<Icon name="chevronLeft" class="size-4" />{t.backToGrid}
 						</button>
 					</div>
-					{#if original}
+					{#if original && large.url}
 						{@render photoView(large, large.url, e.originalView)}
 					{:else if shot?.url}
 						{@render photoView(large, shot.url, e.finalView)}
@@ -1216,7 +1244,7 @@
 
 			<!-- The whole gallery at once, as the chosen audience sees it, so a missed face stands out. -->
 			<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" aria-label={t.photos}>
-				{#each inOrder as item (item.id)}
+				{#each reviewing as item (item.id)}
 					{@const shot = previews[item.id]}
 					{@const index = order.indexOf(item.id)}
 					<li>
@@ -1246,6 +1274,12 @@
 								class="absolute top-1 left-1 rounded-full bg-ink/70 px-2 py-0.5 text-xs font-bold text-white"
 								aria-hidden="true">{index + 1}</span
 							>
+							{#if !item.history}
+								<span
+									class="absolute top-1 right-1 grid size-6 place-items-center rounded-full bg-ink/70 text-white"
+									title={t.published}><Icon name="lock" class="size-3.5" /></span
+								>
+							{/if}
 						</button>
 					</li>
 				{/each}
