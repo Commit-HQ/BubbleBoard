@@ -49,7 +49,20 @@ export async function safePreview(blob: Blob, regions: Region[], raster?: SafeRa
 			)
 		);
 		try {
-			for (const region of regions)
+			for (const region of regions) {
+				// The sticker keeps its square artwork but shows only the ellipse the flat fill covers.
+				ctx.save();
+				ctx.beginPath();
+				ctx.ellipse(
+					region.x + region.width / 2,
+					region.y + region.height / 2,
+					region.width / 2,
+					region.height / 2,
+					0,
+					0,
+					Math.PI * 2
+				);
+				ctx.clip();
 				ctx.drawImage(
 					worn.get(region.sticker ?? 'smile')!,
 					region.x,
@@ -57,6 +70,8 @@ export async function safePreview(blob: Blob, regions: Region[], raster?: SafeRa
 					region.width,
 					region.height
 				);
+				ctx.restore();
+			}
 		} finally {
 			for (const sticker of worn.values()) if (sticker instanceof ImageBitmap) sticker.close();
 		}

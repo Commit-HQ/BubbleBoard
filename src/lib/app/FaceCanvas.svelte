@@ -269,11 +269,25 @@
 	}
 </script>
 
+{#snippet shape(region: Region, attrs: Record<string, string | number>)}
+	<ellipse
+		cx={region.x + region.width / 2}
+		cy={region.y + region.height / 2}
+		rx={region.width / 2}
+		ry={region.height / 2}
+		{...attrs}
+	/>
+{/snippet}
+
+<!-- The browser must not anchor its scrolling to a cover. When the photo is partly scrolled off the top of
+     the window, Chrome keeps the first fully visible element in place as the page changes, and a cover being
+     dragged is that element: each move scrolls the page along with it, which moves the pointer over the
+     photo, which moves the cover again. -->
 <svg
 	bind:this={svg}
 	bind:clientWidth={rendered}
 	viewBox={`${origin.x} ${origin.y} ${view.width} ${view.height}`}
-	class="block w-full touch-none bg-ink/5 select-none"
+	class="block w-full touch-none bg-ink/5 select-none [overflow-anchor:none]"
 	role="group"
 	aria-label={label}
 	onpointerdown={down}
@@ -297,13 +311,17 @@
 				onclick={() => onselect(region.id)}
 				onkeydown={(event) => key(event, region)}
 			>
-				<rect
-					x={region.x}
-					y={region.y}
-					width={region.width}
-					height={region.height}
-					fill="#f7d470"
-				/>
+				<!-- A cover is the ellipse inside its box: the fill, the sticker and both strokes follow it, while
+				     the corner handles stay on the box, which is what is dragged and resized. -->
+				<clipPath id="cover-{region.id}">
+					<ellipse
+						cx={region.x + region.width / 2}
+						cy={region.y + region.height / 2}
+						rx={region.width / 2}
+						ry={region.height / 2}
+					/>
+				</clipPath>
+				{@render shape(region, { fill: '#f7d470' })}
 				<image
 					href={stickerUrl(region.sticker)}
 					x={region.x}
@@ -311,28 +329,21 @@
 					width={region.width}
 					height={region.height}
 					preserveAspectRatio="none"
+					clip-path="url(#cover-{region.id})"
 				/>
-				<rect
-					x={region.x}
-					y={region.y}
-					width={region.width}
-					height={region.height}
-					fill="none"
-					stroke="#29253d"
-					stroke-opacity="0.35"
-					stroke-width={selected === region.id ? 8 : 6}
-					vector-effect="non-scaling-stroke"
-				/>
-				<rect
-					x={region.x}
-					y={region.y}
-					width={region.width}
-					height={region.height}
-					fill="none"
-					stroke={region.child ? '#15803d' : region.covered ? '#29253d' : '#ffb36b'}
-					stroke-width={selected === region.id ? 5 : 3}
-					vector-effect="non-scaling-stroke"
-				/>
+				{@render shape(region, {
+					fill: 'none',
+					stroke: '#29253d',
+					'stroke-opacity': 0.35,
+					'stroke-width': selected === region.id ? 8 : 6,
+					'vector-effect': 'non-scaling-stroke'
+				})}
+				{@render shape(region, {
+					fill: 'none',
+					stroke: region.child ? '#15803d' : region.covered ? '#29253d' : '#ffb36b',
+					'stroke-width': selected === region.id ? 5 : 3,
+					'vector-effect': 'non-scaling-stroke'
+				})}
 				<text
 					x={region.x + region.width / 2}
 					y={region.y + region.height / 4}

@@ -1,5 +1,6 @@
-// Image-space rectangles, independent of zoom and viewport size. A region's entire rectangle is opaque;
-// sticker artwork is decorative and must never define the protection boundary.
+// Image-space rectangles, independent of zoom and viewport size. A cover is the ellipse inscribed in its
+// rectangle, and that ellipse is opaque; the photo shows at the rectangle's four corners. The opaque area is
+// the geometry here, never the sticker artwork, which is decorative.
 export type Rect = { x: number; y: number; width: number; height: number };
 export type Region = Rect & {
 	id: string;
@@ -151,7 +152,11 @@ export function overlaps(a: Rect, b: Rect) {
 	return a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 }
 
-/** Base pixels for a safe preview/export. Overwrite all RGBA channels; no hidden source pixels remain. */
+/**
+ * Base pixels for a safe preview/export. Overwrite all RGBA channels inside each cover's ellipse; no hidden
+ * source pixels remain there. The fill runs a pixel beyond the ellipse, so the soft edge of the sticker
+ * clipped to it (src/lib/events/images.ts) blends into flat colour rather than into the photo.
+ */
 export function coverPixels(
 	source: Uint8ClampedArray,
 	width: number,
@@ -178,8 +183,13 @@ export function coverPixels(
 			y0 = Math.max(0, Math.floor(region.y));
 		const x1 = Math.min(width, Math.ceil(region.x + region.width)),
 			y1 = Math.min(height, Math.ceil(region.y + region.height));
+		const cx = region.x + region.width / 2,
+			cy = region.y + region.height / 2,
+			rx = region.width / 2 + 1,
+			ry = region.height / 2 + 1;
 		for (let y = y0; y < y1; y++)
 			for (let x = x0; x < x1; x++) {
+				if (((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 > 1) continue;
 				const offset = (y * width + x) * 4;
 				pixels[offset] = 247;
 				pixels[offset + 1] = 212;

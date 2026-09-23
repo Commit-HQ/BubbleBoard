@@ -70,7 +70,8 @@ describe('event photo editing', () => {
 			height: 40
 		});
 	});
-	it('overwrites every source channel beneath manual and overlapping covers without changing outside pixels', () => {
+	it('overwrites every source channel beneath small manual and overlapping covers without changing outside pixels', () => {
+		// A cover this small has no corner outside its ellipse once the fill runs a pixel beyond it.
 		const source = new Uint8ClampedArray(8 * 8 * 4).map((_, i) => i % 251);
 		const regions = [
 			{ x: 1.2, y: 1.2, width: 2, height: 2 },
@@ -88,5 +89,22 @@ describe('event photo editing', () => {
 			}
 		expect(result).not.toBe(source);
 		expect(() => coverPixels(source, 8, 8, [{ x: NaN, y: 0, width: 2, height: 2 }])).toThrow();
+	});
+	it('fills a cover to the edges of its box on both axes and leaves the corners alone', () => {
+		const source = new Uint8ClampedArray(20 * 20 * 4).map((_, i) => i % 251);
+		const result = coverPixels(source, 20, 20, [{ x: 2, y: 2, width: 16, height: 12 }]);
+		const covered = (x: number, y: number) =>
+			result[(y * 20 + x) * 4 + 3] === 255 && result[(y * 20 + x) * 4] === 247;
+		expect([covered(10, 2), covered(10, 13), covered(2, 8), covered(17, 8), covered(9, 7)]).toEqual(
+			[true, true, true, true, true]
+		);
+		expect([covered(2, 2), covered(17, 2), covered(2, 13), covered(17, 13)]).toEqual([
+			false,
+			false,
+			false,
+			false
+		]);
+		const corner = (2 * 20 + 2) * 4;
+		expect([...result.slice(corner, corner + 4)]).toEqual([...source.slice(corner, corner + 4)]);
 	});
 });

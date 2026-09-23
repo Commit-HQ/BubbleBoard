@@ -150,6 +150,15 @@
 					<p class="text-sm text-muted">{t.face(number)}</p>
 				{/if}
 			</div>
+			<!-- Removing sits in the corner, by the crop it removes, so on a phone it isn't below the whole
+			     classroom's names. -->
+			<button
+				type="button"
+				class="{button.icon} ml-auto self-start text-red-700 hover:bg-red-50 hover:text-red-800"
+				aria-label={t.removeCover}
+				title={t.removeCover}
+				onclick={onremove}><Icon name="trash" /></button
+			>
 		</div>
 
 		{#if searchable}
@@ -178,19 +187,14 @@
 			{#if !shown.length}<p class="text-muted">{t.empty}</p>{/if}
 		</div>
 
-		<div class="flex flex-wrap items-center gap-2">
-			<button
-				type="button"
-				class={button.secondary}
-				aria-pressed={selected.covered}
-				onclick={() => onassign(null)}
-			>
-				<Icon name="eyeOff" class="size-4" />{t.covered}
-			</button>
-			<button type="button" class="{button.danger} ml-auto" onclick={onremove}>
-				<Icon name="trash" class="size-4" />{t.removeCover}
-			</button>
-		</div>
+		<button
+			type="button"
+			class="{button.secondary} justify-self-start"
+			aria-pressed={selected.covered}
+			onclick={() => onassign(null)}
+		>
+			<Icon name="eyeOff" class="size-4" />{t.covered}
+		</button>
 
 		{@render stickerChoice(selected)}
 	{:else}
