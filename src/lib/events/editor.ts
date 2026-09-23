@@ -24,25 +24,42 @@ export function emptyEdit(): History {
 	return { past: [], present: { regions: [], selected: null, reviewed: false }, future: [] };
 }
 
+/**
+ * A cover may hang off the photo's edge, for a child standing at it, but its centre stays on the photo and it
+ * is never larger than the photo. Only the part on the photo is ever painted or packaged (`insideRect`).
+ */
 export function boundedRect(rect: Rect, width: number, height: number): Rect {
 	const w = Math.min(width, Math.max(1, Math.ceil(rect.width)));
 	const h = Math.min(height, Math.max(1, Math.ceil(rect.height)));
 	return {
-		x: Math.max(0, Math.min(width - w, Math.floor(rect.x))),
-		y: Math.max(0, Math.min(height - h, Math.floor(rect.y))),
+		x: Math.max(-Math.floor(w / 2), Math.min(width - Math.ceil(w / 2), Math.floor(rect.x))),
+		y: Math.max(-Math.floor(h / 2), Math.min(height - Math.ceil(h / 2), Math.floor(rect.y))),
 		width: w,
 		height: h
 	};
 }
 
-/** Pad detections before clipping, including heads at the image's edge. */
+/** The part of a bounded cover that lies on the photo: what a face patch crops. */
+export function insideRect(rect: Rect, width: number, height: number): Rect {
+	const x = Math.max(0, rect.x),
+		y = Math.max(0, rect.y);
+	return {
+		x,
+		y,
+		width: Math.min(width, rect.x + rect.width) - x,
+		height: Math.min(height, rect.y + rect.height) - y
+	};
+}
+
+/** Pad detections, letting the padding run off the photo so a head at its edge is still wholly covered. */
 export function detectionRegion(id: string, box: Rect, width: number, height: number): Region {
-	const left = Math.max(0, Math.floor(box.x - box.width * 0.25));
-	const top = Math.max(0, Math.floor(box.y - box.height * 0.35));
-	const right = Math.min(width, Math.ceil(box.x + box.width * 1.25));
-	const bottom = Math.min(height, Math.ceil(box.y + box.height * 1.2));
 	const rect = boundedRect(
-		{ x: left, y: top, width: right - left, height: bottom - top },
+		{
+			x: box.x - box.width * 0.25,
+			y: box.y - box.height * 0.35,
+			width: box.width * 1.5,
+			height: box.height * 1.55
+		},
 		width,
 		height
 	);

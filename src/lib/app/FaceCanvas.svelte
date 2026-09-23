@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { stickerUrl } from '$lib/events/stickers';
-	import { boundedRect, type Rect, type Region } from '$lib/events/editor';
+	import { boundedRect, insideRect, type Rect, type Region } from '$lib/events/editor';
 	import FaceNames from './FaceNames.svelte';
 
 	/** A corner of the selected cover, named by the two edges that meet there. */
@@ -80,12 +80,14 @@
 		followed = id;
 		untrack(() => {
 			const region = regions.find((r) => r.id === id);
+			// Only the part on the photo can be in view: a cover hanging off its edge is never wholly inside.
+			const on = region && insideRect(region, width, height);
 			if (
-				!region ||
-				(region.x >= origin.x &&
-					region.y >= origin.y &&
-					region.x + region.width <= origin.x + view.width &&
-					region.y + region.height <= origin.y + view.height)
+				!on ||
+				(on.x >= origin.x &&
+					on.y >= origin.y &&
+					on.x + on.width <= origin.x + view.width &&
+					on.y + on.height <= origin.y + view.height)
 			)
 				return;
 			center = look(region.x + region.width / 2, region.y + region.height / 2);
@@ -219,9 +221,12 @@
 			x: west ? region.x + region.width : region.x,
 			y: north ? region.y + region.height : region.y
 		};
-		// A finger may run off the photo; the corner stops at its edge, or fitting the cover back inside would
-		// push the fixed corner along.
-		const at = { x: Math.max(0, Math.min(width, to.x)), y: Math.max(0, Math.min(height, to.y)) };
+		// A finger may run off the photo, and the corner with it, for a child at the edge. It stops where the
+		// cover's centre would leave the photo, or bounding the cover would push the fixed corner along.
+		const at = {
+			x: Math.max(-fixed.x, Math.min(2 * width - fixed.x, to.x)),
+			y: Math.max(-fixed.y, Math.min(2 * height - fixed.y, to.y))
+		};
 		const x = west ? Math.min(at.x, fixed.x - region.minWidth) : fixed.x;
 		const y = north ? Math.min(at.y, fixed.y - region.minHeight) : fixed.y;
 		return {

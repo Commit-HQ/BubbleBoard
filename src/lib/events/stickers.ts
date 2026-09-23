@@ -45,5 +45,19 @@ export type Sticker = keyof typeof stickers;
 export const stickerUrl = (value?: string) => stickers[value as Sticker] ?? stickers.smile;
 
 const names = Object.keys(stickers) as Sticker[];
-/** The sticker a new cover starts with: the next one along, so a photo full of children isn't a wall of one face. */
-export const nextSticker = (covers: number) => names[covers % names.length];
+/**
+ * Stickers for new covers, picked at random so a photo full of children isn't a wall of one face: never one a
+ * cover on the photo already wears while another is left, and the least worn once all are. The teacher may
+ * still give two covers the same one.
+ */
+export function freshStickers(worn: (Sticker | undefined)[], count: number, random = Math.random) {
+	const uses = new Map(names.map((name) => [name, 0]));
+	for (const sticker of worn) uses.set(sticker ?? 'smile', uses.get(sticker ?? 'smile')! + 1);
+	return Array.from({ length: count }, () => {
+		const least = Math.min(...uses.values());
+		const choices = names.filter((name) => uses.get(name) === least);
+		const sticker = choices[Math.floor(random() * choices.length)];
+		uses.set(sticker, least + 1);
+		return sticker;
+	});
+}

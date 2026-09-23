@@ -41,7 +41,7 @@
 	} from '$lib/events/types';
 	import { day, type NoticeDocument } from '$lib/notices';
 	import type { EventDraft } from '$lib/events/publishing';
-	import { nextSticker, type Sticker } from '$lib/events/stickers';
+	import { freshStickers, type Sticker } from '$lib/events/stickers';
 	import { appPath } from '$lib/paths';
 	import { CodedError, errorCode } from '$lib/errors';
 	import Icon from '$lib/components/Icon.svelte';
@@ -423,7 +423,16 @@
 		setHistory(
 			commit(
 				photo.history,
-				[...edit.regions, { ...region, sticker: nextSticker(edit.regions.length) }],
+				[
+					...edit.regions,
+					{
+						...region,
+						sticker: freshStickers(
+							edit.regions.map((r) => r.sticker),
+							1
+						)[0]
+					}
+				],
 				region.id
 			)
 		);
@@ -497,6 +506,10 @@
 					error = t.tooManyFaces;
 					return { ...p, detection: 'failed' };
 				}
+				const worn = freshStickers(
+					p.history.present.regions.map((r) => r.sticker),
+					additions.length
+				);
 				return {
 					...p,
 					detection: 'ready',
@@ -507,7 +520,7 @@
 									...p.history.present.regions,
 									...additions.map((region, index) => ({
 										...region,
-										sticker: nextSticker(p.history.present.regions.length + index)
+										sticker: worn[index]
 									}))
 								],
 								p.history.present.selected ?? additions[0].id

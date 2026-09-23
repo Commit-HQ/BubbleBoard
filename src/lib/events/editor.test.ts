@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	assign,
 	boundedRect,
+	insideRect,
 	commit,
 	coverPixels,
 	coverRest,
@@ -60,14 +61,19 @@ describe('event photo editing', () => {
 		expect(redo(restored).present.regions[0].x).toBe(0);
 		expect(redo(restored).present.reviewed).toBe(false);
 	});
-	it('pads and clips detections at the edge and keeps manual moves inside the image', () => {
-		const r = detectionRegion('a', { x: 0, y: 0, width: 20, height: 20 }, 40, 30);
-		expect(r).toMatchObject({ x: 0, y: 0, width: 25, height: 24 });
+	it('lets covers hang off the edge while their centre stays on the image', () => {
+		const r = detectionRegion('a', { x: 0, y: 0, width: 20, height: 20 }, 40, 40);
+		expect(r).toMatchObject({ x: -5, y: -7, width: 30, height: 31 });
+		expect(insideRect(r, 40, 40)).toEqual({ x: 0, y: 0, width: 25, height: 24 });
 		expect(boundedRect({ x: -20, y: 110, width: 30, height: 40 }, 100, 100)).toEqual({
-			x: 0,
-			y: 60,
+			x: -15,
+			y: 80,
 			width: 30,
 			height: 40
+		});
+		expect(boundedRect({ x: 0, y: 0, width: 300, height: 40 }, 100, 100)).toMatchObject({
+			x: 0,
+			width: 100
 		});
 	});
 	it('overwrites every source channel beneath small manual and overlapping covers without changing outside pixels', () => {

@@ -198,7 +198,7 @@ describe('restoring a published photo for the editor', () => {
 	it('bounds each cover to the photo and refuses what cannot be a cover', () => {
 		const id = createId();
 		const [region] = restoredRegions([mark(id, { x: 190, width: 30 })], 200, 200, new Set([id]));
-		expect([region.x, region.width, region.minWidth]).toEqual([170, 30, 4]);
+		expect([region.x, region.width, region.minWidth]).toEqual([185, 30, 4]);
 		for (const bad of [
 			[mark('nope')],
 			[mark(id), mark(id)],

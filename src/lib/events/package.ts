@@ -13,7 +13,7 @@ import {
 	openContentKey,
 	UnreadableError
 } from '$lib/crypto';
-import { boundedRect, maxRegions, type Region, type Rect } from './editor';
+import { boundedRect, insideRect, maxRegions, type Region, type Rect } from './editor';
 import { stickers, type Sticker } from './stickers';
 import {
 	editorSide,
@@ -225,7 +225,9 @@ export async function preparePackage(
 			});
 			staffKeys[part] = face.raw;
 		}
-		for (const region of regions) {
+		// A cover may hang off the photo's edge; its patch, and every overlap, is only the part on the photo.
+		const inside = regions.map((r) => ({ ...r, ...insideRect(r, width, height) }));
+		for (const region of inside) {
 			if (!region.child) continue;
 			const child = children.find((c) => c.id === region.child);
 			if (!child) throw new UnreadableError();
@@ -236,13 +238,13 @@ export async function preparePackage(
 					original,
 					width,
 					region,
-					regions.filter((r) => r.id !== region.id)
+					inside.filter((r) => r.id !== region.id)
 				),
 				child.families,
 				shared.has(child.id)
 			);
 		}
-		const overlaps = overlapAreas(regions);
+		const overlaps = overlapAreas(inside);
 		if (patches.length + overlaps.length > maxPatches)
 			throw new Error('Too many overlapping regions');
 		for (const area of overlaps) {
@@ -368,8 +370,8 @@ export async function restorePackage(
 }
 
 /**
- * The covers a staff envelope holds, as far as they can be trusted: each is bounded to the photo, and one
- * whose face didn't come back (kept covered, or a patch that wouldn't open) is `fixed` where it is.
+ * The covers a staff envelope holds, as far as they can be trusted: each is bounded as the editor bounds it,
+ * and one whose face didn't come back (kept covered, or a patch that wouldn't open) is `fixed` where it is.
  */
 export function restoredRegions(
 	marks: unknown,
