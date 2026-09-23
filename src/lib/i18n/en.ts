@@ -966,6 +966,8 @@ export const en = {
 			name: 'Name',
 			classrooms: 'Classrooms',
 			noClassrooms: 'There are no classrooms yet.',
+			headClassrooms:
+				'A BubbleBoard administrator sees every classroom. Tick the ones she teaches in, so the classroom knows who is in it. She chooses her notifications in Settings.',
 			role: 'What she may do',
 			teacherHint: 'Posts notices and photos in her classrooms.',
 			leadHint:

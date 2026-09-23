@@ -262,6 +262,16 @@ const headHears = (classrooms: string) =>
 	(SELECT classroom_id FROM teacher_muted_classrooms WHERE teacher_id = c.teacher_id))`;
 
 /**
+ * Whether the credential `c` belongs to a teacher or a group lead assigned to one of the classrooms in
+ * question, selected as `headHears` takes them. A head's assignments only say where she teaches; what she
+ * hears about is her mute choice alone, so they don't count here.
+ */
+const teaches = (classrooms: string) =>
+	`c.teacher_id IN (SELECT assigned.teacher_id FROM teacher_classrooms assigned
+	JOIN teachers ON teachers.id = assigned.teacher_id
+	WHERE teachers.role <> 'head' AND assigned.classroom_id IN (SELECT classroom FROM (${classrooms})))`;
+
+/**
  * The devices that turned on notifications for a notice's classrooms: families in them, the teachers
  * assigned to them, and the heads who didn't mute any of them, except the device that posted it.
  */
@@ -278,7 +288,7 @@ export async function recipients(
 			JOIN credentials c ON c.id = s.credential_id
 			WHERE s.expires_at > ?1 AND p.session_hash <> ?2 AND (
 				c.family_id IN (SELECT family_id FROM family_classrooms WHERE classroom_id IN (SELECT value FROM json_each(?3)))
-				OR c.teacher_id IN (SELECT teacher_id FROM teacher_classrooms WHERE classroom_id IN (SELECT value FROM json_each(?3)))
+				OR (${teaches('SELECT value AS classroom FROM json_each(?3)')})
 				OR (${headHears('SELECT value AS classroom FROM json_each(?3)')})
 			)`
 		)
@@ -446,7 +456,7 @@ export async function conversationRecipients(
  JOIN sessions s ON s.token_hash=p.session_hash JOIN credentials c ON c.id=s.credential_id
  JOIN conversations t ON t.id=?
  WHERE s.expires_at>? AND p.session_hash<>? AND (
- c.family_id=t.family_id OR c.teacher_id IN (SELECT teacher_id FROM teacher_classrooms WHERE classroom_id=t.classroom_id)
+ c.family_id=t.family_id OR (${teaches('SELECT t.classroom_id AS classroom')})
  OR (${headHears('SELECT t.classroom_id AS classroom')}))`
 		)
 		.bind(conversation, now, poster)
@@ -482,7 +492,7 @@ export async function announceMeetingChanges(
  JOIN sessions s ON s.token_hash=p.session_hash JOIN credentials c ON c.id=s.credential_id
  JOIN json_each(?) changed JOIN meeting_offers o ON o.id=json_extract(changed.value,'$.offer') WHERE s.expires_at>? AND p.session_hash<>? AND (
  c.family_id IN(SELECT i.family_id FROM meeting_invites i JOIN family_classrooms f ON f.family_id=i.family_id AND f.classroom_id=o.classroom_id WHERE i.offer_id=o.id AND i.child_id=json_extract(changed.value,'$.child'))
- OR c.teacher_id IN(SELECT teacher_id FROM teacher_classrooms WHERE classroom_id=o.classroom_id)
+ OR (${teaches('SELECT o.classroom_id AS classroom')})
  OR (${headHears('SELECT o.classroom_id AS classroom')}))`
 	)
 		.bind(JSON.stringify(changes), Date.now(), poster ?? '')

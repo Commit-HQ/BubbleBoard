@@ -1533,7 +1533,7 @@ describe('notifications', () => {
 			await turnOn(db, device, name);
 		}
 
-		// The head is assigned to no classroom and hears about every one she hasn't muted.
+		// The head hears about every classroom she hasn't muted, whether or not she teaches in it.
 		const reached = await recipients(db, [bubbles], await sessionHash(poster));
 		expect(reached.map(({ endpoint }) => endpoint).sort()).toEqual([
 			endpoint('family'),
@@ -1548,6 +1548,16 @@ describe('notifications', () => {
 		expect(
 			(await recipients(db, [bubbles, owls], undefined)).map(({ endpoint }) => endpoint)
 		).toContain(endpoint('head'));
+		// Ticking a classroom for a head says where she teaches; her mute choice still decides what she hears.
+		await changeTeacher(db, head, teachers[0].id, {
+			revision: await revision(db),
+			role: 'head',
+			profile: teachers[0].profile,
+			classrooms: [bubbles]
+		});
+		expect(
+			(await recipients(db, [bubbles], undefined)).map(({ endpoint }) => endpoint)
+		).not.toContain(endpoint('head'));
 		await expect(setMutedClassrooms(db, head, [createId()])).rejects.toMatchObject(
 			conflict('stale')
 		);

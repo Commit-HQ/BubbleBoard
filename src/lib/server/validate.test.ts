@@ -65,12 +65,12 @@ it('refuses a setup whose two cards share an ID', () => {
 	expect(() => setup({ token: 'token', teachers: [head, shared] })).toThrow();
 });
 
-it('refuses a teacher without one of the three roles, and a head with classrooms', () => {
+it('refuses a teacher without one of the three roles, and lets a head teach in classrooms', () => {
 	const staff = { id: createId(), profile: envelope(20), credential: credential() };
 	const classrooms = [createId()];
 	expect(newTeacher({ ...staff, role: 'lead', classrooms }).classrooms).toEqual(classrooms);
 	expect(newTeacher({ ...staff, role: 'head', classrooms: [] }).role).toBe('head');
-	expect(() => newTeacher({ ...staff, role: 'head', classrooms })).toThrow();
+	expect(newTeacher({ ...staff, role: 'head', classrooms }).classrooms).toEqual(classrooms);
 	expect(() => newTeacher({ ...staff, role: 'admin', classrooms: [] })).toThrow();
 	expect(() => newTeacher({ ...staff, classrooms: [] })).toThrow();
 });

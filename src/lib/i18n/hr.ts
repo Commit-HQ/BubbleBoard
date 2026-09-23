@@ -946,6 +946,8 @@ export const hr = {
 			name: 'Ime',
 			classrooms: 'Skupine',
 			noClassrooms: 'Još nema skupina.',
+			headClassrooms:
+				'BubbleBoard administrator vidi sve skupine. Označite u kojima radi kao odgojiteljica, da skupina zna tko je u njoj. Obavijesti bira u Postavkama.',
 			role: 'Što smije',
 			teacherHint: 'Objavljuje obavijesti i fotografije u svojim skupinama.',
 			leadHint:

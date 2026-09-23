@@ -227,13 +227,16 @@ const roles: StaffRole[] = ['teacher', 'lead', 'head'];
 const staffRole = (value: unknown) =>
 	roles.includes(value as StaffRole) ? (value as StaffRole) : invalid();
 
-/** A teacher's role with the classrooms she holds. The head holds them all, so she's given none. */
+/**
+ * A teacher's role with the classrooms she's in. A head reaches every classroom whatever is ticked; her ticks
+ * only say which ones she teaches in, so the classroom can name her.
+ */
 function teacher(body: Fields) {
-	const role = staffRole(body.role);
-	const classrooms = ids(body.classrooms);
-	return role === 'head' && classrooms.length
-		? invalid()
-		: { role, profile: profile(body.profile), classrooms };
+	return {
+		role: staffRole(body.role),
+		profile: profile(body.profile),
+		classrooms: ids(body.classrooms)
+	};
 }
 
 export const teacherChange = (body: Fields): TeacherChange => ({

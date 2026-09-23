@@ -7,9 +7,9 @@
 	import { getApp, Task, type TeacherValues } from './state.svelte';
 	import { alert, button, field, formText, surface } from './ui';
 
-	// A staff member's name, what she may do, and, unless she runs the whole kindergarten, the classrooms
-	// she's in. Nobody can lower her own role here: that would lock her out of this very page, so another
-	// head does it.
+	// A staff member's name, what she may do, and the classrooms she's in. A head runs every classroom, so
+	// her ticks only name the ones she teaches in. Nobody can lower her own role here: that would lock her
+	// out of this very page, so another head does it.
 	let {
 		locale,
 		teacher,
@@ -58,13 +58,10 @@
 		event.preventDefault();
 		const form = new FormData(event.currentTarget);
 		const name = formText(form, 'name');
-		// Classrooms that still exist, in the catalog's order. A head runs them all, so she holds none.
-		const classrooms =
-			role === 'head'
-				? []
-				: app.catalog.classrooms
-						.filter((classroom) => chosen.includes(classroom.id))
-						.map((classroom) => classroom.id);
+		// Classrooms that still exist, in the catalog's order.
+		const classrooms = app.catalog.classrooms
+			.filter((classroom) => chosen.includes(classroom.id))
+			.map((classroom) => classroom.id);
 		await task.run(async () => {
 			await onsubmit({ name, role, classrooms, revision });
 			// The records came back with this change in them, so the next save is made over them.
@@ -112,9 +109,8 @@
 			{/each}
 		</div>
 	{/if}
-	<!-- A head is in no classroom, so there's nothing to tick for her. -->
-	{#if role !== 'head'}
-		{#if app.catalog.classrooms.length}
+	{#if app.catalog.classrooms.length}
+		<div class="grid gap-2">
 			<Checklist
 				{locale}
 				label={t.classrooms}
@@ -124,12 +120,14 @@
 				}))}
 				bind:chosen
 			/>
-		{:else}
-			<p>
-				<span class="block font-semibold">{t.classrooms}</span>
-				<span class="text-muted">{t.noClassrooms}</span>
-			</p>
-		{/if}
+			<!-- A head reaches every classroom anyway; her ticks only say where she teaches. -->
+			{#if role === 'head'}<p class={field.hint}>{t.headClassrooms}</p>{/if}
+		</div>
+	{:else}
+		<p>
+			<span class="block font-semibold">{t.classrooms}</span>
+			<span class="text-muted">{t.noClassrooms}</span>
+		</p>
 	{/if}
 	{#if task.error}<p class={alert} role="alert">{errorMessage(locale, task.error)}</p>{/if}
 	<button class="{button.primary} justify-self-start" type="submit" disabled={task.busy}>
