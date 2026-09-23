@@ -59,9 +59,15 @@
 		</p>
 	{/if}
 	{#if policy.enabled && (full || !allowed)}
-		<details>
-			<summary class="flex min-h-9 cursor-pointer items-center font-semibold text-muted">
-				{t.schedule}
+		<details class="group">
+			<summary
+				class="flex min-h-9 cursor-pointer list-none items-center gap-2 font-semibold text-muted hover:text-ink [&::-webkit-details-marker]:hidden"
+			>
+				<Icon name="clock" class="size-4 shrink-0" />{t.schedule}
+				<Icon
+					name="chevronRight"
+					class="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+				/>
 			</summary>
 			<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 pb-2">
 				{#each policy.schedule as day, index (index)}
