@@ -5,9 +5,11 @@
 
 	// Pulling any page down from its top loads everything again, as in other apps: the installed app has no
 	// reload button, and the pages have none of their own. The browser's own pull, which would reload the whole
-	// app, and the page's bounce are off. An arrow under the header turns with the pull and spins while it loads. It moves through its
-	// style property, which the CSP allows, unlike style attributes, and it's only a picture of the gesture, so
-	// screen readers skip it.
+	// app, and the page's bounce are off. An arrow under the header turns with the pull and spins while it
+	// loads. It moves through its style property, which the CSP allows, unlike style attributes: at rest it
+	// has no style at all, since the prerendered page would carry one as an attribute, which the CSP blocks
+	// until the app takes over, showing the arrow meanwhile. It's only a picture of the gesture, so screen
+	// readers skip it.
 	const app = getApp();
 	/** How far the arrow comes down, in pixels, before letting go loads the board. */
 	const distance = 72;
@@ -15,6 +17,7 @@
 	let start = $state<number>();
 	let pulled = $state(0);
 	let loading = $state(false);
+	const moving = $derived(loading || pulled > 0);
 
 	onMount(() => {
 		const pages = [document.documentElement, document.body];
@@ -58,12 +61,14 @@
 
 <div class="pointer-events-none fixed inset-x-0 top-20 z-20 flex justify-center" aria-hidden="true">
 	<span
-		class="grid size-11 place-items-center rounded-full bg-white text-ink shadow-lg ring-1 shadow-ink/10 ring-ink/10 motion-reduce:transition-none {start ===
+		class="grid size-11 place-items-center rounded-full bg-white text-ink opacity-0 shadow-lg ring-1 shadow-ink/10 ring-ink/10 motion-reduce:transition-none {start ===
 		undefined
 			? 'transition'
 			: ''}"
-		style:opacity={loading ? 1 : pulled / distance}
-		style:transform="translateY({(loading ? distance : pulled) / 2}px) rotate({pulled * 4}deg)"
+		style:opacity={moving ? (loading ? 1 : pulled / distance) : undefined}
+		style:transform={moving
+			? `translateY(${(loading ? distance : pulled) / 2}px) rotate(${pulled * 4}deg)`
+			: undefined}
 	>
 		<Icon name="refresh" class="size-5 {loading ? 'animate-spin' : ''}" />
 	</span>

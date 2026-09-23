@@ -18,6 +18,11 @@ function commit() {
 	}
 }
 const built = commit();
+// One stamp for the whole build. Vite evaluates this file more than once per build, for the client and
+// for the server, and SvelteKit names the global its pages and chunks share after the version, so a stamp
+// taken anew each time would leave the prerendered pages and the client chunks calling it by different
+// names, and no page would start. The environment keeps the first one for the later evaluations.
+const stamp = (process.env.BUILD_STAMP ??= Date.now().toString(36));
 
 export default defineConfig({
 	plugins: [
@@ -34,7 +39,7 @@ export default defineConfig({
 			// The version an open app compares with the server's to tell a new deploy has come
 			// (src/routes/(app)/+layout.svelte). It's new with every build, even from the same commit, so a
 			// rebuild with uncommitted changes counts too; the footer takes the commit alone, from __COMMIT__.
-			version: { name: `${built}.${Date.now().toString(36)}` },
+			version: { name: `${built}.${stamp}` },
 			csp: {
 				mode: 'hash',
 				// Styles, fonts, and connections fall back to default-src, and SvelteKit adds hashes for its
