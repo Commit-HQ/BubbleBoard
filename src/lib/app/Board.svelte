@@ -9,7 +9,8 @@
 	import { choice } from './ui';
 
 	// Home's board, as on the kindergarten's corkboard: the photos of its classrooms' boards, then the notices,
-	// newest on top. With several classrooms, a filter shows one classroom's; it starts on all of them.
+	// newest on top, then the events, newest on top. With several classrooms, a filter shows one classroom's;
+	// it starts on all of them.
 	let { locale }: { locale: Locale } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app);
@@ -21,6 +22,12 @@
 	const shown = $derived(classrooms.some((classroom) => classroom.id === chosen) ? chosen : '');
 	const notices = $derived(
 		shown ? app.board.filter((notice) => notice.classrooms.includes(shown)) : app.board
+	);
+	/** Events by when they went up, newest first, as the notices are. */
+	const events = $derived(
+		app.events
+			.filter((event) => !shown || event.classroom === shown)
+			.toSorted((a, b) => b.postedAt - a.postedAt)
 	);
 	/** The board photos of the classrooms shown, in the classrooms' order. */
 	const photos = $derived(
@@ -71,10 +78,6 @@
 		</ul>
 	{/if}
 
-	{#if app.eventsError}<p role="status" class="text-sm text-muted">{t.events.failed}</p>{/if}
-	{#each app.events.filter((e) => !shown || e.classroom === shown) as event (event.id)}
-		<EventCard {locale} {event} />
-	{/each}
 	{#if app.unreadableNotices}
 		<p class="text-sm font-semibold text-muted">{t.notices.unreadable}</p>
 	{/if}
@@ -93,6 +96,11 @@
 					: t.notices.empty}
 		</p>
 	{/if}
+
+	{#if app.eventsError}<p role="status" class="text-sm text-muted">{t.events.failed}</p>{/if}
+	{#each events as event (event.id)}
+		<EventCard {locale} {event} />
+	{/each}
 </div>
 
 {#if deleting}
