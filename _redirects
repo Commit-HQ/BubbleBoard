@@ -1,0 +1,4 @@
+# Icons that browsers and link previews ask for at fixed addresses. Cloudflare answers these from the
+# assets without running the Worker, where a missing file would render the 404 page.
+/apple-touch-icon.png /icons/apple-touch-icon.png 301
+/apple-touch-icon-precomposed.png /icons/apple-touch-icon.png 301
