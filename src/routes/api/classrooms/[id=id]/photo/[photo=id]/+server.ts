@@ -14,7 +14,8 @@ import type { RequestHandler } from './$types';
 // A classroom's board photo: its encrypted bytes for everyone who sees the classroom, and putting a new one
 // up or taking it down for the classroom's staff and the head, which responds with the board photos as they
 // see them. A new photo's details, who put it up, come encrypted in a header beside its bytes. It counts
-// against the installation's storage limits and notifies the classroom's families and teachers.
+// against the installation's storage limits and notifies the classroom's families and teachers, as a new
+// notice does.
 
 export const GET: RequestHandler = async (event) => {
 	const viewer = await requireIdentity(event);
@@ -29,7 +30,7 @@ export const PUT: RequestHandler = async (event) => {
 	const { id, photo } = event.params;
 	const store = objectStore(event);
 	const photos = await putUpPhoto(database(event), store, staff, id, photo, bytes, details);
-	notifyLater(event, announce(event, [id], await sessionHash(event), 'corkboard'));
+	notifyLater(event, announce(event, [id], await sessionHash(event)));
 	return json(photos);
 };
 

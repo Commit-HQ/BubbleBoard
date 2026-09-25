@@ -31,8 +31,7 @@ const pages: Record<PushKind, AppPage | undefined> = {
 	slots: 'meetings',
 	booking: 'meetings',
 	// An event's photos are reached from the board, which is home: a push must never say which event.
-	photos: undefined,
-	corkboard: undefined
+	photos: undefined
 };
 
 /** What a push says happened. One that carries nothing, as a device that hasn't sent its keys gets, is a notice. */

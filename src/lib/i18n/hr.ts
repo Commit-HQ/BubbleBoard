@@ -7,8 +7,7 @@ export const notificationText: Record<PushKind, string> = {
 	message: 'Nova poruka',
 	slots: 'Novi termini za razgovore',
 	booking: 'Promjena termina razgovora',
-	photos: 'Nove fotografije iz vrtića',
-	corkboard: 'Nova fotografija oglasne ploče'
+	photos: 'Nove fotografije iz vrtića'
 };
 
 export const hr = {

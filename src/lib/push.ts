@@ -4,7 +4,7 @@
 // length gives nothing away either. This file stays free of imports: the Worker bundles it for the queue
 // handler, and the service worker takes it without the rest of the app.
 
-export const pushKinds = ['notice', 'message', 'slots', 'booking', 'photos', 'corkboard'] as const;
+export const pushKinds = ['notice', 'message', 'slots', 'booking', 'photos'] as const;
 export type PushKind = (typeof pushKinds)[number];
 
 /** The letter that goes over the wire. Each kind starts with a different one. */

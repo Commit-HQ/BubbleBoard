@@ -8,9 +8,8 @@
 	import { getApp } from './state.svelte';
 	import { choice } from './ui';
 
-	// Home's board, as on the kindergarten's corkboard: the photos of its classrooms' boards, then the notices
-	// and events in one list, newest on top. With several classrooms, a filter shows one classroom's; it starts
-	// on all of them.
+	// Home's board, as on the kindergarten's corkboard: the photos of its classrooms' boards, then the notices,
+	// newest on top. With several classrooms, a filter shows one classroom's; it starts on all of them.
 	let { locale }: { locale: Locale } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app);
@@ -20,16 +19,8 @@
 	let chosen = $state('');
 	// A classroom the device no longer belongs to leaves the filter on all.
 	const shown = $derived(classrooms.some((classroom) => classroom.id === chosen) ? chosen : '');
-	/** Notices by when they last went to the top, events by when they went up. */
-	const posts = $derived(
-		[
-			...app.board
-				.filter((notice) => !shown || notice.classrooms.includes(shown))
-				.map((notice) => ({ id: notice.id, at: notice.announcedAt, notice })),
-			...app.events
-				.filter((event) => !shown || event.classroom === shown)
-				.map((event) => ({ id: event.id, at: event.postedAt, event }))
-		].sort((a, b) => b.at - a.at)
+	const notices = $derived(
+		shown ? app.board.filter((notice) => notice.classrooms.includes(shown)) : app.board
 	);
 	/** The board photos of the classrooms shown, in the classrooms' order. */
 	const photos = $derived(
@@ -81,20 +72,16 @@
 	{/if}
 
 	{#if app.eventsError}<p role="status" class="text-sm text-muted">{t.events.failed}</p>{/if}
+	{#each app.events.filter((e) => !shown || e.classroom === shown) as event (event.id)}
+		<EventCard {locale} {event} />
+	{/each}
 	{#if app.unreadableNotices}
 		<p class="text-sm font-semibold text-muted">{t.notices.unreadable}</p>
 	{/if}
-	{#if posts.length}
+	{#if notices.length}
 		<ul class="grid gap-4">
-			{#each posts as post (post.id)}
-				<li>
-					{#if 'notice' in post}
-						{@const notice = post.notice}
-						<NoticeCard {locale} {notice} ondelete={() => (deleting = notice)} />
-					{:else}
-						<EventCard {locale} event={post.event} />
-					{/if}
-				</li>
+			{#each notices as notice (notice.id)}
+				<li><NoticeCard {locale} {notice} ondelete={() => (deleting = notice)} /></li>
 			{/each}
 		</ul>
 	{:else}
