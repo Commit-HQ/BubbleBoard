@@ -10,6 +10,7 @@ import {
 	sharing
 } from '$lib/events/package';
 import type {
+	ConsentChange,
 	ConsentRow,
 	ConsentSnapshot,
 	EventRecord,
@@ -1758,6 +1759,21 @@ export class App {
 				share: await readChoice(row, key)
 			}))
 		);
+	}
+
+	/**
+	 * When a child's face sharing was set, newest first, each choice read with its family's key: a family
+	 * device gets its own card's, staff every card's. A card this device holds no key for is left out.
+	 */
+	async photoHistory(child: string) {
+		const rows = await request<ConsentChange[]>('GET', `/api/photo-consent/history?child=${child}`);
+		const read = await Promise.all(
+			rows.map(async (row) => {
+				const key = await this.messageKey(row.family).catch(() => undefined);
+				return key && { ...row, share: await readChoice(row, key) };
+			})
+		);
+		return read.filter((row) => row !== undefined);
 	}
 
 	/** Records a family's own choice for one of its children, over the revision it was read at. */

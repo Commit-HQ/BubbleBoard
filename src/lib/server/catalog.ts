@@ -378,7 +378,9 @@ export async function addChild(db: D1Database, manager: Manager, child: NewChild
 		db
 			.prepare('INSERT INTO children (id, classroom_id, profile) VALUES (?, ?, ?)')
 			.bind(child.id, child.classroom, child.profile),
-		child.photoFamilies ? projectionStatements(db, child.id, child.photoFamilies) : []
+		child.photoFamilies
+			? projectionStatements(db, child.id, child.photoFamilies, manager.teacher, true)
+			: []
 	);
 }
 
@@ -402,7 +404,9 @@ export async function changeChild(
 					'DELETE FROM meeting_invites WHERE child_id=? AND family_id NOT IN (SELECT value FROM json_each(?))'
 				)
 				.bind(id, JSON.stringify(change.meetingFamilies)),
-			...(change.photoFamilies ? projectionStatements(db, id, change.photoFamilies) : [])
+			...(change.photoFamilies
+				? projectionStatements(db, id, change.photoFamilies, manager.teacher)
+				: [])
 		]
 	);
 }

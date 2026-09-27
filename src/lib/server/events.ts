@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 import type { Identity, Staff, FamilyIdentity } from '$lib/api';
-import type { ConsentRow, EventRecord } from '$lib/events/types';
+import type { ConsentChange, ConsentRow, EventRecord } from '$lib/events/types';
 import { checkClassrooms, managesOthers, transaction, visibleClassrooms } from './database';
 import { getObject, putObject, deleteMarked, type ObjectStore } from './storage';
 import { day } from '$lib/notices';
@@ -42,7 +42,10 @@ export async function consents(db: D1Database, viewer: Identity, classroom?: str
 export function projectionStatements(
 	db: D1Database,
 	child: string,
-	rows: { family: string; label: string; choice?: string; revision?: number }[]
+	rows: { family: string; label: string; choice?: string; revision?: number }[],
+	teacher: string,
+	/** Whether the child is being added, which the history says of a choice set then. */
+	childAdded = false
 ) {
 	return [
 		db
@@ -50,23 +53,69 @@ export function projectionStatements(
 				'DELETE FROM photo_families WHERE child_id=? AND family_id NOT IN(SELECT value FROM json_each(?))'
 			)
 			.bind(child, JSON.stringify(rows.map((r) => r.family))),
-		...rows.map((r) =>
+		// A card taken off the child takes its history of the child with it, even while the family stays.
+		db
+			.prepare(
+				'DELETE FROM photo_history WHERE child_id=? AND family_id NOT IN(SELECT value FROM json_each(?))'
+			)
+			.bind(child, JSON.stringify(rows.map((r) => r.family))),
+		...rows.flatMap((r) =>
 			r.choice === undefined
-				? db
-						.prepare(
-							'INSERT INTO photo_families(child_id,family_id,label) VALUES(?,?,?) ON CONFLICT(child_id,family_id) DO UPDATE SET label=excluded.label'
-						)
-						.bind(child, r.family, r.label)
-				: db
-						.prepare(
-							`INSERT INTO photo_families(child_id,family_id,label,choice) VALUES(?1,?2,?3,?4)
+				? [
+						db
+							.prepare(
+								'INSERT INTO photo_families(child_id,family_id,label) VALUES(?,?,?) ON CONFLICT(child_id,family_id) DO UPDATE SET label=excluded.label'
+							)
+							.bind(child, r.family, r.label)
+					]
+				: [
+						db
+							.prepare(
+								`INSERT INTO photo_families(child_id,family_id,label,choice) VALUES(?1,?2,?3,?4)
 							ON CONFLICT(child_id,family_id) DO UPDATE SET label=excluded.label,
 							choice=CASE WHEN photo_families.revision=?5 THEN excluded.choice ELSE NULL END,
 							revision=CASE WHEN photo_families.revision=?5 THEN photo_families.revision+1 ELSE NULL END`
-						)
-						.bind(child, r.family, r.label, r.choice, r.revision ?? -1)
+							)
+							.bind(child, r.family, r.label, r.choice, r.revision ?? -1),
+						// A stale write above fails the whole transaction, so this only ever records a choice that stands.
+						db
+							.prepare(
+								'INSERT INTO photo_history(child_id,family_id,choice,at,teacher_id,child_added) VALUES(?,?,?,?,?,?)'
+							)
+							.bind(child, r.family, r.choice, Date.now(), teacher, Number(childAdded)),
+						trimHistory(db, child, r.family)
+					]
 		)
 	];
+}
+
+/** Most choices kept for one child and family card, so a device changing its mind in a loop fills nothing. */
+const historyLimit = 50;
+
+/** Drops a child and family card's oldest face-sharing choices beyond `historyLimit`. */
+const trimHistory = (db: D1Database, child: string, family: string) =>
+	db
+		.prepare(
+			`DELETE FROM photo_history WHERE child_id=?1 AND family_id=?2 AND rowid NOT IN(
+			SELECT rowid FROM photo_history WHERE child_id=?1 AND family_id=?2 ORDER BY at DESC,rowid DESC LIMIT ?3)`
+		)
+		.bind(child, family, historyLimit);
+
+/**
+ * When a child's face sharing was set, newest first, with the sealed choice, the teacher who recorded a
+ * consent form, and whether that was as the child was added. A family reads only its own card's entries, and staff those of the children they see.
+ */
+export async function consentHistory(db: D1Database, viewer: Identity, child: string) {
+	const [visible, params] = visibleClassrooms(viewer);
+	const { results } = await db
+		.prepare(
+			`SELECT h.child_id AS child,h.family_id AS family,h.choice,h.at,h.teacher_id AS teacher,h.child_added AS childAdded FROM photo_history h
+			JOIN children c ON c.id=h.child_id WHERE h.child_id=? AND c.classroom_id IN (${visible})
+			${viewer.kind === 'family' ? 'AND h.family_id=?' : ''} ORDER BY h.at DESC,h.rowid DESC`
+		)
+		.bind(child, ...params, ...(viewer.kind === 'family' ? [viewer.family] : []))
+		.all<Omit<ConsentChange, 'childAdded'> & { childAdded: number }>();
+	return results.map((row): ConsentChange => ({ ...row, childAdded: row.childAdded === 1 }));
 }
 // Backfill old catalogs, bound to the exact catalog revision the staff device decrypted.
 export async function syncProjections(
@@ -102,13 +151,21 @@ export async function saveConsent(
 	revision: number,
 	choice: string
 ) {
-	const result = await db
-		.prepare(
-			'UPDATE photo_families SET choice=?,revision=revision+1 WHERE child_id=? AND family_id=? AND revision=?'
-		)
-		.bind(choice, child, family.family, revision)
-		.run();
-	if (!result.meta.changes) error(409, 'stale');
+	// The history is written only over the revision the update checks, so both happen or neither does.
+	const [, , update] = await db.batch([
+		db
+			.prepare(
+				'INSERT INTO photo_history(child_id,family_id,choice,at) SELECT child_id,family_id,?,? FROM photo_families WHERE child_id=? AND family_id=? AND revision=?'
+			)
+			.bind(choice, Date.now(), child, family.family, revision),
+		trimHistory(db, child, family.family),
+		db
+			.prepare(
+				'UPDATE photo_families SET choice=?,revision=revision+1 WHERE child_id=? AND family_id=? AND revision=?'
+			)
+			.bind(choice, child, family.family, revision)
+	]);
+	if (!update.meta.changes) error(409, 'stale');
 }
 export async function events(db: D1Database, viewer: Identity) {
 	const [visible, params] = visibleClassrooms(viewer);

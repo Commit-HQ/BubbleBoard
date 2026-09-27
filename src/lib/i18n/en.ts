@@ -437,12 +437,12 @@ export const en = {
 	privacyPolicy: {
 		title: 'Privacy policy',
 		description: 'What BubbleBoard stores about families and children, where, and for how long.',
-		updated: 'Updated on 21 September 2026',
+		updated: 'Updated on 27 September 2026',
 		// Followed by the project's contact address, which the last point calls the address below.
 		points: [
 			{
 				title: 'Event photos',
-				copy: 'Faces are detected and labelled on the teacher’s device. A covered photo and separate face patches are encrypted before upload; the original is not uploaded. An unfinished event stays only on the teacher’s device until it is published or discarded, and is deleted after 7 days. Families see their own children and faces permitted for classroom sharing. Your kindergarten may enter what your consent form says, and you can change it in the app at any time. Consent is encrypted and changes apply only to future publications. Events and their photos remain available for the 1 to 90 days chosen by the teacher, then are deleted. There is no hidden archive for a yearly album.'
+				copy: 'Faces are detected and labelled on the teacher’s device. A covered photo and separate face patches are encrypted before upload; the original is not uploaded. An unfinished event stays only on the teacher’s device until it is published or discarded, and is deleted after 7 days. Families see their own children and faces permitted for classroom sharing. Your kindergarten may enter what your consent form says, and you can change it in the app at any time. Consent is encrypted and changes apply only to future publications. The app keeps the last 50 changes for each child and family QR code, with when each was made and by whom, so you and the kindergarten can look back; they go when the child or the QR code is removed. Events and their photos remain available for the 1 to 90 days chosen by the teacher, then are deleted. There is no hidden archive for a yearly album.'
 			},
 			{
 				title: 'What’s stored',
@@ -923,6 +923,24 @@ export const en = {
 		},
 		// What staff record from a family's consent form, when a child is added and on the child's page.
 		// Families change the same choice themselves in Settings (app.events.consentTitle).
+		// Face-sharing history, opened from the child's page and from Settings (ConsentHistory.svelte).
+		history: {
+			open: 'History',
+			title: 'Face visibility history',
+			hint: 'Every change, newest first. Changes made before 27 September 2026 aren’t listed.',
+			shown: 'Classroom families may see the face',
+			covered: 'Face covered for other families',
+			byOwnFamily: 'Set by your family',
+			byKindergarten: 'Recorded by the kindergarten from the consent form',
+			byFamily: (card: string) => `Set by the family (${card})`,
+			byParents: 'Set by the family',
+			byTeacher: (name: string) => `Recorded by ${name} from the consent form`,
+			byStaff: 'Recorded by staff from the consent form',
+			onAddingChild: 'Set when the child was added',
+			onAddingOwnChild: 'Set by the kindergarten when your child was added',
+			onAddingChildBy: (name: string) => `Set by ${name} when adding the child`,
+			empty: 'No changes recorded yet.'
+		},
 		sharing: {
 			title: 'Face in event photos',
 			hint: 'Set this from the family’s consent form. Parents can change it themselves in the app, and it counts for photos published from then on.',

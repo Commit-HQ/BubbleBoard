@@ -6,6 +6,16 @@ export type ConsentRow = {
 	choice: string | null;
 	revision: number;
 };
+/** One face-sharing choice as it was written, and the teacher who recorded it from a consent form, if one did. */
+export type ConsentChange = {
+	child: string;
+	family: string;
+	choice: string;
+	at: number;
+	teacher: string | null;
+	/** Set by staff as they added the child, rather than changed later. */
+	childAdded: boolean;
+};
 export type ConsentSnapshot = { catalog: number; revision: number; rows: ConsentRow[] };
 export type EventRecord = {
 	id: string;

@@ -3,6 +3,7 @@ import { localDatabase, localStore } from './test-database';
 import { transaction } from './database';
 import {
 	consents,
+	consentHistory,
 	projectionStatements,
 	saveConsent,
 	syncProjections,
@@ -118,7 +119,7 @@ describe('events publication', () => {
 				...(choice === undefined ? {} : { choice }),
 				...(revision === undefined || f === 'b' ? {} : { revision })
 			}));
-		await transaction(db, projectionStatements(db, 'child', both('form', 0)));
+		await transaction(db, projectionStatements(db, 'child', both('form', 0), 'teacher'));
 		const stored = async () =>
 			(await consents(db, staff)).rows.map((row) => [row.family, row.choice, row.revision]);
 		expect(await stored()).toEqual([
@@ -128,22 +129,73 @@ describe('events publication', () => {
 		// A parent changes their own choice, so the same write made again is refused.
 		await saveConsent(db, family('a'), 'child', 1, 'parent');
 		await expect(
-			transaction(db, projectionStatements(db, 'child', both('form', 1)))
+			transaction(db, projectionStatements(db, 'child', both('form', 1), 'teacher'))
 		).rejects.toMatchObject({ status: 409 });
 		// A row staff expect to be new, but which a parent already has, is refused too.
 		await expect(
-			transaction(db, projectionStatements(db, 'child', both('form')))
+			transaction(db, projectionStatements(db, 'child', both('form'), 'teacher'))
 		).rejects.toMatchObject({ status: 409 });
 		expect(await stored()).toEqual([
 			['a', 'parent', 2],
 			['b', 'form', 0]
 		]);
 		// Renaming the child leaves every choice as it is.
-		await transaction(db, projectionStatements(db, 'child', both()));
+		await transaction(db, projectionStatements(db, 'child', both(), 'teacher'));
 		expect(await stored()).toEqual([
 			['a', 'parent', 2],
 			['b', 'form', 0]
 		]);
+		// Only the choices that stood are in the history, newest first, each family seeing its own.
+		const history = async (viewer: Staff | FamilyIdentity) =>
+			(await consentHistory(db, viewer, 'child')).map((row) => [
+				row.family,
+				row.choice,
+				row.teacher
+			]);
+		expect(await history(staff)).toEqual([
+			['a', 'parent', null],
+			['b', 'form', 'teacher'],
+			['a', 'form', 'teacher']
+		]);
+		expect(await history(family('a'))).toEqual([
+			['a', 'parent', null],
+			['a', 'form', 'teacher']
+		]);
+		// The other family isn't in the child's classroom any more, so it reads nothing.
+		await db
+			.prepare("DELETE FROM family_classrooms WHERE family_id='b' AND classroom_id='group'")
+			.run();
+		expect(await history(family('b'))).toEqual([]);
+		// A stale family write adds nothing.
+		await expect(saveConsent(db, family('a'), 'child', 0, 'lost')).rejects.toMatchObject({
+			status: 409
+		});
+		expect(await history(family('a'))).toHaveLength(2);
+		// Taking a card off the child takes its history of the child too.
+		await transaction(db, projectionStatements(db, 'child', both().slice(1), 'teacher'));
+		expect(await history(staff)).toEqual([['b', 'form', 'teacher']]);
+	});
+	it('says which choice staff set as they added the child', async () => {
+		const { db, staff, family } = await setup();
+		const row = { family: 'a', label: 'label', choice: 'form', revision: 0 };
+		await transaction(db, projectionStatements(db, 'child', [row], 'teacher', true));
+		await saveConsent(db, family('a'), 'child', 1, 'parent');
+		expect((await consentHistory(db, staff, 'child')).map((r) => [r.choice, r.childAdded])).toEqual(
+			[
+				['parent', false],
+				['form', true]
+			]
+		);
+	});
+	it('keeps the latest fifty choices of a child and family card', async () => {
+		const { db, staff, family } = await setup();
+		for (let revision = 0; revision < 55; revision++) {
+			await saveConsent(db, family('a'), 'child', revision, `choice ${revision}`);
+		}
+		const kept = await consentHistory(db, staff, 'child');
+		expect(kept).toHaveLength(50);
+		expect(kept[0].choice).toBe('choice 54');
+		expect(kept.at(-1)!.choice).toBe('choice 5');
 	});
 	it('lets the author, the head, and the lead of its classroom change an event, and nobody else', async () => {
 		const { db, staff, family, store } = await setup();

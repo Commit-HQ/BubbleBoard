@@ -423,11 +423,11 @@ export const hr = {
 	privacyPolicy: {
 		title: 'Politika privatnosti',
 		description: 'Što BubbleBoard čuva o obiteljima i djeci, gdje i koliko dugo.',
-		updated: 'Ažurirano 21. rujna 2026.',
+		updated: 'Ažurirano 27. rujna 2026.',
 		points: [
 			{
 				title: 'Fotografije događaja',
-				copy: 'Lica se traže i označavaju na uređaju odgojiteljice. Šalje se šifrirana prekrivena fotografija s odvojenim šifriranim isječcima, bez izvornika. Nedovršeni događaj ostaje samo na uređaju odgojiteljice dok ga ne objavi ili odbaci i briše se nakon 7 dana. Obitelji vide vlastitu djecu i lica za koja je dopušteno dijeljenje. Vrtić može unijeti ono što piše u vašoj izjavi o privoli, a vi to u aplikaciji možete promijeniti u svakom trenutku. Dopuštenja su šifrirana i promjene vrijede samo za buduće objave. Događaji i njihove fotografije dostupni su od 1 do 90 dana prema izboru odgojiteljice, zatim se brišu. Nema skrivene arhive za godišnji album.'
+				copy: 'Lica se traže i označavaju na uređaju odgojiteljice. Šalje se šifrirana prekrivena fotografija s odvojenim šifriranim isječcima, bez izvornika. Nedovršeni događaj ostaje samo na uređaju odgojiteljice dok ga ne objavi ili odbaci i briše se nakon 7 dana. Obitelji vide vlastitu djecu i lica za koja je dopušteno dijeljenje. Vrtić može unijeti ono što piše u vašoj izjavi o privoli, a vi to u aplikaciji možete promijeniti u svakom trenutku. Dopuštenja su šifrirana i promjene vrijede samo za buduće objave. Aplikacija čuva zadnjih 50 promjena za svako dijete i obiteljski QR kod, s vremenom i time tko ih je napravio, kako biste ih vi i vrtić mogli pogledati; brišu se kad se ukloni dijete ili QR kod. Događaji i njihove fotografije dostupni su od 1 do 90 dana prema izboru odgojiteljice, zatim se brišu. Nema skrivene arhive za godišnji album.'
 			},
 			{
 				title: 'Što se čuva',
@@ -900,6 +900,24 @@ export const hr = {
 				'Novi QR kodovi vidljivi su samo na ovoj stranici. Za kasniji ispis zamijenite ih u skupini.',
 			leave: 'Otiđi',
 			stay: 'Ostani'
+		},
+		// Povijest vidljivosti lica, s djetetove stranice i iz Postavki (ConsentHistory.svelte).
+		history: {
+			open: 'Povijest',
+			title: 'Povijest vidljivosti lica',
+			hint: 'Sve promjene, od najnovije. Promjene prije 27. rujna 2026. nisu navedene.',
+			shown: 'Obitelji skupine smiju vidjeti lice',
+			covered: 'Lice prekriveno za druge obitelji',
+			byOwnFamily: 'Postavila vaša obitelj',
+			byKindergarten: 'Upisao vrtić prema izjavi o privoli',
+			byFamily: (card: string) => `Postavila obitelj (${card})`,
+			byParents: 'Postavila obitelj',
+			byTeacher: (name: string) => `Upisala ${name} prema izjavi o privoli`,
+			byStaff: 'Upisalo osoblje prema izjavi o privoli',
+			onAddingChild: 'Postavljeno pri dodavanju djeteta',
+			onAddingOwnChild: 'Postavio vrtić pri dodavanju vašeg djeteta',
+			onAddingChildBy: (name: string) => `Postavila ${name} pri dodavanju djeteta`,
+			empty: 'Još nema zabilježenih promjena.'
 		},
 		sharing: {
 			title: 'Lice na fotografijama događaja',
