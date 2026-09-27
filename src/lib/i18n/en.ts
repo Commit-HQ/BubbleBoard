@@ -1340,6 +1340,12 @@ export const en = {
 			removeMessageCopy:
 				'Its text and any files go for the family too, and “Message deleted” stays in its place. This cannot be undone.',
 			deletedMessage: 'Message deleted',
+			// Before the last thing said in the inbox: who said it, a teacher by name or this device's side.
+			said: (who: string, text: string) => `${who}: ${text}`,
+			you: 'You',
+			// A teacher's inbox, on a family whose message is the latest; a family's, on its own.
+			waitingForYou: 'Waiting for your answer',
+			waitingForTeachers: 'Waiting for the teachers’ answer',
 			empty: 'No inquiries match this view.',
 			// Over the inquiries, when the inbox also has photo reports above them.
 			inquiries: 'Inquiries',

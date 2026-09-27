@@ -1300,6 +1300,10 @@ export const hr = {
 			removeMessageTitle: 'Izbrisati ovu poruku?',
 			removeMessageCopy:
 				'Tekst i priložene datoteke brišu se i kod obitelji, a na njihovu mjestu ostaje „Poruka je izbrisana”. Ovo se ne može poništiti.',
+			said: (who: string, text: string) => `${who}: ${text}`,
+			you: 'Vi',
+			waitingForYou: 'Čeka vaš odgovor',
+			waitingForTeachers: 'Čeka odgovor odgojiteljica',
 			deletedMessage: 'Poruka je izbrisana',
 			empty: 'Nema upita koji odgovaraju odabiru.',
 			inquiries: 'Upiti',

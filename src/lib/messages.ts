@@ -55,6 +55,8 @@ export type MessageContent = { text: string; name: string; files?: NoticeFile[] 
 export type Conversation = ConversationRecord & {
 	subject: string;
 	preview: string;
+	/** The name the latest message was signed with: a teacher's, or none for a family's. */
+	previewName: string;
 	photos: string[];
 };
 export type OpenMessage = MessageRecord & MessageContent;
@@ -240,7 +242,7 @@ export async function openConversation(
 	const photos = data.photos === undefined ? [] : readPhotos(data.photos);
 	const latest =
 		cached?.content === record.content && cached.messageId === record.messageId
-			? { text: cached.preview }
+			? { text: cached.preview, name: cached.previewName }
 			: await openMessage(
 					{
 						id: record.messageId,
@@ -255,5 +257,11 @@ export async function openConversation(
 					record.classroom,
 					record.id
 				);
-	return { ...record, subject: data.title, preview: latest.text, photos };
+	return {
+		...record,
+		subject: data.title,
+		preview: latest.text,
+		previewName: latest.name,
+		photos
+	};
 }

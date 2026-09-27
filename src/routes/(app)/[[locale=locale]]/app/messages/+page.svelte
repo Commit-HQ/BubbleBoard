@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import AttachFiles from '$lib/app/AttachFiles.svelte';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
-	import InquiryLink from '$lib/app/InquiryLink.svelte';
+	import InquiryLink, { toneOf, type Tile } from '$lib/app/InquiryLink.svelte';
 	import MessageBubble from '$lib/app/MessageBubble.svelte';
 	import MessagePolicy from '$lib/app/MessagePolicy.svelte';
 	import ReportedEvent from '$lib/app/ReportedEvent.svelte';
@@ -149,9 +149,6 @@
 	const classroomName = (id: string) => app.myClassrooms.find((item) => item.id === id)?.name ?? '';
 	const familyName = (id: string) =>
 		app.catalog.families.find((item) => item.id === id)?.name ?? t.parent;
-	/** Who the conversation is with, as its tile shows them: the family for teachers, the classroom for families. */
-	const withName = (item: { classroom: string; family: string }) =>
-		staff ? familyName(item.family) : classroomName(item.classroom);
 	/** The children the family has in this classroom, so a teacher sees whose parent is writing. */
 	function childrenOf(item: { classroom: string; family: string }) {
 		const names = app.catalog.children
@@ -169,6 +166,40 @@
 			.filter(Boolean)
 			.join(' · ');
 	const initialOf = (name: string) => [...name][0]?.toLocaleUpperCase(data.locale) ?? '';
+	/**
+	 * A conversation's tile: for staff, the initials of the family's children in the classroom, two at most,
+	 * and whether the family waits for an answer; for a family, whether its own message still waits for the
+	 * teachers (InquiryLink.svelte).
+	 */
+	function tileOf(item: Conversation): Tile {
+		if (item.event) return { kind: 'report' };
+		const fromFamily = !byTeacher(item.author);
+		if (!staff) return { kind: fromFamily ? 'waiting' : 'answered' };
+		const children = app.catalog.children.filter(
+			(child) => child.classroom === item.classroom && child.families.includes(item.family)
+		);
+		return {
+			kind: 'children',
+			letters:
+				children
+					.slice(0, 2)
+					.map((child) => initialOf(child.name))
+					.join('') || initialOf(familyName(item.family)),
+			tone: toneOf(children[0]?.id ?? item.family),
+			waiting: fromFamily
+		};
+	}
+	/**
+	 * The last thing said, and who said it: the teacher by the name they signed it with, as "Teta Martina",
+	 * or "You" for this device's own side. A family's message on a teacher's device needs no name, since the
+	 * tile and the line below say whose family it is.
+	 */
+	function previewOf(item: Conversation) {
+		const text = item.deletedAt ? t.deletedMessage : item.preview;
+		if (item.author === mineAuthor) return t.said(t.you, text);
+		if (byTeacher(item.author)) return t.said(item.previewName || t.teacher, text);
+		return staff ? text : t.said(t.you, text);
+	}
 	/**
 	 * The name above a message: which teacher wrote it, and, on a teacher's device, the family on the other
 	 * side. A family sees no name over its own messages, which are all its own.
@@ -385,12 +416,19 @@
 </script>
 
 {#snippet row(item: Conversation)}
+	{@const tile = tileOf(item)}
 	<InquiryLink
 		href={appPath(data.locale, 'messages', { id: item.id })}
-		report={!!item.event}
-		initial={initialOf(withName(item))}
+		{tile}
+		tileLabel={tile.kind === 'children'
+			? tile.waiting
+				? t.waitingForYou
+				: undefined
+			: tile.kind === 'waiting'
+				? t.waitingForTeachers
+				: undefined}
 		subject={item.subject}
-		preview={item.deletedAt ? t.deletedMessage : item.preview}
+		preview={previewOf(item)}
 		detail={[about(item, pickClassroom), item.closed ? t.closedStatus : undefined]
 			.filter(Boolean)
 			.join(' · ')}
