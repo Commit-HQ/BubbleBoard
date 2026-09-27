@@ -620,12 +620,10 @@ export class App {
 	 * not every time the object changes, or each refresh lets go of the photos and opens them again.
 	 */
 	showEventPictures(event: OpenEvent) {
-		this.#eventPictures = new Set(
-			event.value.photos.map((photo) => eventFilePath(event.id, photo.id))
-		);
+		this.#shownEvent = event.id;
 		this.#keepPictures();
 		return () => {
-			this.#eventPictures.clear();
+			this.#shownEvent = undefined;
 			this.#sealedEventPhotos.clear();
 			this.#keepPictures();
 		};
@@ -1082,8 +1080,11 @@ export class App {
 	#pictures = new Map<string, Promise<Picture>>();
 	/** The paths of the open conversation's pictures, which `#keepPictures` keeps while it's open. */
 	#messagePictures = new Set<string>();
-	/** The paths of the open event's photos, which `#keepPictures` keeps while it's open. */
-	#eventPictures = new Set<string>();
+	/**
+	 * The open event, whose photos `#keepPictures` keeps while it's open: those it has as the events last
+	 * came, so a photo taken out on another device goes then.
+	 */
+	#shownEvent: string | undefined;
 	/** The open event's sealed photos, by path, for a staff device's preview (`#sealedEventPhoto`). */
 	#sealedEventPhotos = new Map<string, Promise<Uint8Array<ArrayBuffer>>>();
 	/** The Family Keys a staff device has opened, by the envelope each came from, until it disconnects. */
@@ -1540,7 +1541,7 @@ export class App {
 		this.eventsError = undefined;
 		this.#conversationCache.clear();
 		this.#messagePictures.clear();
-		this.#eventPictures.clear();
+		this.#shownEvent = undefined;
 		this.#sealedEventPhotos.clear();
 		this.#clearMeetings();
 		this.conversations = [];
@@ -2205,7 +2206,9 @@ export class App {
 			...this.#messagePictures,
 			// The photo each event card on the board shows, which is up for as long as the card is.
 			...this.events.map((event) => eventFilePath(event.id, event.value.photos[0].id)),
-			...this.#eventPictures
+			...this.events
+				.filter((event) => event.id === this.#shownEvent)
+				.flatMap((event) => event.value.photos.map((photo) => eventFilePath(event.id, photo.id)))
 		]);
 		for (const [path, picture] of this.#pictures) {
 			if (up.has(path)) continue;

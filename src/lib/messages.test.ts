@@ -1,9 +1,12 @@
 import { expect, it, vi } from 'vitest';
 import { createContentKey, createId } from '$lib/crypto';
+import { mostEventPhotos } from '$lib/events/types';
 import {
 	chargesAllowance,
 	defaultSchedule,
 	fitSubject,
+	maxSubject,
+	maxSubjectBytes,
 	messageClock,
 	mergeRecentMessages,
 	openConversation,
@@ -12,6 +15,7 @@ import {
 	sealMessage,
 	sendingLeft
 } from '$lib/messages';
+import { sealed } from '$lib/server/validate';
 
 it('resets a non-overlapping refresh so missing messages remain reachable through older pages', () => {
 	const message = (sequence: number) => ({
@@ -167,6 +171,22 @@ it('carries the photos a report picked with its sealed subject, and refuses a li
 	expect((await open([])).photos).toEqual([]);
 	for (const wrong of ['photo', ['not an id'], [photos[0], photos[0]]])
 		await expect(open(wrong)).rejects.toThrow();
+});
+it('lets the server take a report of every photo an event can hold under the longest subject', async () => {
+	const { key } = await createContentKey();
+	const photos = Array.from({ length: mostEventPhotos }, createId);
+	for (const title of ['Trip', '\u0000'.repeat(maxSubject), '😀'.repeat(maxSubject / 2)]) {
+		const subject = await sealSubject(title, key, 'classroom', 'conversation', photos);
+		expect(sealed(subject, maxSubjectBytes)).toBe(subject);
+	}
+	const longer = await sealSubject(
+		'\u0000'.repeat(maxSubject + 1),
+		key,
+		'classroom',
+		'conversation',
+		photos
+	);
+	expect(() => sealed(longer, maxSubjectBytes)).toThrow();
 });
 it('fits a longer title into a subject without cutting a character in half', () => {
 	expect(fitSubject('  Izlet u Tvrđu  ')).toBe('Izlet u Tvrđu');

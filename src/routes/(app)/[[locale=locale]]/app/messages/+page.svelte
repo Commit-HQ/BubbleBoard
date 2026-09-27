@@ -96,10 +96,15 @@
 	const left = $derived(policy && sendingLeft(policy, now));
 	/**
 	 * Whether a family answers a teacher's message sent outside the hours, which it may do at any time, while
-	 * the hours are closed: the teacher chose to write then.
+	 * the hours are closed: the teacher chose to write then. Messaging switched off stops it all the same.
 	 */
 	const anytime = $derived(
-		!staff && !report && !!thread && left === undefined && last?.afterHours === 1
+		!staff &&
+			!report &&
+			!!thread &&
+			!!policy?.enabled &&
+			left === undefined &&
+			last?.afterHours === 1
 	);
 	const allowed = $derived(left !== undefined || anytime);
 	/**

@@ -29,7 +29,7 @@ npm run dev
 | `npm run build`            | Build for Cloudflare Workers                                                      |
 | `npm run preview`          | Prepare the same, then run the build in the local Workers runtime                 |
 | `npm run validate`         | Type checks, formatting, tests, and build                                         |
-| `npm run deploy`           | Build, publish, migrate the database, and print the first setup link              |
+| `npm run deploy`           | Build, migrate the database, publish, and print the first setup link              |
 | `npm run setup-link`       | Replace the deployed setup token and print a new setup link                       |
 | `npm version minor`        | Raise the version and tag it, once the changelog has its entry (see Releasing)    |
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { untrack } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import { nextWaiting } from '$lib/events/gallery';
 	import { thumbnail } from '$lib/events/images';
@@ -45,9 +45,13 @@
 	/** A photo is put together on a canvas that iPhones and iPads before iOS 16.4 don't have. */
 	const tooOld = typeof OffscreenCanvas === 'undefined';
 	const photos = $derived(event.value.photos);
-	// Kept by the event's ID: a refreshed board hands over the same event as a new object, and that must not
-	// let go of the photos already opened.
+	// Kept by the event's ID and its photos': a refreshed board hands over the same event as a new object, and
+	// that must not let go of the photos already opened. A photo taken out or added on another device changes
+	// the list, so the tiles start over and each stays with its own photo.
 	const eventId = $derived(event.id);
+	const photoIds = $derived(photos.map(({ id }) => id).join());
+	let gone = false;
+	onDestroy(() => (gone = true));
 	/**
 	 * Whose eyes a staff device looks through: its own (`'me'`), every cover on (`'base'`), or a family's
 	 * card. A teacher holds every key, so her own view shows every face; this lets her check what a family
@@ -107,6 +111,7 @@
 	// one this device composed before comes back from the device (src/lib/events/cache.ts).
 	$effect(() => {
 		void eventId;
+		void photoIds;
 		const as = viewer;
 		return untrack(() => {
 			let cancelled = false;
@@ -195,18 +200,23 @@
 		picked = [];
 		reportText = '';
 	}
-	/** Sends the report, with the photos picked in the gallery's order, and opens its conversation. */
+	/**
+	 * Sends the report, with the photos picked in the gallery's order, and opens its conversation, unless the
+	 * family has gone elsewhere while it went.
+	 */
 	function sendReport(submitted: SubmitEvent) {
 		submitted.preventDefault();
 		const text = reportText.trim();
 		if (!text) return;
+		const from = event.id;
 		sending.run(async () => {
 			const chosen = photos.map(({ id }) => id).filter((id) => picked.includes(id));
-			const fingerprint = JSON.stringify([text, chosen]);
+			const fingerprint = JSON.stringify([from, text, chosen]);
 			if (pending?.fingerprint !== fingerprint)
 				pending = { fingerprint, sealed: await app.sealReport(event, text, chosen) };
+			const { conversation } = pending.sealed;
 			await app.sendMessage(pending.sealed);
-			await goto(appPath(locale, 'messages', { id: pending.sealed.conversation }));
+			if (!gone && event.id === from) await goto(appPath(locale, 'messages', { id: conversation }));
 		});
 	}
 	function move(step: number) {

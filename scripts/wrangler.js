@@ -27,6 +27,13 @@ export function hasSecret(name) {
 	return secrets.some((secret) => secret.name === name);
 }
 
+/** Whether the Cloudflare account has a D1 database of this name, which the first deploy creates. */
+export function hasDatabase(name) {
+	const listed = wrangler(['d1', 'list', '--json']);
+	const databases = JSON.parse(listed.slice(listed.indexOf('['), listed.lastIndexOf(']') + 1));
+	return databases.some((database) => database.name === name);
+}
+
 function devVars() {
 	return existsSync('.dev.vars')
 		? readFileSync('.dev.vars', 'utf8').split('\n').filter(Boolean)

@@ -154,6 +154,16 @@ export function fitSubject(text: string) {
 	while (characters.join('').length > maxSubject) characters.pop();
 	return characters.join('');
 }
+/**
+ * The most a sealed subject may hold, in bytes: the longest subject, every character escaped at its widest,
+ * with the photos a report may name.
+ */
+export const maxSubjectBytes = new TextEncoder().encode(
+	JSON.stringify({
+		title: '\u0000'.repeat(maxSubject),
+		photos: Array<string>(mostEventPhotos).fill('A'.repeat(22))
+	})
+).length;
 export function sealSubject(
 	title: string,
 	key: CryptoKey,

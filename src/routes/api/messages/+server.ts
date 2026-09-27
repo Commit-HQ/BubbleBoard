@@ -4,6 +4,7 @@ import { announceConversation, notifyLater } from '$lib/server/push';
 import { database, requireIdentity, sessionHash } from '$lib/server/session';
 import { id, ids, readJson, sealed } from '$lib/server/validate';
 import { maxNoticeFiles } from '$lib/files';
+import { maxSubjectBytes } from '$lib/messages';
 import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async (event) =>
 	json(await inbox(database(event), await requireIdentity(event)));
@@ -14,7 +15,7 @@ export const POST: RequestHandler = async (event) => {
 		id: id(body.id),
 		classroom: id(body.classroom),
 		family: id(body.family),
-		title: sealed(body.title, 1000),
+		title: sealed(body.title, maxSubjectBytes),
 		message: id(body.message),
 		content: sealed(body.content),
 		files: ids(body.files ?? [], maxNoticeFiles),
