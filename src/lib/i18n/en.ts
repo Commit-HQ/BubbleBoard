@@ -587,6 +587,10 @@ export const en = {
 			crop: 'Original crop — visible only while editing',
 			search: 'Find a child',
 			already: 'Already in this photo',
+			// What the child's consent says, as it stood when the editor opened; publishing checks it again.
+			faceShared: 'Classroom families see this face',
+			faceOwnFamily: 'Only their family sees this face',
+			sharedMark: 'classroom families see the face',
 			empty: 'No children match.',
 			covered: 'Keep covered',
 			coveredHint:
@@ -880,6 +884,9 @@ export const en = {
 			deleteTitle: (name: string) => `Delete ${name}?`,
 			deleteCopy: 'This can’t be undone.',
 			noCards: 'No family QR code yet',
+			// Beside each child: whether the classroom's other families see their face in event photos.
+			faceShown: 'Face visible',
+			faceCovered: 'Face covered',
 			replaceCards: 'Replace QR codes',
 			replaceTitle: 'Replace family QR codes',
 			replaceCopy: 'Choose the QR codes to replace, then print the new ones together.',

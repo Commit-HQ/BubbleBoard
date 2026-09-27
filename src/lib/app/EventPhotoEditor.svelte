@@ -175,6 +175,22 @@
 	const selected = $derived(edit?.regions.find((r) => r.id === edit.selected));
 	const children = $derived(app.catalog.children.filter((c) => c.classroom === classroom));
 	const nameOf = (child: string) => children.find((c) => c.id === child)?.name ?? '';
+	/**
+	 * The classroom's children whose face its other families may see, read once for the classroom so the
+	 * teacher sees it beside their names. Only a hint: publishing reads consent again and is refused if it
+	 * changed, and when the records can't be read, no names say anything.
+	 */
+	let shared = $state.raw<{ classroom: string; children: Set<string> }>();
+	$effect(() => {
+		const room = classroom;
+		if (!room || shared?.classroom === room) return;
+		app.photoSharing(room).then(
+			(sharing) => {
+				if (classroom === room) shared = { classroom: room, children: sharing.shared };
+			},
+			() => {}
+		);
+	});
 	/** The photos being prepared now, in the gallery's order, which is the order they're kept in too. */
 	const inOrder = $derived(order.flatMap((id) => photos.filter((p) => p.id === id)));
 	/** Every photo of the gallery in its order: one already up, or one being prepared now. */
@@ -1138,6 +1154,7 @@
 					regions={edit.regions}
 					{selected}
 					{children}
+					shared={shared?.classroom === classroom ? shared.children : undefined}
 					{feedback}
 					onassign={nameFace}
 					onremove={removeCover}

@@ -567,6 +567,10 @@ export const hr = {
 			crop: 'Izrez originala — vidljiv samo tijekom uređivanja',
 			search: 'Pronađi dijete',
 			already: 'Već na slici',
+			// Što kaže privola djeteta, kakva je bila kad se uređivač otvorio; objava je provjerava ponovno.
+			faceShared: 'Obitelji skupine vide ovo lice',
+			faceOwnFamily: 'Ovo lice vidi samo njegova obitelj',
+			sharedMark: 'obitelji skupine vide lice',
 			empty: 'Nema djece koja odgovaraju pretrazi.',
 			covered: 'Ostavi prekriveno',
 			coveredHint:
@@ -860,6 +864,9 @@ export const hr = {
 			deleteTitle: (name: string) => `Obrisati skupinu „${name}”?`,
 			deleteCopy: 'To se ne može poništiti.',
 			noCards: 'Još nema obiteljskog QR koda',
+			// Uz svako dijete: vide li druge obitelji skupine njegovo lice na fotografijama događaja.
+			faceShown: 'Lice vidljivo',
+			faceCovered: 'Lice prekriveno',
 			replaceCards: 'Zamijeni QR kodove',
 			replaceTitle: 'Zamjena obiteljskih QR kodova',
 			replaceCopy: 'Odaberite QR kodove koje želite zamijeniti pa zajedno ispišite nove.',

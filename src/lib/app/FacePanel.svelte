@@ -7,7 +7,8 @@
 
 	// What the teacher decides about one cover, under the photo: a crop of the original so the face can be
 	// told apart without hiding every sticker, then the classroom's children, and keeping it covered or making it
-	// invisible instead. Nothing here suggests who a face might be, and nothing changes what a family may see.
+	// invisible instead. Nothing here suggests who a face might be, and nothing changes what a family may see:
+	// `shared`, the children whose face the classroom's families may see, is only shown beside their names.
 	let {
 		locale,
 		url,
@@ -16,6 +17,7 @@
 		regions,
 		selected,
 		children,
+		shared,
 		feedback,
 		onassign,
 		onremove,
@@ -28,6 +30,8 @@
 		regions: Region[];
 		selected?: Region;
 		children: { id: string; name: string }[];
+		/** Children whose face the classroom's families may see, once the consent records are read. */
+		shared?: Set<string>;
 		/** What just happened, said once for everyone rather than only for screen readers. */
 		feedback: string;
 		onassign: (child: string | null) => void;
@@ -81,6 +85,9 @@
 		onclick={() => onassign(child.id)}
 	>
 		{child.name}
+		{#if shared?.has(child.id)}
+			<Icon name="eye" class="size-3.5 opacity-60" /><span class="sr-only">— {t.sharedMark}</span>
+		{/if}
 		{#if elsewhere.has(child.id)}
 			<Icon name="check" class="size-3.5 opacity-60" /><span class="sr-only">— {t.already}</span>
 		{/if}
@@ -130,6 +137,14 @@
 					<p class="flex items-center gap-1.5 text-sm font-semibold text-green-800">
 						<Icon name="check" class="size-4 shrink-0" />{named}
 					</p>
+					<!-- An invisible cover shows the child to everyone whatever the consent, as its own hint says. -->
+					{#if shared && selected.child && !selected.invisible}
+						{@const visible = shared.has(selected.child)}
+						<p class="flex items-center gap-1.5 text-sm text-muted">
+							<Icon name={visible ? 'eye' : 'lock'} class="size-4 shrink-0" />
+							{visible ? t.faceShared : t.faceOwnFamily}
+						</p>
+					{/if}
 				{:else}
 					<p class="text-sm text-muted">{t.face(number)}</p>
 				{/if}

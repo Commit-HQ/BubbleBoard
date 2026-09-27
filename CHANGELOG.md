@@ -6,6 +6,7 @@ What's new in each version of BubbleBoard, newest first. The version an installa
 
 - Back returns to the same place on the board, or on whichever page you came from, instead of the top.
 - A child's face visibility has a History: when it was allowed or covered, and by whom, for parents in Settings and for staff on the child's page.
+- While naming faces in event photos, a teacher sees which children's faces the classroom's families may see, and the classroom's list of children shows it for every child.
 
 ## 1.0.0 (2026-09-27)
 

@@ -38,7 +38,7 @@ Choosing a name immediately saves the assignment in the draft and advances to th
 
 A named cover carries the child's name across its lower edge, outlined so it reads over any sticker, and squeezed to the cover's width rather than reaching into its neighbour. The name follows the cover while it is moved or resized, and it is drawn over the picture on the teacher's device: it is never part of what is published or shown to a family.
 
-The teacher can always tap any sticker and change the assignment. Visibility information, when shown beside a name, describes “Classroom families” or “Linked families only”; it is not a switch. Parent consent cannot be changed in the editor.
+The teacher can always tap any sticker and change the assignment. A child whose face the classroom's families may see has a small eye on their name, and the chosen child's name says under it whether classroom families see the face or only their family does, unless the cover is invisible, which shows the child to everyone. This is read once for the classroom when the editor opens, so it is a hint and not a switch: publishing reads consent again and is refused if it changed, and when the records can't be read the names say nothing. For the whole classroom at once, its page tags each child in the list Face visible or Face covered, read the same way. Parent consent cannot be changed in the editor.
 
 Alternative decisions for a detected region. Keep covered and Invisible cover sit side by side under the names as two cards, each with a line saying when to use it, so the choice is made without reading this page:
 
