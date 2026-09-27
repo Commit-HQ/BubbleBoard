@@ -2,22 +2,27 @@ import adapter from '@sveltejs/adapter-cloudflare';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vitest/config';
 
-// Shown in the footer so a page can be traced to the commit it was built from (product-spec.md §47).
-// "-dirty" marks uncommitted changes, including new files Git doesn't ignore, which the commit alone
-// doesn't describe. Builds without Git metadata, such as from a source ZIP, are "unknown".
+const { version } = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string };
+
+// Shown in the footer so a page can be traced to what it was built from (product-spec.md §47). "-dirty"
+// marks uncommitted changes, including new files Git doesn't ignore, which the commit alone doesn't
+// describe. Builds without Git metadata, such as from a source ZIP, are "unknown".
 function commit() {
 	const git = (command: string) =>
 		execSync(`git ${command}`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
 	try {
 		const sha = git('rev-parse --short HEAD');
-		return git('status --porcelain') ? `${sha}-dirty` : sha;
+		if (git('status --porcelain')) return { built: `${sha}-dirty`, release: false };
+		// A release is the clean commit its version's tag points at (docs/development.md#releasing).
+		return { built: sha, release: git('tag --points-at HEAD').split('\n').includes(`v${version}`) };
 	} catch {
-		return 'unknown';
+		return { built: 'unknown', release: false };
 	}
 }
-const built = commit();
+const { built, release } = commit();
 // One stamp for the whole build. Vite evaluates this file more than once per build, for the client and
 // for the server, and SvelteKit names the global its pages and chunks share after the version, so a stamp
 // taken anew each time would leave the prerendered pages and the client chunks calling it by different
@@ -38,7 +43,7 @@ export default defineConfig({
 			adapter: adapter({ config: 'wrangler.build.jsonc' }),
 			// The version an open app compares with the server's to tell a new deploy has come
 			// (src/routes/(app)/+layout.svelte). It's new with every build, even from the same commit, so a
-			// rebuild with uncommitted changes counts too; the footer takes the commit alone, from __COMMIT__.
+			// rebuild with uncommitted changes counts too; the footer takes the version and commit from `define`.
 			version: { name: `${built}.${stamp}` },
 			csp: {
 				mode: 'hash',
@@ -66,7 +71,11 @@ export default defineConfig({
 			}
 		})
 	],
-	define: { __COMMIT__: JSON.stringify(built) },
+	// The footer shows the version alone for a release, and the commit next to it for any other build.
+	define: {
+		__VERSION__: JSON.stringify(version),
+		__COMMIT__: JSON.stringify(release ? '' : built)
+	},
 	build: {
 		// Emit every asset as a hashed file instead of a data: URI, so the CSP can stay 'self'-only.
 		assetsInlineLimit: 0

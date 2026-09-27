@@ -1,7 +1,7 @@
 {
 	"name": "bubbleboard",
 	"private": true,
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"type": "module",
 	"scripts": {
 		"predev": "node scripts/face-detector-assets.js",
@@ -19,7 +19,8 @@
 		"gen": "wrangler types",
 		"test": "vitest run",
 		"deploy": "npm run build && node scripts/deploy.js && node scripts/push-key.js && node scripts/setup-link.js --if-missing",
-		"validate": "npm run check && npm run lint && npm run test && npm run build"
+		"validate": "npm run check && npm run lint && npm run test && npm run build",
+		"version": "vitest run src/changelog.test.ts"
 	},
 	"devDependencies": {
 		"@fontsource-variable/hanken-grotesk": "^5.3.0",

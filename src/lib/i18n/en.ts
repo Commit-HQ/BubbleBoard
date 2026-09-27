@@ -471,11 +471,9 @@ export const en = {
 		]
 	},
 	build: {
-		label: 'Build',
+		label: 'Version',
 		// The build had uncommitted changes, so its commit doesn't fully describe it.
-		modified: 'modified',
-		// Built without Git, for example from a source ZIP.
-		unknown: 'Unknown build'
+		modified: 'modified'
 	},
 	// A page that doesn't exist, or an error no page handles, shown with a popped bubble.
 	error: {

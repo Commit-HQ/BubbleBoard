@@ -31,10 +31,21 @@ npm run dev
 | `npm run validate`         | Type checks, formatting, tests, and build                                         |
 | `npm run deploy`           | Build, publish, migrate the database, and print the first setup link              |
 | `npm run setup-link`       | Replace the deployed setup token and print a new setup link                       |
+| `npm version minor`        | Raise the version and tag it, once the changelog has its entry (see Releasing)    |
 
 Measure performance (for example with Lighthouse) on a production build, `npm run build && npm run preview`; development performance is not representative. The app needs a secure context: use `localhost` or `https://`, not a plain `http://` network address, when opening it from another device.
 
 `lint` checks formatting; Svelte diagnostics and TypeScript run through `check`, which also fails when the generated types are out of date (`npm run gen`). `npm test` covers what the code guarantees rather than component markup: key derivation, encryption, card links, the records browsers build, and the database boundary, with who can read and change what, run on the real migrations in Node's SQLite.
+
+## Releasing
+
+Features collect on `main` and go out together as a version: `1.0.1` for fixes, `1.1.0` for new features, `2.0.0` for a change that breaks something, such as a new card format. The footer shows the version, and links to [CHANGELOG.md](../CHANGELOG.md) as it was at that version's tag.
+
+1. Add the version's entry at the top of `CHANGELOG.md`, `## 1.1.0 (date)` and a few plain lines about what's new, in English, and commit it.
+2. `npm version minor` (or `patch`, `major`) raises the version in `package.json`, commits it, and tags the commit `v1.1.0`. It stops before committing when the changelog has no entry for the new version; put `package.json` and `package-lock.json` back (`git checkout package.json package-lock.json`) and start again from step 1.
+3. `git push --follow-tags`, then `npm run deploy`.
+
+The footer shows the version alone only for a build of the tagged commit with no uncommitted changes. Any other build, such as a fix deployed after the tag, shows its commit next to the version and links to that commit instead.
 
 ## Small by design
 

@@ -457,8 +457,7 @@ export const hr = {
 	},
 	build: {
 		label: 'Verzija',
-		modified: 'izmijenjena',
-		unknown: 'Nepoznata verzija'
+		modified: 'izmijenjena'
 	},
 	error: {
 		missingTitle: 'Ups! Ovaj je baloncić puknuo.',
