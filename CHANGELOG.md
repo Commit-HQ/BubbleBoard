@@ -2,6 +2,11 @@
 
 What's new in each version of BubbleBoard, newest first. The version an installation runs is in the footer of every page.
 
+## 1.1.1 (2026-09-27)
+
+- Security fixes: group leads can only change the families and cards of their own groups, as intended.
+- Limits that keep notifications from being flooded: a family can book or cancel meetings a few times a minute, and keeps up to 20 devices connected at once.
+
 ## 1.1.0 (2026-09-27)
 
 - Back returns to the same place on the board, or on whichever page you came from, instead of the top.
