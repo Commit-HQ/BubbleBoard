@@ -43,7 +43,7 @@ Features collect on `main` and go out together as a version: `1.0.1` for fixes, 
 
 1. Add the version's entry at the top of `CHANGELOG.md`, `## 1.1.0 (date)` and a few plain lines about what's new, in English, and commit it.
 2. `npm version minor` (or `patch`, `major`) raises the version in `package.json`, commits it, and tags the commit `v1.1.0`. It stops before committing when the changelog has no entry for the new version; put `package.json` and `package-lock.json` back (`git checkout package.json package-lock.json`) and start again from step 1.
-3. `git push --follow-tags`, then `npm run deploy`.
+3. `git push --follow-tags`, then `npm run deploy`. The pushed tag gets its GitHub release, with the version's changelog entry as its notes (`.github/workflows/release.yml`).
 
 The footer shows the version alone only for a build of the tagged commit with no uncommitted changes. Any other build, such as a fix deployed after the tag, shows its commit next to the version and links to that commit instead.
 
