@@ -5,6 +5,7 @@
 	import type { Notice } from '$lib/notices';
 	import { appPath } from '$lib/paths';
 	import Attachments from './Attachments.svelte';
+	import HideButton from './HideButton.svelte';
 	import NoticeBody from './NoticeBody.svelte';
 	import NoticePoll from './NoticePoll.svelte';
 	import { getApp, Task } from './state.svelte';
@@ -12,7 +13,7 @@
 
 	// One notice on the board, on its paper, with its poll, pictures, and documents. A family marks it as seen,
 	// and until then it stands out; staff see which of its families did, and the actions open to whoever may
-	// change it.
+	// change it. Anyone may hide it on this device, a family once it has marked it.
 	let { locale, notice, ondelete }: { locale: Locale; notice: Notice; ondelete: () => void } =
 		$props();
 	const app = getApp();
@@ -60,7 +61,7 @@
 	{/if}
 
 	{#if app.status === 'family'}
-		<div class="mt-4">
+		<div class="mt-4 flex flex-wrap items-center justify-between gap-2">
 			{#if unseen}
 				<button
 					class={button.primary}
@@ -75,10 +76,11 @@
 					<Icon name="check" class="size-4" />{t.seen}
 				</p>
 			{/if}
-			{#if task.error}
-				<p class="{alert} mt-3" role="alert">{errorMessage(locale, task.error)}</p>
-			{/if}
+			{#if !unseen || app.isHidden(notice)}<HideButton {locale} post={notice} />{/if}
 		</div>
+		{#if task.error}
+			<p class="{alert} mt-3" role="alert">{errorMessage(locale, task.error)}</p>
+		{/if}
 	{:else if families.length}
 		<details class="group mt-4 border-t border-ink/10 pt-2">
 			<summary
@@ -97,14 +99,17 @@
 		</details>
 	{/if}
 
-	{#if app.canChange(notice)}
-		<div class="mt-4 -ml-3 flex flex-wrap gap-2">
-			<a class={button.quiet} href={appPath(locale, 'notice', { id: notice.id })}>
-				<Icon name="pencil" class="size-4" />{t.edit}
-			</a>
-			<button class={button.danger} type="button" onclick={ondelete}>
-				<Icon name="trash" class="size-4" />{t.delete}
-			</button>
+	{#if app.status === 'staff'}
+		<div class="mt-4 flex flex-wrap gap-2">
+			{#if app.canChange(notice)}
+				<a class="{button.quiet} -ml-3" href={appPath(locale, 'notice', { id: notice.id })}>
+					<Icon name="pencil" class="size-4" />{t.edit}
+				</a>
+				<button class={button.danger} type="button" onclick={ondelete}>
+					<Icon name="trash" class="size-4" />{t.delete}
+				</button>
+			{/if}
+			<HideButton {locale} post={notice} />
 		</div>
 	{/if}
 </article>

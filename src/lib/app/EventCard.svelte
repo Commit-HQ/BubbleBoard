@@ -5,13 +5,15 @@
 	import { appPath } from '$lib/paths';
 	import EventActions from './EventActions.svelte';
 	import EventHeading from './EventHeading.svelte';
+	import HideButton from './HideButton.svelte';
 	import { getApp, type Picture } from './state.svelte';
 	import { button, surface } from './ui';
 
 	// An event on the board: what it was, when, and the first of its photos as this card's own family sees it,
 	// opening the gallery. That photo is put together on this device like every other one, so the card waits
 	// until it is nearly on the screen before asking for it, and asks for one photo and no more. A device that
-	// can't put photos together, or one the photo wouldn't reach, shows the card without it.
+	// can't put photos together, or one the photo wouldn't reach, shows the card without it. Anyone may hide
+	// it on this device.
 	let { locale, event }: { locale: Locale; event: OpenEvent } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.events);
@@ -73,7 +75,10 @@
 	<a class="{button.secondary} justify-self-start" {href}>
 		<Icon name="image" class="size-4" />{t.open} ({event.value.photos.length})
 	</a>
-	<p class="text-sm text-muted">{t.untilShort(until)}</p>
+	<div class="flex flex-wrap items-center justify-between gap-2">
+		<p class="text-sm text-muted">{t.untilShort(until)}</p>
+		<HideButton {locale} post={event} />
+	</div>
 	{#if app.canChangeEvent(event)}
 		<div class="-ml-3 flex flex-wrap gap-2">
 			<EventActions {locale} {event} />

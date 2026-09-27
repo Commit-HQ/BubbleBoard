@@ -1111,6 +1111,11 @@ export const en = {
 				`Seen by ${seen} of ${families === 1 ? '1 family' : `${families} families`}`,
 			seenNames: (names: string[]) => `Seen: ${list(names)}`,
 			notSeenNames: (names: string[]) => `Not seen yet: ${list(names)}`,
+			// Hiding a notice or event someone is done with, on their own device, and showing it again.
+			hide: 'Hide',
+			unhide: 'Show on the board',
+			hidden: (count: number) => `Hidden (${count})`,
+			hiddenHint: 'Hidden only on this device, until they come off the board.',
 			newTitle: 'New notice',
 			editTitle: 'Edit notice',
 			text: 'Notice',

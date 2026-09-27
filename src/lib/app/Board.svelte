@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Icon from '$lib/components/Icon.svelte';
 	import { messages, type Locale } from '$lib/i18n';
 	import type { Notice } from '$lib/notices';
 	import BoardPhoto from './BoardPhoto.svelte';
@@ -10,7 +11,7 @@
 
 	// Home's board, as on the kindergarten's corkboard: the photos of its classrooms' boards, then the notices,
 	// newest on top, then the events, newest on top. With several classrooms, a filter shows one classroom's;
-	// it starts on all of them.
+	// it starts on all of them. What a family hid on this device waits folded away at the bottom.
 	let { locale }: { locale: Locale } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app);
@@ -20,15 +21,20 @@
 	let chosen = $state('');
 	// A classroom the device no longer belongs to leaves the filter on all.
 	const shown = $derived(classrooms.some((classroom) => classroom.id === chosen) ? chosen : '');
-	const notices = $derived(
+	const allNotices = $derived(
 		shown ? app.board.filter((notice) => notice.classrooms.includes(shown)) : app.board
 	);
 	/** Events by when they went up, newest first, as the notices are. */
-	const events = $derived(
+	const allEvents = $derived(
 		app.events
 			.filter((event) => !shown || event.classroom === shown)
 			.toSorted((a, b) => b.postedAt - a.postedAt)
 	);
+	const notices = $derived(allNotices.filter((notice) => !app.isHidden(notice)));
+	const events = $derived(allEvents.filter((event) => !app.isHidden(event)));
+	const hiddenNotices = $derived(allNotices.filter((notice) => app.isHidden(notice)));
+	const hiddenEvents = $derived(allEvents.filter((event) => app.isHidden(event)));
+	const hiddenCount = $derived(hiddenNotices.length + hiddenEvents.length);
 	/** The board photos of the classrooms shown, in the classrooms' order. */
 	const photos = $derived(
 		classrooms
@@ -87,7 +93,7 @@
 				<li><NoticeCard {locale} {notice} ondelete={() => (deleting = notice)} /></li>
 			{/each}
 		</ul>
-	{:else}
+	{:else if !hiddenNotices.length}
 		<p class="text-muted">
 			{shown
 				? t.notices.emptyClassroom
@@ -101,6 +107,29 @@
 	{#each events as event (event.id)}
 		<EventCard {locale} {event} />
 	{/each}
+
+	{#if hiddenCount}
+		<details class="group">
+			<summary
+				class="-ml-3 inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full px-3 font-semibold text-muted transition hover:bg-ink/5 hover:text-ink [&::-webkit-details-marker]:hidden"
+			>
+				<Icon name="eyeOff" class="size-4" />{t.notices.hidden(hiddenCount)}
+				<Icon
+					name="chevronRight"
+					class="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+				/>
+			</summary>
+			<div class="mt-2 grid gap-4">
+				<p class="text-sm text-muted">{t.notices.hiddenHint}</p>
+				{#each hiddenNotices as notice (notice.id)}
+					<NoticeCard {locale} {notice} ondelete={() => (deleting = notice)} />
+				{/each}
+				{#each hiddenEvents as event (event.id)}
+					<EventCard {locale} {event} />
+				{/each}
+			</div>
+		</details>
+	{/if}
 </div>
 
 {#if deleting}

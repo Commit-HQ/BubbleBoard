@@ -69,8 +69,10 @@ import {
 import {
 	forgetCard,
 	hiddenHomeCards,
+	hiddenPosts,
 	homeCards,
 	keepHiddenHomeCards,
+	keepHiddenPosts,
 	loadCard,
 	markStartCardUsed,
 	openDevices,
@@ -78,6 +80,7 @@ import {
 	sealDeviceName,
 	startCardUsed,
 	type DeviceCard,
+	type HiddenPost,
 	type FamilyDevice,
 	type HomeCard
 } from '$lib/device';
@@ -266,6 +269,11 @@ const cardRefusals = [
 /** The session ended, or the card no longer opens its keys: only the card can connect the device again. */
 function isDisconnection(cause: unknown) {
 	return (cause instanceof ApiError && cause.status === 401) || cause instanceof UnreadableError;
+}
+
+/** When a notice or event went up, which hiding it remembers: for a notice, when it was last announced. */
+function postedAt(post: Notice | OpenEvent) {
+	return 'announcedAt' in post ? post.announcedAt : post.postedAt;
 }
 
 /** Where a board photo's encrypted bytes are kept. */
@@ -980,6 +988,8 @@ export class App {
 	notifications = $state<NotificationState>('unsupported');
 	/** Home's cards Not now put away on this device. Each stays away until the device has said which. */
 	hiddenCards = $state.raw<readonly HomeCard[]>(homeCards);
+	/** The notices and events hidden from the board on this device, which it can show again. */
+	hiddenPosts = $state.raw<readonly HiddenPost[]>([]);
 	/**
 	 * The classrooms a head chose not to hear about. She belongs to none, so she hears about every classroom
 	 * that isn't in here, a classroom added later included. Empty for anyone else.
@@ -1297,6 +1307,7 @@ export class App {
 		void this.loadMeetings();
 		void this.#keepNotifications(!refresh);
 		if (!refresh) void this.#readHiddenCards();
+		if (!refresh) void this.#readHiddenPosts();
 		if (this.status === 'family') void this.loadDevices().catch(() => {});
 	}
 
@@ -1328,6 +1339,25 @@ export class App {
 	hideCard(card: HomeCard) {
 		this.hiddenCards = [...this.hiddenCards, card];
 		keepHiddenHomeCards(this.hiddenCards).catch(() => {});
+	}
+
+	async #readHiddenPosts() {
+		const version = this.#connectionVersion;
+		const hidden = await hiddenPosts().catch(() => []);
+		if (version === this.#connectionVersion) this.hiddenPosts = hidden;
+	}
+
+	/** Whether this device hid a notice or event, and a notice hasn't been announced again since. */
+	isHidden(post: Notice | OpenEvent) {
+		const at = postedAt(post);
+		return this.hiddenPosts.some((hidden) => hidden.id === post.id && hidden.at === at);
+	}
+
+	/** Hides a notice or event from the board on this device, or shows it there again. */
+	setHidden(post: Notice | OpenEvent, hidden: boolean) {
+		const others = this.hiddenPosts.filter(({ id }) => id !== post.id);
+		this.hiddenPosts = hidden ? [...others, { id: post.id, at: postedAt(post) }] : others;
+		keepHiddenPosts(this.hiddenPosts).catch(() => {});
 	}
 
 	async #load(records: Kindergarten, teacher = this.me?.id) {
@@ -1481,6 +1511,7 @@ export class App {
 		this.familyClassrooms = [];
 		this.devices = [];
 		this.hiddenCards = homeCards;
+		this.hiddenPosts = [];
 		this.board = [];
 		this.unreadableNotices = 0;
 		this.photos = [];
@@ -1498,7 +1529,8 @@ export class App {
 				forgetSubscription(),
 				clearDraft(),
 				clearCachedPictures(),
-				keepHiddenHomeCards([])
+				keepHiddenHomeCards([]),
+				keepHiddenPosts([])
 			].map((done) => done.catch(() => {}))
 		);
 	}

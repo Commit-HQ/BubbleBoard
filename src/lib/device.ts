@@ -36,7 +36,10 @@ export async function forgetCard() {
 	});
 }
 
-/** What this device keeps about how the app opens: its start card, and the home cards put away. */
+/**
+ * What this device keeps about how the app opens: its start card, the home cards put away, and what it hid
+ * from the board.
+ */
 const launch = objectStore('bubbleboard-launch', 'settings');
 
 /**
@@ -65,6 +68,28 @@ export async function hiddenHomeCards() {
 
 export async function keepHiddenHomeCards(cards: readonly HomeCard[]) {
 	await launch('readwrite', (store) => void store.put([...cards], 'hiddenHomeCards'));
+}
+
+/**
+ * The notices and events hidden from the board on this device, each by its ID and when it went up: a
+ * notice announced again comes back. Nothing stays up longer than 90 days, so older ones are let go.
+ */
+export type HiddenPost = { id: string; at: number };
+const keptFor = 91 * 24 * 60 * 60 * 1000;
+
+export async function hiddenPosts(): Promise<HiddenPost[]> {
+	const hidden = await launch('readonly', (store) => store.get('hiddenPosts'));
+	return Array.isArray(hidden)
+		? hidden.filter(
+				(post): post is HiddenPost => typeof post?.id === 'string' && typeof post.at === 'number'
+			)
+		: [];
+}
+
+export async function keepHiddenPosts(posts: readonly HiddenPost[]) {
+	const since = Date.now() - keptFor;
+	const kept = posts.filter((post) => post.at >= since).map(({ id, at }) => ({ id, at }));
+	await launch('readwrite', (store) => void store.put(kept, 'hiddenPosts'));
 }
 
 /** A device connected for this device's family, with who uses it once someone said. */

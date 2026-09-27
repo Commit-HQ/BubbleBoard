@@ -6,7 +6,9 @@ vi.mock('$lib/device', () => ({
 	forgetCard: async () => {},
 	homeCards: ['notifications', 'device-name'],
 	hiddenHomeCards: async () => [],
-	keepHiddenHomeCards: async () => {}
+	keepHiddenHomeCards: async () => {},
+	hiddenPosts: async () => [],
+	keepHiddenPosts: vi.fn(async () => {})
 }));
 vi.mock('$lib/notifications', () => ({
 	forgetSubscription: async () => {},
@@ -48,9 +50,11 @@ import {
 	clearCachedPictures,
 	keepCachedPictures
 } from '$lib/events/cache';
+import { keepHiddenPosts } from '$lib/device';
 import { renderPackage } from '$lib/events/package';
 import type { OpenEvent } from '$lib/events/types';
 import { openCatalog } from '$lib/kindergarten';
+import type { Notice } from '$lib/notices';
 import { App } from './state.svelte';
 
 function deferred<T>() {
@@ -168,4 +172,19 @@ it('keeps only the photos of the events on the board, and none once the card goe
 	expect(keepCachedPictures).toHaveBeenCalledWith([]);
 	await app.signOut();
 	expect(clearCachedPictures).toHaveBeenCalled();
+});
+
+it('hides a notice until it is announced again, and forgets what it hid once the card goes', async () => {
+	const app = await connected();
+	const notice = { id: 'notice', announcedAt: 1 } as Notice;
+	app.setHidden(notice, true);
+	app.setHidden(event, true);
+	expect(app.isHidden(notice)).toBe(true);
+	expect(app.isHidden({ ...notice, announcedAt: 2 })).toBe(false);
+	app.setHidden(event, false);
+	expect(app.isHidden(event)).toBe(false);
+	expect(keepHiddenPosts).toHaveBeenLastCalledWith([{ id: 'notice', at: 1 }]);
+	await app.signOut();
+	expect(app.isHidden(notice)).toBe(false);
+	expect(keepHiddenPosts).toHaveBeenLastCalledWith([]);
 });
