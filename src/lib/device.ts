@@ -1,6 +1,7 @@
 import type { Device } from '$lib/api';
 import { decryptData, encryptData, fields } from '$lib/crypto';
 import { objectStore } from '$lib/indexeddb';
+import { day, noticeDays } from '$lib/notices';
 
 // The card this browser is connected with, kept in IndexedDB as CryptoKey objects that can't be exported
 // (docs/access-format.md). A browser has one active card; the store is keyed by credential so a later
@@ -75,7 +76,7 @@ export async function keepHiddenHomeCards(cards: readonly HomeCard[]) {
  * notice announced again comes back. Nothing stays up longer than 90 days, so older ones are let go.
  */
 export type HiddenPost = { id: string; at: number };
-const keptFor = 91 * 24 * 60 * 60 * 1000;
+const keptFor = (noticeDays.at(-1)! + 1) * day;
 
 export async function hiddenPosts(): Promise<HiddenPost[]> {
 	const hidden = await launch('readonly', (store) => store.get('hiddenPosts'));
@@ -88,7 +89,7 @@ export async function hiddenPosts(): Promise<HiddenPost[]> {
 
 export async function keepHiddenPosts(posts: readonly HiddenPost[]) {
 	const since = Date.now() - keptFor;
-	const kept = posts.filter((post) => post.at >= since).map(({ id, at }) => ({ id, at }));
+	const kept = posts.filter((post) => post.at >= since);
 	await launch('readwrite', (store) => void store.put(kept, 'hiddenPosts'));
 }
 

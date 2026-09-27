@@ -5,8 +5,8 @@
 
 import { defaultLocale, notificationTexts } from '$lib/i18n';
 import { notificationLocale, notify } from '$lib/notifications';
-import { appPath, type AppPage } from '$lib/paths';
-import { pushKind, type PushKind } from '$lib/push';
+import { appPath } from '$lib/paths';
+import { pushKind, pushPages, type PushKind } from '$lib/push';
 
 // BubbleBoard's service worker handles notifications only: no caching and no offline copies
 // (decisions.md). A push carries one letter saying what happened and nothing more, so the words are
@@ -23,19 +23,6 @@ const worker = self as unknown as ServiceWorkerGlobalScope;
 // windows that are already open is the other half: a tap can only send a window the worker controls.
 worker.addEventListener('install', () => worker.skipWaiting());
 worker.addEventListener('activate', (event) => event.waitUntil(worker.clients.claim()));
-
-/** The page a tap opens, by what happened. A notice or board photo is on the board, which is home. */
-const pages: Record<PushKind, AppPage | undefined> = {
-	notice: undefined,
-	message: 'messages',
-	slots: 'meetings',
-	booking: 'meetings',
-	// An event's photos are reached from the board, which is home: a push must never say which event.
-	photos: undefined,
-	corkboard: undefined,
-	// A family's report of an event's photos, for its teachers, is a conversation.
-	report: 'messages'
-};
 
 /** What a push says happened. One that carries nothing, as a device that hasn't sent its keys gets, is a notice. */
 function kindOf(event: PushEvent): PushKind {
@@ -62,7 +49,7 @@ worker.addEventListener('push', (event) => {
 					// The tag is the kind, so a second message replaces the first without burying a cancelled
 					// meeting time.
 					notify(worker.registration, notificationTexts[locale][kind], kind, {
-						path: appPath(locale, pages[kind])
+						path: appPath(locale, pushPages[kind])
 					})
 				),
 			appWindows().then((windows) =>

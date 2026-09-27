@@ -155,6 +155,26 @@ const spent = `(SELECT COUNT(*) FROM messages m JOIN conversations c ON c.id=m.c
  */
 const afterHours = `COALESCE((SELECT after_hours FROM messages
  WHERE conversation_id=? ORDER BY sequence DESC LIMIT 1),0)`;
+/** Whether the classroom's hours `p` (a `message_settings` row) take messages at `now`, as `sendingAllowed` decides. */
+function withinHours(now: number): [string, string[]] {
+	const { day, time } = messageClock(now);
+	return [
+		'json_extract(p.schedule,?) <= ? AND json_extract(p.schedule,?) > ?',
+		[`$[${day}].start`, time, `$[${day}].end`, time]
+	];
+}
+/**
+ * Whether a teacher's message goes out while the classroom's families can't write, which lets the family
+ * answer it at any time, decided with the insert. A family's message never does.
+ */
+function sentAfterHours(who: Identity, classroom: string, now: number): [string, string[]] {
+	if (who.kind !== 'staff') return ['0', []];
+	const [open, times] = withinHours(now);
+	return [
+		`NOT EXISTS(SELECT 1 FROM message_settings p WHERE p.classroom_id=? AND p.enabled=1 AND ${open})`,
+		[classroom, ...times]
+	];
+}
 /** Whether a teacher wrote the last message of a conversation, which makes the family's answer free. */
 const answered = `COALESCE((SELECT substr(author,1,8)='teacher:' FROM messages
  WHERE conversation_id=? ORDER BY sequence DESC LIMIT 1),0)`;
@@ -237,13 +257,13 @@ function guard(
 			values.push(conversation);
 		}
 	} else if (who.kind === 'family') {
-		const clock = messageClock(now);
+		const [open, times] = withinHours(now);
 		condition += ` AND EXISTS(SELECT 1 FROM message_settings p WHERE p.classroom_id=? AND p.enabled=1
-   AND ((json_extract(p.schedule,?) <= ? AND json_extract(p.schedule,?) > ?)${conversation ? ` OR ${afterHours}` : ''})
+   AND ((${open})${conversation ? ` OR ${afterHours}` : ''})
    AND (${conversation ? `${answered} OR ` : ''}${spent} < p.monthly_limit))`;
-		values.push(classroom, `$[${clock.day}].start`, clock.time, `$[${clock.day}].end`, clock.time);
+		values.push(classroom, ...times);
 		if (conversation) values.push(conversation, conversation);
-		values.push(classroom, family, clock.month);
+		values.push(classroom, family, messageClock(now).month);
 	}
 	return { condition, values };
 }
@@ -371,7 +391,7 @@ export async function startConversation(
 		return false;
 	}
 	const { condition, values } = guard(who, value.classroom, value.family, now, undefined, report);
-	const after = await sentAfterHours(db, who, value.classroom, now);
+	const [after, hours] = sentAfterHours(who, value.classroom, now);
 	// A family reports an event once: a second report of it meets the first on `conversations_report`, which
 	// leaves it out as quietly as a retry.
 	const event = report ? [value.event!, value.classroom, now] : [];
@@ -394,7 +414,7 @@ export async function startConversation(
 		db
 			.prepare(
 				`INSERT INTO messages(id,conversation_id,author,content,posted_at,charged,after_hours)
-   SELECT ?,?,?,?,?,?,? WHERE changes()=1`
+   SELECT ?,?,?,?,?,?,${after} WHERE changes()=1`
 			)
 			.bind(
 				value.message,
@@ -404,7 +424,7 @@ export async function startConversation(
 				now,
 				// Starting a conversation always spends one of the family's allowance, and a report none.
 				who.kind === 'family' && !report ? messageClock(now).month : null,
-				after
+				...hours
 			),
 		...insertFiles(db, value.message, value.files ?? [])
 	]);
@@ -416,30 +436,9 @@ export async function startConversation(
 			.first();
 		if (committed) return startConversation(db, who, value, now);
 		if (report) await explainReport(db, who, value);
-		await explainBlocked(db, who, value.classroom, value.family, now, true);
+		await explainBlocked(db, who, value.classroom, value.family, now);
 	}
 	return true;
-}
-/** Whether a family's next message in a conversation would spend one of its month's allowance. */
-/**
- * What a family's next message in a conversation meets: whether it would spend one of the month's allowance,
- * and whether it answers a teacher's message sent outside the hours, which it may do at any time.
- */
-async function nextFamilyMessage(db: D1Database, conversation: string) {
-	const last = await db
-		.prepare(
-			'SELECT author,after_hours AS afterHours FROM messages WHERE conversation_id=? ORDER BY sequence DESC LIMIT 1'
-		)
-		.bind(conversation)
-		.first<{ author: string; afterHours: number }>();
-	return { charged: chargesAllowance(last?.author), anytime: last?.afterHours === 1 };
-}
-/**
- * Whether a teacher's message goes out while the classroom's families can't write, which lets the family
- * answer it at any time. A family's message never does.
- */
-async function sentAfterHours(db: D1Database, who: Identity, classroom: string, now: number) {
-	return who.kind === 'staff' && !sendingAllowed(await settingsFor(db, classroom), now) ? 1 : 0;
 }
 /** Why a report didn't start: the event isn't up in its classroom, or the family reported it already. */
 async function explainReport(db: D1Database, who: Identity, value: NewConversation) {
@@ -456,24 +455,32 @@ async function explainReport(db: D1Database, who: Identity, value: NewConversati
 	await checkAudience(db, who, value.classroom, value.family);
 	error(409, 'stale');
 }
+/**
+ * Why a family's message didn't go. Starting a conversation always spends one of the allowance; in one, what
+ * its last message is decides whether the answer spends one, and whether it may go outside the hours.
+ */
 async function explainBlocked(
 	db: D1Database,
 	who: Identity,
 	classroom: string,
 	family: string,
 	now: number,
-	charged: boolean,
-	report = false,
-	anytime = false
+	conversation?: string
 ): Promise<never> {
 	await checkAudience(db, who, classroom, family);
-	// In a report, a family's message waits for the teachers' answer, whatever the classroom settled.
-	if (who.kind === 'family' && report) error(409, 'report-waiting');
 	if (who.kind === 'family') {
+		const last = conversation
+			? await db
+					.prepare(
+						'SELECT author,after_hours AS afterHours FROM messages WHERE conversation_id=? ORDER BY sequence DESC LIMIT 1'
+					)
+					.bind(conversation)
+					.first<{ author: string; afterHours: number }>()
+			: null;
 		const settings = await settingsFor(db, classroom);
 		if (!settings.enabled) error(409, 'messages-disabled');
-		if (!anytime && !sendingAllowed(settings, now)) error(409, 'messages-hours');
-		if (charged) error(409, 'messages-limit');
+		if (!last?.afterHours && !sendingAllowed(settings, now)) error(409, 'messages-hours');
+		if (chargesAllowance(last?.author)) error(409, 'messages-limit');
 	}
 	// Nothing the policy explains: the family left the classroom, or a teacher lost it, between the check
 	// and the write. The app loads what's there now and says so.
@@ -510,15 +517,15 @@ export async function reply(
 	const charge = charged ? `CASE WHEN ${answered} THEN NULL ELSE ? END` : 'NULL';
 	const month = charged ? [id, messageClock(now).month] : [];
 	const { condition, values } = guard(who, thread.classroom, thread.family, now, id, report);
-	const after = await sentAfterHours(db, who, thread.classroom, now);
+	const [after, hours] = sentAfterHours(who, thread.classroom, now);
 	const [result] = await transaction(db, [
 		db
 			.prepare(
 				`INSERT INTO messages(id,conversation_id,author,content,posted_at,charged,after_hours)
- SELECT ?,?,?,?,?,${charge},? WHERE EXISTS(SELECT 1 FROM conversations WHERE id=? AND closed=0) AND ${condition}
+ SELECT ?,?,?,?,?,${charge},${after} WHERE EXISTS(SELECT 1 FROM conversations WHERE id=? AND closed=0) AND ${condition}
  ON CONFLICT(id) DO NOTHING`
 			)
-			.bind(message, id, actor(who), content, now, ...month, after, id, ...values),
+			.bind(message, id, actor(who), content, now, ...month, ...hours, id, ...values),
 		...insertFiles(db, message, files)
 	]);
 	if (!result.meta.changes) {
@@ -529,17 +536,12 @@ export async function reply(
 			.bind(id)
 			.first();
 		if (closed) error(409, 'messages-closed');
-		const next = await nextFamilyMessage(db, id);
-		await explainBlocked(
-			db,
-			who,
-			thread.classroom,
-			thread.family,
-			now,
-			next.charged,
-			report,
-			next.anytime
-		);
+		if (who.kind === 'family' && report) {
+			// In a report, a family's message waits for the teachers' answer, whatever the classroom settled.
+			await checkAudience(db, who, thread.classroom, thread.family);
+			error(409, 'report-waiting');
+		}
+		await explainBlocked(db, who, thread.classroom, thread.family, now, id);
 	}
 	return true;
 }

@@ -38,8 +38,12 @@
 	const t = $derived(messages[locale].app);
 	const id = $props.id();
 	let renaming = $state(false);
+	// Only a page reached by a link or `goto` knows what's behind it: after the phone's back gesture, `from`
+	// is the page ahead in history instead.
 	let previous = '';
-	afterNavigate(({ from }) => (previous = from ? from.url.pathname + from.url.search : ''));
+	afterNavigate(({ from, type }) => {
+		previous = from && type !== 'popstate' ? from.url.pathname + from.url.search : '';
+	});
 
 	function goBack(event: MouseEvent) {
 		if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;

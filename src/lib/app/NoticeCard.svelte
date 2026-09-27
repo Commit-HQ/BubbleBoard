@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
-	import { byline, errorMessage, listNames, messages, type Locale } from '$lib/i18n';
+	import { byline, editedNote, errorMessage, listNames, messages, type Locale } from '$lib/i18n';
 	import { namesOf } from '$lib/kindergarten';
 	import type { Notice } from '$lib/notices';
 	import { appPath } from '$lib/paths';
@@ -9,7 +9,7 @@
 	import NoticeBody from './NoticeBody.svelte';
 	import NoticePoll from './NoticePoll.svelte';
 	import { getApp, Task } from './state.svelte';
-	import { alert, button, paperClass } from './ui';
+	import { alert, button, disclosure, paperClass } from './ui';
 
 	// One notice on the board, on its paper, with its poll, pictures, and documents. A family marks it as seen,
 	// and until then it stands out; staff see which of its families did, and the actions open to whoever may
@@ -20,13 +20,12 @@
 	const t = $derived(messages[locale].app.notices);
 	const task = new Task();
 	/** Who put the notice up and when, and whether it was edited since, and by whom for staff. */
-	const editor = $derived(app.editorOf(notice));
 	const details = $derived(
 		byline(
 			locale,
 			notice.author,
 			notice.announcedAt,
-			notice.editedAt ? (editor ? t.editedBy(editor) : t.edited) : undefined
+			notice.editedAt ? editedNote(locale, app.editorOf(notice)) : undefined
 		)
 	);
 	const unseen = $derived(app.status === 'family' && !app.isSeen(notice));
@@ -89,9 +88,7 @@
 		{/if}
 	{:else if families.length}
 		<details class="group mt-4 border-t border-ink/10 pt-2">
-			<summary
-				class="-ml-3 inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full px-3 text-sm font-semibold text-muted transition hover:bg-ink/5 hover:text-ink [&::-webkit-details-marker]:hidden"
-			>
+			<summary class="{disclosure} text-sm">
 				<Icon name="eye" class="size-4" />{t.seenBy(seen.length, families.length)}
 				<Icon
 					name="chevronRight"

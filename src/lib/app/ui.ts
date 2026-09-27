@@ -34,6 +34,10 @@ export const button = {
 	chipSelect: `${chipLook} px-3 text-ink`
 };
 
+/** A `<details>` summary that reads as a quiet button; follow its label with a chevron that turns open. */
+export const disclosure =
+	'-ml-3 inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full px-3 font-semibold text-muted transition hover:bg-ink/5 hover:text-ink [&::-webkit-details-marker]:hidden';
+
 /**
  * Two ways of looking at the same thing, side by side in one pill, such as an event photo with its covers or
  * without them. Mark the one being looked at with `aria-pressed`.
@@ -94,14 +98,6 @@ export const surface = 'rounded-4xl glass p-6 sm:p-8';
  */
 export const listRow =
 	'flex items-center gap-4 rounded-3xl glass px-5 py-4 transition hover:bg-white/75';
-
-/** A small pill saying one thing about a record at a glance, such as whether a child's face is covered. */
-const tagLook =
-	'inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold';
-export const tag = {
-	plain: `${tagLook} bg-ink/5 text-muted`,
-	good: `${tagLook} bg-green-50 text-green-800`
-};
 
 /** A dialog in the middle of the screen, over the dimmed page. Each sets its own padding. */
 export const modal =

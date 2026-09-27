@@ -4,6 +4,7 @@
 	import Checklist from '$lib/app/Checklist.svelte';
 	import ConfirmDialog from '$lib/app/ConfirmDialog.svelte';
 	import MessageSettings from '$lib/app/MessageSettings.svelte';
+	import FaceTag from '$lib/app/FaceTag.svelte';
 	import ListLink from '$lib/app/ListLink.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp } from '$lib/app/state.svelte';
@@ -34,21 +35,8 @@
 	/** The families whose cards are chosen to be replaced. */
 	let chosen = $state<string[]>([]);
 	let printed = $state.raw<PrintableCard[]>();
-	/**
-	 * The classroom's children whose face its other families may see, read once for the classroom this page
-	 * shows. When the consent records can't be read, the children say nothing about it.
-	 */
-	let sharing = $state.raw<{ classroom: string; shared: Set<string> }>();
-	$effect(() => {
-		const current = id;
-		if (!current || !classroom || sharing?.classroom === current) return;
-		app.photoSharing(current).then(
-			({ shared }) => {
-				if (id === current) sharing = { classroom: current, shared };
-			},
-			() => {}
-		);
-	});
+	/** The classroom's children whose face its other families may see. */
+	const shared = $derived(id && classroom ? app.sharedFaces(id) : undefined);
 
 	async function remove(classroom: string) {
 		await app.deleteClassroom(classroom);
@@ -223,12 +211,9 @@
 								title={child.name}
 								detail={listNames(data.locale, namesOf(app.catalog.families, child.families)) ||
 									t.classroom.noCards}
-								tag={sharing?.classroom !== id
-									? undefined
-									: sharing.shared.has(child.id)
-										? { icon: 'eye', label: t.classroom.faceShown, tone: 'good' }
-										: { icon: 'lock', label: t.classroom.faceCovered }}
-							/>
+							>
+								{#if shared}<FaceTag locale={data.locale} visible={shared.has(child.id)} />{/if}
+							</ListLink>
 						{/each}
 					</ul>
 				{:else}

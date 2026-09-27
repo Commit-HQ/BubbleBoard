@@ -15,6 +15,22 @@ export const pushKinds = [
 ] as const;
 export type PushKind = (typeof pushKinds)[number];
 
+/**
+ * The app page each kind is about: the one a tap opens, and what an open app loads again when one comes.
+ * A notice or board photo is on the board, which is home, and changes more than one page.
+ */
+export const pushPages: Record<PushKind, 'messages' | 'meetings' | undefined> = {
+	notice: undefined,
+	message: 'messages',
+	slots: 'meetings',
+	booking: 'meetings',
+	// An event's photos are reached from the board, which is home: a push must never say which event.
+	photos: undefined,
+	corkboard: undefined,
+	// A family's report of an event's photos, for its teachers, is a conversation.
+	report: 'messages'
+};
+
 /** The letter that goes over the wire. Each kind starts with a different one. */
 export const pushCode = (kind: PushKind) => kind[0];
 

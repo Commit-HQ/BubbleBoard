@@ -7,7 +7,7 @@
 	import EventCard from './EventCard.svelte';
 	import NoticeCard from './NoticeCard.svelte';
 	import { getApp } from './state.svelte';
-	import { choice } from './ui';
+	import { choice, disclosure } from './ui';
 
 	// Home's board, as on the kindergarten's corkboard: the photos of its classrooms' boards, then the notices,
 	// newest on top, then the events, newest on top. With several classrooms, a filter shows one classroom's;
@@ -110,9 +110,7 @@
 
 	{#if hiddenCount}
 		<details class="group">
-			<summary
-				class="-ml-3 inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full px-3 font-semibold text-muted transition hover:bg-ink/5 hover:text-ink [&::-webkit-details-marker]:hidden"
-			>
+			<summary class={disclosure}>
 				<Icon name="eyeOff" class="size-4" />{t.notices.hidden(hiddenCount)}
 				<Icon
 					name="chevronRight"

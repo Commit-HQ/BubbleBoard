@@ -34,9 +34,7 @@
 	const report = $derived(app.status === 'family' ? app.reportOf(event.id) : undefined);
 	/** For staff, the photos the event's open reports name. */
 	const flagged = $derived(
-		new Set(
-			app.status === 'staff' ? app.openReportsOf(event.id).flatMap((item) => item.photos) : []
-		)
+		app.status === 'staff' ? app.reportedPhotos(event.id) : new Set<string>()
 	);
 	/** While a family writes its report, a tap on a photo picks it rather than opening it. */
 	let reporting = $state(false);
@@ -390,7 +388,7 @@
 					{r.send}
 				</button>
 				<button type="button" class={button.quiet} disabled={sending.busy} onclick={stopReporting}>
-					{r.cancel}
+					{messages[locale].app.actions.cancel}
 				</button>
 			</div>
 		</form>

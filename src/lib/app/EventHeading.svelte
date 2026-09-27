@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { OpenEvent } from '$lib/events/types';
-	import { byline, formatDay, messages, type Locale } from '$lib/i18n';
+	import { byline, editedNote, formatDay, messages, type Locale } from '$lib/i18n';
 	import NoticeBody from './NoticeBody.svelte';
 	import { getApp } from './state.svelte';
 
@@ -9,8 +9,7 @@
 	let { locale, event }: { locale: Locale; event: OpenEvent } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.events);
-	const editor = $derived(app.editorOf(event));
-	const edited = $derived(event.editedAt ? (editor ? t.editedBy(editor) : t.edited) : undefined);
+	const edited = $derived(event.editedAt ? editedNote(locale, app.editorOf(event)) : undefined);
 </script>
 
 <header class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm text-muted">

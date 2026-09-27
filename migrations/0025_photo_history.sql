@@ -3,7 +3,7 @@
 -- is in `photo_families`; only when it was written, which teacher recorded it from a consent form, and whether
 -- that was as the child was added, are readable. A family's own choice has no teacher. The teacher's ID stays
 -- after the teacher is removed, when the app just says staff. The trail goes with the child or the family
--- card, and when the card is taken off the child (events.ts).
+-- card, and when the card is taken off the child (events.ts); removing a family card deletes by `family_id`.
 CREATE TABLE photo_history (
  child_id TEXT NOT NULL REFERENCES children(id) ON DELETE CASCADE,
  family_id TEXT NOT NULL REFERENCES families(id) ON DELETE CASCADE,
@@ -13,3 +13,4 @@ CREATE TABLE photo_history (
  child_added INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX photo_history_child ON photo_history(child_id,family_id,at);
+CREATE INDEX photo_history_family ON photo_history(family_id);

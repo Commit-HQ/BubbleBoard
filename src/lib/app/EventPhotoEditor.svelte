@@ -179,28 +179,12 @@
 	const selected = $derived(edit?.regions.find((r) => r.id === edit.selected));
 	const children = $derived(app.catalog.children.filter((c) => c.classroom === classroom));
 	const nameOf = (child: string) => children.find((c) => c.id === child)?.name ?? '';
-	/**
-	 * The classroom's children whose face its other families may see, read once for the classroom so the
-	 * teacher sees it beside their names. Only a hint: publishing reads consent again and is refused if it
-	 * changed, and when the records can't be read, no names say anything.
-	 */
-	let shared = $state.raw<{ classroom: string; children: Set<string> }>();
-	$effect(() => {
-		const room = classroom;
-		if (!room || shared?.classroom === room) return;
-		app.photoSharing(room).then(
-			(sharing) => {
-				if (classroom === room) shared = { classroom: room, children: sharing.shared };
-			},
-			() => {}
-		);
-	});
+	/** The classroom's children whose face its other families may see, shown beside their names. */
+	const shared = $derived(classroom ? app.sharedFaces(classroom) : undefined);
 	/** The photos being prepared now, in the gallery's order, which is the order they're kept in too. */
 	const inOrder = $derived(order.flatMap((id) => photos.filter((p) => p.id === id)));
 	/** The photos up now that the event's open reports name, which the strip flags. */
-	const flagged = $derived(
-		new Set(event ? app.openReportsOf(event.id).flatMap((report) => report.photos) : [])
-	);
+	const flagged = $derived(event ? app.reportedPhotos(event.id) : new Set<string>());
 	/**
 	 * Every photo of the gallery in its order: one already up, or one being prepared now, which is still
 	 * flagged while a reported photo is being covered again.
@@ -1182,7 +1166,7 @@
 					regions={edit.regions}
 					{selected}
 					{children}
-					shared={shared?.classroom === classroom ? shared.children : undefined}
+					{shared}
 					{feedback}
 					onassign={nameFace}
 					onremove={removeCover}
@@ -1261,8 +1245,7 @@
 				</label>
 			{/if}
 			<!-- The consent the photos were just prepared with; a change that adds none has only the editor's. -->
-			{@const visibility =
-				draft?.shared ?? (shared?.classroom === classroom ? shared.children : undefined)}
+			{@const visibility = draft?.shared ?? shared}
 			{#if visibility}
 				<button
 					type="button"

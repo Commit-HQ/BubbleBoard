@@ -360,7 +360,7 @@ describe('private inquiries', () => {
 				.run();
 		}
 		const reached = async (poster: string) =>
-			(await conversationRecipients(f.db, first.id, poster, monday)).map(
+			(await conversationRecipients(f.db, first.id, poster, { now: monday })).map(
 				({ endpoint }) => endpoint
 			);
 		expect(await reached('')).toEqual([
@@ -510,7 +510,7 @@ describe('reports of event photos', () => {
 			]);
 		}
 		const reached = async (family: boolean) =>
-			(await conversationRecipients(f.db, report.id, '', monday, family)).map(
+			(await conversationRecipients(f.db, report.id, '', { now: monday, family })).map(
 				({ endpoint }) => endpoint
 			);
 		expect(await reached(false)).toEqual(['https://web.push.apple.com/1']);

@@ -5,14 +5,16 @@
 	 * a dot while the family waits for an answer. On a family device it shows whose turn it is: a clock while
 	 * the family's own message waits for the teachers, and a message once a teacher has written. A closed
 	 * inquiry waits for nobody: it has a tick, and no dot on a staff device. Names would say little there,
-	 * since teachers often go by "Teta Martina": the preview line carries the name.
+	 * since teachers often go by "Teta Martina": the preview line carries the name. `label` says, for screen
+	 * readers, what the tile shows when it says anything.
 	 */
-	export type Tile =
+	export type Tile = { label?: string } & (
 		| { kind: 'report' }
 		| { kind: 'children'; letters: string; tone: number; waiting: boolean }
 		| { kind: 'waiting' }
 		| { kind: 'answered' }
-		| { kind: 'closed' };
+		| { kind: 'closed' }
+	);
 	/** Soft colours a child's tile takes, chosen by the child, so the same child looks the same everywhere. */
 	const tones = [
 		'bg-sky-100 text-sky-900',
@@ -39,7 +41,6 @@
 	let {
 		href,
 		tile,
-		tileLabel,
 		subject,
 		preview,
 		detail,
@@ -49,8 +50,6 @@
 	}: {
 		href: string;
 		tile: Tile;
-		/** What the tile says, for screen readers, when it says anything. */
-		tileLabel?: string;
 		subject: string;
 		preview: string;
 		detail: string;
@@ -58,14 +57,13 @@
 		unread: boolean;
 		unreadLabel: string;
 	} = $props();
-	const box = 'relative grid size-11 shrink-0 place-items-center rounded-2xl';
 </script>
 
 <!-- The list is a grid, whose rows would otherwise grow as wide as the longest line they cut short. -->
 <li class="min-w-0">
 	<a class="{listRow} {unread ? 'ring-2 ring-accent' : ''}" {href}>
 		<span
-			class="{box} {{
+			class="relative grid size-11 shrink-0 place-items-center rounded-2xl {{
 				report: 'bg-red-50 text-red-700 ring-1 ring-red-200',
 				children: `text-lg font-bold ${tile.kind === 'children' ? tones[tile.tone] : ''}`,
 				waiting: 'bg-amber-100 text-amber-900',
@@ -90,7 +88,7 @@
 				<Icon name="message" class="size-5" />
 			{/if}
 		</span>
-		{#if tileLabel}<span class="sr-only">{tileLabel}</span>{/if}
+		{#if tile.label}<span class="sr-only">{tile.label}</span>{/if}
 		<span class="min-w-0 grow">
 			<span class="flex items-baseline justify-between gap-3">
 				<span class="min-w-0 truncate font-bold">{subject}</span>

@@ -47,18 +47,16 @@ export function projectionStatements(
 	/** Whether the child is being added, which the history says of a choice set then. */
 	childAdded = false
 ) {
+	const families = JSON.stringify(rows.map((r) => r.family));
 	return [
-		db
-			.prepare(
-				'DELETE FROM photo_families WHERE child_id=? AND family_id NOT IN(SELECT value FROM json_each(?))'
-			)
-			.bind(child, JSON.stringify(rows.map((r) => r.family))),
 		// A card taken off the child takes its history of the child with it, even while the family stays.
-		db
-			.prepare(
-				'DELETE FROM photo_history WHERE child_id=? AND family_id NOT IN(SELECT value FROM json_each(?))'
-			)
-			.bind(child, JSON.stringify(rows.map((r) => r.family))),
+		...['photo_families', 'photo_history'].map((table) =>
+			db
+				.prepare(
+					`DELETE FROM ${table} WHERE child_id=? AND family_id NOT IN(SELECT value FROM json_each(?))`
+				)
+				.bind(child, families)
+		),
 		...rows.flatMap((r) =>
 			r.choice === undefined
 				? [

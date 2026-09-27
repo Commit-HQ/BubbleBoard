@@ -2,12 +2,11 @@
 	import { onMount } from 'svelte';
 	import type { ConsentRow } from '$lib/events/types';
 	import { messages, errorMessage, type Locale } from '$lib/i18n';
-	import Icon from '$lib/components/Icon.svelte';
 	import IconTile from '$lib/components/IconTile.svelte';
 	import ConsentHistory from './ConsentHistory.svelte';
 	import RadioCard from './RadioCard.svelte';
 	import { getApp, Task } from './state.svelte';
-	import { surface, alert, button } from './ui';
+	import { surface, alert } from './ui';
 
 	// Whether the families of a classroom may see a child's face in the photos of its events, decided by the
 	// family, one card for each of its children. The choice is encrypted with the family's own key, so only
@@ -20,8 +19,6 @@
 	let rows = $state<(ConsentRow & { name: string; share: boolean })[]>([]);
 	let loaded = $state(false);
 	let saved = $state(false);
-	/** The child whose history is open. */
-	let history = $state<string>();
 
 	async function load() {
 		rows = (await app.photoConsent()).map((row) => ({ ...row, name: row.name ?? t.child }));
@@ -62,13 +59,7 @@
 						onchange={() => save(row, value)}
 					/>
 				{/each}
-				<button
-					class="{button.quiet} -ml-3 justify-self-start text-sm"
-					type="button"
-					onclick={() => (history = row.child)}
-				>
-					<Icon name="clock" class="size-4" />{messages[locale].app.history.open}
-				</button>
+				<ConsentHistory {locale} child={row.child} />
 			</fieldset>
 		{/each}
 		{#if saved && !task.error}
@@ -76,6 +67,3 @@
 		{/if}
 	</div>
 </section>
-{#if history}
-	<ConsentHistory {locale} child={history} onclose={() => (history = undefined)} />
-{/if}

@@ -523,8 +523,6 @@ export const en = {
 			remove: 'Remove event',
 			removeHint: 'This event and its photos will no longer be available to families.',
 			edit: 'Edit',
-			edited: 'edited',
-			editedBy: (name: string) => `edited by ${name}`,
 			editTitle: 'Edit event',
 			save: 'Save changes',
 			open: 'Open gallery',
@@ -562,7 +560,6 @@ export const en = {
 			whole: 'No photos picked, so the whole event is reported.',
 			message: 'Your message to the teachers',
 			send: 'Send report',
-			cancel: 'Cancel',
 			// Where Report photos was, once this family has reported the event.
 			sent: 'You reported this event',
 			// Beside a report in the inbox, and above its conversation.

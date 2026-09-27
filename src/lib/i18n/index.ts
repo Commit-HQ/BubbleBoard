@@ -57,6 +57,12 @@ export function byline(locale: Locale, author: string | undefined, time: number,
 	return [author, formatDateTime(locale, time), edited].filter(Boolean).join(' · ');
 }
 
+/** A byline's note that a notice or event changed since it went up, by whom when a staff device knows. */
+export function editedNote(locale: Locale, editor: string | undefined) {
+	const t = messages[locale].app.notices;
+	return editor ? t.editedBy(editor) : t.edited;
+}
+
 /** A day on its own, such as an event's date, from its `YYYY-MM-DD` form (`app.date`). */
 export function formatDay(locale: Locale, iso: string) {
 	// Read as local time: `new Date('2026-09-20')` is UTC midnight, which is the day before in the west.

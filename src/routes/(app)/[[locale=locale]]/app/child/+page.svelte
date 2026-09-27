@@ -44,7 +44,6 @@
 	/** The child's face visibility as the consent records have it, loaded for the child this page shows. */
 	let sharing = $state<{ child: string; share: boolean }>();
 	let sharingSaved = $state(false);
-	let showHistory = $state(false);
 	const sharingTask = new Task();
 
 	$effect(() => {
@@ -274,31 +273,9 @@
 					{:else if sharingSaved}
 						<p class="font-semibold text-muted" role="status">{t.sharing.saved}</p>
 					{/if}
-					{@render historyButton()}
+					<ConsentHistory locale={data.locale} child={child.id} />
 				</section>
-			{:else}
-				{@render historyButton()}
-			{/if}
 
-			{#snippet historyButton()}
-				<button
-					class="{button.quiet} -ml-3 justify-self-start text-sm"
-					type="button"
-					onclick={() => (showHistory = true)}
-				>
-					<Icon name="clock" class="size-4" />{t.history.open}
-				</button>
-			{/snippet}
-
-			{#if showHistory}
-				<ConsentHistory
-					locale={data.locale}
-					child={child.id}
-					onclose={() => (showHistory = false)}
-				/>
-			{/if}
-
-			{#if manages}
 				<section class="grid gap-4 border-t border-ink/10 pt-6">
 					<div class="flex flex-wrap gap-2">
 						{#if otherClassrooms.length}
@@ -330,6 +307,8 @@
 						</div>
 					{/if}
 				</section>
+			{:else}
+				<ConsentHistory locale={data.locale} child={child.id} />
 			{/if}
 
 			{#if dialog}

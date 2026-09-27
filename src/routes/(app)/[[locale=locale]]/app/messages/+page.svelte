@@ -23,6 +23,7 @@
 		messageDate,
 		messageShortDate,
 		messageTime,
+		maxSubject,
 		mergeRecentMessages,
 		remainingMessages,
 		sendingLeft,
@@ -82,14 +83,14 @@
 	const families = $derived(
 		app.catalog.families.filter((item) => item.classrooms.includes(classroom))
 	);
+	/** The open conversation's last message, as loaded, or as the inbox has it. */
+	const last = $derived(rows.at(-1) ?? thread);
 	/** Whether the teachers wrote a conversation's last message, which is when a family answers a report. */
-	const teacherLast = $derived(byTeacher(rows.at(-1)?.author ?? thread?.author ?? ''));
+	const teacherLast = $derived(byTeacher(last?.author ?? ''));
 	/** Whether the open conversation is a report, which spends nothing and keeps no hours. */
 	const report = $derived(!creating && !!thread?.event);
 	/** Whether the next message spends an inquiry: a new one always does, an answer to a teacher never. */
-	const charged = $derived(
-		!staff && !report && (creating || chargesAllowance(rows.at(-1)?.author ?? thread?.author))
-	);
+	const charged = $derived(!staff && !report && (creating || chargesAllowance(last?.author)));
 	const remaining = $derived(policy ? remainingMessages(policy) : 0);
 	/** Minutes left in today's window, and whether it's short enough to say so in red. */
 	const left = $derived(policy && sendingLeft(policy, now));
@@ -98,26 +99,18 @@
 	 * the hours are closed: the teacher chose to write then.
 	 */
 	const anytime = $derived(
-		!staff &&
-			!report &&
-			!!thread &&
-			left === undefined &&
-			(rows.at(-1)?.afterHours ?? thread.afterHours) === 1
+		!staff && !report && !!thread && left === undefined && last?.afterHours === 1
 	);
 	const allowed = $derived(left !== undefined || anytime);
 	/**
 	 * What a teacher is told above the box she writes in, when the family's answer is ruled differently from
 	 * usual: outside the hours, the family may answer this message at any time; with messaging off, not at all.
 	 */
-	const staffNote = $derived(
-		staff && !report && policy
-			? !policy.enabled
-				? t.staffDisabled
-				: left === undefined
-					? t.staffAfterHours
-					: undefined
-			: undefined
-	);
+	const staffNote = $derived.by(() => {
+		if (!staff || report || !policy) return undefined;
+		if (!policy.enabled) return t.staffDisabled;
+		if (left === undefined) return t.staffAfterHours;
+	});
 	const closingIn = $derived(left !== undefined && left <= closingSoon ? left : undefined);
 	const canSend = $derived(
 		staff || (report ? teacherLast : allowed && (!charged || remaining > 0))
@@ -175,9 +168,7 @@
 		app.catalog.families.find((item) => item.id === id)?.name ?? t.parent;
 	/** The children the family has in this classroom, so a teacher sees whose parent is writing. */
 	function childrenOf(item: { classroom: string; family: string }) {
-		const names = app.catalog.children
-			.filter((child) => child.classroom === item.classroom && child.families.includes(item.family))
-			.map((child) => child.name);
+		const names = app.familyChildren(item.classroom, item.family).map((child) => child.name);
 		return names.length ? t.children(names) : undefined;
 	}
 	/** The line under a conversation's subject: who a teacher is talking to, and where. */
@@ -199,10 +190,11 @@
 		if (item.event) return { kind: 'report' };
 		// A closed inquiry waits for nobody, whoever wrote last.
 		const fromFamily = !byTeacher(item.author) && !item.closed;
-		if (!staff) return { kind: item.closed ? 'closed' : fromFamily ? 'waiting' : 'answered' };
-		const children = app.catalog.children.filter(
-			(child) => child.classroom === item.classroom && child.families.includes(item.family)
-		);
+		if (!staff) {
+			if (item.closed) return { kind: 'closed' };
+			return fromFamily ? { kind: 'waiting', label: t.waitingForTeachers } : { kind: 'answered' };
+		}
+		const children = app.familyChildren(item.classroom, item.family);
 		return {
 			kind: 'children',
 			letters:
@@ -211,7 +203,8 @@
 					.map((child) => initialOf(child.name))
 					.join('') || initialOf(familyName(item.family)),
 			tone: toneOf(children[0]?.id ?? item.family),
-			waiting: fromFamily
+			waiting: fromFamily,
+			label: fromFamily ? t.waitingForYou : undefined
 		};
 	}
 	/**
@@ -440,18 +433,16 @@
 	}
 </script>
 
+{#snippet staffNoteLine(note: string, look = '')}
+	<p class="flex items-start gap-2 text-sm text-muted {look}">
+		<Icon name="clock" class="mt-0.5 size-4 shrink-0" />{note}
+	</p>
+{/snippet}
+
 {#snippet row(item: Conversation)}
-	{@const tile = tileOf(item)}
 	<InquiryLink
 		href={appPath(data.locale, 'messages', { id: item.id })}
-		{tile}
-		tileLabel={tile.kind === 'children'
-			? tile.waiting
-				? t.waitingForYou
-				: undefined
-			: tile.kind === 'waiting'
-				? t.waitingForTeachers
-				: undefined}
+		tile={tileOf(item)}
 		subject={item.subject}
 		preview={previewOf(item)}
 		detail={[about(item, pickClassroom), item.closed ? t.closedStatus : undefined]
@@ -550,9 +541,7 @@
 						{:else if report && !staff && !canSend}
 							<p class="rounded-3xl frosted px-4 py-2 text-sm text-muted">{r.waiting}</p>
 						{:else if staffNote}
-							<p class="flex items-start gap-2 rounded-3xl frosted px-4 py-2 text-sm text-muted">
-								<Icon name="clock" class="mt-0.5 size-4 shrink-0" />{staffNote}
-							</p>
+							{@render staffNoteLine(staffNote, 'rounded-3xl frosted px-4 py-2')}
 						{:else if !staff && !report && policy}
 							<MessagePolicy
 								locale={data.locale}
@@ -630,16 +619,14 @@
 				{#if !staff && policy}
 					<MessagePolicy locale={data.locale} {policy} charged {allowed} closing={closingIn} full />
 				{:else if staffNote}
-					<p class="flex items-start gap-2 text-sm text-muted">
-						<Icon name="clock" class="mt-0.5 size-4 shrink-0" />{staffNote}
-					</p>
+					{@render staffNoteLine(staffNote)}
 				{/if}
 				<!-- Nothing to write in while nothing can be sent, but the classroom above stays open: it's what
 				decides which hours and which allowance apply. -->
 				<fieldset class="grid gap-5" disabled={!!classroom && !canSend}>
 					<label class={field.label}>
 						<span class={field.name}>{t.subject}</span>
-						<input class={field.input} required maxlength="120" bind:value={subject} />
+						<input class={field.input} required maxlength={maxSubject} bind:value={subject} />
 					</label>
 					<label class={field.label}>
 						<span class={field.name}>{t.body}</span>

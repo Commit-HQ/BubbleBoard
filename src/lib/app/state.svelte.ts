@@ -776,6 +776,18 @@ export class App {
 		};
 	}
 
+	/** On a staff device, a family's children in one classroom, which say whose parent is writing. */
+	familyChildren(classroom: string, family: string) {
+		return this.catalog.children.filter(
+			(child) => child.classroom === classroom && child.families.includes(family)
+		);
+	}
+
+	/** On a staff device, the photos an event's open reports name, which its gallery and editor flag. */
+	reportedPhotos(event: string) {
+		return new Set(this.openReportsOf(event).flatMap((report) => report.photos));
+	}
+
 	/** This family's report of an event, once it has sent one: a family reports an event once. */
 	reportOf(event: string) {
 		return this.conversations.find((item) => item.event === event);
@@ -1333,8 +1345,7 @@ export class App {
 		void this.loadMessages();
 		void this.loadMeetings();
 		void this.#keepNotifications(!refresh);
-		if (!refresh) void this.#readHiddenCards();
-		if (!refresh) void this.#readHiddenPosts();
+		if (!refresh) void this.#readHidden();
 		if (this.status === 'family') void this.loadDevices().catch(() => {});
 	}
 
@@ -1356,22 +1367,22 @@ export class App {
 	}
 
 	/** Reads which of home's cards this device put away. Without storage, every one shows. */
-	async #readHiddenCards() {
+	/** Reads what this device put away: home's cards, and the notices and events hidden from the board. */
+	async #readHidden() {
 		const version = this.#connectionVersion;
-		const hidden = await hiddenHomeCards().catch(() => []);
-		if (version === this.#connectionVersion) this.hiddenCards = hidden;
+		const [cards, posts] = await Promise.all([
+			hiddenHomeCards().catch(() => []),
+			hiddenPosts().catch(() => [])
+		]);
+		if (version !== this.#connectionVersion) return;
+		this.hiddenCards = cards;
+		this.hiddenPosts = posts;
 	}
 
 	/** Puts one of home's cards away on this device. Without storage, it comes back next time. */
 	hideCard(card: HomeCard) {
 		this.hiddenCards = [...this.hiddenCards, card];
 		keepHiddenHomeCards(this.hiddenCards).catch(() => {});
-	}
-
-	async #readHiddenPosts() {
-		const version = this.#connectionVersion;
-		const hidden = await hiddenPosts().catch(() => []);
-		if (version === this.#connectionVersion) this.hiddenPosts = hidden;
 	}
 
 	/** Whether this device hid a notice or event, and a notice hasn't been announced again since. */
@@ -1394,6 +1405,9 @@ export class App {
 		if (version !== this.#connectionVersion) return;
 		this.catalog = catalog;
 		this.me = catalog.teachers.find((candidate) => candidate.id === teacher);
+		// Every change to children and their consent comes back through here, so faces are read again.
+		this.#facesRead.clear();
+		this.#sharedFaces = {};
 	}
 
 	/**
@@ -1803,6 +1817,29 @@ export class App {
 		);
 		const children = this.catalog.children.filter((c) => c.classroom === classroom);
 		return { rows, shared: await sharing(children, rows, (f) => this.messageKey(f)) };
+	}
+
+	/** Each classroom's children whose face its other families may see, as `sharedFaces` last read them. */
+	#sharedFaces = $state.raw<Record<string, Set<string>>>({});
+	#facesRead = new Map<string, Promise<void>>();
+
+	/**
+	 * A classroom's children whose face its other families may see, which staff pages show beside their
+	 * names: read once, and again after the catalog loads. Nothing until it's read, or when the consent
+	 * records can't be read. Only a hint: publishing reads consent again and is refused if it changed.
+	 */
+	sharedFaces(classroom: string) {
+		if (!this.#facesRead.has(classroom)) {
+			const reading: Promise<void> = this.photoSharing(classroom).then(
+				({ shared }) => {
+					if (this.#facesRead.get(classroom) === reading)
+						this.#sharedFaces = { ...this.#sharedFaces, [classroom]: shared };
+				},
+				() => {}
+			);
+			this.#facesRead.set(classroom, reading);
+		}
+		return this.#sharedFaces[classroom];
 	}
 
 	/**

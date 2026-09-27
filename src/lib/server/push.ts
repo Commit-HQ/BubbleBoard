@@ -448,8 +448,7 @@ export async function conversationRecipients(
 	db: D1Database,
 	conversation: string,
 	poster = '',
-	now = Date.now(),
-	family = true
+	{ now = Date.now(), family = true } = {}
 ) {
 	const { results } = await db
 		.prepare(
@@ -472,13 +471,9 @@ export async function announceConversation(
 ) {
 	const env = event.platform?.env;
 	if (!env?.NOTIFICATIONS) return;
-	const devices = await conversationRecipients(
-		env.DB,
-		conversation,
-		poster,
-		Date.now(),
-		kind === 'message'
-	);
+	const devices = await conversationRecipients(env.DB, conversation, poster, {
+		family: kind === 'message'
+	});
 	await queue(event, env, devices, kind, conversation);
 }
 

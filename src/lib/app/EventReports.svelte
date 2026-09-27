@@ -1,11 +1,11 @@
 <script module lang="ts">
-	import { messages as dictionaries, type Locale as Language } from '$lib/i18n';
+	import { messages, type Locale } from '$lib/i18n';
 	/**
 	 * Which photos a report names, by the numbers on the gallery's squares (`order` is the gallery's photo IDs
 	 * in order), or the whole event, and how many of them have been changed or taken down since.
 	 */
-	export function namedPhotos(locale: Language, photos: string[], order: string[]) {
-		const r = dictionaries[locale].app.reports;
+	export function namedPhotos(locale: Locale, photos: string[], order: string[]) {
+		const r = messages[locale].app.reports;
 		if (!photos.length) return r.wholeEvent;
 		const numbers = photos.map((photo) => order.indexOf(photo) + 1).filter((at) => at > 0);
 		const gone = photos.length - numbers.length;
@@ -16,7 +16,6 @@
 
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
-	import { messages, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
 	import { getApp } from './state.svelte';
 	import { button, surface } from './ui';
@@ -33,9 +32,7 @@
 
 	function sender(family: string, classroom: string) {
 		const name = app.catalog.families.find((item) => item.id === family)?.name ?? m.parent;
-		const children = app.catalog.children
-			.filter((child) => child.classroom === classroom && child.families.includes(family))
-			.map((child) => child.name);
+		const children = app.familyChildren(classroom, family).map((child) => child.name);
 		return children.length ? `${name} · ${m.children(children)}` : name;
 	}
 </script>
