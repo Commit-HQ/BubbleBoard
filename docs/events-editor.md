@@ -78,7 +78,7 @@ The audience list holds the safe base, “All covers”, and the event's familie
 
 Publication does not require manually checking every possible family. It requires reviewed photos, valid permissions and final gallery review. Teachers can return to editing to fix a photo; changes require its review again.
 
-The final action is **“Publish event”**, beside the way back to the photos, under a line repeating the title, date and duration entered in the first step. Preparing and uploading show a bar and a count; the event appears only when the entire publication is ready. If parent settings changed, preserve manual labels, prepare permissions again and request another review of the changed result. Do not send the teacher back to the beginning.
+Under **Preview as**, **Face visibility** lists every child of the classroom as Face visible or Face covered, from the consent the photos were just prepared with, so the teacher can check it before publishing; a change that adds no photos prepares nothing and shows what the editor read when it opened. The final action is **“Publish event”**, beside the way back to the photos, under a line repeating the title, date and duration entered in the first step. Preparing and uploading show a bar and a count; the event appears only when the entire publication is ready. If parent settings changed, preserve manual labels, prepare permissions again and request another review of the changed result. Do not send the teacher back to the beginning.
 
 ## States and recovery
 

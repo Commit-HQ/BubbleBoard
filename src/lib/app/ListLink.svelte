@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Icon, { type IconName } from '$lib/components/Icon.svelte';
 	import IconTile from '$lib/components/IconTile.svelte';
-	import { listRow } from './ui';
+	import { listRow, tag as tagStyle } from './ui';
 
 	// A record in a list, linking to its page. An icon sets apart a record unlike the others, and a tag says
 	// one short thing about it at a glance, such as whether a child's face is covered.
@@ -28,12 +28,7 @@
 			<span class="block text-sm text-muted">{detail}</span>
 		</span>
 		{#if tag}
-			<span
-				class="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold {tag.tone ===
-				'good'
-					? 'bg-green-50 text-green-800'
-					: 'bg-ink/5 text-muted'}"
-			>
+			<span class={tag.tone === 'good' ? tagStyle.good : tagStyle.plain}>
 				<Icon name={tag.icon} class="size-3.5" />{tag.label}
 			</span>
 		{/if}

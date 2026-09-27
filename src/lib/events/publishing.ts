@@ -7,5 +7,7 @@ export type EventDraft = {
 	catalog: number;
 	consent: number;
 	classroom: string;
+	/** The classroom's children whose face its other families see in these photos, as consent stood then. */
+	shared: Set<string>;
 	files: PreparedPhoto[];
 };

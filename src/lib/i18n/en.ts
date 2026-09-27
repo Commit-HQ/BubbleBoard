@@ -501,6 +501,9 @@ export const en = {
 			preparing: 'Preparing encrypted photos',
 			uploading: 'Uploading photos',
 			previewAs: 'Preview as',
+			faceVisibility: 'Face visibility',
+			faceVisibilityHint:
+				'Every child of the classroom, as their families’ consent stood when these photos were prepared. Publishing checks it again.',
 			base: 'All covers',
 			consentTitle: 'My child’s face visibility',
 			consentHint:

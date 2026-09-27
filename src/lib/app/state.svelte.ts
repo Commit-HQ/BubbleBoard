@@ -420,6 +420,7 @@ export class App {
 			catalog: snapshot.catalog,
 			consent: snapshot.revision,
 			classroom,
+			shared,
 			files
 		};
 	}

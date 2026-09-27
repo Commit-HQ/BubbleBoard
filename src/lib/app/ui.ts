@@ -95,6 +95,14 @@ export const surface = 'rounded-4xl glass p-6 sm:p-8';
 export const listRow =
 	'flex items-center gap-4 rounded-3xl glass px-5 py-4 transition hover:bg-white/75';
 
+/** A small pill saying one thing about a record at a glance, such as whether a child's face is covered. */
+const tagLook =
+	'inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold';
+export const tag = {
+	plain: `${tagLook} bg-ink/5 text-muted`,
+	good: `${tagLook} bg-green-50 text-green-800`
+};
+
 /** A dialog in the middle of the screen, over the dimmed page. Each sets its own padding. */
 export const modal =
 	'm-auto w-[calc(100%-2rem)] max-w-md rounded-4xl bg-white text-ink shadow-2xl shadow-indigo-950/25 backdrop:bg-ink/30';

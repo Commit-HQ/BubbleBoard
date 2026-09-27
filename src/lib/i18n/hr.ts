@@ -484,6 +484,9 @@ export const hr = {
 			preparing: 'Pripremamo šifrirane fotografije',
 			uploading: 'Šaljemo fotografije',
 			previewAs: 'Pregled kao',
+			faceVisibility: 'Vidljivost lica',
+			faceVisibilityHint:
+				'Sva djeca skupine, prema privolama njihovih obitelji kakve su bile kad su se fotografije pripremale. Objava ih provjerava ponovno.',
 			base: 'Svi pokrovi',
 			consentTitle: 'Vidljivost lica mog djeteta',
 			consentHint:

@@ -42,6 +42,7 @@
 	} from '$lib/events/types';
 	import { day, type NoticeDocument } from '$lib/notices';
 	import type { EventDraft } from '$lib/events/publishing';
+	import FaceVisibility from './FaceVisibility.svelte';
 	import { freshStickers, type Sticker } from '$lib/events/stickers';
 	import { appPath } from '$lib/paths';
 	import { CodedError, errorCode } from '$lib/errors';
@@ -133,6 +134,8 @@
 	let details = $state<ReturnType<typeof EventDetails>>();
 	let editorReady = $state(false);
 	let draft = $state.raw<EventDraft>();
+	/** Whether the review's list of every child's face visibility is open. */
+	let showVisibility = $state(false);
 	const task = new Task();
 	let progress = $state(0),
 		sending = $state(false);
@@ -1231,6 +1234,26 @@
 						{/each}
 					</select>
 				</label>
+			{/if}
+			<!-- The consent the photos were just prepared with; a change that adds none has only the editor's. -->
+			{@const visibility =
+				draft?.shared ?? (shared?.classroom === classroom ? shared.children : undefined)}
+			{#if visibility}
+				<button
+					type="button"
+					class="{button.quiet} -ml-3 justify-self-start text-sm"
+					onclick={() => (showVisibility = true)}
+				>
+					<Icon name="eye" class="size-4" />{e.faceVisibility}
+				</button>
+				{#if showVisibility}
+					<FaceVisibility
+						{locale}
+						{children}
+						shared={visibility}
+						onclose={() => (showVisibility = false)}
+					/>
+				{/if}
 			{/if}
 
 			{#if previewsFailed}<p class={alert} role="alert">{t.previewFailed}</p>{/if}
