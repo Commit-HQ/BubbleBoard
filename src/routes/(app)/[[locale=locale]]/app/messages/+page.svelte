@@ -197,8 +197,9 @@
 	 */
 	function tileOf(item: Conversation): Tile {
 		if (item.event) return { kind: 'report' };
-		const fromFamily = !byTeacher(item.author);
-		if (!staff) return { kind: fromFamily ? 'waiting' : 'answered' };
+		// A closed inquiry waits for nobody, whoever wrote last.
+		const fromFamily = !byTeacher(item.author) && !item.closed;
+		if (!staff) return { kind: item.closed ? 'closed' : fromFamily ? 'waiting' : 'answered' };
 		const children = app.catalog.children.filter(
 			(child) => child.classroom === item.classroom && child.families.includes(item.family)
 		);

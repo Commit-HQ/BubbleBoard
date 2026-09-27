@@ -3,14 +3,16 @@
 	 * What a conversation's tile shows. A family's report of an event's photos has a red flag. On a staff
 	 * device, an inquiry shows the initials of the family's children, in a colour that stays the child's, with
 	 * a dot while the family waits for an answer. On a family device it shows whose turn it is: a clock while
-	 * the family's own message waits for the teachers, and a message once a teacher has written. Names would
-	 * say little there, since teachers often go by "Teta Martina": the preview line carries the name.
+	 * the family's own message waits for the teachers, and a message once a teacher has written. A closed
+	 * inquiry waits for nobody: it has a tick, and no dot on a staff device. Names would say little there,
+	 * since teachers often go by "Teta Martina": the preview line carries the name.
 	 */
 	export type Tile =
 		| { kind: 'report' }
 		| { kind: 'children'; letters: string; tone: number; waiting: boolean }
 		| { kind: 'waiting' }
-		| { kind: 'answered' };
+		| { kind: 'answered' }
+		| { kind: 'closed' };
 	/** Soft colours a child's tile takes, chosen by the child, so the same child looks the same everywhere. */
 	const tones = [
 		'bg-sky-100 text-sky-900',
@@ -66,7 +68,8 @@
 			class="{box} {{
 				report: 'bg-red-50 text-red-700 ring-1 ring-red-200',
 				children: `text-lg font-bold ${tile.kind === 'children' ? tones[tile.tone] : ''}`,
-				waiting: 'bg-white/80 text-muted ring-1 ring-ink/10',
+				waiting: 'bg-amber-100 text-amber-900',
+				closed: 'bg-emerald-100 text-emerald-800',
 				answered: 'bg-sunrise text-white'
 			}[tile.kind]}"
 			aria-hidden="true"
@@ -81,6 +84,8 @@
 				{/if}
 			{:else if tile.kind === 'waiting'}
 				<Icon name="clock" class="size-5" />
+			{:else if tile.kind === 'closed'}
+				<Icon name="check" class="size-5" />
 			{:else}
 				<Icon name="message" class="size-5" />
 			{/if}
