@@ -50,6 +50,7 @@ import {
 	openMessage,
 	sealMessage,
 	sealSubject,
+	fitSubject,
 	type Conversation,
 	type Inbox,
 	type MessageContent,
@@ -629,14 +630,9 @@ export class App {
 			this.#keepPictures();
 		};
 	}
-	/**
-	 * Whether this device may change or delete an event: its author's own, any for a head, and for a group
-	 * lead any in a classroom she runs.
-	 */
+	/** Whether this device may change or delete an event: any in a classroom it teaches, as `canChange` says. */
 	canChangeEvent(event: OpenEvent) {
-		return (
-			this.status === 'staff' && (event.teacher === this.me?.id || this.manages(event.classroom))
-		);
+		return this.status === 'staff' && this.#teaches(event.classroom);
 	}
 	async deleteEvent(event: OpenEvent) {
 		await this.#signedIn(() => request('DELETE', `/api/events/${event.id}`));
@@ -736,15 +732,17 @@ export class App {
 	}
 
 	/**
-	 * Seals a message for a conversation, and the subject too when it starts one. The sealed payload is
-	 * handed back so a send that failed can go again as the same message rather than a second one.
+	 * Seals a message for a conversation, and the subject too when it starts one. A family's report of an
+	 * event's photos names the event beside it and seals the photos picked with the subject. The sealed
+	 * payload is handed back so a send that failed can go again as the same message rather than a second one.
 	 */
 	async sealFor(
 		classroom: string,
 		family: string,
 		conversation: string,
 		content: MessageContent,
-		subject?: string
+		subject?: string,
+		report?: { event: string; photos: string[] }
 	): Promise<SealedMessage> {
 		const key = await this.messageKey(family);
 		const message = createId();
@@ -769,12 +767,41 @@ export class App {
 							id: conversation,
 							classroom,
 							family,
-							title: await sealSubject(subject, key, classroom, conversation),
+							title: await sealSubject(subject, key, classroom, conversation, report?.photos),
 							message,
 							content: sealed,
-							files: named
+							files: named,
+							...(report ? { event: report.event } : {})
 						}
 		};
+	}
+
+	/** This family's report of an event, once it has sent one: a family reports an event once. */
+	reportOf(event: string) {
+		return this.conversations.find((item) => item.event === event);
+	}
+
+	/**
+	 * The reports of an event that are still open, which a staff device sees for every family of the
+	 * classroom: closing a report is how teachers say it's dealt with, so its flags go with it.
+	 */
+	openReportsOf(event: string) {
+		return this.conversations.filter((item) => item.event === event && !item.closed);
+	}
+
+	/**
+	 * Seals a family's report of an event's photos: its words, under the event's title, which is what the
+	 * teachers see it as in their inbox, with the photos it picked, if any.
+	 */
+	sealReport(event: OpenEvent, text: string, photos: string[]) {
+		return this.sealFor(
+			event.classroom,
+			this.messageFamily ?? '',
+			createId(),
+			{ text, name: '' },
+			fitSubject(event.value.title),
+			{ event: event.id, photos }
+		);
 	}
 
 	/**
@@ -1895,16 +1922,33 @@ export class App {
 	}
 
 	/**
-	 * Whether this device may change a notice: its author's own, any for a head, and for a group lead one
-	 * that goes only to classrooms she runs, so she never reaches a classroom outside her own. The server
-	 * says whether it goes elsewhere, since the device only gets the notice's keys for its own classrooms.
+	 * Whether this device may change a notice: its author's own, and any that goes only to classrooms it
+	 * teaches, since a group's teachers share its board, so nobody reaches a classroom outside their own. The
+	 * server says whether it goes elsewhere, since the device only gets the notice's keys for its own
+	 * classrooms. A head teaches every classroom here.
 	 */
 	canChange(notice: Notice) {
 		return (
 			this.status === 'staff' &&
 			(notice.teacher === this.me?.id ||
-				(!notice.elsewhere && notice.classrooms.every((classroom) => this.manages(classroom))))
+				(!notice.elsewhere && notice.classrooms.every((classroom) => this.#teaches(classroom))))
 		);
+	}
+
+	/** Whether a staff device holds a classroom: the head every one, anyone else those she's assigned to. */
+	#teaches(classroom: string) {
+		return this.catalog.classrooms.some((item) => item.id === classroom);
+	}
+
+	/**
+	 * Who changed a notice or an event since it went up, by name, for staff: the teacher who did, unless it
+	 * was its author, whose name is already on it. Families can't read the staff catalog and get nothing, and
+	 * so does anyone for a change made by the recovery card or a teacher since removed.
+	 */
+	editorOf(record: { teacher: string | null; editedBy: string | null }) {
+		if (this.status !== 'staff' || !record.editedBy || record.editedBy === record.teacher) return;
+		const editor = this.catalog.teachers.find((teacher) => teacher.id === record.editedBy);
+		return editor?.recovery ? undefined : editor?.name;
 	}
 
 	/** Whether this device's family marked a notice as seen. */

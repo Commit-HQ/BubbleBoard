@@ -8,7 +8,8 @@ export const notificationText: Record<PushKind, string> = {
 	slots: 'Novi termini za razgovore',
 	booking: 'Promjena termina razgovora',
 	photos: 'Nove fotografije iz vrtića',
-	corkboard: 'Nova fotografija oglasne ploče'
+	corkboard: 'Nova fotografija oglasne ploče',
+	report: 'Roditelj prijavljuje fotografije'
 };
 
 export const hr = {
@@ -152,7 +153,7 @@ export const hr = {
 					},
 					{
 						q: 'Što ako promijenim privolu, a fotografije su već objavljene?',
-						a: 'Nova privola vrijedi za fotografije objavljene od tada. Već objavljene fotografije ostaju kakve jesu. Ako želite da neka nestane, zamolite odgojiteljicu da je ukloni. Tko ju je već spremio, ima svoju kopiju.'
+						a: 'Nova privola vrijedi za fotografije objavljene od tada. Već objavljene fotografije ostaju kakve jesu. Ako želite da neka nestane, otvorite događaj i dodirnite Prijavi fotografije. Odgojiteljice vide na koje fotografije mislite i mogu ih ukloniti. Tko je fotografiju već spremio, ima svoju kopiju.'
 					},
 					{
 						q: 'U povezanim uređajima vidim uređaj koji ne poznajem. Što sad?',
@@ -177,7 +178,7 @@ export const hr = {
 					},
 					{
 						q: 'Roditelji kažu da ne mogu slati upite. Zašto?',
-						a: 'Poruke se uključuju za svaku skupinu posebno. U skupini, pod „Poruke roditelja”, voditeljica skupine ili BubbleBoard administrator uključi slanje, odredi broj upita mjesečno i sate kad roditelji smiju pisati. Dok se ne uključi, roditelji ne mogu slati poruke, ni odgovarati na vaše. Vi im možete pisati uvijek.'
+						a: 'Poruke se uključuju za svaku skupinu posebno. U skupini, pod „Poruke roditelja”, voditeljica skupine ili BubbleBoard administrator uključi slanje, odredi broj upita mjesečno i sate kad roditelji smiju pisati. Dok se ne uključi, roditelji ne mogu slati poruke, ni odgovarati na vaše. Vi im možete pisati uvijek. Iznimka je prijava fotografija: roditelj uvijek može prijaviti fotografije događaja i ondje vam odgovarati.'
 					},
 					{
 						q: 'Čemu služi „Ostavi prekriveno”?',
@@ -185,7 +186,7 @@ export const hr = {
 					},
 					{
 						q: 'Roditelj je promijenio privolu nakon objave. Što se događa?',
-						a: 'Ništa se ne mijenja samo od sebe. Objavljena galerija ostaje kakva jest, a nova privola vrijedi za sljedeće objave. Ako roditelj želi da neka fotografija nestane, uklonite je iz galerije.'
+						a: 'Ništa se ne mijenja samo od sebe. Objavljena galerija ostaje kakva jest, a nova privola vrijedi za sljedeće objave. Ako roditelj želi da neka fotografija nestane, može je prijaviti iz galerije, a vi je ondje uklonite.'
 					},
 					{
 						q: 'Izgubila sam svoj QR kod. Što sad?',
@@ -197,7 +198,7 @@ export const hr = {
 					},
 					{
 						q: 'Što ja vidim, a što voditeljica i administrator?',
-						a: 'Vi vidite djecu, obitelji i objave svojih skupina. Voditeljica skupine u svojim skupinama još dodaje djecu i obiteljske QR kodove i uključuje poruke roditelja. BubbleBoard administrator vidi sve skupine, dodaje odgojiteljice i skupine i piše stranice pod Info.'
+						a: 'Vi vidite djecu, obitelji i objave svojih skupina i možete promijeniti ili ukloniti svaku obavijest ili događaj koji je samo za njih. Voditeljica skupine u svojim skupinama još dodaje djecu i obiteljske QR kodove i uključuje poruke roditelja. BubbleBoard administrator vidi sve skupine, dodaje odgojiteljice i skupine i piše stranice pod Info.'
 					}
 				]
 			},
@@ -427,7 +428,7 @@ export const hr = {
 		points: [
 			{
 				title: 'Fotografije događaja',
-				copy: 'Lica se traže i označavaju na uređaju odgojiteljice. Šalje se šifrirana prekrivena fotografija s odvojenim šifriranim isječcima, bez izvornika. Nedovršeni događaj ostaje samo na uređaju odgojiteljice dok ga ne objavi ili odbaci i briše se nakon 7 dana. Obitelji vide vlastitu djecu i lica za koja je dopušteno dijeljenje. Vrtić može unijeti ono što piše u vašoj izjavi o privoli, a vi to u aplikaciji možete promijeniti u svakom trenutku. Dopuštenja su šifrirana i promjene vrijede samo za buduće objave. Aplikacija čuva zadnjih 50 promjena za svako dijete i obiteljski QR kod, s vremenom i time tko ih je napravio, kako biste ih vi i vrtić mogli pogledati; brišu se kad se ukloni dijete ili QR kod. Događaji i njihove fotografije dostupni su od 1 do 90 dana prema izboru odgojiteljice, zatim se brišu. Nema skrivene arhive za godišnji album.'
+				copy: 'Lica se traže i označavaju na uređaju odgojiteljice. Šalje se šifrirana prekrivena fotografija s odvojenim šifriranim isječcima, bez izvornika. Nedovršeni događaj ostaje samo na uređaju odgojiteljice dok ga ne objavi ili odbaci i briše se nakon 7 dana. Obitelji vide vlastitu djecu i lica za koja je dopušteno dijeljenje. Vrtić može unijeti ono što piše u vašoj izjavi o privoli, a vi to u aplikaciji možete promijeniti u svakom trenutku. Dopuštenja su šifrirana i promjene vrijede samo za buduće objave. Aplikacija čuva zadnjih 50 promjena za svako dijete i obiteljski QR kod, s vremenom i time tko ih je napravio, kako biste ih vi i vrtić mogli pogledati; brišu se kad se ukloni dijete ili QR kod. Događaji i njihove fotografije dostupni su od 1 do 90 dana prema izboru odgojiteljice, zatim se brišu. Nema skrivene arhive za godišnji album. Ako prijavite fotografije događaja, poslužitelj zna da je vaša obitelj prijavila taj događaj, a koje ste fotografije prijavili i zašto ostaje šifrirano, kao i svaka poruka.'
 			},
 			{
 				title: 'Što se čuva',
@@ -506,6 +507,7 @@ export const hr = {
 			removeHint: 'Događaj i njegove fotografije više neće biti dostupni obiteljima.',
 			edit: 'Uredi',
 			edited: 'uređeno',
+			editedBy: (name: string) => `uređeno: ${name}`,
 			editTitle: 'Uredi događaj',
 			save: 'Spremi promjene',
 			open: 'Otvori galeriju',
@@ -531,6 +533,34 @@ export const hr = {
 			untilShort: (date: string) => `Fotografije ostaju ovdje do ${date}.`,
 			stickersExplained:
 				'Naljepnica prekriva djecu čije obitelji njihove fotografije zadržavaju za sebe. Za svoje dijete to birate u postavkama.'
+		},
+		reports: {
+			start: 'Prijavi fotografije',
+			hint: 'Odaberite fotografije gore. Odgojiteljice će vidjeti vašu poruku i mogu ih ukloniti.',
+			picked: (n: number) => `Odabrano: ${count(n, 'fotografija', 'fotografije', 'fotografija')}`,
+			whole: 'Niste odabrali nijednu fotografiju, pa prijavljujete cijeli događaj.',
+			message: 'Vaša poruka odgojiteljicama',
+			send: 'Pošalji prijavu',
+			cancel: 'Odustani',
+			sent: 'Prijavili ste ovaj događaj',
+			label: 'Prijava fotografija',
+			inbox: 'Prijave fotografija',
+			wholeEvent: 'Prijavljen je cijeli događaj',
+			gone: (n: number, total: number) =>
+				n === total
+					? 'Sve su u međuvremenu promijenjene ili uklonjene.'
+					: `U međuvremenu promijenjeno ili uklonjeno: ${n}.`,
+			eventGone: 'Ovaj događaj više nije objavljen.',
+			open: 'Otvori događaj',
+			title: 'Prijave roditelja',
+			numbers: (numbers: number[]) =>
+				numbers.length === 1
+					? `Fotografija ${numbers[0]}`
+					: `Fotografije ${list(numbers.map(String))}`,
+			openReport: 'Otvori prijavu',
+			flagged: 'Prijavljeno',
+			marked: 'Zastavica označava prijavljene fotografije.',
+			waiting: 'Odgojiteljice će odgovoriti ovdje. Ponovno možete pisati kad odgovore.'
 		},
 		eventEditor: {
 			steps: ['Događaj', 'Fotografije', 'Pregled'],
@@ -1074,6 +1104,7 @@ export const hr = {
 			all: 'Sve skupine',
 			unreadable: 'Neke se obavijesti nisu otvorile na ovom uređaju.',
 			edited: 'uređeno',
+			editedBy: (name: string) => `uređeno: ${name}`,
 			edit: 'Uredi',
 			delete: 'Obriši',
 			deleteTitle: 'Obrisati ovu obavijest?',
@@ -1271,6 +1302,7 @@ export const hr = {
 				'Tekst i priložene datoteke brišu se i kod obitelji, a na njihovu mjestu ostaje „Poruka je izbrisana”. Ovo se ne može poništiti.',
 			deletedMessage: 'Poruka je izbrisana',
 			empty: 'Nema upita koji odgovaraju odabiru.',
+			inquiries: 'Upiti',
 			emptyTitle: 'Još nema poruka',
 			emptyCopy: 'Ovdje se vode privatni razgovori s odgojiteljicama vaše skupine.',
 			emptyCopyStaff: 'Ovdje se vode privatni razgovori s obiteljima vaših skupina.',
@@ -1336,6 +1368,8 @@ export const hr = {
 			'message-answered': 'Na ovu je poruku već odgovoreno pa se više ne može promijeniti.',
 			'messages-schedule': 'Vrijeme „Do” mora biti nakon vremena „Od”.',
 			'messages-closed': 'Ovaj je upit završen. Osvježite popis za trenutačno stanje.',
+			reported: 'Ovaj ste događaj već prijavili. Prijava je u Porukama.',
+			'report-waiting': 'Odgojiteljice još nisu odgovorile. Ponovno možete pisati kad odgovore.',
 			'not-found': 'Ovo više ne postoji.',
 			forbidden: 'Nemate pristup ovome.',
 			'empty-notice': 'Najprije napišite obavijest.',

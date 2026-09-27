@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { untrack } from 'svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import { nextWaiting } from '$lib/events/gallery';
@@ -9,21 +10,40 @@
 	import { appPath } from '$lib/paths';
 	import EventActions from './EventActions.svelte';
 	import EventHeading from './EventHeading.svelte';
+	import EventReports from './EventReports.svelte';
 	import PictureViewer from './PictureViewer.svelte';
-	import { getApp, Task, type Picture } from './state.svelte';
+	import { getApp, Task, type Picture, type SealedMessage } from './state.svelte';
 	import { alert, button, field, surface } from './ui';
 
 	// An event's gallery, as a family or a teacher opens it from the board: what it was and when, then every
 	// photo as a small square. Each one is decrypted and put together on this device for whoever holds this
 	// card, so they fill in one after another rather than arriving as a page of pictures; the server has no
 	// thumbnail to send and never learns whose child is in which photo. A tap opens a photo on the whole
-	// screen, where a swipe moves through the gallery and the teacher's words show underneath.
+	// screen, where a swipe moves through the gallery and the teacher's words show underneath. A family can
+	// report the event once, picking the photos it means, and staff see every open report above the photos,
+	// with a flag on each photo one names.
 	let { locale, event, onremoved }: { locale: Locale; event: OpenEvent; onremoved: () => void } =
 		$props();
 	const app = getApp();
 	const task = new Task();
+	const sending = new Task();
 	const t = $derived(messages[locale].app.events);
 	const p = $derived(messages[locale].app.eventEditor);
+	const r = $derived(messages[locale].app.reports);
+	/** This family's report of the event, once it has sent one. */
+	const report = $derived(app.status === 'family' ? app.reportOf(event.id) : undefined);
+	/** For staff, the photos the event's open reports name. */
+	const flagged = $derived(
+		new Set(
+			app.status === 'staff' ? app.openReportsOf(event.id).flatMap((item) => item.photos) : []
+		)
+	);
+	/** While a family writes its report, a tap on a photo picks it rather than opening it. */
+	let reporting = $state(false);
+	let picked = $state.raw<string[]>([]);
+	let reportText = $state('');
+	/** The report as it was sealed, so a send that failed goes again as the same report. */
+	let pending: { fingerprint: string; sealed: SealedMessage } | undefined;
 	/** A photo is put together on a canvas that iPhones and iPads before iOS 16.4 don't have. */
 	const tooOld = typeof OffscreenCanvas === 'undefined';
 	const photos = $derived(event.value.photos);
@@ -166,8 +186,30 @@
 	}
 	function show(index: number) {
 		const tile = tiles[index];
-		if (tile === 'failed') tryAgain(index);
+		if (reporting) {
+			const id = photos[index].id;
+			picked = picked.includes(id) ? picked.filter((item) => item !== id) : [...picked, id];
+		} else if (tile === 'failed') tryAgain(index);
 		else position = shown.indexOf(index);
+	}
+	function stopReporting() {
+		reporting = false;
+		picked = [];
+		reportText = '';
+	}
+	/** Sends the report, with the photos picked in the gallery's order, and opens its conversation. */
+	function sendReport(submitted: SubmitEvent) {
+		submitted.preventDefault();
+		const text = reportText.trim();
+		if (!text) return;
+		sending.run(async () => {
+			const chosen = photos.map(({ id }) => id).filter((id) => picked.includes(id));
+			const fingerprint = JSON.stringify([text, chosen]);
+			if (pending?.fingerprint !== fingerprint)
+				pending = { fingerprint, sealed: await app.sealReport(event, text, chosen) };
+			await app.sendMessage(pending.sealed);
+			await goto(appPath(locale, 'messages', { id: pending.sealed.conversation }));
+		});
 	}
 	function move(step: number) {
 		position = Math.max(0, Math.min(shown.length - 1, position + step));
@@ -201,6 +243,10 @@
 		<EventHeading {locale} {event} />
 	</div>
 
+	{#if app.status === 'staff'}
+		<EventReports {locale} event={event.id} order={photos.map(({ id }) => id)} />
+	{/if}
+
 	{#if tooOld}
 		<p class={alert} role="alert">{t.tooOld}</p>
 	{:else}
@@ -215,6 +261,10 @@
 					{/each}
 				</select>
 			</label>
+		{/if}
+
+		{#if flagged.size}
+			<p class="text-sm text-muted">{r.marked}</p>
 		{/if}
 
 		{#if mine > 0}
@@ -236,11 +286,19 @@
 		<ul class="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6" aria-label={p.photos}>
 			{#each shown as index (photos[index].id)}
 				{@const tile = tiles[index]}
+				{@const chosen = picked.includes(photos[index].id)}
 				<li>
 					<button
 						type="button"
-						class="relative block aspect-square w-full cursor-zoom-in overflow-hidden rounded-2xl bg-ink/5 ring-1 ring-ink/10 transition hover:ring-ink/25"
-						aria-label={tile === 'failed' ? t.retry : p.photo(index + 1, photos.length)}
+						class="relative block aspect-square w-full overflow-hidden rounded-2xl bg-ink/5 transition {reporting
+							? 'cursor-pointer'
+							: 'cursor-zoom-in'} {chosen
+							? 'ring-4 ring-accent'
+							: 'ring-1 ring-ink/10 hover:ring-ink/25'}"
+						aria-label={tile === 'failed' && !reporting
+							? t.retry
+							: p.photo(index + 1, photos.length)}
+						aria-pressed={reporting ? chosen : undefined}
 						onclick={() => show(index)}
 					>
 						{#if tile === 'failed'}
@@ -254,6 +312,16 @@
 							class="absolute bottom-1 left-1 rounded-full bg-ink/55 px-2 text-xs font-semibold text-white"
 							aria-hidden="true">{index + 1}</span
 						>
+						{#if chosen}
+							<span class="absolute top-1 left-1 rounded-full bg-ink p-1 text-white">
+								<Icon name="check" class="size-4" />
+							</span>
+						{:else if flagged.has(photos[index].id)}
+							<span class="absolute top-1 left-1 rounded-full bg-red-700 p-1 text-white">
+								<Icon name="flag" class="size-4" />
+								<span class="sr-only">{r.flagged}</span>
+							</span>
+						{/if}
 						{#if marked[index]}
 							<span class="absolute top-1 right-1 rounded-full frosted p-1 text-ink">
 								<Icon name="heart" class="size-4" />
@@ -286,7 +354,47 @@
 		{#if app.canChangeEvent(event)}
 			<EventActions {locale} {event} {onremoved} />
 		{/if}
+		{#if report}
+			<a class={button.quiet} href={appPath(locale, 'messages', { id: report.id })}>
+				<Icon name="flag" class="size-4" />{r.sent}
+			</a>
+		{:else if app.status === 'family' && !reporting}
+			<button type="button" class={button.quiet} onclick={() => (reporting = true)}>
+				<Icon name="flag" class="size-4" />{r.start}
+			</button>
+		{/if}
 	</div>
+
+	{#if reporting && !report}
+		<form class="{surface} grid gap-4" onsubmit={sendReport}>
+			<h2 class="text-2xl">{r.start}</h2>
+			<p class="text-muted">{r.hint}</p>
+			<p class="font-semibold" role="status">
+				{picked.length ? r.picked(picked.length) : r.whole}
+			</p>
+			<label class={field.label}>
+				<span class={field.name}>{r.message}</span>
+				<textarea
+					class={field.input}
+					rows="4"
+					required
+					maxlength="4000"
+					disabled={sending.busy}
+					bind:value={reportText}></textarea>
+			</label>
+			{#if sending.error}
+				<p class={alert} role="alert">{errorMessage(locale, sending.error)}</p>
+			{/if}
+			<div class="flex flex-wrap gap-3">
+				<button class={button.primary} disabled={sending.busy || !reportText.trim()}>
+					{r.send}
+				</button>
+				<button type="button" class={button.quiet} disabled={sending.busy} onclick={stopReporting}>
+					{r.cancel}
+				</button>
+			</div>
+		</form>
+	{/if}
 
 	{#if app.status === 'family'}
 		<p class="text-sm text-muted">

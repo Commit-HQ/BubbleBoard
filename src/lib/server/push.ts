@@ -442,13 +442,14 @@ export async function deliver(
 
 /**
  * Private conversations notify only their family, the classroom's assigned teachers, and the heads who hear
- * about that classroom, never other families.
+ * about that classroom, never other families. A new report goes to the staff alone: the family sent it.
  */
 export async function conversationRecipients(
 	db: D1Database,
 	conversation: string,
 	poster = '',
-	now = Date.now()
+	now = Date.now(),
+	family = true
 ) {
 	const { results } = await db
 		.prepare(
@@ -456,22 +457,29 @@ export async function conversationRecipients(
  JOIN sessions s ON s.token_hash=p.session_hash JOIN credentials c ON c.id=s.credential_id
  JOIN conversations t ON t.id=?
  WHERE s.expires_at>? AND p.session_hash<>? AND (
- c.family_id=t.family_id OR (${teaches('SELECT t.classroom_id AS classroom')})
+ (? AND c.family_id=t.family_id) OR (${teaches('SELECT t.classroom_id AS classroom')})
  OR (${headHears('SELECT t.classroom_id AS classroom')}))`
 		)
-		.bind(conversation, now, poster)
+		.bind(conversation, now, poster, Number(family))
 		.all<PushDevice>();
 	return results;
 }
 export async function announceConversation(
 	event: RequestEvent,
 	conversation: string,
-	poster: string | undefined
+	poster: string | undefined,
+	kind: 'message' | 'report' = 'message'
 ) {
 	const env = event.platform?.env;
 	if (!env?.NOTIFICATIONS) return;
-	const devices = await conversationRecipients(env.DB, conversation, poster);
-	await queue(event, env, devices, 'message', conversation);
+	const devices = await conversationRecipients(
+		env.DB,
+		conversation,
+		poster,
+		Date.now(),
+		kind === 'message'
+	);
+	await queue(event, env, devices, kind, conversation);
 }
 
 /**

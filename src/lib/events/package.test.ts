@@ -90,6 +90,7 @@ describe('event privacy', () => {
 				teacher: null,
 				postedAt: 0,
 				editedAt: null,
+				editedBy: null,
 				expiresAt: 0,
 				eventKey: await encryptData({ key: content.raw }, group.key, {
 					purpose: 'event-key',

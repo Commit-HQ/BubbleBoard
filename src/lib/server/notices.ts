@@ -11,19 +11,13 @@ import type {
 	VoteRecord
 } from '$lib/api';
 import { day } from '$lib/notices';
-import {
-	checkClassrooms,
-	managesOthers,
-	transaction,
-	visibleClassrooms,
-	visibleFamilies
-} from './database';
+import { checkClassrooms, transaction, visibleClassrooms, visibleFamilies } from './database';
 import { deleteMarked, getObject, putObject, type ObjectStore } from './storage';
 
 // The board: notices as envelopes, with the classrooms they're for (docs/access-format.md). The server
 // can't read a notice, so it decides who sees and changes which. Staff post to the classrooms they hold and
-// the head to any; the author and the head change and delete a notice, and so does a group lead when every
-// classroom the notice is for is one of hers, since it says nothing to a group she doesn't run; everyone
+// the head to any; the author changes and deletes a notice, and so does any teacher when every classroom the
+// notice is for is one of hers, since a group's teachers share its board, which for the head is every notice; everyone
 // reads the notices of their classrooms, and the head those of every classroom. Families mark the notices
 // they see as seen and answer their polls, which their teachers see, and which the notice's families see
 // too when its poll shows the counts. A notice names the files it carries: their encrypted bytes are
@@ -50,7 +44,8 @@ function boardQuery(db: D1Database, viewer: Identity) {
 		.prepare(
 			`WITH visible_families AS (${families})
 			SELECT n.id, n.teacher_id AS teacher, n.content, n.posted_at AS postedAt,
-			n.announced_at AS announcedAt, n.edited_at AS editedAt, n.expires_at AS expiresAt,
+			n.announced_at AS announcedAt, n.edited_at AS editedAt, n.edited_by AS editedBy,
+			n.expires_at AS expiresAt,
 			json_group_array(json_object('classroom', nc.classroom_id, 'noticeKey', nc.notice_key)) AS classrooms,
 			(SELECT COUNT(*) FROM notice_classrooms WHERE notice_id = n.id) > COUNT(nc.classroom_id) AS elsewhere,
 			(SELECT json_group_array(family_id) FROM notice_seen
@@ -157,9 +152,9 @@ export async function postNotice(db: D1Database, staff: Staff, notice: NewNotice
 }
 
 /**
- * A notice that's still up and the staff member may change: her own, any for the head, and for a group lead
- * one whose classrooms are all hers. A notice she shares with another group is that group's too, so she
- * leaves it to its author or the head.
+ * A notice that's still up and the staff member may change: her own, and any whose classrooms are all hers,
+ * which for the head is every notice. The teachers of a group share its board, as they shared the corkboard,
+ * but a notice that also goes to another group is that group's too, so they leave it to its author or the head.
  */
 async function changeable(db: D1Database, staff: Staff, id: string) {
 	const [classrooms, params] = visibleClassrooms(staff);
@@ -172,7 +167,7 @@ async function changeable(db: D1Database, staff: Staff, id: string) {
 		.bind(...params, id, Date.now())
 		.first<{ teacher: string | null; postedAt: number; onlyHers: number }>();
 	if (!notice) error(404, 'not-found');
-	const own = notice.teacher === staff.teacher || (managesOthers(staff) && notice.onlyHers === 1);
+	const own = notice.teacher === staff.teacher || notice.onlyHers === 1;
 	if (!own) error(403, 'forbidden');
 	return notice;
 }
@@ -201,14 +196,15 @@ export async function changeNotice(
 			.bind(id, Number(change.counts)),
 		db
 			.prepare(
-				`UPDATE notices SET content = ?, poll = ?, poll_counts = ?, edited_at = ?, expires_at = ?,
-				announced_at = CASE WHEN ? THEN ? ELSE announced_at END WHERE id = ?`
+				`UPDATE notices SET content = ?, poll = ?, poll_counts = ?, edited_at = ?, edited_by = ?,
+				expires_at = ?, announced_at = CASE WHEN ? THEN ? ELSE announced_at END WHERE id = ?`
 			)
 			.bind(
 				change.content,
 				Number(change.poll),
 				Number(change.counts),
 				now,
+				staff.teacher,
 				postedAt + change.days * day,
 				Number(change.announce),
 				now,

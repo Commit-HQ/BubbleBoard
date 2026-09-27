@@ -45,6 +45,7 @@ function served(id: string, sealed: Sealed, visible?: string[]): NoticeRecord {
 		postedAt: 1,
 		announcedAt: 1,
 		editedAt: null,
+		editedBy: null,
 		expiresAt: 2,
 		seen: [],
 		votes: [],

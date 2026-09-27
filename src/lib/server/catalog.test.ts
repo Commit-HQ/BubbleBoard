@@ -465,9 +465,15 @@ describe('group leads', () => {
 		await expect(
 			changeNotice(db, bucket, lead, shared.id, change([bubbles]))
 		).rejects.toMatchObject({ status: 403 });
+		// A teacher of the group changes it too, and is who changed it; the shared one stays out of her reach.
 		const colleague = await addTeacherTo(db, head, [bubbles]);
+		expect(
+			(await changeNotice(db, bucket, colleague, hers.id, change([bubbles]))).find(
+				({ id }) => id === hers.id
+			)
+		).toMatchObject({ teacher: teacher.teacher, editedBy: colleague.teacher });
 		await expect(
-			changeNotice(db, bucket, colleague, hers.id, change([bubbles]))
+			changeNotice(db, bucket, colleague, shared.id, change([bubbles]))
 		).rejects.toMatchObject({ status: 403 });
 	});
 
@@ -872,26 +878,32 @@ describe('notices', () => {
 		expect(await boardOf(elsewhere)).toEqual([]);
 	});
 
-	it('change and delete for their author and heads, and a removed teacher’s for heads', async () => {
+	it('change and delete for their author, the group’s teachers and heads, and a removed teacher’s for heads', async () => {
 		const db = localDatabase();
 		const { head } = await setUpKindergarten(db);
-		const bubbles = await addClassroomTo(db, head);
-		const [author, colleague] = [
+		const [bubbles, owls] = [await addClassroomTo(db, head), await addClassroomTo(db, head)];
+		const [author, colleague, outsider] = [
 			await addTeacherTo(db, head, [bubbles]),
-			await addTeacherTo(db, head, [bubbles])
+			await addTeacherTo(db, head, [bubbles]),
+			await addTeacherTo(db, head, [owls])
 		];
 		const posted = notice([bubbles]);
 		await postNotice(db, author, posted);
 
 		await expect(
-			changeNotice(db, bucket, colleague, posted.id, change([bubbles]))
+			changeNotice(db, bucket, outsider, posted.id, change([bubbles]))
 		).rejects.toMatchObject({ status: 403 });
-		await expect(deleteNotice(db, bucket, colleague, posted.id)).rejects.toMatchObject({
-			status: 403
-		});
-		expect(await changeNotice(db, bucket, author, posted.id, change([bubbles]))).toMatchObject([
-			{ id: posted.id, content: 'changed', editedAt: expect.any(Number) }
+		expect(await changeNotice(db, bucket, colleague, posted.id, change([bubbles]))).toMatchObject([
+			{ id: posted.id, editedBy: colleague.teacher }
 		]);
+		expect(await changeNotice(db, bucket, author, posted.id, change([bubbles]))).toMatchObject([
+			{ id: posted.id, content: 'changed', editedAt: expect.any(Number), editedBy: author.teacher }
+		]);
+		const spare = notice([bubbles]);
+		await postNotice(db, author, spare);
+		expect((await deleteNotice(db, bucket, colleague, spare.id)).map(({ id }) => id)).not.toContain(
+			spare.id
+		);
 
 		await removeTeacher(db, head, author.teacher);
 		expect(await board(db, head)).toMatchObject([{ id: posted.id, teacher: null }]);
@@ -1078,9 +1090,9 @@ describe('notices', () => {
 		const [inBubbles, inOwls] = [newFamily(), newFamily()];
 		await addChildTo(db, head, bubbles, inBubbles);
 		await addChildTo(db, head, owls, inOwls);
-		const [author, colleague] = [
+		const [author, outsider] = [
 			await addTeacherTo(db, head, [bubbles]),
-			await addTeacherTo(db, head, [bubbles])
+			await addTeacherTo(db, head, [owls])
 		];
 		const posted = notice([bubbles]);
 		const [menu, form, later] = [createId(), createId(), createId()];
@@ -1103,9 +1115,9 @@ describe('notices', () => {
 		});
 
 		// Once the notice is up, only those who may change it upload files for it, and none twice.
-		await expect(uploadFile(db, store, colleague, posted.id, later, file(3))).rejects.toMatchObject(
-			{ status: 403 }
-		);
+		await expect(uploadFile(db, store, outsider, posted.id, later, file(3))).rejects.toMatchObject({
+			status: 403
+		});
 		await expect(uploadFile(db, store, author, posted.id, menu, file(9))).rejects.toMatchObject(
 			conflict('stored')
 		);

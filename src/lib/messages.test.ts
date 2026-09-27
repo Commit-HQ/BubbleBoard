@@ -1,8 +1,9 @@
 import { expect, it, vi } from 'vitest';
-import { createContentKey } from '$lib/crypto';
+import { createContentKey, createId } from '$lib/crypto';
 import {
 	chargesAllowance,
 	defaultSchedule,
+	fitSubject,
 	messageClock,
 	mergeRecentMessages,
 	openConversation,
@@ -50,6 +51,7 @@ it('reuses decrypted inbox content while updating metadata and decrypting change
 		),
 		messageId: 'message1',
 		author: 'teacher:1',
+		event: null,
 		closed: 0,
 		createdAt: 0,
 		postedAt: 1,
@@ -128,6 +130,45 @@ it('binds private content to its family key, classroom, message and conversation
 		openMessage({ ...row, id: 'another-message' }, key, 'classroom', 'conversation')
 	).rejects.toThrow();
 	await expect(openMessage(row, key, 'classroom', 'another-conversation')).rejects.toThrow();
+});
+it('carries the photos a report picked with its sealed subject, and refuses a list that isn’t one', async () => {
+	const { key } = await createContentKey();
+	const record = async (photos: unknown) => ({
+		id: 'conversation',
+		family: 'family',
+		classroom: 'classroom',
+		event: 'event',
+		title: await sealSubject('Izlet u Tvrđu', key, 'classroom', 'conversation', photos as string[]),
+		content: await sealMessage(
+			{ text: 'Please take these down', name: '' },
+			key,
+			'classroom',
+			'message1',
+			'conversation'
+		),
+		messageId: 'message1',
+		author: 'family:family',
+		closed: 0,
+		createdAt: 0,
+		postedAt: 1,
+		lastSequence: 1,
+		readSequence: 0,
+		seenSequence: 0,
+		editedAt: null,
+		deletedAt: null
+	});
+	const photos = [createId(), createId()];
+	const open = async (value: unknown) => openConversation(await record(value), key);
+	expect(await open(photos)).toMatchObject({ subject: 'Izlet u Tvrđu', photos });
+	expect((await open([])).photos).toEqual([]);
+	for (const wrong of ['photo', ['not an id'], [photos[0], photos[0]]])
+		await expect(open(wrong)).rejects.toThrow();
+});
+it('fits a longer title into a subject without cutting a character in half', () => {
+	expect(fitSubject('  Izlet u Tvrđu  ')).toBe('Izlet u Tvrđu');
+	const long = `${'a'.repeat(119)}😀`;
+	expect(fitSubject(long)).toBe('a'.repeat(119));
+	expect(fitSubject('b'.repeat(160))).toHaveLength(120);
 });
 it('spends an inquiry on every family message a teacher hasn’t answered', () => {
 	expect(chargesAllowance(undefined)).toBe(true);

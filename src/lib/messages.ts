@@ -1,4 +1,5 @@
-import { decryptData, encryptData, fields, UnreadableError } from '$lib/crypto';
+import { decryptData, encryptData, fields, isId, UnreadableError } from '$lib/crypto';
+import { mostEventPhotos } from '$lib/events/types';
 import type { NoticeFile } from '$lib/files';
 import { readFiles } from '$lib/notices';
 
@@ -15,6 +16,8 @@ export type ConversationRecord = {
 	id: string;
 	family: string;
 	classroom: string;
+	/** The event a family reported the photos of, when the conversation is that report. */
+	event: string | null;
 	title: string;
 	closed: number;
 	createdAt: number;
@@ -44,7 +47,16 @@ export type MessageRecord = {
  * teacher attached, each with its name and its own key, as a notice holds its files (src/lib/files.ts).
  */
 export type MessageContent = { text: string; name: string; files?: NoticeFile[] };
-export type Conversation = ConversationRecord & { subject: string; preview: string };
+/**
+ * A conversation as a device opens it. A report's sealed subject also names the photos the family picked, so
+ * the inbox a staff device already loads says which photos each report is about, and the server never learns
+ * which; a device from before reports reads the subject and leaves them out.
+ */
+export type Conversation = ConversationRecord & {
+	subject: string;
+	preview: string;
+	photos: string[];
+};
 export type OpenMessage = MessageRecord & MessageContent;
 /** Keep history only when the pages overlap; otherwise restart pagination from the new page. */
 export function mergeRecentMessages<T extends MessageRecord>(rows: T[], opened: T[]): T[] {
@@ -128,8 +140,26 @@ export const messageDate = (locale: string, time: number) => dateFormat(locale).
 /** The day a conversation last moved, for the inbox, where a day older than today shows as `4/3`. */
 export const messageShortDate = (locale: string, time: number) =>
 	shortDateFormat(locale).format(time);
-export function sealSubject(title: string, key: CryptoKey, classroom: string, id: string) {
-	return encryptData({ title }, key, { purpose: 'conversation-title', classroom, message: id });
+/** The longest a conversation's subject may be, in UTF-16 units, as its reader measures it. */
+export const maxSubject = 120;
+/** A subject cut to what a conversation takes, such as an event's longer title, never through a character. */
+export function fitSubject(text: string) {
+	const characters = Array.from(text.trim());
+	while (characters.join('').length > maxSubject) characters.pop();
+	return characters.join('');
+}
+export function sealSubject(
+	title: string,
+	key: CryptoKey,
+	classroom: string,
+	id: string,
+	photos: string[] = []
+) {
+	return encryptData({ title, ...(photos.length ? { photos } : {}) }, key, {
+		purpose: 'conversation-title',
+		classroom,
+		message: id
+	});
 }
 export function sealMessage(
 	content: MessageContent,
@@ -172,6 +202,17 @@ export async function openMessage(
 	const files = data.files === undefined ? undefined : readFiles(data.files);
 	return { ...record, text: data.text, name: data.name, ...(files?.length ? { files } : {}) };
 }
+/** The photos a report names: an event's photo IDs, each once, no more than an event can hold. */
+function readPhotos(value: unknown) {
+	if (
+		!Array.isArray(value) ||
+		value.length > mostEventPhotos ||
+		!value.every(isId) ||
+		new Set(value).size !== value.length
+	)
+		throw new UnreadableError();
+	return value as string[];
+}
 export async function openConversation(
 	record: ConversationRecord,
 	key: CryptoKey,
@@ -186,7 +227,7 @@ export async function openConversation(
 			: undefined;
 	const data =
 		cached?.title === record.title
-			? { title: cached.subject }
+			? { title: cached.subject, photos: cached.photos }
 			: fields(
 					await decryptData(record.title, key, {
 						purpose: 'conversation-title',
@@ -194,8 +235,9 @@ export async function openConversation(
 						message: record.id
 					})
 				);
-	if (typeof data.title !== 'string' || !data.title.trim() || data.title.length > 120)
+	if (typeof data.title !== 'string' || !data.title.trim() || data.title.length > maxSubject)
 		throw new UnreadableError();
+	const photos = data.photos === undefined ? [] : readPhotos(data.photos);
 	const latest =
 		cached?.content === record.content && cached.messageId === record.messageId
 			? { text: cached.preview }
@@ -213,5 +255,5 @@ export async function openConversation(
 					record.classroom,
 					record.id
 				);
-	return { ...record, subject: data.title, preview: latest.text };
+	return { ...record, subject: data.title, preview: latest.text, photos };
 }

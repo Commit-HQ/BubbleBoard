@@ -17,9 +17,13 @@ export const POST: RequestHandler = async (event) => {
 		title: sealed(body.title, 1000),
 		message: id(body.message),
 		content: sealed(body.content),
-		files: ids(body.files ?? [], maxNoticeFiles)
+		files: ids(body.files ?? [], maxNoticeFiles),
+		event: body.event === undefined ? undefined : id(body.event)
 	};
 	const inserted = await startConversation(database(event), who, value);
-	if (inserted) notifyLater(event, announceConversation(event, value.id, await sessionHash(event)));
+	// A report tells the classroom's teachers, in words of its own, and not the family's other devices.
+	const kind = value.event ? 'report' : 'message';
+	if (inserted)
+		notifyLater(event, announceConversation(event, value.id, await sessionHash(event), kind));
 	return json({ id: value.id });
 };

@@ -110,10 +110,12 @@ export type NoticeRecord = {
 	/** When it last went to the top of the board: when posted, or changed with `announce`. */
 	announcedAt: number;
 	editedAt: number | null;
+	/** The teacher who last changed it, until they're removed. */
+	editedBy: string | null;
 	expiresAt: number;
 	classrooms: NoticeKey[];
 	/**
-	 * Whether it also goes to classrooms the device doesn't see. A group lead may change a colleague's notice
+	 * Whether it also goes to classrooms the device doesn't see. A teacher may change a colleague's notice
 	 * only when every classroom of it is hers, and her device gets keys for hers alone, so it can't tell from
 	 * them.
 	 */

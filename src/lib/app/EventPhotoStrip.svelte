@@ -3,11 +3,13 @@
 	/**
 	 * One photo of the gallery as the strip shows it, which the editor puts together in its order: one being
 	 * prepared now, with what's marked on it, or one already up. Nothing about that one can be reviewed, so it
-	 * shows a lock instead, and it has no picture while it's still opening.
+	 * shows a lock instead, and it has no picture while it's still opening. `reported` flags a photo a
+	 * family's open report names, or one opened again to change it.
 	 */
-	export type Thumb =
+	export type Thumb = { reported?: boolean } & (
 		| { id: string; url: string; published?: false; history: History; detection: string }
-		| { id: string; url?: string; published: true };
+		| { id: string; url?: string; published: true }
+	);
 </script>
 
 <script lang="ts">
@@ -37,6 +39,7 @@
 	} = $props();
 
 	const t = $derived(messages[locale].app.eventEditor);
+	const r = $derived(messages[locale].app.reports);
 
 	/** How far a finger may stray before a press is a scroll, how long it must stay, and how near the edge
 	 * the pointer slides the strip along. */
@@ -158,7 +161,13 @@
 	aria-label={t.photos}
 >
 	{#each photos as item, index (item.id)}
-		{@const label = `${t.photo(index + 1, photos.length)} — ${status(item)}`}
+		{@const label = [
+			t.photo(index + 1, photos.length),
+			status(item),
+			item.reported ? r.flagged : ''
+		]
+			.filter(Boolean)
+			.join(' — ')}
 		<li class="snap-start">
 			<button
 				type="button"
@@ -184,6 +193,14 @@
 					<span class="block size-full bg-ink/5"></span>
 				{/if}
 				<span class="sr-only">{label}</span>
+				{#if item.reported}
+					<span
+						class="absolute top-1 right-1 rounded-full bg-red-700 p-0.5 text-white"
+						aria-hidden="true"
+					>
+						<Icon name="flag" class="size-3" />
+					</span>
+				{/if}
 				<span
 					class="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-ink/70 px-1.5 py-0.5 text-xs font-bold text-white"
 					aria-hidden="true"

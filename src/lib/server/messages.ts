@@ -131,12 +131,18 @@ export async function conversationFor(db: D1Database, who: Identity, id: string)
 	const [sql, params] = visibleClassrooms(who);
 	const row = await db
 		.prepare(
-			`SELECT c.id,c.family_id AS family,c.classroom_id AS classroom,c.closed FROM conversations c
- JOIN family_classrooms f ON f.family_id=c.family_id AND f.classroom_id=c.classroom_id
+			`SELECT c.id,c.family_id AS family,c.classroom_id AS classroom,c.closed,c.event_id AS event
+ FROM conversations c JOIN family_classrooms f ON f.family_id=c.family_id AND f.classroom_id=c.classroom_id
  WHERE c.id=? AND c.classroom_id IN (${sql})`
 		)
 		.bind(id, ...params)
-		.first<{ id: string; family: string; classroom: string; closed: number }>();
+		.first<{
+			id: string;
+			family: string;
+			classroom: string;
+			closed: number;
+			event: string | null;
+		}>();
 	if (!row || (who.kind === 'family' && who.family !== row.family)) error(404, 'not-found');
 	return row;
 }
@@ -189,7 +195,7 @@ export async function inbox(db: D1Database, who: Identity, now = Date.now()): Pr
 	}));
 	const { results } = await db
 		.prepare(
-			`SELECT c.id,c.family_id AS family,c.classroom_id AS classroom,c.title,c.closed,c.created_at AS createdAt,
+			`SELECT c.id,c.family_id AS family,c.classroom_id AS classroom,c.event_id AS event,c.title,c.closed,c.created_at AS createdAt,
  m.sequence AS lastSequence,COALESCE(r.sequence,0) AS readSequence,${seenSequence(who)} AS seenSequence,
  m.content,m.id AS messageId,m.author,m.posted_at AS postedAt,m.edited_at AS editedAt,m.deleted_at AS deletedAt
  FROM conversations c JOIN messages m ON m.sequence=(SELECT MAX(sequence) FROM messages WHERE conversation_id=c.id)
@@ -204,17 +210,25 @@ export async function inbox(db: D1Database, who: Identity, now = Date.now()): Pr
 // All mutable policy and audience checks also occur inside the INSERT, so concurrent sends/settings changes
 // cannot overspend a quota or append after a conversation closes. The server supplies local time, never the client.
 // With `conversation`, the message answers one, and is free while a teacher's message is its last.
+// A `report` of an event's photos goes whatever the classroom's messaging settles, since a photo can't wait
+// for the hours or the allowance: in it, a family answers each teacher's message once and writes nothing more.
 function guard(
 	who: Identity,
 	classroom: string,
 	family: string,
 	now: number,
-	conversation?: string
+	conversation?: string,
+	report = false
 ) {
 	const [sql, params] = visibleClassrooms(who);
 	let condition = `EXISTS(SELECT 1 FROM family_classrooms WHERE classroom_id=? AND family_id=? AND classroom_id IN (${sql}))`;
 	const values: (string | number)[] = [classroom, family, ...params];
-	if (who.kind === 'family') {
+	if (who.kind === 'family' && report) {
+		if (conversation) {
+			condition += ` AND ${answered}`;
+			values.push(conversation);
+		}
+	} else if (who.kind === 'family') {
 		const clock = messageClock(now);
 		condition += ` AND EXISTS(SELECT 1 FROM message_settings p WHERE p.classroom_id=? AND p.enabled=1
    AND json_extract(p.schedule,?) <= ? AND json_extract(p.schedule,?) > ?
@@ -304,7 +318,15 @@ export type NewConversation = {
 	content: string;
 	/** The files the first message carries; only a teacher may attach any. */
 	files?: string[];
+	/** The event a family reports the photos of, which makes the conversation that event's report. */
+	event?: string;
 };
+/**
+ * Whether the event a report names is up in the report's classroom, as a condition on the insert, so an event
+ * removed or expired while the family wrote is refused rather than reported.
+ */
+const eventUp =
+	'EXISTS(SELECT 1 FROM events WHERE id=? AND classroom_id=? AND posted_at IS NOT NULL AND expires_at>?)';
 export async function startConversation(
 	db: D1Database,
 	who: Identity,
@@ -313,6 +335,9 @@ export async function startConversation(
 ) {
 	await checkAudience(db, who, value.classroom, value.family);
 	checkAttaching(who, value.files ?? []);
+	// Only a family reports an event: its teachers take a photo down themselves.
+	const report = value.event !== undefined;
+	if (report && who.kind !== 'family') error(403, 'forbidden');
 	const existing = await db
 		.prepare('SELECT title FROM conversations WHERE id=?')
 		.bind(value.id)
@@ -328,6 +353,7 @@ export async function startConversation(
 		if (
 			thread.classroom !== value.classroom ||
 			thread.family !== value.family ||
+			thread.event !== (value.event ?? null) ||
 			existing.title !== value.title ||
 			first?.id !== value.message ||
 			first.author !== actor(who) ||
@@ -336,14 +362,26 @@ export async function startConversation(
 			error(409, 'stale');
 		return false;
 	}
-	const { condition, values } = guard(who, value.classroom, value.family, now);
+	const { condition, values } = guard(who, value.classroom, value.family, now, undefined, report);
+	// A family reports an event once: a second report of it meets the first on `conversations_report`, which
+	// leaves it out as quietly as a retry.
+	const event = report ? [value.event!, value.classroom, now] : [];
 	const results = await transaction(db, [
 		db
 			.prepare(
-				`INSERT INTO conversations(id,family_id,classroom_id,title,created_at)
-   SELECT ?,?,?,?,? WHERE ${condition} ON CONFLICT(id) DO NOTHING`
+				`INSERT INTO conversations(id,family_id,classroom_id,title,created_at,event_id)
+   SELECT ?,?,?,?,?,? WHERE ${condition} ${report ? `AND ${eventUp}` : ''} ON CONFLICT DO NOTHING`
 			)
-			.bind(value.id, value.family, value.classroom, value.title, now, ...values),
+			.bind(
+				value.id,
+				value.family,
+				value.classroom,
+				value.title,
+				now,
+				value.event ?? null,
+				...values,
+				...event
+			),
 		db
 			.prepare(
 				`INSERT INTO messages(id,conversation_id,author,content,posted_at,charged)
@@ -355,8 +393,8 @@ export async function startConversation(
 				actor(who),
 				value.content,
 				now,
-				// Starting a conversation always spends one of the family's allowance.
-				who.kind === 'family' ? messageClock(now).month : null
+				// Starting a conversation always spends one of the family's allowance, and a report none.
+				who.kind === 'family' && !report ? messageClock(now).month : null
 			),
 		...insertFiles(db, value.message, value.files ?? [])
 	]);
@@ -367,6 +405,7 @@ export async function startConversation(
 			.bind(value.id)
 			.first();
 		if (committed) return startConversation(db, who, value, now);
+		if (report) await explainReport(db, who, value);
 		await explainBlocked(db, who, value.classroom, value.family, now, true);
 	}
 	return true;
@@ -379,15 +418,33 @@ async function charges(db: D1Database, conversation: string) {
 		.first<{ author: string }>();
 	return chargesAllowance(last?.author);
 }
+/** Why a report didn't start: the event isn't up in its classroom, or the family reported it already. */
+async function explainReport(db: D1Database, who: Identity, value: NewConversation) {
+	const up = await db
+		.prepare(`SELECT ${eventUp} AS up`)
+		.bind(value.event!, value.classroom, Date.now())
+		.first<{ up: number }>();
+	if (!up?.up) error(404, 'not-found');
+	const reported = await db
+		.prepare('SELECT 1 FROM conversations WHERE family_id=? AND event_id=?')
+		.bind(value.family, value.event!)
+		.first();
+	if (reported) error(409, 'reported');
+	await checkAudience(db, who, value.classroom, value.family);
+	error(409, 'stale');
+}
 async function explainBlocked(
 	db: D1Database,
 	who: Identity,
 	classroom: string,
 	family: string,
 	now: number,
-	charged: boolean
+	charged: boolean,
+	report = false
 ): Promise<never> {
 	await checkAudience(db, who, classroom, family);
+	// In a report, a family's message waits for the teachers' answer, whatever the classroom settled.
+	if (who.kind === 'family' && report) error(409, 'report-waiting');
 	if (who.kind === 'family') {
 		const settings = await settingsFor(db, classroom);
 		if (!settings.enabled) error(409, 'messages-disabled');
@@ -423,11 +480,12 @@ export async function reply(
 		return false;
 	}
 	// A family's message is free while a teacher's is the conversation's last; the CASE decides that with
-	// the insert, so a teacher's answer arriving meanwhile can't be charged for.
-	const fromFamily = who.kind === 'family';
-	const charge = fromFamily ? `CASE WHEN ${answered} THEN NULL ELSE ? END` : 'NULL';
-	const month = fromFamily ? [id, messageClock(now).month] : [];
-	const { condition, values } = guard(who, thread.classroom, thread.family, now, id);
+	// the insert, so a teacher's answer arriving meanwhile can't be charged for. A report charges nothing.
+	const report = thread.event !== null;
+	const charged = who.kind === 'family' && !report;
+	const charge = charged ? `CASE WHEN ${answered} THEN NULL ELSE ? END` : 'NULL';
+	const month = charged ? [id, messageClock(now).month] : [];
+	const { condition, values } = guard(who, thread.classroom, thread.family, now, id, report);
 	const [result] = await transaction(db, [
 		db
 			.prepare(
@@ -446,7 +504,15 @@ export async function reply(
 			.bind(id)
 			.first();
 		if (closed) error(409, 'messages-closed');
-		await explainBlocked(db, who, thread.classroom, thread.family, now, await charges(db, id));
+		await explainBlocked(
+			db,
+			who,
+			thread.classroom,
+			thread.family,
+			now,
+			await charges(db, id),
+			report
+		);
 	}
 	return true;
 }

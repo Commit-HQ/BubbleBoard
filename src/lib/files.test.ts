@@ -108,6 +108,7 @@ describe('notice files', () => {
 				postedAt: 1,
 				announcedAt: 1,
 				editedAt: null,
+				editedBy: null,
 				expiresAt: 2,
 				elsewhere: false,
 				seen: [],

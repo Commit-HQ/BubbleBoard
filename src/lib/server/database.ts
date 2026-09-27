@@ -68,8 +68,8 @@ export function visibleFamilies(viewer: Identity): [string, string[]] {
 }
 
 /**
- * Whether a staff member settles what others put up in the classrooms she holds: notices, events and meeting
- * times. The head and a group lead do; a teacher changes only her own.
+ * Whether a staff member settles the meeting times others offered in the classrooms she holds. The head and a
+ * group lead do; a teacher only her own. Notices and events are shared by every teacher of their classrooms.
  */
 export const managesOthers = (staff: Staff) => staff.role !== 'teacher';
 

@@ -19,9 +19,15 @@
 	const app = getApp();
 	const t = $derived(messages[locale].app.notices);
 	const task = new Task();
-	/** Who put the notice up and when, and whether it was edited since. */
+	/** Who put the notice up and when, and whether it was edited since, and by whom for staff. */
+	const editor = $derived(app.editorOf(notice));
 	const details = $derived(
-		byline(locale, notice.author, notice.announcedAt, notice.editedAt ? t.edited : undefined)
+		byline(
+			locale,
+			notice.author,
+			notice.announcedAt,
+			notice.editedAt ? (editor ? t.editedBy(editor) : t.edited) : undefined
+		)
 	);
 	const unseen = $derived(app.status === 'family' && !app.isSeen(notice));
 	/** On a staff device, the families the notice is for, and those of them that marked it as seen. */

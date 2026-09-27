@@ -26,6 +26,8 @@ export type EventRecord = {
 	postedAt: number;
 	/** When it was last changed after it went up, or nothing if it never was. */
 	editedAt: number | null;
+	/** The teacher who last changed it, until they're removed. */
+	editedBy: string | null;
 	expiresAt: number;
 };
 /** One photo of an event's gallery, with the few words a teacher may write under it. */

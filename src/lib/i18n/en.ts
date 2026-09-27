@@ -10,7 +10,8 @@ export const notificationText: Record<PushKind, string> = {
 	slots: 'New meeting times',
 	booking: 'Meeting time changed',
 	photos: 'New photos from your kindergarten',
-	corkboard: 'New photo of the notice board'
+	corkboard: 'New photo of the notice board',
+	report: 'A parent reported photos'
 };
 
 export const en = {
@@ -160,7 +161,7 @@ export const en = {
 					},
 					{
 						q: 'What if I change my consent after photos are already published?',
-						a: 'The new consent applies to photos published from then on. Photos already published stay as they are. If you want one gone, ask the teacher to remove it. Anyone who already saved it has their copy.'
+						a: 'The new consent applies to photos published from then on. Photos already published stay as they are. If you want one gone, open the event and tap Report photos. The teachers see which photos you mean and can take them down. Anyone who already saved a photo has their copy.'
 					},
 					{
 						q: 'I see a device I don’t recognise among the connected devices. What now?',
@@ -185,7 +186,7 @@ export const en = {
 					},
 					{
 						q: 'Parents say they can’t send inquiries. Why?',
-						a: 'Messaging is turned on for each classroom separately. In the classroom, under “Parent messaging”, the group lead or the BubbleBoard administrator turns sending on, sets the number of inquiries per month, and the hours when parents may write. Until it’s turned on, parents can’t send messages, not even answers to yours. You can always write to them.'
+						a: 'Messaging is turned on for each classroom separately. In the classroom, under “Parent messaging”, the group lead or the BubbleBoard administrator turns sending on, sets the number of inquiries per month, and the hours when parents may write. Until it’s turned on, parents can’t send messages, not even answers to yours. You can always write to them. Reporting photos is the exception: a parent can always report an event’s photos and answer you there.'
 					},
 					{
 						q: 'What is “Keep covered” for?',
@@ -193,7 +194,7 @@ export const en = {
 					},
 					{
 						q: 'A parent changed their consent after I published. What happens?',
-						a: 'Nothing changes by itself. The published gallery stays as it is, and the new consent applies to the next publications. If the parent wants a photo gone, remove it from the gallery.'
+						a: 'Nothing changes by itself. The published gallery stays as it is, and the new consent applies to the next publications. If the parent wants a photo gone, they can report it from the gallery, and you remove it there.'
 					},
 					{
 						q: 'I lost my own QR code. What now?',
@@ -205,7 +206,7 @@ export const en = {
 					},
 					{
 						q: 'What do I see, and what do a lead and an administrator see?',
-						a: 'You see the children, families, and posts of your own classrooms. In her classrooms, a group lead also adds children and family QR codes and turns on parent messaging. The BubbleBoard administrator sees every classroom, adds teachers and classrooms, and writes the pages under Info.'
+						a: 'You see the children, families, and posts of your own classrooms, and you can change or remove any notice or event that is only for them. In her classrooms, a group lead also adds children and family QR codes and turns on parent messaging. The BubbleBoard administrator sees every classroom, adds teachers and classrooms, and writes the pages under Info.'
 					}
 				]
 			},
@@ -442,7 +443,7 @@ export const en = {
 		points: [
 			{
 				title: 'Event photos',
-				copy: 'Faces are detected and labelled on the teacher’s device. A covered photo and separate face patches are encrypted before upload; the original is not uploaded. An unfinished event stays only on the teacher’s device until it is published or discarded, and is deleted after 7 days. Families see their own children and faces permitted for classroom sharing. Your kindergarten may enter what your consent form says, and you can change it in the app at any time. Consent is encrypted and changes apply only to future publications. The app keeps the last 50 changes for each child and family QR code, with when each was made and by whom, so you and the kindergarten can look back; they go when the child or the QR code is removed. Events and their photos remain available for the 1 to 90 days chosen by the teacher, then are deleted. There is no hidden archive for a yearly album.'
+				copy: 'Faces are detected and labelled on the teacher’s device. A covered photo and separate face patches are encrypted before upload; the original is not uploaded. An unfinished event stays only on the teacher’s device until it is published or discarded, and is deleted after 7 days. Families see their own children and faces permitted for classroom sharing. Your kindergarten may enter what your consent form says, and you can change it in the app at any time. Consent is encrypted and changes apply only to future publications. The app keeps the last 50 changes for each child and family QR code, with when each was made and by whom, so you and the kindergarten can look back; they go when the child or the QR code is removed. Events and their photos remain available for the 1 to 90 days chosen by the teacher, then are deleted. There is no hidden archive for a yearly album. If you report an event’s photos, the server knows that your family reported that event; which photos and why are encrypted, like any message.'
 			},
 			{
 				title: 'What’s stored',
@@ -523,6 +524,7 @@ export const en = {
 			removeHint: 'This event and its photos will no longer be available to families.',
 			edit: 'Edit',
 			edited: 'edited',
+			editedBy: (name: string) => `edited by ${name}`,
 			editTitle: 'Edit event',
 			save: 'Save changes',
 			open: 'Open gallery',
@@ -551,6 +553,42 @@ export const en = {
 			// Under a family's gallery, followed by the link to Settings, where the choice is made.
 			stickersExplained:
 				'A sticker covers the children whose families keep their photos to themselves. You choose this for your own child in Settings.'
+		},
+		// A family's report of an event's photos, from its gallery, and the conversation it becomes.
+		reports: {
+			start: 'Report photos',
+			hint: 'Pick the photos above. The teachers will see your message and can take them down.',
+			picked: (n: number) => (n === 1 ? '1 photo picked' : `${n} photos picked`),
+			whole: 'No photos picked, so the whole event is reported.',
+			message: 'Your message to the teachers',
+			send: 'Send report',
+			cancel: 'Cancel',
+			// Where Report photos was, once this family has reported the event.
+			sent: 'You reported this event',
+			// Beside a report in the inbox, and above its conversation.
+			label: 'Photo report',
+			// The inbox's section of reports, above the inquiries.
+			inbox: 'Photo reports',
+			wholeEvent: 'The whole event reported',
+			gone: (n: number, total: number) =>
+				n === total
+					? 'They have all been changed or taken down since.'
+					: n === 1
+						? '1 of them has been changed or taken down since.'
+						: `${n} of them have been changed or taken down since.`,
+			eventGone: 'This event is no longer up.',
+			open: 'Open event',
+			// Staff see the open reports of an event above its gallery and its editor's photos.
+			title: 'Parents’ reports',
+			// The photos a report names, by the numbers on the gallery's squares.
+			numbers: (numbers: number[]) =>
+				numbers.length === 1 ? `Photo ${numbers[0]}` : `Photos ${list(numbers.map(String))}`,
+			openReport: 'Open report',
+			// On a reported photo in the gallery and the editor.
+			flagged: 'Reported',
+			marked: 'A flag marks the photos that were reported.',
+			// Under a report the family wrote last, where the box to write in would be.
+			waiting: 'The teachers will answer here. You can write again once they do.'
 		},
 		eventEditor: {
 			steps: ['Event', 'Photos', 'Review'],
@@ -1101,6 +1139,7 @@ export const en = {
 			all: 'All classrooms',
 			unreadable: 'Some notices didn’t open on this device.',
 			edited: 'edited',
+			editedBy: (name: string) => `edited by ${name}`,
 			edit: 'Edit',
 			delete: 'Delete',
 			deleteTitle: 'Delete this notice?',
@@ -1302,6 +1341,8 @@ export const en = {
 				'Its text and any files go for the family too, and “Message deleted” stays in its place. This cannot be undone.',
 			deletedMessage: 'Message deleted',
 			empty: 'No inquiries match this view.',
+			// Over the inquiries, when the inbox also has photo reports above them.
+			inquiries: 'Inquiries',
 			emptyTitle: 'No messages yet',
 			emptyCopy: 'Private conversations with your classroom’s teachers happen here.',
 			emptyCopyStaff: 'Private conversations with the families of your classrooms happen here.',
@@ -1368,6 +1409,8 @@ export const en = {
 			'messages-schedule': 'A day’s To time must come after its From time.',
 			'messages-closed':
 				'This inquiry has been closed. Refresh the list to see the current status.',
+			reported: 'You have already reported this event. Your report is in Messages.',
+			'report-waiting': 'The teachers haven’t answered yet. You can write again once they do.',
 			'not-found': 'This doesn’t exist anymore.',
 			forbidden: 'You don’t have access to this.',
 			'empty-notice': 'Write the notice first.',

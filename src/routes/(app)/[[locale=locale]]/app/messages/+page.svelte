@@ -5,6 +5,7 @@
 	import InquiryLink from '$lib/app/InquiryLink.svelte';
 	import MessageBubble from '$lib/app/MessageBubble.svelte';
 	import MessagePolicy from '$lib/app/MessagePolicy.svelte';
+	import ReportedEvent from '$lib/app/ReportedEvent.svelte';
 	import Screen from '$lib/app/Screen.svelte';
 	import { getApp, Task, type SealedMessage } from '$lib/app/state.svelte';
 	import { alert, button, everyHalfMinute, field, queryParam, surface } from '$lib/app/ui';
@@ -25,6 +26,7 @@
 		mergeRecentMessages,
 		remainingMessages,
 		sendingLeft,
+		type Conversation,
 		type OpenMessage
 	} from '$lib/messages';
 	import { appPath } from '$lib/paths';
@@ -34,10 +36,12 @@
 	// Private conversations between one family and its classroom's teachers: the inbox, one conversation as a
 	// chat, and the form that starts a new one. A family's message spends one of the month's inquiries unless
 	// it answers a teacher, so the app says what a message costs before it goes, and asks once more in the
-	// conversation itself.
+	// conversation itself. A family's report of an event's photos, started from its gallery, is a conversation
+	// too, which the classroom's messaging settings leave alone: the family answers each teacher's message.
 	let { data }: PageProps = $props();
 	const app = getApp();
 	const t = $derived(messages[data.locale].app.messaging);
+	const r = $derived(messages[data.locale].app.reports);
 	const id = $derived(queryParam('id'));
 	const creating = $derived(queryParam('new') === '1');
 	const thread = $derived(app.conversations.find((item) => item.id === id));
@@ -78,16 +82,22 @@
 	const families = $derived(
 		app.catalog.families.filter((item) => item.classrooms.includes(classroom))
 	);
+	/** Whether the teachers wrote a conversation's last message, which is when a family answers a report. */
+	const teacherLast = $derived(byTeacher(rows.at(-1)?.author ?? thread?.author ?? ''));
+	/** Whether the open conversation is a report, which spends nothing and keeps no hours. */
+	const report = $derived(!creating && !!thread?.event);
 	/** Whether the next message spends an inquiry: a new one always does, an answer to a teacher never. */
 	const charged = $derived(
-		!staff && (creating || chargesAllowance(rows.at(-1)?.author ?? thread?.author))
+		!staff && !report && (creating || chargesAllowance(rows.at(-1)?.author ?? thread?.author))
 	);
 	const remaining = $derived(policy ? remainingMessages(policy) : 0);
 	/** Minutes left in today's window, and whether it's short enough to say so in red. */
 	const left = $derived(policy && sendingLeft(policy, now));
 	const allowed = $derived(left !== undefined);
 	const closingIn = $derived(left !== undefined && left <= closingSoon ? left : undefined);
-	const canSend = $derived(staff || (allowed && (!charged || remaining > 0)));
+	const canSend = $derived(
+		staff || (report ? teacherLast : allowed && (!charged || remaining > 0))
+	);
 	/**
 	 * Who this device writes as, which is what makes a message its own to change: a teacher's own messages,
 	 * not a colleague's, and, on a family device, the family's, which all of its devices share.
@@ -126,6 +136,12 @@
 				item.subject.toLocaleLowerCase(data.locale).includes(search.toLocaleLowerCase(data.locale))
 		)
 	);
+	/**
+	 * Reports of event photos in a section of their own, above the inquiries, since a photo can't wait; there
+	 * are only ever a few, so they're never cut short.
+	 */
+	const reports = $derived(filtered.filter((item) => item.event));
+	const inquiries = $derived(filtered.filter((item) => !item.event));
 	/** The inbox shows its filters only where there's something to filter. */
 	const pickClassroom = $derived(app.myClassrooms.length > 1);
 	const pickState = $derived(app.conversations.some((item) => item.closed));
@@ -368,6 +384,22 @@
 	}
 </script>
 
+{#snippet row(item: Conversation)}
+	<InquiryLink
+		href={appPath(data.locale, 'messages', { id: item.id })}
+		report={!!item.event}
+		initial={initialOf(withName(item))}
+		subject={item.subject}
+		preview={item.deletedAt ? t.deletedMessage : item.preview}
+		detail={[about(item, pickClassroom), item.closed ? t.closedStatus : undefined]
+			.filter(Boolean)
+			.join(' · ')}
+		time={listTime(item.postedAt)}
+		unread={item.lastSequence > item.readSequence}
+		unreadLabel={t.unread}
+	/>
+{/snippet}
+
 <Screen
 	locale={data.locale}
 	title={thread?.subject ?? (creating ? t.new : t.title)}
@@ -400,6 +432,9 @@
 						<button class={button.secondary} onclick={() => (closing = true)}>{t.close}</button>
 					{/if}
 				</div>
+				{#if thread.event}
+					<ReportedEvent locale={data.locale} event={thread.event} photos={thread.photos} />
+				{/if}
 
 				{#if more}
 					<div class="mt-4 text-center">
@@ -449,7 +484,9 @@
 									{t.cancelEditing}
 								</button>
 							</div>
-						{:else if !staff && policy}
+						{:else if report && !staff && !canSend}
+							<p class="rounded-3xl frosted px-4 py-2 text-sm text-muted">{r.waiting}</p>
+						{:else if !staff && !report && policy}
 							<MessagePolicy
 								locale={data.locale}
 								{policy}
@@ -595,25 +632,25 @@
 					{/if}
 				</div>
 			{/if}
+			{#if reports.length}
+				<section class="grid gap-2" aria-labelledby="reports-title">
+					<h2 id="reports-title" class="text-lg">{r.inbox}</h2>
+					<ul class="grid gap-2">
+						{#each reports as item (item.id)}
+							{@render row(item)}
+						{/each}
+					</ul>
+				</section>
+				{#if inquiries.length}<h2 class="text-lg">{t.inquiries}</h2>{/if}
+			{/if}
 			<ul class="grid gap-2">
-				{#each filtered.slice(0, visibleCount) as item (item.id)}
-					<InquiryLink
-						href={appPath(data.locale, 'messages', { id: item.id })}
-						initial={initialOf(withName(item))}
-						subject={item.subject}
-						preview={item.deletedAt ? t.deletedMessage : item.preview}
-						detail={[about(item, pickClassroom), item.closed ? t.closedStatus : undefined]
-							.filter(Boolean)
-							.join(' · ')}
-						time={listTime(item.postedAt)}
-						unread={item.lastSequence > item.readSequence}
-						unreadLabel={t.unread}
-					/>
+				{#each inquiries.slice(0, visibleCount) as item (item.id)}
+					{@render row(item)}
 				{:else}
-					<li class="text-muted">{t.empty}</li>
+					{#if !reports.length}<li class="text-muted">{t.empty}</li>{/if}
 				{/each}
 			</ul>
-			{#if filtered.length > visibleCount}
+			{#if inquiries.length > visibleCount}
 				<button class="{button.secondary} justify-self-center" onclick={() => (visibleCount += 30)}>
 					{t.more}
 				</button>

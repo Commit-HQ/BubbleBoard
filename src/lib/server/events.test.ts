@@ -197,34 +197,34 @@ describe('events publication', () => {
 		expect(kept[0].choice).toBe('choice 54');
 		expect(kept.at(-1)!.choice).toBe('choice 5');
 	});
-	it('lets the author, the head, and the lead of its classroom change an event, and nobody else', async () => {
+	it('lets every teacher of its classroom change an event, and nobody else', async () => {
 		const { db, staff, family, store } = await setup();
 		const snapshot = await consents(db, staff, 'group');
 		await startEvent(db, staff, 'event', 'group', snapshot.catalog, snapshot.revision);
 		await uploadEventFile(db, store, staff, 'event', 'file', new Uint8Array([1]));
 		await publishEvent(db, store, staff, 'event', 'content', 'key', ['file'], 30);
-		const stranger: Staff = { ...staff, role: 'teacher', teacher: 'other', credential: 'theirs' };
-		await db
-			.prepare("INSERT INTO teachers (id,profile,role) VALUES('other','profile','teacher')")
-			.run();
-		await db.prepare("INSERT INTO teacher_classrooms VALUES('other','group')").run();
+		const colleague: Staff = { ...staff, role: 'teacher', teacher: 'other', credential: 'theirs' };
+		const stranger: Staff = { ...colleague, teacher: 'stranger', credential: 'stranger' };
+		await db.batch([
+			db.prepare(
+				"INSERT INTO teachers (id,profile,role) VALUES('other','profile','teacher'),('stranger','profile','teacher')"
+			),
+			db.prepare("INSERT INTO teacher_classrooms VALUES('other','group'),('stranger','other')")
+		]);
+		// A teacher of another classroom is told to load again, as for any classroom that isn't hers.
 		await expect(
 			changeEvent(db, store, stranger, 'event', 'changed', ['file'], 30)
-		).rejects.toMatchObject({ status: 403 });
+		).rejects.toMatchObject({ status: 409 });
 		await expect(
 			uploadEventFile(db, store, stranger, 'event', 'theirs', new Uint8Array([2]))
-		).rejects.toMatchObject({ status: 403 });
+		).rejects.toMatchObject({ status: 409 });
 		expect(await changeEvent(db, store, staff, 'event', 'changed', ['file'], 30)).toBe(true);
-		expect(
-			await changeEvent(db, store, { ...staff, teacher: 'other' }, 'event', 'again', ['file'], 30)
-		).toBe(true);
-		// The lead of the classroom the event is for changes it, though she didn't post it.
-		expect(
-			await changeEvent(db, store, { ...stranger, role: 'lead' }, 'event', 'hers', ['file'], 30)
-		).toBe(true);
+		// A teacher of the classroom the event is for changes it, though she didn't post it.
+		expect(await changeEvent(db, store, colleague, 'event', 'hers', ['file'], 30)).toBe(true);
 		const [record] = await events(db, family('a'));
 		expect(record.content).toBe('hers');
 		expect(record.editedAt).toEqual(expect.any(Number));
+		expect(record).toMatchObject({ teacher: 'teacher', editedBy: 'other' });
 		expect(record.expiresAt).toBe(record.postedAt + 30 * 86400000);
 	});
 	it('adds photos under the revisions they were prepared against, and drops the ones left out', async () => {

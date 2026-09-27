@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { Identity, Staff, FamilyIdentity } from '$lib/api';
 import type { ConsentChange, ConsentRow, EventRecord } from '$lib/events/types';
-import { checkClassrooms, managesOthers, transaction, visibleClassrooms } from './database';
+import { checkClassrooms, transaction, visibleClassrooms } from './database';
 import { getObject, putObject, deleteMarked, type ObjectStore } from './storage';
 import { day } from '$lib/notices';
 
@@ -171,7 +171,7 @@ export async function events(db: D1Database, viewer: Identity) {
 	const [visible, params] = visibleClassrooms(viewer);
 	const { results } = await db
 		.prepare(
-			`SELECT id,classroom_id AS classroom,teacher_id AS teacher,content,event_key AS eventKey,posted_at AS postedAt,edited_at AS editedAt,expires_at AS expiresAt FROM events WHERE posted_at IS NOT NULL AND expires_at>? AND classroom_id IN(${visible}) ORDER BY posted_at DESC`
+			`SELECT id,classroom_id AS classroom,teacher_id AS teacher,content,event_key AS eventKey,posted_at AS postedAt,edited_at AS editedAt,edited_by AS editedBy,expires_at AS expiresAt FROM events WHERE posted_at IS NOT NULL AND expires_at>? AND classroom_id IN(${visible}) ORDER BY posted_at DESC`
 		)
 		.bind(Date.now(), ...params)
 		.all<EventRecord>();
@@ -198,15 +198,14 @@ export async function startEvent(
 		.first<{ credential: string; classroom: string }>();
 	if (row?.credential !== staff.credential || row.classroom !== classroom) error(403, 'forbidden');
 }
-async function editable(db: D1Database, staff: Staff, id: string, draft = false) {
+async function editable(db: D1Database, staff: Staff, id: string) {
 	const row = await db
 		.prepare(
-			'SELECT classroom_id AS classroom,teacher_id AS teacher,credential_id AS credential,posted_at AS postedAt,expires_at AS expiresAt FROM events WHERE id=?'
+			'SELECT classroom_id AS classroom,credential_id AS credential,posted_at AS postedAt,expires_at AS expiresAt FROM events WHERE id=?'
 		)
 		.bind(id)
 		.first<{
 			classroom: string;
-			teacher: string | null;
 			credential: string;
 			postedAt: number | null;
 			expiresAt: number;
@@ -214,13 +213,8 @@ async function editable(db: D1Database, staff: Staff, id: string, draft = false)
 	if (!row || row.expiresAt <= Date.now()) error(404, 'not-found');
 	await checkClassrooms(db, staff, [row.classroom]);
 	// An event still being prepared belongs to the one card preparing it, photos and all. Once it's up it
-	// belongs to whoever may change it: its author, the head, or the lead of its classroom, as a notice
-	// does. The classroom is one the staff member holds already, so for a lead there's nothing more to ask.
-	const own =
-		draft && row.postedAt === null
-			? row.credential === staff.credential
-			: managesOthers(staff) || row.teacher === staff.teacher;
-	if (!own) error(403, 'forbidden');
+	// belongs to every teacher of its classroom, as a notice does, which `checkClassrooms` has settled.
+	if (row.postedAt === null && row.credential !== staff.credential) error(403, 'forbidden');
 	return row;
 }
 /**
@@ -242,7 +236,7 @@ export async function uploadEventFile(
 	// Photos are uploaded before the event names them, both for the first publication and for a change that
 	// adds some. Until a change names one in `event_files` nobody can read it, and an object no record names
 	// is reclaimed by the daily cleanup (storage.ts).
-	await editable(db, staff, id, true);
+	await editable(db, staff, id);
 	await putObject(db, store, `events/${id}/${file}`, bytes);
 }
 export async function publishEvent(
@@ -255,7 +249,7 @@ export async function publishEvent(
 	files: string[],
 	days: number
 ) {
-	const row = await editable(db, staff, id, true);
+	const row = await editable(db, staff, id);
 	if (row.postedAt !== null) return { published: false, classroom: row.classroom };
 	await checkStored(store, id, files);
 	const now = Date.now();
@@ -332,9 +326,9 @@ export async function changeEvent(
 		// Its days count from when it went up, as a changed notice's do.
 		db
 			.prepare(
-				'UPDATE events SET content=?,edited_at=?,expires_at=? WHERE id=? AND posted_at IS NOT NULL AND expires_at>?'
+				'UPDATE events SET content=?,edited_at=?,edited_by=?,expires_at=? WHERE id=? AND posted_at IS NOT NULL AND expires_at>?'
 			)
-			.bind(content, now, row.postedAt + days * day, id, now)
+			.bind(content, now, staff.teacher, row.postedAt + days * day, id, now)
 	]);
 	await deleteMarked(db, store.bucket);
 	return !!result.at(-1)?.meta.changes;

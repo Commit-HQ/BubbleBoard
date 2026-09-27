@@ -378,6 +378,116 @@ describe('private inquiries', () => {
 		expect(sent).toEqual(['https://web.push.apple.com/0']);
 	});
 });
+/** An event of a classroom, up since `posted` unless that's null, as a report names it. */
+async function eventIn(
+	db: D1Database,
+	classroom: string,
+	posted: number | null = monday,
+	expires = Date.now() + 1e10
+) {
+	const id = createId();
+	await db
+		.prepare(
+			`INSERT INTO events(id,classroom_id,credential_id,posted_at,expires_at,catalog_revision,consent_revision)
+ VALUES (?,?,?,?,?,0,0)`
+		)
+		.bind(id, classroom, 'c', posted, expires)
+		.run();
+	return id;
+}
+describe('reports of event photos', () => {
+	const saturday = Date.parse('2026-09-19T08:00Z');
+	it('go whatever the classroom’s messaging settles, cost nothing, and come once for each family and event', async () => {
+		const f = await fixture();
+		const event = await eventIn(f.db, f.classroom);
+		await saveSettings(f.db, f.head, { ...f.settings, enabled: false, revision: 1 });
+		const report = { ...f.inquiry(), event };
+		expect(await startConversation(f.db, f.parent, report, saturday)).toBe(true);
+		expect(await startConversation(f.db, f.parent, report, saturday)).toBe(false);
+		const { conversations, policies } = await inbox(f.db, f.parent, saturday);
+		expect(conversations).toMatchObject([{ id: report.id, event }]);
+		expect(policies[0].used).toBe(0);
+		// A second report of the same event is refused; another family reports it on its own.
+		await expect(
+			startConversation(f.db, f.parent, { ...f.inquiry(), event }, saturday)
+		).rejects.toMatchObject({ status: 409, body: { message: 'reported' } });
+		const other = { ...f.inquiry(), family: f.otherFamily, event };
+		const otherParent = { ...f.parent, family: f.otherFamily };
+		expect(await startConversation(f.db, otherParent, other, saturday)).toBe(true);
+		// The same conversation can't be sent again as another event's, nor as a plain inquiry.
+		await expect(
+			startConversation(f.db, f.parent, { ...report, event: undefined }, saturday)
+		).rejects.toMatchObject({ status: 409, body: { message: 'stale' } });
+	});
+	it('name an event that is up in the family’s classroom, and only a family reports', async () => {
+		const f = await fixture();
+		for (const event of [
+			await eventIn(f.db, f.classroom, null),
+			await eventIn(f.db, f.classroom, monday - 2, monday - 1),
+			await eventIn(f.db, f.otherClassroom),
+			createId()
+		])
+			await expect(
+				startConversation(f.db, f.parent, { ...f.inquiry(), event }, monday)
+			).rejects.toMatchObject({ status: 404 });
+		const event = await eventIn(f.db, f.classroom);
+		await expect(
+			startConversation(f.db, f.staff, { ...f.inquiry(), event }, monday)
+		).rejects.toMatchObject({ status: 403 });
+	});
+	it('let a family answer each teacher’s message once, whatever the hours, and charge nothing', async () => {
+		const f = await fixture();
+		const report = { ...f.inquiry(), event: await eventIn(f.db, f.classroom) };
+		await startConversation(f.db, f.parent, report, monday);
+		await expect(
+			reply(f.db, f.parent, report.id, createId(), 'and another thing', [], monday)
+		).rejects.toMatchObject({ status: 409, body: { message: 'report-waiting' } });
+		await reply(f.db, f.staff, report.id, createId(), 'taken down', [], saturday);
+		expect(await reply(f.db, f.parent, report.id, createId(), 'thank you', [], saturday)).toBe(
+			true
+		);
+		await expect(
+			reply(f.db, f.parent, report.id, createId(), 'one more', [], saturday)
+		).rejects.toMatchObject({ body: { message: 'report-waiting' } });
+		expect((await inbox(f.db, f.parent, saturday)).policies[0].used).toBe(0);
+		// An ordinary inquiry started meanwhile still spends the month's one.
+		expect(await startConversation(f.db, f.parent, f.inquiry(), monday)).toBe(true);
+		expect((await inbox(f.db, f.parent, monday)).policies[0].used).toBe(1);
+	});
+	it('tell the classroom’s teachers of a new report, and not the family’s own devices', async () => {
+		const f = await fixture();
+		const report = { ...f.inquiry(), event: await eventIn(f.db, f.classroom) };
+		await startConversation(f.db, f.parent, report, monday);
+		for (const [index, who] of [f.parent, f.staff].entries()) {
+			const credential = createId();
+			await f.db.batch([
+				f.db
+					.prepare(
+						'INSERT INTO credentials(id,teacher_id,family_id,auth_token_hash,wrapped_key) VALUES (?,?,?,?,?)'
+					)
+					.bind(
+						credential,
+						who.kind === 'staff' ? who.teacher : null,
+						who.kind === 'family' ? who.family : null,
+						createId(),
+						'key'
+					),
+				f.db
+					.prepare('INSERT INTO sessions (token_hash, credential_id, expires_at) VALUES (?,?,?)')
+					.bind(`session${index}`, credential, monday + 100000),
+				f.db
+					.prepare('INSERT INTO push_subscriptions (endpoint, session_hash) VALUES (?,?)')
+					.bind(`https://web.push.apple.com/${index}`, `session${index}`)
+			]);
+		}
+		const reached = async (family: boolean) =>
+			(await conversationRecipients(f.db, report.id, '', monday, family)).map(
+				({ endpoint }) => endpoint
+			);
+		expect(await reached(false)).toEqual(['https://web.push.apple.com/1']);
+		expect(await reached(true)).toHaveLength(2);
+	});
+});
 describe('files on inquiries', () => {
 	it('lets only staff attach, shows the family the bytes, and takes them away with the inquiry', async () => {
 		const f = await fixture();

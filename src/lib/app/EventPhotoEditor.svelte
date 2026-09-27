@@ -49,6 +49,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import EventDetails from './EventDetails.svelte';
+	import EventReports from './EventReports.svelte';
 	import EventPhotoStrip, { type Thumb } from './EventPhotoStrip.svelte';
 	import FaceCanvas from './FaceCanvas.svelte';
 	import FaceNames from './FaceNames.svelte';
@@ -196,13 +197,29 @@
 	});
 	/** The photos being prepared now, in the gallery's order, which is the order they're kept in too. */
 	const inOrder = $derived(order.flatMap((id) => photos.filter((p) => p.id === id)));
-	/** Every photo of the gallery in its order: one already up, or one being prepared now. */
+	/** The photos up now that the event's open reports name, which the strip flags. */
+	const flagged = $derived(
+		new Set(event ? app.openReportsOf(event.id).flatMap((report) => report.photos) : [])
+	);
+	/**
+	 * Every photo of the gallery in its order: one already up, or one being prepared now, which is still
+	 * flagged while a reported photo is being covered again.
+	 */
 	const gallery = $derived(
 		order.flatMap((id): Thumb[] => {
 			const made = photos.find((p) => p.id === id);
-			if (made) return [{ id, url: made.url, history: made.history, detection: made.detection }];
+			if (made)
+				return [
+					{
+						id,
+						url: made.url,
+						history: made.history,
+						detection: made.detection,
+						reported: flagged.has(made.replaces?.id ?? '')
+					}
+				];
 			const already = kept.find((p) => p.id === id);
-			return already ? [{ id, url: opened[id], published: true }] : [];
+			return already ? [{ id, url: opened[id], published: true, reported: flagged.has(id) }] : [];
 		})
 	);
 	const reviewedCount = $derived(photos.filter((p) => p.history.present.reviewed).length);
@@ -1015,6 +1032,14 @@
 					{/if}
 					{@render addButton(button.secondary, t.addMore)}
 				</div>
+				{#if event}
+					<!-- A reported photo opened again to cover it keeps its number until the change is saved. -->
+					<EventReports
+						{locale}
+						event={event.id}
+						order={order.map((id) => photos.find((p) => p.id === id)?.replaces?.id ?? id)}
+					/>
+				{/if}
 				<EventPhotoStrip {locale} photos={gallery} {current} onpick={switchPhoto} onmove={move} />
 			{/if}
 
