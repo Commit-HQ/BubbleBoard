@@ -76,12 +76,13 @@ async function insertCredential(db: D1Database, owner: Owner, credential: NewCre
 
 /** A new card in place of its owner's earlier card, whose removal ends every session that card started. */
 async function replaceCard(db: D1Database, owner: Owner, credential: NewCredential) {
-	// Teacher and family IDs are random, so one ID never matches both columns.
-	const ownerId = 'teacher' in owner ? owner.teacher : owner.family;
-	return [
-		db.prepare('DELETE FROM credentials WHERE teacher_id = ?1 OR family_id = ?1').bind(ownerId),
-		await insertCredential(db, owner, credential)
-	];
+	// Each owner by its own column: teachers and families are separate tables, so an ID in one can turn up in
+	// the other, and a family's new card must never end a teacher's.
+	const deleting =
+		'teacher' in owner
+			? db.prepare('DELETE FROM credentials WHERE teacher_id = ?').bind(owner.teacher)
+			: db.prepare('DELETE FROM credentials WHERE family_id = ?').bind(owner.family);
+	return [deleting, await insertCredential(db, owner, credential)];
 }
 
 /** Sets up the installation once. Repeating a setup that succeeded, after a lost response, is fine. */
@@ -329,7 +330,9 @@ async function changeChildren(
 	after: D1PreparedStatement[] = []
 ) {
 	// The classroom the child goes into, and every membership the change touches, is one the manager holds,
-	// checked together. A new family is linked by one of these, so it needs no check of its own.
+	// checked together. A new family is linked by one of these, so it needs no check of its own; a family
+	// that exists must be one she already sees, or a lead could pull any family into her group and take its
+	// card.
 	const memberships = [...links.addMemberships, ...links.removeMemberships];
 	await checkClassrooms(db, manager, [
 		...new Set([
@@ -337,6 +340,11 @@ async function changeChildren(
 			...memberships.map(({ classroom }) => classroom)
 		])
 	]);
+	const created = new Set(links.newFamilies.map(({ id }) => id));
+	const linked = [
+		...new Set(links.addMemberships.map(({ family }) => family).filter((id) => !created.has(id)))
+	];
+	if (linked.length) await ownFamilies(db, manager, linked);
 	const [visible, params] = visibleClassrooms(manager);
 	await transaction(db, [
 		nextRevision(db, links.revision),

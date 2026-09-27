@@ -64,6 +64,7 @@ import {
 	endSession,
 	familyDevices,
 	identityForCard,
+	maxDevices,
 	nameDevice,
 	removeDevice,
 	requireHead,
@@ -344,10 +345,10 @@ describe('the roles migration', () => {
 describe('group leads', () => {
 	/** Two classrooms, and a lead who holds only Bubbles. */
 	async function withLead(db: D1Database) {
-		const { head } = await setUpKindergarten(db);
+		const { teachers, head } = await setUpKindergarten(db);
 		const [bubbles, owls] = [await addClassroomTo(db, head), await addClassroomTo(db, head)];
 		const lead = (await addTeacherTo(db, head, [bubbles], 'lead')) as Manager;
-		return { head, bubbles, owls, lead };
+		return { teachers, head, bubbles, owls, lead };
 	}
 
 	it('see their classrooms with the children, families and staff in them, and nothing else', async () => {
@@ -424,6 +425,33 @@ describe('group leads', () => {
 		await expect(renameFamily(db, lead, theirs.id, 'renamed')).rejects.toMatchObject({
 			status: 404
 		});
+	});
+
+	it('link a new family or one they see to a child, and no family of another group', async () => {
+		const db = localDatabase();
+		const { head, bubbles, owls } = await withLead(db);
+		const ducks = await addClassroomTo(db, head);
+		const lead = (await addTeacherTo(db, head, [bubbles, ducks], 'lead')) as Manager;
+		const [mine, theirs] = [newFamily(), newFamily()];
+		await addChildTo(db, head, bubbles, mine);
+		await addChildTo(db, head, owls, theirs);
+
+		await expect(addChildTo(db, lead, ducks, mine.id)).resolves.toEqual(expect.any(String));
+		await expect(addChildTo(db, lead, ducks, theirs.id)).rejects.toMatchObject({ status: 404 });
+		expect((await kindergarten(db, lead)).families.map(({ id }) => id)).toEqual([mine.id]);
+	});
+
+	it('end only a family’s cards when replacing them, even one given a teacher’s ID', async () => {
+		const db = localDatabase();
+		const { teachers, head, bubbles, lead } = await withLead(db);
+		const impostor = { ...newFamily(), id: head.teacher };
+		await addChildTo(db, lead, bubbles, impostor);
+
+		await replaceFamilyCards(db, lead, [{ family: impostor.id, credential: credential() }]);
+		expect(await identityForCard(db, teachers[0].credential.authToken)).toMatchObject({
+			teacher: head.teacher
+		});
+		expect(await identityForCard(db, impostor.credential.authToken)).toBeUndefined();
 	});
 
 	it('change a notice whose classrooms are all theirs, and no notice that also goes elsewhere', async () => {
@@ -540,6 +568,42 @@ describe('sessions', () => {
 		await expect(requireHead(headDevice)).resolves.toMatchObject({ role: 'head' });
 		await db.prepare('UPDATE sessions SET expires_at = 0').run();
 		await expect(requireHead(headDevice)).rejects.toMatchObject({ status: 401 });
+	});
+
+	it('keep a family’s or a teacher’s most devices, signing out the one renewed longest ago', async () => {
+		const db = localDatabase();
+		const { teachers, head } = await setUpKindergarten(db);
+		const bubbles = await addClassroomTo(db, head);
+		const [family, other] = [newFamily(), newFamily()];
+		await addChildTo(db, head, bubbles, family);
+		await addChildTo(db, head, bubbles, other);
+		const [otherDevice, headDevice] = [
+			await deviceWith(db, other.credential.id),
+			await deviceWith(db, teachers[0].credential.id)
+		];
+		const devices = [];
+		for (let i = 0; i < maxDevices; i++) devices.push(await deviceWith(db, family.credential.id));
+		// The first device went longest without a renewal.
+		await db
+			.prepare('UPDATE sessions SET expires_at = expires_at - ? WHERE token_hash = ?')
+			.bind(day, (await sessionHash(devices[0]))!)
+			.run();
+
+		// A one-time card's device counts with the family's card's.
+		const card = credential();
+		await addOneTimeCard(db, await familyOf(db, family), card);
+		const cardIdentity = (await identityForCard(db, card.authToken))!;
+		const newest = await deviceWith(db, cardIdentity.credential);
+		await expect(requireIdentity(devices[0])).rejects.toMatchObject({ status: 401 });
+		for (const device of [...devices.slice(1), newest, otherDevice, headDevice]) {
+			await expect(requireIdentity(device)).resolves.toBeDefined();
+		}
+		expect(await familyDevices(newest, await familyOf(db, family))).toHaveLength(maxDevices);
+
+		// A teacher's devices are counted apart from any family's.
+		for (let i = 0; i < maxDevices; i++) await deviceWith(db, teachers[0].credential.id);
+		await expect(requireIdentity(headDevice)).rejects.toMatchObject({ status: 401 });
+		expect(await familyDevices(newest, await familyOf(db, family))).toHaveLength(maxDevices);
 	});
 
 	it('renew while in use, in the database and in the cookie', async () => {
@@ -1575,6 +1639,18 @@ describe('notifications', () => {
 		);
 	});
 
+	it('keep one subscription for each device, the one it sent last', async () => {
+		const db = localDatabase();
+		const { teachers } = await setUpKindergarten(db);
+		const [device, other] = [
+			await deviceWith(db, teachers[0].credential.id),
+			await deviceWith(db, teachers[1].credential.id)
+		];
+		await turnOn(db, other, 'other');
+		for (const name of ['old-key', 'new-key', 'new-key']) await turnOn(db, device, name);
+		expect(await subscribed(db)).toEqual([endpoint('new-key'), endpoint('other')]);
+	});
+
 	it('end with their session: signing out, a replaced card, or a session that ran out', async () => {
 		const db = localDatabase();
 		const { teachers, head } = await setUpKindergarten(db);
@@ -1601,9 +1677,10 @@ describe('notifications', () => {
 	it('send a group once, forget devices that are gone, and try busy push services again later', async () => {
 		const db = localDatabase();
 		const { teachers } = await setUpKindergarten(db);
-		const device = await deviceWith(db, teachers[0].credential.id);
 		const statuses = [201, 400, 404, 410, 429, 503];
-		for (const status of statuses) await turnOn(db, device, status);
+		for (const status of statuses) {
+			await turnOn(db, await deviceWith(db, teachers[0].credential.id), status);
+		}
 		const requests: { url: string; headers: HeadersInit | undefined }[] = [];
 		const queued: unknown[] = [];
 		let acknowledged = false;

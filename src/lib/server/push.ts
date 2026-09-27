@@ -62,18 +62,26 @@ export async function pushKey(value: unknown, bytes: number) {
 	return value;
 }
 
-/** Keeps a device's subscription with the session that sent it, moving it from an earlier session. */
+/**
+ * Keeps a device's subscription with the session that sent it, moving it from an earlier session. A session
+ * is one device, so it keeps one subscription: a new one, as when the app renews it with a new key, replaces
+ * the one before, and a session can't pile up endpoints for every notification to try.
+ */
 export async function subscribe(db: D1Database, device: PushDevice, session: string) {
 	// A subscription already with this session, by these keys, isn't written again. `IS NOT` compares keys
 	// that aren't there, which is what a device subscribed before this installation stored them has.
-	await db
-		.prepare(
-			`INSERT INTO push_subscriptions (endpoint, session_hash, p256dh, auth) VALUES (?1, ?2, ?3, ?4)
-			ON CONFLICT (endpoint) DO UPDATE SET session_hash = ?2, p256dh = ?3, auth = ?4
-			WHERE session_hash <> ?2 OR p256dh IS NOT ?3 OR auth IS NOT ?4`
-		)
-		.bind(device.endpoint, session, device.p256dh, device.auth)
-		.run();
+	await db.batch([
+		db
+			.prepare('DELETE FROM push_subscriptions WHERE session_hash = ? AND endpoint <> ?')
+			.bind(session, device.endpoint),
+		db
+			.prepare(
+				`INSERT INTO push_subscriptions (endpoint, session_hash, p256dh, auth) VALUES (?1, ?2, ?3, ?4)
+				ON CONFLICT (endpoint) DO UPDATE SET session_hash = ?2, p256dh = ?3, auth = ?4
+				WHERE session_hash <> ?2 OR p256dh IS NOT ?3 OR auth IS NOT ?4`
+			)
+			.bind(device.endpoint, session, device.p256dh, device.auth)
+	]);
 }
 
 /** Forgets the subscription of a session's device, which turns its notifications off. */

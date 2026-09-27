@@ -15,6 +15,11 @@ const day = 24 * 60 * 60 * 1000;
 const lifetime = 90 * day;
 /** A session in use is extended once it's this old, so most requests don't write. */
 const renewAfter = 7 * day;
+/**
+ * The devices a family, or a teacher, keeps connected at once. Far more than a family uses, and a card
+ * connected again and again can't fill the database or multiply every notification.
+ */
+export const maxDevices = 20;
 
 /** The head of the kindergarten, checked for this request. Changes only she may make take one. */
 export type Head = Staff & { role: 'head' };
@@ -53,9 +58,21 @@ export async function isSetupToken(event: RequestEvent, token: string) {
  * the database from being flooded rather than protecting the cards. Without the limiter, nothing runs.
  */
 export async function limitAttempts(event: RequestEvent) {
-	const limiter = event.platform?.env.CARD_ATTEMPTS;
+	await withinLimit(event.platform?.env.CARD_ATTEMPTS, event.getClientAddress());
+}
+
+/**
+ * Limits one family's meeting bookings and cancellations, whichever of its devices makes them. Each tells the
+ * classroom's teachers, so a loop can't flood their phones or the queue. Staff aren't held to it: their
+ * notices already reach every family, and a teacher tidying her times one by one mustn't be stopped.
+ */
+export async function limitMeetingChanges(event: RequestEvent, who: Identity) {
+	if (who.kind === 'family') await withinLimit(event.platform?.env.MEETING_CHANGES, who.family);
+}
+
+async function withinLimit(limiter: RateLimit | undefined, key: string) {
 	if (!limiter) error(503, 'unavailable');
-	const { success } = await limiter.limit({ key: event.getClientAddress() });
+	const { success } = await limiter.limit({ key });
 	if (!success) error(429, 'too-many-attempts');
 }
 
@@ -126,6 +143,16 @@ export async function startSession(event: RequestEvent, credential: string) {
 		db
 			.prepare('DELETE FROM sessions WHERE token_hash = ?')
 			.bind(previous ? await hashToken(previous) : ''),
+		// Past the most devices its owner keeps, whichever card started them, the ones renewed longest ago
+		// make room for this one. Each owner by its own column, as a credential has only one of them.
+		db
+			.prepare(
+				`DELETE FROM sessions WHERE token_hash IN (SELECT s.token_hash FROM sessions s
+				JOIN credentials c ON c.id = s.credential_id JOIN credentials mine ON mine.id = ?1
+				WHERE c.teacher_id = mine.teacher_id OR c.family_id = mine.family_id
+				ORDER BY s.expires_at DESC, s.rowid DESC LIMIT -1 OFFSET ?2)`
+			)
+			.bind(credential, maxDevices - 1),
 		db
 			.prepare(
 				'INSERT INTO sessions (token_hash, credential_id, expires_at, id) VALUES (?, ?, ?, ?)'
