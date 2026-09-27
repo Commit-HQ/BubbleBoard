@@ -2,7 +2,7 @@
 
 What's new in each version of BubbleBoard, newest first. The version an installation runs is in the footer of every page.
 
-## 1.1.0 (unreleased)
+## 1.1.0 (2026-09-27)
 
 - Back returns to the same place on the board, or on whichever page you came from, instead of the top.
 - A child's face visibility has a History: when it was allowed or covered, and by whom, for parents in Settings and for staff on the child's page.
@@ -13,7 +13,7 @@ What's new in each version of BubbleBoard, newest first. The version an installa
 - A clearer Messages inbox. Photo reports have their own section with a red flag. Teachers see each child's initials in the child's own colour, with a dot when a parent is waiting for an answer. Parents see whether the teachers have answered, and every message preview says who wrote it.
 - When a teacher writes outside the classroom's hours, the parent can answer that message at any time. The teacher is told so while writing.
 
-## 1.0.0 (2026-09-27)
+## 1.0.0 (2026-09-24)
 
 The first release, in use at the Bubbles' kindergarten.
 
