@@ -318,16 +318,16 @@ export const en = {
 			{
 				shot: 'parent-board',
 				title: 'Everything new waits in one place',
-				copy: 'Open the app and there’s your classroom’s notice board. It has the teachers’ notices, photos from events, and meeting times. The newest is always on top, so you never have to look for it.',
+				copy: 'Open the app and there’s your classroom’s notice board. It has the teachers’ notices, photos from events, and meeting times. The newest notices are at the top, so you never have to look for them.',
 				screen:
-					'The app’s home: a card that leads to the meeting times, then the event “Bubble day on the Promenada” with a photo of a girl blowing soap bubbles.'
+					'The app’s home: a card with the family’s meeting on Tuesday 29 September, then the yellow notice about the trip to Tvrđa, its poll already answered.'
 			},
 			{
 				shot: 'parent-poll',
 				title: 'Read it? Say so with one tap',
-				copy: 'A trip to Tvrđa tomorrow? When you’ve read the notice, tap “Mark as seen” and the teachers know you saw it. If they ask whether your child is coming, choose an answer in the poll and confirm it.',
+				copy: 'A trip to Tvrđa tomorrow? When you’ve read the notice, tap “Mark as seen” and the teachers know you saw it. If they ask whether your child is coming, choose an answer in the poll and confirm it. Done with a notice? Hide it, and the board stays tidy.',
 				screen:
-					'A yellow notice about a trip to Tvrđa, with a poll: “Yes, we’re coming” has 5 votes and “No, not this time” has 1. Below it, the notice is marked as seen.'
+					'A yellow notice about a trip to Tvrđa, with a poll: “Yes, we’re coming” has 5 votes and “No, not this time” has 1, and the family’s answer is marked. Below it, the notice is marked as seen, with Hide beside it.'
 			},
 			{
 				shot: 'parent-gallery',
@@ -339,14 +339,21 @@ export const en = {
 			{
 				shot: 'parent-consent',
 				title: 'Your child’s face, your decision',
-				copy: 'Can other families in the classroom see your child’s face? You decide that in Settings. Until you allow it, they see a sticker. Change your mind whenever you like. You always see your own child without a sticker.',
+				copy: 'Can other families in the classroom see your child’s face? You decide that in Settings. Until you allow it, they see a sticker. Change your mind whenever you like, and History shows every change and who made it. You always see your own child without a sticker.',
 				screen:
-					'Settings, with two choices for the child Ema Novak: “Only our family” and “Families in our classroom too”, which is chosen.'
+					'Settings, with two choices for the child Ema Novak: “Only our family” and “Families in our classroom too”, which is chosen, and History below them.'
+			},
+			{
+				shot: 'parent-report',
+				title: 'Something wrong with a photo? Tell the teachers',
+				copy: 'Tap “Report photos” under the gallery, pick the photos you mean, and write a few words. The teachers get it right away and can take the photos down. Only you and the teachers see the report.',
+				screen:
+					'The event’s gallery with the third photo picked, and under it the report form: 1 photo picked, and a message to the teachers saying Ema’s eyes are closed in it.'
 			},
 			{
 				shot: 'parent-messages',
 				title: 'Have a question? Just write it',
-				copy: 'Picking your child up early on Thursday? A jacket went missing? Write to the teachers here. Only you and the teachers see the conversation, not other parents.',
+				copy: 'Picking your child up early on Thursday? A jacket went missing? Write to the teachers here, and you’ll see when they’ve answered. Only you and the teachers see the conversation, not other parents.',
 				screen:
 					'A conversation called “Picking Ema up early on Thursday”: the parent asks, the teacher Ana Horvat answers, and the parent thanks her.'
 			},
@@ -360,9 +367,9 @@ export const en = {
 			{
 				shot: 'parent-devices',
 				title: 'Grandma can see what’s new, too',
-				copy: 'Want grandma, grandpa, or a babysitter to see the notices too? In Settings you make a QR code for one more device. Scan it with that device, or send it as a link. Each code connects one device and works for 24 hours.',
+				copy: 'Want grandma, grandpa, or a babysitter to see the notices too? In Settings you make a QR code for one more device. Scan it with that device, or send it as a link. Every connected device is listed there by name, and you can remove one whenever you like.',
 				screen:
-					'Settings, under “Add a device”: a round QR code, the code written out in letters and numbers under it, and the buttons “Share link” and “Done”.'
+					'Settings, under “Connected devices”: Mum, marked as this device, and Grandma Marija, with “Add a device” below them.'
 			}
 		],
 		teachers: [
@@ -383,9 +390,9 @@ export const en = {
 			{
 				shot: 'teacher-faces',
 				title: 'Stickers place themselves',
-				copy: 'Add photos from an event, and your phone finds the faces and covers them with stickers. You just tap a face and say whose it is. Until you publish them, the photos stay on your phone.',
+				copy: 'Add photos from an event, and your phone finds the faces and covers them with stickers. You just tap a face and say whose it is. An eye beside a name means that child’s family lets the classroom see the face. Until you publish them, the photos stay on your phone.',
 				screen:
-					'The photo editor: children lying on a rug with stickers over six faces, three of them named, and a list of children’s names to choose from.'
+					'The photo editor: children lying on a rug with stickers over six faces, three of them named, and below it the children’s names to choose from, most with an eye beside them.'
 			},
 			{
 				shot: 'teacher-preview',
@@ -397,9 +404,9 @@ export const en = {
 			{
 				shot: 'teacher-messages',
 				title: 'Every question gets its own conversation',
-				copy: 'Parents’ questions don’t pile up in one long chat. Each one is separate, and beside it you see which family is asking, about which child, and from which classroom. The kindergarten decides during which hours parents can write and how many inquiries a family has each month, so messages don’t arrive at all hours.',
+				copy: 'Parents’ questions don’t pile up in one long chat. Each one is separate, and you see which family is asking, about which child, and who is still waiting for an answer. Photo reports come first, and any teacher of the classroom can take a reported photo down. The kindergarten decides during which hours parents can write, so messages don’t arrive at all hours.',
 				screen:
-					'The messages list with three unread inquiries: a lost blue jacket, an allergy note for the trip, and picking Ema up early on Thursday.'
+					'The messages list: a photo report about the event, marked with a red flag, above three inquiries: a lost blue jacket, an allergy note for the trip, and picking Ema up early on Thursday.'
 			},
 			{
 				shot: 'teacher-meetings',
@@ -411,9 +418,9 @@ export const en = {
 			{
 				shot: 'teacher-classroom',
 				title: 'Every family gets its own QR code',
-				copy: 'The BubbleBoard administrator adds the children to a classroom and prints a QR code for each family. The family uses that code to get into the app, with no username or password. If they lose it, they get a new one and the old one stops working.',
+				copy: 'The group lead or the BubbleBoard administrator adds the children to the classroom and prints a QR code for each family. The family uses that code to get into the app, with no username or password. If they lose it, they get a new one and the old one stops working.',
 				screen:
-					'The Bubbles classroom with 8 children, each with their family’s name, and buttons to add a child and replace QR codes.'
+					'The Bubbles classroom with 8 children, buttons to add a child and replace QR codes, the parent messaging settings, and each child with their family and face visibility.'
 			}
 		],
 		closing: {
