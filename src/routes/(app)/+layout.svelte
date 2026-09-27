@@ -31,13 +31,14 @@
 	});
 	// The service worker says when a notification comes or is tapped, and what about (src/service-worker.ts),
 	// so what's new shows straight away when the app is open in view, or once it's back in view
-	// (`App.refresh`). A message changes only the conversations, so only they load again.
+	// (`App.refresh`). A message, or a family's report of photos, changes only the conversations, so only they
+	// load again.
 	onMount(() => {
 		const container = navigator.serviceWorker;
 		if (!container) return;
 		const reload = ({ data }: MessageEvent) => {
 			if (data?.type !== 'push') return;
-			if (data.kind === 'message') {
+			if (data.kind === 'message' || data.kind === 'report') {
 				if (app.connected) app.loadMessages();
 			} else app.refresh({ now: true });
 		};
