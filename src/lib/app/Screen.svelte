@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { afterNavigate } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
 	import { messages, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
@@ -13,6 +14,8 @@
 	// The way back leads home, or to `back` for a page inside another. `need` is what the device must be:
 	// staff, the head of the kindergarten, connected with any card, or nothing, for settings. With `rename`,
 	// a pencil beside the title opens a field that renames what the title names.
+	// When the page before this one is where Back leads, Back goes back through history instead, so that
+	// page comes back scrolled to where it was, as it does with the phone's own back gesture.
 	let {
 		locale,
 		title,
@@ -35,6 +38,16 @@
 	const t = $derived(messages[locale].app);
 	const id = $props.id();
 	let renaming = $state(false);
+	let previous = '';
+	afterNavigate(({ from }) => (previous = from ? from.url.pathname + from.url.search : ''));
+
+	function goBack(event: MouseEvent) {
+		if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+		const target = new URL((event.currentTarget as HTMLAnchorElement).href);
+		if (target.pathname + target.search !== previous) return;
+		event.preventDefault();
+		history.back();
+	}
 
 	async function save(name: string) {
 		await rename?.save(name);
@@ -51,7 +64,7 @@
 {#snippet content()}
 	<div class="grid gap-6">
 		<header class="print:hidden">
-			<a class="{button.quiet} -ml-3" href={back ?? appPath(locale)}>
+			<a class="{button.quiet} -ml-3" href={back ?? appPath(locale)} onclick={goBack}>
 				<Icon name="chevronLeft" class="size-4" />{t.actions.back}
 			</a>
 			{#if rename && renaming}

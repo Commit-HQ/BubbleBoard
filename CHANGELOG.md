@@ -2,6 +2,10 @@
 
 What's new in each version of BubbleBoard, newest first. The version an installation runs is in the footer of every page.
 
+## 1.1.0 (unreleased)
+
+- Back returns to the same place on the board, or on whichever page you came from, instead of the top.
+
 ## 1.0.0 (2026-09-27)
 
 The first release, in use at the Bubbles' kindergarten.
