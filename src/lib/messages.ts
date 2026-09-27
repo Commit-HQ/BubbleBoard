@@ -31,6 +31,8 @@ export type ConversationRecord = {
 	postedAt: number;
 	editedAt: number | null;
 	deletedAt: number | null;
+	/** Whether the latest message is a teacher's sent outside the hours, which the family may answer any time. */
+	afterHours: number;
 };
 export type MessageRecord = {
 	id: string;
@@ -41,6 +43,8 @@ export type MessageRecord = {
 	/** When its author last changed its words, and when it was deleted; a deleted message carries no content. */
 	editedAt: number | null;
 	deletedAt: number | null;
+	/** Set on a teacher's message sent outside the classroom's hours, which the family may answer any time. */
+	afterHours: number;
 };
 /**
  * A message as its envelope holds it: its words, the name of the teacher who wrote it, and the files a
@@ -251,7 +255,8 @@ export async function openConversation(
 						sequence: record.lastSequence,
 						postedAt: record.postedAt,
 						editedAt: record.editedAt,
-						deletedAt: record.deletedAt
+						deletedAt: record.deletedAt,
+						afterHours: record.afterHours
 					},
 					key,
 					record.classroom,

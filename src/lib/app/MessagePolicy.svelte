@@ -12,6 +12,7 @@
 		policy,
 		charged,
 		allowed,
+		anytime = false,
 		closing,
 		full = false
 	}: {
@@ -20,6 +21,8 @@
 		charged: boolean;
 		/** Whether this classroom is taking messages at this moment, by the device's clock. */
 		allowed: boolean;
+		/** Whether this answers a teacher's message sent outside the hours, which goes at any time. */
+		anytime?: boolean;
 		/** Minutes until today's window closes, while that's soon enough to say. */
 		closing?: number;
 		full?: boolean;
@@ -37,6 +40,10 @@
 		{:else if !allowed}
 			<Icon name="clock" class="size-4 shrink-0 text-muted" /><span class="font-semibold"
 				>{t.outside}</span
+			>
+		{:else if anytime}
+			<Icon name="check" class="size-4 shrink-0 text-muted" /><span class="text-muted"
+				>{t.anytime}</span
 			>
 		{:else if !charged}
 			<Icon name="check" class="size-4 shrink-0 text-muted" /><span class="text-muted"

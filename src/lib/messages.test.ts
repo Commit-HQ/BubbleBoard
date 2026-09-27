@@ -21,7 +21,8 @@ it('resets a non-overlapping refresh so missing messages remain reachable throug
 		author: 'teacher:1',
 		postedAt: 0,
 		editedAt: null,
-		deletedAt: null
+		deletedAt: null,
+		afterHours: 0
 	});
 	const history = Array.from({ length: 110 }, (_, i) => message(i + 1));
 	const refreshed = mergeRecentMessages(history.slice(0, 50), history.slice(-50));
@@ -59,7 +60,8 @@ it('reuses decrypted inbox content while updating metadata and decrypting change
 		readSequence: 0,
 		seenSequence: 0,
 		editedAt: null,
-		deletedAt: null
+		deletedAt: null,
+		afterHours: 0
 	};
 	const previous = { key, conversation: await openConversation(record, key) };
 	const next = {
@@ -119,7 +121,8 @@ it('binds private content to its family key, classroom, message and conversation
 		content,
 		postedAt: 0,
 		editedAt: null,
-		deletedAt: null
+		deletedAt: null,
+		afterHours: 0
 	};
 	expect((await openMessage(row, key, 'classroom', 'conversation')).text).toBe('Private reply');
 	await expect(
@@ -155,7 +158,8 @@ it('carries the photos a report picked with its sealed subject, and refuses a li
 		readSequence: 0,
 		seenSequence: 0,
 		editedAt: null,
-		deletedAt: null
+		deletedAt: null,
+		afterHours: 0
 	});
 	const photos = [createId(), createId()];
 	const open = async (value: unknown) => openConversation(await record(value), key);
@@ -210,7 +214,8 @@ it('opens a deleted message as the placeholder, without decrypting anything', as
 			content: '',
 			postedAt: 0,
 			editedAt: null,
-			deletedAt: 5
+			deletedAt: 5,
+			afterHours: 0
 		};
 		const opened = await openMessage(row, key, 'classroom', 'conversation');
 		expect(opened).toMatchObject({ text: '', name: '', deletedAt: 5 });

@@ -212,6 +212,35 @@ describe('private inquiries', () => {
 		});
 		await startConversation(f.db, f.staff, f.inquiry(), saturday);
 	});
+	it('lets a family answer a teacher’s message sent outside the hours at any time, once', async () => {
+		const f = await fixture(),
+			first = f.inquiry(),
+			second = f.inquiry();
+		const saturday = Date.parse('2026-09-19T08:00Z'),
+			sunday = Date.parse('2026-09-20T18:00Z');
+		// Written on Saturday, so the family answers on Sunday; within the hours, the answer waits for them.
+		await startConversation(f.db, f.staff, first, saturday);
+		await startConversation(f.db, f.staff, second, monday);
+		expect(await reply(f.db, f.parent, first.id, createId(), 'sunday', [], sunday)).toBe(true);
+		await expect(
+			reply(f.db, f.parent, second.id, createId(), 'sunday', [], sunday)
+		).rejects.toMatchObject({ body: { message: 'messages-hours' } });
+		// Its answer takes the hours back: writing again waits for Monday.
+		await expect(
+			reply(f.db, f.parent, first.id, createId(), 'and again', [], sunday)
+		).rejects.toMatchObject({ body: { message: 'messages-hours' } });
+		await reply(f.db, f.staff, first.id, createId(), 'monday answer', [], monday);
+		const [record] = (await inbox(f.db, f.parent, monday)).conversations.filter(
+			({ id }) => id === first.id
+		);
+		expect(record.afterHours).toBe(0);
+		// The switch still holds: while messaging is off, nobody answers.
+		await reply(f.db, f.staff, first.id, createId(), 'late note', [], sunday);
+		await saveSettings(f.db, f.head, { ...f.settings, enabled: false, revision: 1 });
+		await expect(
+			reply(f.db, f.parent, first.id, createId(), 'off', [], sunday)
+		).rejects.toMatchObject({ body: { message: 'messages-disabled' } });
+	});
 	it('uses each classroom’s quota and calendar month, including Zagreb month boundary', async () => {
 		const f = await fixture();
 		await startConversation(f.db, f.parent, f.inquiry(), monday);

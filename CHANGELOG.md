@@ -11,6 +11,7 @@ What's new in each version of BubbleBoard, newest first. The version an installa
 - Parents can report an event's photos, picking the ones they mean. The teachers get a notification and the report in Messages, and can take the photos down.
 - Any teacher of a group can change or remove its notices and events, not only whoever posted them. Teachers see who edited a post.
 - A clearer Messages inbox. Photo reports have their own section with a red flag. Teachers see each child's initials in the child's own colour, with a dot when a parent is waiting for an answer. Parents see whether the teachers have answered, and every message preview says who wrote it.
+- When a teacher writes outside the classroom's hours, the parent can answer that message at any time. The teacher is told so while writing.
 
 ## 1.0.0 (2026-09-27)
 

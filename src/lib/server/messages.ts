@@ -149,6 +149,12 @@ export async function conversationFor(db: D1Database, who: Identity, id: string)
 /** What a family has spent of a classroom's monthly allowance: its classroom, family, and Zagreb month. */
 const spent = `(SELECT COUNT(*) FROM messages m JOIN conversations c ON c.id=m.conversation_id
  WHERE c.classroom_id=? AND c.family_id=? AND m.charged=?)`;
+/**
+ * Whether the last message of a conversation is a teacher's sent outside the classroom's hours, which the
+ * family may answer at any time.
+ */
+const afterHours = `COALESCE((SELECT after_hours FROM messages
+ WHERE conversation_id=? ORDER BY sequence DESC LIMIT 1),0)`;
 /** Whether a teacher wrote the last message of a conversation, which makes the family's answer free. */
 const answered = `COALESCE((SELECT substr(author,1,8)='teacher:' FROM messages
  WHERE conversation_id=? ORDER BY sequence DESC LIMIT 1),0)`;
@@ -197,7 +203,8 @@ export async function inbox(db: D1Database, who: Identity, now = Date.now()): Pr
 		.prepare(
 			`SELECT c.id,c.family_id AS family,c.classroom_id AS classroom,c.event_id AS event,c.title,c.closed,c.created_at AS createdAt,
  m.sequence AS lastSequence,COALESCE(r.sequence,0) AS readSequence,${seenSequence(who)} AS seenSequence,
- m.content,m.id AS messageId,m.author,m.posted_at AS postedAt,m.edited_at AS editedAt,m.deleted_at AS deletedAt
+ m.content,m.id AS messageId,m.author,m.posted_at AS postedAt,m.edited_at AS editedAt,m.deleted_at AS deletedAt,
+ m.after_hours AS afterHours
  FROM conversations c JOIN messages m ON m.sequence=(SELECT MAX(sequence) FROM messages WHERE conversation_id=c.id)
  LEFT JOIN conversation_reads r ON r.conversation_id=c.id AND r.reader=?
  WHERE c.classroom_id IN (${sql}) ${who.kind === 'family' ? 'AND c.family_id=?' : ''}
@@ -209,7 +216,8 @@ export async function inbox(db: D1Database, who: Identity, now = Date.now()): Pr
 }
 // All mutable policy and audience checks also occur inside the INSERT, so concurrent sends/settings changes
 // cannot overspend a quota or append after a conversation closes. The server supplies local time, never the client.
-// With `conversation`, the message answers one, and is free while a teacher's message is its last.
+// With `conversation`, the message answers one, and is free while a teacher's message is its last, and goes
+// outside the hours too while that message went out outside them.
 // A `report` of an event's photos goes whatever the classroom's messaging settles, since a photo can't wait
 // for the hours or the allowance: in it, a family answers each teacher's message once and writes nothing more.
 function guard(
@@ -231,10 +239,10 @@ function guard(
 	} else if (who.kind === 'family') {
 		const clock = messageClock(now);
 		condition += ` AND EXISTS(SELECT 1 FROM message_settings p WHERE p.classroom_id=? AND p.enabled=1
-   AND json_extract(p.schedule,?) <= ? AND json_extract(p.schedule,?) > ?
+   AND ((json_extract(p.schedule,?) <= ? AND json_extract(p.schedule,?) > ?)${conversation ? ` OR ${afterHours}` : ''})
    AND (${conversation ? `${answered} OR ` : ''}${spent} < p.monthly_limit))`;
 		values.push(classroom, `$[${clock.day}].start`, clock.time, `$[${clock.day}].end`, clock.time);
-		if (conversation) values.push(conversation);
+		if (conversation) values.push(conversation, conversation);
 		values.push(classroom, family, clock.month);
 	}
 	return { condition, values };
@@ -363,6 +371,7 @@ export async function startConversation(
 		return false;
 	}
 	const { condition, values } = guard(who, value.classroom, value.family, now, undefined, report);
+	const after = await sentAfterHours(db, who, value.classroom, now);
 	// A family reports an event once: a second report of it meets the first on `conversations_report`, which
 	// leaves it out as quietly as a retry.
 	const event = report ? [value.event!, value.classroom, now] : [];
@@ -384,8 +393,8 @@ export async function startConversation(
 			),
 		db
 			.prepare(
-				`INSERT INTO messages(id,conversation_id,author,content,posted_at,charged)
-   SELECT ?,?,?,?,?,? WHERE changes()=1`
+				`INSERT INTO messages(id,conversation_id,author,content,posted_at,charged,after_hours)
+   SELECT ?,?,?,?,?,?,? WHERE changes()=1`
 			)
 			.bind(
 				value.message,
@@ -394,7 +403,8 @@ export async function startConversation(
 				value.content,
 				now,
 				// Starting a conversation always spends one of the family's allowance, and a report none.
-				who.kind === 'family' && !report ? messageClock(now).month : null
+				who.kind === 'family' && !report ? messageClock(now).month : null,
+				after
 			),
 		...insertFiles(db, value.message, value.files ?? [])
 	]);
@@ -411,12 +421,25 @@ export async function startConversation(
 	return true;
 }
 /** Whether a family's next message in a conversation would spend one of its month's allowance. */
-async function charges(db: D1Database, conversation: string) {
+/**
+ * What a family's next message in a conversation meets: whether it would spend one of the month's allowance,
+ * and whether it answers a teacher's message sent outside the hours, which it may do at any time.
+ */
+async function nextFamilyMessage(db: D1Database, conversation: string) {
 	const last = await db
-		.prepare('SELECT author FROM messages WHERE conversation_id=? ORDER BY sequence DESC LIMIT 1')
+		.prepare(
+			'SELECT author,after_hours AS afterHours FROM messages WHERE conversation_id=? ORDER BY sequence DESC LIMIT 1'
+		)
 		.bind(conversation)
-		.first<{ author: string }>();
-	return chargesAllowance(last?.author);
+		.first<{ author: string; afterHours: number }>();
+	return { charged: chargesAllowance(last?.author), anytime: last?.afterHours === 1 };
+}
+/**
+ * Whether a teacher's message goes out while the classroom's families can't write, which lets the family
+ * answer it at any time. A family's message never does.
+ */
+async function sentAfterHours(db: D1Database, who: Identity, classroom: string, now: number) {
+	return who.kind === 'staff' && !sendingAllowed(await settingsFor(db, classroom), now) ? 1 : 0;
 }
 /** Why a report didn't start: the event isn't up in its classroom, or the family reported it already. */
 async function explainReport(db: D1Database, who: Identity, value: NewConversation) {
@@ -440,7 +463,8 @@ async function explainBlocked(
 	family: string,
 	now: number,
 	charged: boolean,
-	report = false
+	report = false,
+	anytime = false
 ): Promise<never> {
 	await checkAudience(db, who, classroom, family);
 	// In a report, a family's message waits for the teachers' answer, whatever the classroom settled.
@@ -448,7 +472,7 @@ async function explainBlocked(
 	if (who.kind === 'family') {
 		const settings = await settingsFor(db, classroom);
 		if (!settings.enabled) error(409, 'messages-disabled');
-		if (!sendingAllowed(settings, now)) error(409, 'messages-hours');
+		if (!anytime && !sendingAllowed(settings, now)) error(409, 'messages-hours');
 		if (charged) error(409, 'messages-limit');
 	}
 	// Nothing the policy explains: the family left the classroom, or a teacher lost it, between the check
@@ -486,14 +510,15 @@ export async function reply(
 	const charge = charged ? `CASE WHEN ${answered} THEN NULL ELSE ? END` : 'NULL';
 	const month = charged ? [id, messageClock(now).month] : [];
 	const { condition, values } = guard(who, thread.classroom, thread.family, now, id, report);
+	const after = await sentAfterHours(db, who, thread.classroom, now);
 	const [result] = await transaction(db, [
 		db
 			.prepare(
-				`INSERT INTO messages(id,conversation_id,author,content,posted_at,charged)
- SELECT ?,?,?,?,?,${charge} WHERE EXISTS(SELECT 1 FROM conversations WHERE id=? AND closed=0) AND ${condition}
+				`INSERT INTO messages(id,conversation_id,author,content,posted_at,charged,after_hours)
+ SELECT ?,?,?,?,?,${charge},? WHERE EXISTS(SELECT 1 FROM conversations WHERE id=? AND closed=0) AND ${condition}
  ON CONFLICT(id) DO NOTHING`
 			)
-			.bind(message, id, actor(who), content, now, ...month, id, ...values),
+			.bind(message, id, actor(who), content, now, ...month, after, id, ...values),
 		...insertFiles(db, message, files)
 	]);
 	if (!result.meta.changes) {
@@ -504,14 +529,16 @@ export async function reply(
 			.bind(id)
 			.first();
 		if (closed) error(409, 'messages-closed');
+		const next = await nextFamilyMessage(db, id);
 		await explainBlocked(
 			db,
 			who,
 			thread.classroom,
 			thread.family,
 			now,
-			await charges(db, id),
-			report
+			next.charged,
+			report,
+			next.anytime
 		);
 	}
 	return true;
@@ -525,7 +552,8 @@ export async function readMessages(
 	await conversationFor(db, who, id);
 	const { results } = await db
 		.prepare(
-			`SELECT id,sequence,author,content,posted_at AS postedAt,edited_at AS editedAt,deleted_at AS deletedAt
+			`SELECT id,sequence,author,content,posted_at AS postedAt,edited_at AS editedAt,deleted_at AS deletedAt,
+ after_hours AS afterHours
  FROM messages WHERE conversation_id=? AND sequence<? ORDER BY sequence DESC LIMIT 50`
 		)
 		.bind(id, before)

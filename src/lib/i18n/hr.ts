@@ -178,7 +178,7 @@ export const hr = {
 					},
 					{
 						q: 'Roditelji kažu da ne mogu slati upite. Zašto?',
-						a: 'Poruke se uključuju za svaku skupinu posebno. U skupini, pod „Poruke roditelja”, voditeljica skupine ili BubbleBoard administrator uključi slanje, odredi broj upita mjesečno i sate kad roditelji smiju pisati. Dok se ne uključi, roditelji ne mogu slati poruke, ni odgovarati na vaše. Vi im možete pisati uvijek. Iznimka je prijava fotografija: roditelj uvijek može prijaviti fotografije događaja i ondje vam odgovarati.'
+						a: 'Poruke se uključuju za svaku skupinu posebno. U skupini, pod „Poruke roditelja”, voditeljica skupine ili BubbleBoard administrator uključi slanje, odredi broj upita mjesečno i sate kad roditelji smiju pisati. Dok se ne uključi, roditelji ne mogu slati poruke, ni odgovarati na vaše. Vi im možete pisati uvijek, a kad pišete izvan termina, roditelji vam na tu poruku mogu odgovoriti bilo kada. Iznimka je prijava fotografija: roditelj uvijek može prijaviti fotografije događaja i ondje vam odgovarati.'
 					},
 					{
 						q: 'Čemu služi „Ostavi prekriveno”?',
@@ -1343,6 +1343,11 @@ export const hr = {
 			offDay: 'Zatvoreno',
 			disabled: 'Slanje poruka roditelja isključeno je za ovu skupinu.',
 			outside: 'Slanje je moguće u terminima skupine.',
+			anytime: 'Odgojiteljica je pisala izvan termina, pa joj možete odgovoriti sada.',
+			staffAfterHours:
+				'Sada je izvan termina za roditelje. Budući da pišete sada, obitelj vam na ovu poruku može odgovoriti bilo kada.',
+			staffDisabled:
+				'Poruke roditelja isključene su za ovu skupinu, pa vam obitelj ovdje ne može odgovoriti.',
 			holiday: 'Na blagdane i druge neradne dane odgovor može kasniti.',
 			closingSoon: (minutes: number) =>
 				`Termin za slanje zatvara se za ${count(minutes, 'minutu', 'minute', 'minuta')}.`,

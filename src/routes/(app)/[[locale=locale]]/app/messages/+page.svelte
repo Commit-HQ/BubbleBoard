@@ -93,7 +93,31 @@
 	const remaining = $derived(policy ? remainingMessages(policy) : 0);
 	/** Minutes left in today's window, and whether it's short enough to say so in red. */
 	const left = $derived(policy && sendingLeft(policy, now));
-	const allowed = $derived(left !== undefined);
+	/**
+	 * Whether a family answers a teacher's message sent outside the hours, which it may do at any time, while
+	 * the hours are closed: the teacher chose to write then.
+	 */
+	const anytime = $derived(
+		!staff &&
+			!report &&
+			!!thread &&
+			left === undefined &&
+			(rows.at(-1)?.afterHours ?? thread.afterHours) === 1
+	);
+	const allowed = $derived(left !== undefined || anytime);
+	/**
+	 * What a teacher is told above the box she writes in, when the family's answer is ruled differently from
+	 * usual: outside the hours, the family may answer this message at any time; with messaging off, not at all.
+	 */
+	const staffNote = $derived(
+		staff && !report && policy
+			? !policy.enabled
+				? t.staffDisabled
+				: left === undefined
+					? t.staffAfterHours
+					: undefined
+			: undefined
+	);
 	const closingIn = $derived(left !== undefined && left <= closingSoon ? left : undefined);
 	const canSend = $derived(
 		staff || (report ? teacherLast : allowed && (!charged || remaining > 0))
@@ -524,12 +548,17 @@
 							</div>
 						{:else if report && !staff && !canSend}
 							<p class="rounded-3xl frosted px-4 py-2 text-sm text-muted">{r.waiting}</p>
+						{:else if staffNote}
+							<p class="flex items-start gap-2 rounded-3xl frosted px-4 py-2 text-sm text-muted">
+								<Icon name="clock" class="mt-0.5 size-4 shrink-0" />{staffNote}
+							</p>
 						{:else if !staff && !report && policy}
 							<MessagePolicy
 								locale={data.locale}
 								{policy}
 								{charged}
 								{allowed}
+								{anytime}
 								closing={closingIn}
 							/>
 						{/if}
@@ -599,6 +628,10 @@
 				{/if}
 				{#if !staff && policy}
 					<MessagePolicy locale={data.locale} {policy} charged {allowed} closing={closingIn} full />
+				{:else if staffNote}
+					<p class="flex items-start gap-2 text-sm text-muted">
+						<Icon name="clock" class="mt-0.5 size-4 shrink-0" />{staffNote}
+					</p>
 				{/if}
 				<!-- Nothing to write in while nothing can be sent, but the classroom above stays open: it's what
 				decides which hours and which allowance apply. -->

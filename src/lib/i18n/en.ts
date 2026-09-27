@@ -186,7 +186,7 @@ export const en = {
 					},
 					{
 						q: 'Parents say they can’t send inquiries. Why?',
-						a: 'Messaging is turned on for each classroom separately. In the classroom, under “Parent messaging”, the group lead or the BubbleBoard administrator turns sending on, sets the number of inquiries per month, and the hours when parents may write. Until it’s turned on, parents can’t send messages, not even answers to yours. You can always write to them. Reporting photos is the exception: a parent can always report an event’s photos and answer you there.'
+						a: 'Messaging is turned on for each classroom separately. In the classroom, under “Parent messaging”, the group lead or the BubbleBoard administrator turns sending on, sets the number of inquiries per month, and the hours when parents may write. Until it’s turned on, parents can’t send messages, not even answers to yours. You can always write to them, and when you write outside the hours, parents can answer that message at any time. Reporting photos is the exception: a parent can always report an event’s photos and answer you there.'
 					},
 					{
 						q: 'What is “Keep covered” for?',
@@ -1385,6 +1385,13 @@ export const en = {
 			offDay: 'Closed',
 			disabled: 'Parent messaging is turned off for this classroom.',
 			outside: 'Sending is available during the classroom’s hours.',
+			// Above a family's answer to a teacher's message sent outside the hours.
+			anytime: 'A teacher wrote outside the classroom’s hours, so you can answer now.',
+			// Above a teacher's box to write in, when the family's answer is ruled differently from usual.
+			staffAfterHours:
+				'It’s outside the classroom’s hours for parents. Because you’re writing now, the family can answer this message at any time.',
+			staffDisabled:
+				'Parent messaging is off for this classroom, so the family can’t answer you here.',
 			holiday: 'On public holidays and other non-working days, an answer may take longer.',
 			closingSoon: (minutes: number) =>
 				`Today’s sending window closes in ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}.`,
