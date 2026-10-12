@@ -726,15 +726,11 @@ export const en = {
 			choose: 'Choose a time',
 			emptyStaff: 'No meeting times offered yet.',
 			emptyFamily: 'There are no meeting times available yet.',
-			hint: 'Offer a day of conversations with parents.',
+			hint: 'Choose a date, then add the times one by one. A new time starts when the one before ends and lasts as long, and you can change it.',
 			date: 'Date',
 			start: 'From',
 			end: 'Until',
-			duration: 'Meeting length',
-			minutes: 'minutes',
 			classroom: 'Classroom',
-			preview: 'Offered times',
-			previewHint: 'Uncheck any time you want to keep for a break.',
 			publish: 'Publish times',
 			publishing: 'Publishing…',
 			cancel: 'Cancel',
@@ -752,7 +748,6 @@ export const en = {
 			child: 'Child',
 			loading: 'Loading times…',
 			noChildren: 'No children have been added to this classroom yet.',
-			invalidRange: 'Choose a future date and a time range that fits at least one full meeting.',
 			success: 'Meeting times published.',
 			reserved: 'Your meeting is reserved.',
 			cancelled: 'Meeting cancelled.',
@@ -766,7 +761,19 @@ export const en = {
 			staffSummary: 'Offer times and see who has booked.',
 			freeCount: (n: number) => `${n} available`,
 			bookedCount: (n: number) => `${n} booked`,
-			remaining: 'Any minutes left at the end are not offered.',
+			times: 'Times',
+			addTime: 'Add a time',
+			noTimes: 'Add at least one time.',
+			rowOrder: 'The end must be after the start.',
+			rowLength: 'A meeting lasts at least 5 minutes and at most 2 hours.',
+			rowPast: 'This time has already passed.',
+			rowOverlap: 'This overlaps another time.',
+			edit: 'Edit this day’s times',
+			editHint:
+				'You can move or remove available times, or add new ones. A booked time stays as it is; to move it, cancel that meeting first. Parents aren’t notified of this change.',
+			save: 'Save changes',
+			saving: 'Saving…',
+			saved: 'Times saved.',
 			cancelForm: 'Close form'
 		},
 		// The day something happened, such as an event's date (formatDay).
@@ -1414,6 +1421,8 @@ export const en = {
 		errors: {
 			'meeting-day-changed':
 				'The day’s times have changed. The list has been refreshed; close this confirmation and review the times again.',
+			'meeting-times-changed':
+				'A time on this day changed in the meantime, for example a parent booked it. The list has been refreshed; close the editor and open it again.',
 			'meeting-overlap':
 				'These times overlap an existing offer for this classroom or teacher. Choose another time.',
 			'meeting-changed':

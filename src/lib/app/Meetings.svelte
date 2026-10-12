@@ -2,24 +2,20 @@
 	import { onMount } from 'svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import { errorMessage, messages, type Locale } from '$lib/i18n';
-	import { generateMeetingSlots, meetingDay, meetingTime, type MeetingSlot } from '$lib/meetings';
+	import { meetingDay, meetingTime, type MeetingSlot } from '$lib/meetings';
 	import { messageClock } from '$lib/messages';
-	import { getApp, Task } from './state.svelte';
+	import { getApp } from './state.svelte';
 	import { alert, button, everyHalfMinute, field, surface } from './ui';
 	import ConfirmDialog from './ConfirmDialog.svelte';
+	import MeetingTimesForm from './MeetingTimesForm.svelte';
 	let { locale }: { locale: Locale } = $props();
-	const app = getApp(),
-		task = new Task();
+	const app = getApp();
 	const t = $derived(messages[locale].app.meetings);
 	const staff = $derived(app.status === 'staff');
 	let now = $state(Date.now()),
 		showForm = $state(false),
-		classroom = $state('');
-	let date = $state(''),
-		from = $state('16:00'),
-		to = $state('18:00'),
-		duration = $state(20);
-	let excluded = $state<number[]>([]),
+		/** The offer whose day is being changed. */
+		editing = $state<string>(),
 		notice = $state('');
 	let selectedChildren = $state<Record<string, string>>({});
 	let dayRemoval = $state<MeetingSlot[]>();
@@ -28,11 +24,6 @@
 		action: 'book' | 'cancel' | 'remove';
 		child?: string;
 	}>();
-	const chosenClassroom = $derived(classroom || app.myClassrooms[0]?.id || '');
-	const preview = $derived(generateMeetingSlots(date, from, to, duration));
-	const selected = $derived(preview.filter((s) => !excluded.includes(s.start)));
-	const valid = $derived(selected.length > 0 && selected.every((s) => s.start > now));
-	const hasChildren = $derived(app.catalog.children.some((c) => c.classroom === chosenClassroom));
 	const upcoming = $derived(app.meetings.filter((s) => s.start > now));
 	const past = $derived(app.meetings.filter((s) => s.start <= now));
 	const groups = (slots: MeetingSlot[]) =>
@@ -80,18 +71,11 @@
 		now = Date.now();
 		if (looking) void app.loadMeetings();
 	});
-	function toggle(start: number) {
-		excluded = excluded.includes(start)
-			? excluded.filter((s) => s !== start)
-			: [...excluded, start];
-	}
-	async function publish() {
-		if (!valid || !hasChildren) return;
-		await app.publishMeetings(chosenClassroom, selected);
+	const done = (message: string) => {
 		showForm = false;
-		excluded = [];
-		notice = t.success;
-	}
+		editing = undefined;
+		notice = message;
+	};
 	/** What each of the three changes is called, asked, and said once it's done. */
 	const actions = $derived({
 		book: { title: t.reservation, label: t.reserve, copy: t.confirmCopy, done: t.reserved },
@@ -120,7 +104,7 @@
 				class={button.primary}
 				onclick={() => {
 					showForm = !showForm;
-					task.error = undefined;
+					editing = undefined;
 				}}
 				aria-expanded={showForm}>{showForm ? t.cancelForm : t.offer}</button
 			>{/if}
@@ -130,104 +114,23 @@
 			{errorMessage(locale, app.meetingsError)}
 		</p>{/if}
 	{#if showForm && staff}
-		<form
-			class="{surface} grid gap-5"
-			onsubmit={(event) => {
-				event.preventDefault();
-				void task.run(publish);
-			}}
-		>
-			<h2 class="text-2xl">{t.offer}</h2>
-			<p class="text-muted">{t.hint}</p>
-			<fieldset disabled={task.busy} class="grid min-w-0 gap-5">
-				{#if app.myClassrooms.length > 1}<label class={field.label}
-						><span class={field.name}>{t.classroom}</span><select
-							class={field.input}
-							value={chosenClassroom}
-							onchange={(e) => (classroom = e.currentTarget.value)}
-							>{#each app.myClassrooms as c (c.id)}<option value={c.id}>{c.name}</option
-								>{/each}</select
-						></label
-					>{/if}
-				<label class={field.label}
-					><span class={field.name}>{t.date}</span><input
-						class={field.input}
-						type="date"
-						bind:value={date}
-						min={messageClock(now).date}
-						max={messageClock(now + 365 * 86400000).date}
-						required
-						onchange={() => (excluded = [])}
-					/></label
-				>
-				<div class="grid grid-cols-2 gap-3">
-					<label class={field.label}
-						><span class={field.name}>{t.start}</span><input
-							class={field.input}
-							type="time"
-							bind:value={from}
-							required
-							onchange={() => (excluded = [])}
-						/></label
-					>
-					<label class={field.label}
-						><span class={field.name}>{t.end}</span><input
-							class={field.input}
-							type="time"
-							bind:value={to}
-							required
-							onchange={() => (excluded = [])}
-						/></label
-					>
-				</div>
-				<label class={field.label}
-					><span class={field.name}>{t.duration}</span><select
-						class={field.input}
-						bind:value={duration}
-						onchange={() => (excluded = [])}
-						>{#each [10, 15, 20, 30, 45, 60] as n}<option value={n}>{n} {t.minutes}</option
-							>{/each}</select
-					></label
-				>
-				{#if !hasChildren}<p class={alert}>{t.noChildren}</p>{/if}
-				{#if preview.length}
-					<fieldset class="min-w-0">
-						<legend class="font-semibold">{t.preview} · {selected.length}</legend>
-						<p class="mt-1 text-sm text-muted">{t.previewHint}</p>
-						<div class="mt-3 grid grid-cols-2 gap-2">
-							{#each preview as slot (slot.start)}<label
-									class="flex min-h-12 cursor-pointer items-center gap-2 rounded-2xl border border-ink/15 bg-white/70 p-3 has-checked:border-accent"
-									><input
-										type="checkbox"
-										checked={!excluded.includes(slot.start)}
-										onchange={() => toggle(slot.start)}
-										class="size-4 accent-ink"
-									/><span class="text-sm font-semibold">{time(slot)}</span></label
-								>{/each}
-						</div>
-					</fieldset>
-					<p class="text-sm text-muted">{t.remaining}</p>
-				{/if}
-				{#if date && !valid}<p class="text-sm text-red-800">{t.invalidRange}</p>{/if}
-			</fieldset>
-			{#if task.error}<p class={alert} role="alert">{errorMessage(locale, task.error)}</p>{/if}
-			<div class="flex flex-wrap gap-2">
-				<button class={button.primary} disabled={task.busy || !valid || !hasChildren}
-					>{task.busy ? t.publishing : t.publish}</button
-				><button
-					type="button"
-					class={button.quiet}
-					disabled={task.busy}
-					onclick={() => (showForm = false)}>{t.cancel}</button
-				>
-			</div>
-		</form>
+		<MeetingTimesForm {locale} {now} ondone={done} onclose={() => (showForm = false)} />
 	{/if}
 	{#if !app.meetingsLoaded && !app.meetingsError}<p role="status" class="text-muted">{t.loading}</p>
 	{:else if app.meetingsLoaded}
 		{#if !staff}<p class="text-sm text-muted">{t.onePerChild}</p>{/if}
 		{#if !upcoming.length}<p class="text-muted">{staff ? t.emptyStaff : t.emptyFamily}</p>{/if}
-		{#each upcomingGroups as slots (slots[0].id)}{@render group(slots, false)}{/each}
+		{#each upcomingGroups as slots (slots[0].id)}
+			{#if editing === slots[0].offer}
+				<MeetingTimesForm
+					{locale}
+					{now}
+					day={upcoming.filter((s) => s.offer === editing)}
+					ondone={done}
+					onclose={() => (editing = undefined)}
+				/>
+			{:else}{@render group(slots, false)}{/if}
+		{/each}
 		{#if past.length}<details>
 				<summary class="cursor-pointer py-3 font-semibold">{t.past} ({past.length})</summary>
 				<div class="mt-3 grid gap-4">
@@ -244,15 +147,29 @@
 		<div class="flex items-start justify-between gap-3">
 			<h2 class="min-w-0 text-2xl">{meetingDay(locale, first.start)}</h2>
 			{#if !isPast && canManage(first)}
-				<button
-					type="button"
-					class="{button.icon} -mt-2 -mr-2 hover:bg-red-50 hover:text-red-700"
-					title={t.removeDay}
-					aria-label={t.removeDay}
-					onclick={() => (dayRemoval = removableDay(first))}
-				>
-					<Icon name="trash" />
-				</button>
+				<div class="-mt-2 -mr-2 flex">
+					<button
+						type="button"
+						class={button.icon}
+						title={t.edit}
+						aria-label={t.edit}
+						onclick={() => {
+							editing = first.offer;
+							showForm = false;
+						}}
+					>
+						<Icon name="pencil" />
+					</button>
+					<button
+						type="button"
+						class="{button.icon} hover:bg-red-50 hover:text-red-700"
+						title={t.removeDay}
+						aria-label={t.removeDay}
+						onclick={() => (dayRemoval = removableDay(first))}
+					>
+						<Icon name="trash" />
+					</button>
+				</div>
 			{/if}
 		</div>
 		<p class="mt-1 text-muted">{app.myClassrooms.find((c) => c.id === first.classroom)?.name}</p>

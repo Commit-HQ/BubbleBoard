@@ -1005,6 +1005,25 @@ export class App {
 		}
 	}
 
+	/** Sets a day's free times anew; a time with the ID it was read with stays if its clock didn't change. */
+	async changeMeetingTimes(
+		offer: string,
+		expected: MeetingSlot[],
+		slots: { id?: string; start: number; end: number }[]
+	) {
+		try {
+			await this.#signedIn(() =>
+				request('PUT', '/api/meetings', {
+					offer,
+					expected: expected.map(({ id, version }) => ({ id, version })),
+					slots: slots.map((slot) => ({ ...slot, id: slot.id ?? createId() }))
+				})
+			);
+		} finally {
+			await this.loadMeetings();
+		}
+	}
+
 	async changeMeeting(slot: MeetingSlot, action: 'book' | 'cancel' | 'remove', child?: string) {
 		try {
 			await this.#signedIn(() =>

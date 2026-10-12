@@ -12,7 +12,8 @@ import {
 	publishMeetings,
 	changeMeeting,
 	parseOffer,
-	removeMeetingDay
+	removeMeetingDay,
+	changeMeetingTimes
 } from './meetings';
 
 async function fixture() {
@@ -312,6 +313,83 @@ describe('removing a day of meetings', () => {
 			status: 409
 		});
 		expect((await meetingData(db, staff)).slots).toHaveLength(2);
+	});
+});
+
+describe('changing a day of meetings', () => {
+	const read = async (db: D1Database, staff: Staff) =>
+		(await meetingData(db, staff)).slots.map(({ id, version }) => ({ id, version }));
+	it('keeps booked and unchanged times, and replaces the rest', async () => {
+		const { db, staff, parent, offer, child } = await fixture();
+		const [first, second] = offer.slots;
+		await changeMeeting(db, parent, first.id, { action: 'book', version: 0, child });
+		const later = { id: createId(), start: second.end + 300000, end: second.end + 1500000 };
+		await changeMeetingTimes(db, staff, {
+			offer: offer.id,
+			expected: await read(db, staff),
+			slots: [{ ...second, id: createId(), start: second.start + 300000 }, later]
+		});
+		const slots = (await meetingData(db, staff)).slots;
+		expect(slots.map((s) => [s.start, s.end])).toEqual([
+			[first.start, first.end],
+			[second.start + 300000, second.end],
+			[later.start, later.end]
+		]);
+		expect(slots[0]).toMatchObject({ id: first.id, child });
+		const kept = slots.slice(1).map(({ id, start, end }) => ({ id, start, end }));
+		await changeMeetingTimes(db, staff, {
+			offer: offer.id,
+			expected: await read(db, staff),
+			slots: kept
+		});
+		expect((await meetingData(db, staff)).slots.map((s) => s.id)).toEqual(slots.map((s) => s.id));
+	});
+	it('refuses the whole change if a parent books after the device read the times', async () => {
+		const { db, staff, parent, offer, child } = await fixture();
+		const expected = await read(db, staff);
+		await changeMeeting(db, parent, offer.slots[1].id, { action: 'book', version: 0, child });
+		await expect(
+			changeMeetingTimes(db, staff, { offer: offer.id, expected, slots: [] })
+		).rejects.toMatchObject({ status: 409, body: { message: 'meeting-times-changed' } });
+		expect((await meetingData(db, staff)).slots).toHaveLength(2);
+	});
+	it('refuses overlapping times, other teachers’ offers, and invalid times', async () => {
+		const { db, staff, offer } = await fixture();
+		const colleague = createId();
+		await db
+			.prepare('INSERT INTO teachers (id,profile,role) VALUES(?,?,?)')
+			.bind(colleague, 'profile', 'teacher')
+			.run();
+		await db
+			.prepare('INSERT INTO teacher_classrooms VALUES(?,?)')
+			.bind(colleague, offer.classroom)
+			.run();
+		const expected = await read(db, staff);
+		const [first, second] = offer.slots;
+		await expect(
+			changeMeetingTimes(db, staff, {
+				offer: offer.id,
+				expected,
+				slots: [first, { ...second, id: createId(), start: first.end - 60000 }]
+			})
+		).rejects.toMatchObject({ status: 409, body: { message: 'meeting-overlap' } });
+		await expect(
+			changeMeetingTimes(
+				db,
+				{ ...staff, teacher: colleague },
+				{ offer: offer.id, expected, slots: [] }
+			)
+		).rejects.toMatchObject({ status: 403 });
+		await expect(
+			changeMeetingTimes(db, staff, {
+				offer: offer.id,
+				expected,
+				slots: [{ ...first, end: first.start + 60000 }]
+			})
+		).rejects.toMatchObject({ status: 400 });
+		expect((await meetingData(db, staff)).slots.map((s) => s.id)).toEqual(
+			offer.slots.map((s) => s.id)
+		);
 	});
 });
 

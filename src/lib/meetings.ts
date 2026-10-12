@@ -36,26 +36,20 @@ export function meetingTimestamp(date: string, time: string): number {
 	const local = messageClock(result);
 	return local.date === date && local.time === time ? result : NaN;
 }
-export function generateMeetingSlots(date: string, from: string, to: string, minutes: number) {
-	const start = meetingTimestamp(date, from),
-		end = meetingTimestamp(date, to);
-	if (
-		!Number.isFinite(start) ||
-		!Number.isFinite(end) ||
-		!Number.isInteger(minutes) ||
-		minutes < 5 ||
-		minutes > 120 ||
-		end <= start
-	)
-		return [];
-	const result: { start: number; end: number }[] = [];
-	for (
-		let time = start;
-		time + minutes * 60000 <= end && result.length < 100;
-		time += minutes * 60000
-	)
-		result.push({ start: time, end: time + minutes * 60000 });
-	return result;
+/**
+ * A new time offered after the last: it starts when that one ends and lasts as long, within the day. Nothing
+ * when the day has no room left for a meeting of five minutes.
+ */
+export function nextMeetingTime(last?: { from: string; to: string }) {
+	const clock = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+	if (!last || !clock.test(last.from) || !clock.test(last.to))
+		return { from: '16:00', to: '16:20' };
+	const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+	const length = minutes(last.to) - minutes(last.from);
+	const end = Math.min(minutes(last.to) + (length > 0 ? length : 20), 23 * 60 + 59);
+	if (end - minutes(last.to) < 5) return undefined;
+	const pad = (n: number) => String(n).padStart(2, '0');
+	return { from: last.to, to: `${pad(Math.floor(end / 60))}:${pad(end % 60)}` };
 }
 const dayFormat = perLocale({ dateStyle: 'full' });
 /** The day a meeting falls on, written in full over the times offered that day. */

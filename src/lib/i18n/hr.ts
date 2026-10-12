@@ -701,15 +701,11 @@ export const hr = {
 			choose: 'Odaberi termin',
 			emptyStaff: 'Još nemate ponuđenih termina.',
 			emptyFamily: 'Trenutačno nema ponuđenih termina.',
-			hint: 'Ponudite dan za razgovore s roditeljima.',
+			hint: 'Odaberite datum pa dodajte termine jedan po jedan. Novi termin počinje kad prethodni završi i traje jednako dugo, a vrijeme možete promijeniti.',
 			date: 'Datum',
 			start: 'Od',
 			end: 'Do',
-			duration: 'Trajanje razgovora',
-			minutes: 'minuta',
 			classroom: 'Skupina',
-			preview: 'Ponuđeni termini',
-			previewHint: 'Isključite termine koje želite ostaviti za pauzu.',
 			publish: 'Objavi termine',
 			publishing: 'Objavljivanje…',
 			cancel: 'Odustani',
@@ -727,7 +723,6 @@ export const hr = {
 			child: 'Dijete',
 			loading: 'Učitavanje termina…',
 			noChildren: 'U ovu skupinu još nisu dodana djeca.',
-			invalidRange: 'Odaberite budući datum i raspon u koji stane barem jedan cijeli razgovor.',
 			success: 'Termini su objavljeni.',
 			reserved: 'Vaš razgovor je rezerviran.',
 			cancelled: 'Razgovor je otkazan.',
@@ -741,7 +736,19 @@ export const hr = {
 			staffSummary: 'Ponudite termine i pratite prijave roditelja.',
 			freeCount: (n: number) => count(n, 'slobodan', 'slobodna', 'slobodnih'),
 			bookedCount: (n: number) => count(n, 'rezerviran', 'rezervirana', 'rezerviranih'),
-			remaining: 'Preostale minute na kraju raspona neće biti ponuđene.',
+			times: 'Termini',
+			addTime: 'Dodaj termin',
+			noTimes: 'Dodajte barem jedan termin.',
+			rowOrder: 'Kraj mora biti nakon početka.',
+			rowLength: 'Razgovor traje najmanje 5 minuta, a najviše 2 sata.',
+			rowPast: 'Ovo vrijeme je već prošlo.',
+			rowOverlap: 'Preklapa se s drugim terminom.',
+			edit: 'Uredi termine ovog dana',
+			editHint:
+				'Slobodne termine možete pomaknuti, ukloniti ili dodati nove. Rezervirani termin ostaje kakav jest; ako ga treba pomaknuti, najprije otkažite razgovor. Roditelji ne dobivaju obavijest o ovoj promjeni.',
+			save: 'Spremi promjene',
+			saving: 'Spremanje…',
+			saved: 'Termini su spremljeni.',
 			cancelForm: 'Zatvori obrazac'
 		},
 		date: (day: string, month: string, year: number) => `${day}.${month}.${year}`,
@@ -1371,6 +1378,8 @@ export const hr = {
 		errors: {
 			'meeting-day-changed':
 				'Termini dana su promijenjeni. Popis je osvježen; zatvorite potvrdu i ponovno provjerite termine.',
+			'meeting-times-changed':
+				'U međuvremenu se promijenio neki termin ovog dana, na primjer roditelj ga je rezervirao. Popis je osvježen; zatvorite uređivanje i otvorite ga ponovno.',
 			'meeting-overlap':
 				'Termini se preklapaju s postojećom ponudom ove skupine ili odgojiteljice. Odaberite drugo vrijeme.',
 			'meeting-changed':

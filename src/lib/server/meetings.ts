@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { error, isHttpError } from '@sveltejs/kit';
 import type { Identity, Staff } from '$lib/api';
 import {
 	meetingTimestamp,
@@ -184,6 +184,76 @@ export async function changeMeeting(
 		throw cause;
 	}
 	return booking;
+}
+
+/**
+ * Replaces an offer's upcoming free times with the ones a teacher set, in one transaction. Booked times stay as
+ * they are, and a time kept with its ID and clock stays too. The change is refused when the offer's upcoming
+ * times moved since her device read them (`expected`), such as when a parent booked one meanwhile.
+ */
+export async function changeMeetingTimes(
+	db: D1Database,
+	who: Staff,
+	body: Record<string, unknown>,
+	now = Date.now()
+) {
+	const offer = id(body.offer);
+	const slots = list(body.slots, (value) => offeredSlot(value, now), 100);
+	const expected = list(
+		body.expected,
+		(value) => {
+			const slot = fields(value);
+			return { id: id(slot.id), version: revision(slot.version) };
+		},
+		300
+	);
+	if (
+		new Set(slots.map((slot) => slot.id)).size !== slots.length ||
+		new Set(expected.map((slot) => slot.id)).size !== expected.length
+	)
+		invalid();
+	const [visible, params] = visibleClassrooms(who);
+	const found = await db
+		.prepare(
+			`SELECT teacher_id AS teacher FROM meeting_offers WHERE id=? AND classroom_id IN (${visible})`
+		)
+		.bind(offer, ...params)
+		.first<{ teacher: string | null }>();
+	if (!found) error(404, 'missing');
+	if (!managesOthers(who) && found.teacher !== who.teacher) error(403, 'forbidden');
+	const times = JSON.stringify(slots);
+	try {
+		await transaction(db, [
+			// Empties the offer's classroom unless its upcoming times are exactly those the device read.
+			db
+				.prepare(
+					`UPDATE meeting_offers SET classroom_id=CASE WHEN
+ (SELECT COUNT(*) FROM meeting_slots WHERE offer_id=?1 AND starts_at>?2)=(SELECT COUNT(*) FROM json_each(?3))
+ AND NOT EXISTS(SELECT 1 FROM meeting_slots s WHERE s.offer_id=?1 AND s.starts_at>?2 AND NOT EXISTS(
+ SELECT 1 FROM json_each(?3) WHERE json_extract(value,'$.id')=s.id AND json_extract(value,'$.version')=s.version))
+ THEN classroom_id ELSE NULL END WHERE id=?1`
+				)
+				.bind(offer, now, JSON.stringify(expected)),
+			db
+				.prepare(
+					`DELETE FROM meeting_slots WHERE offer_id=?1 AND starts_at>?2 AND child_id IS NULL AND NOT EXISTS(
+ SELECT 1 FROM json_each(?3) WHERE json_extract(value,'$.id')=meeting_slots.id
+ AND json_extract(value,'$.start')=meeting_slots.starts_at AND json_extract(value,'$.end')=meeting_slots.ends_at)`
+				)
+				.bind(offer, now, times),
+			db
+				.prepare(
+					`INSERT INTO meeting_slots(id,offer_id,starts_at,ends_at)
+ SELECT json_extract(value,'$.id'),?1,json_extract(value,'$.start'),json_extract(value,'$.end') FROM json_each(?2)
+ WHERE NOT EXISTS(SELECT 1 FROM meeting_slots WHERE id=json_extract(value,'$.id'))`
+				)
+				.bind(offer, times)
+		]);
+	} catch (cause) {
+		if (isHttpError(cause, 409) && cause.body.message === 'stale')
+			error(409, 'meeting-times-changed');
+		throw cause;
+	}
 }
 
 /** Remove the staff member's upcoming times for one classroom/day, only if the confirmed list is current. */

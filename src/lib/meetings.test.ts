@@ -1,12 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { generateMeetingSlots, meetingTimestamp } from './meetings';
+import { meetingTimestamp, nextMeetingTime } from './meetings';
 import { createContentKey, encryptData, decryptData } from './crypto';
 describe('meeting times in Zagreb', () => {
-	it('splits a time window without extending it', () => {
-		const slots = generateMeetingSlots('2026-09-24', '16:00', '18:05', 20);
-		expect(slots).toHaveLength(6);
-		expect(slots[0].start).toBe(Date.parse('2026-09-24T14:00:00Z'));
-		expect(slots.at(-1)?.end).toBe(Date.parse('2026-09-24T16:00:00Z'));
+	it('offers the next time where the last one ends, as long as it, within the day', () => {
+		expect(nextMeetingTime()).toEqual({ from: '16:00', to: '16:20' });
+		expect(nextMeetingTime({ from: '16:00', to: '16:20' })).toEqual({ from: '16:20', to: '16:40' });
+		expect(nextMeetingTime({ from: '16:25', to: '17:10' })).toEqual({ from: '17:10', to: '17:55' });
+		expect(nextMeetingTime({ from: '23:30', to: '23:50' })).toEqual({ from: '23:50', to: '23:59' });
+		expect(nextMeetingTime({ from: '23:50', to: '23:59' })).toBeUndefined();
+		expect(nextMeetingTime({ from: '23:30', to: '23:55' })).toBeUndefined();
+		expect(nextMeetingTime({ from: '16:00', to: '' })).toEqual({ from: '16:00', to: '16:20' });
 	});
 	it('uses winter time and rejects invalid or nonexistent times', () => {
 		expect(meetingTimestamp('2026-12-01', '16:00')).toBe(Date.parse('2026-12-01T15:00:00Z'));
@@ -16,8 +19,6 @@ describe('meeting times in Zagreb', () => {
 			['bad', '16:00']
 		])
 			expect(meetingTimestamp(date, time)).toBeNaN();
-		expect(generateMeetingSlots('2026-09-24', '18:00', '16:00', 20)).toEqual([]);
-		expect(generateMeetingSlots('2026-09-24', '16:00', '18:00', 0)).toEqual([]);
 	});
 	it('binds an invitation to its child, offer and family key', async () => {
 		const { key } = await createContentKey();
