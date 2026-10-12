@@ -2,6 +2,11 @@
 
 What's new in each version of BubbleBoard, newest first. The version an installation runs is in the footer of every page.
 
+## 1.3.0 (2026-10-12)
+
+- Teachers add meeting times one by one, each with its own start and end, so a break or a longer meeting is simply a time set that way. The pencil on a day changes its free times later.
+- Notifications reach Android phones while they sleep, instead of only once the phone is picked up.
+
 ## 1.2.0 (2026-10-12)
 
 - The board shows notices and events together, newest first, whatever kind each is.
