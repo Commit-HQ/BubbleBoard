@@ -374,11 +374,13 @@ async function push(
 		const response = await fetcher(device.endpoint, {
 			method: 'POST',
 			// Topic lets a push service keep only the latest of the pushes a device hasn't picked up yet, and
-			// it's the kind, so a message doesn't drop a cancelled meeting time a phone hasn't seen.
+			// it's the kind, so a message doesn't drop a cancelled meeting time a phone hasn't seen. Every push
+			// shows a notification, so each is high urgency: at `normal`, FCM holds pushes while an Android phone
+			// sleeps, and they arrive only once it's picked up.
 			headers: {
 				Authorization: authorization,
 				TTL: String(day),
-				Urgency: 'normal',
+				Urgency: 'high',
 				Topic: kind,
 				...(body.length
 					? { 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream' }
