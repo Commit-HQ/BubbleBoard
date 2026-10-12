@@ -2,6 +2,10 @@
 
 What's new in each version of BubbleBoard, newest first. The version an installation runs is in the footer of every page.
 
+## 1.3.1 (2026-10-12)
+
+- Changing a day's meeting times works while one of them starts: a time that started stays as it is, instead of the change being refused, and the open form keeps what the teacher changed.
+
 ## 1.3.0 (2026-10-12)
 
 - Teachers add meeting times one by one, each with its own start and end, so a break or a longer meeting is simply a time set that way. The pencil on a day changes its free times later.
