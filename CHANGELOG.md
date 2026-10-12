@@ -2,6 +2,12 @@
 
 What's new in each version of BubbleBoard, newest first. The version an installation runs is in the footer of every page.
 
+## 1.2.0 (2026-10-12)
+
+- The board shows notices and events together, newest first, whatever kind each is.
+- Teachers can pin a notice to the top of the board. A pinned notice hangs from a pushpin until it's unpinned.
+- Parents mark events as seen, as they do notices, and teachers see which families did.
+
 ## 1.1.1 (2026-09-27)
 
 - Security fixes: group leads can only change the families and cards of their own groups, as intended.
