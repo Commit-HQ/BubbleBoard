@@ -2,6 +2,11 @@
 
 What's new in each version of BubbleBoard, newest first. The version an installation runs is in the footer of every page.
 
+## 1.4.0 (2026-10-12)
+
+- Parents get a reminder the afternoon before their individual meeting, if they have notifications turned on.
+- A parent's meeting card shows their booked time clearly, with a button to change or cancel it.
+
 ## 1.3.1 (2026-10-12)
 
 - Changing a day's meeting times works while one of them starts: a time that started stays as it is, instead of the change being refused, and the open form keeps what the teacher changed.
