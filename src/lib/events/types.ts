@@ -29,6 +29,8 @@ export type EventRecord = {
 	/** The teacher who last changed it, until they're removed. */
 	editedBy: string | null;
 	expiresAt: number;
+	/** The families that marked it as seen, of those the device may know about, as a notice's `seen` says. */
+	seen: string[];
 };
 /** One photo of an event's gallery, with the few words a teacher may write under it. */
 export type EventPhoto = { id: string; width: number; height: number; text?: string };

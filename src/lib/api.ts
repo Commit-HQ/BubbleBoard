@@ -113,6 +113,8 @@ export type NoticeRecord = {
 	/** The teacher who last changed it, until they're removed. */
 	editedBy: string | null;
 	expiresAt: number;
+	/** When a teacher pinned it to the top of the board, or nothing while it isn't pinned. */
+	pinnedAt: number | null;
 	classrooms: NoticeKey[];
 	/**
 	 * Whether it also goes to classrooms the device doesn't see. A teacher may change a colleague's notice

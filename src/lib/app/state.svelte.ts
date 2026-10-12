@@ -273,7 +273,7 @@ function isDisconnection(cause: unknown) {
 }
 
 /** When a notice or event went up, which hiding it remembers: for a notice, when it was last announced. */
-function postedAt(post: Notice | OpenEvent) {
+export function postedAt(post: Notice | OpenEvent) {
 	return 'announcedAt' in post ? post.announcedAt : post.postedAt;
 }
 
@@ -1989,21 +1989,39 @@ export class App {
 		return editor?.recovery ? undefined : editor?.name;
 	}
 
-	/** Whether this device's family marked a notice as seen. */
-	isSeen(notice: Notice) {
-		return notice.seen.some((family) => family === this.#familyCard?.family);
+	/** Whether this device's family marked a notice or event as seen. */
+	isSeen(post: { seen: string[] }) {
+		return post.seen.some((family) => family === this.#familyCard?.family);
 	}
 
-	/** The families a notice is for, of those a staff device knows: the families of its classrooms. */
-	audience(notice: Notice) {
+	/** The families a notice or event is for, of those a staff device knows: the families of its classrooms. */
+	audience(post: Notice | OpenEvent) {
+		const classrooms = 'classrooms' in post ? post.classrooms : [post.classroom];
 		return this.catalog.families.filter((family) =>
-			family.classrooms.some((classroom) => notice.classrooms.includes(classroom))
+			family.classrooms.some((classroom) => classrooms.includes(classroom))
 		);
 	}
 
 	/** Marks a notice as seen by this device's family, which its teachers see. */
 	markSeen(notice: Notice) {
 		return this.#changeBoard('PUT', `/api/notices/${notice.id}/seen`);
+	}
+
+	/**
+	 * Marks an event as seen by this device's family, as `markSeen` does a notice. The mark goes on the event
+	 * this device already opened, so its photos aren't opened again for it.
+	 */
+	async markEventSeen(event: OpenEvent) {
+		const family = this.#family.family;
+		await this.#signedIn(() => request('PUT', `/api/events/${event.id}/seen`));
+		this.events = this.events.map((item) =>
+			item.id === event.id && !this.isSeen(item) ? { ...item, seen: [...item.seen, family] } : item
+		);
+	}
+
+	/** Pins a notice to the top of the board, or takes the pin out, for whoever may change it. */
+	pinNotice(notice: Notice, pinned: boolean) {
+		return this.#changeBoard('PUT', `/api/notices/${notice.id}/pin`, { pinned });
 	}
 
 	/** The option this device's family chose in a notice's poll. */

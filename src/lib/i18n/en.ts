@@ -1148,6 +1148,9 @@ export const en = {
 			delete: 'Delete',
 			deleteTitle: 'Delete this notice?',
 			deleteCopy: 'It comes off every board right away.',
+			pin: 'Pin to the top',
+			unpin: 'Unpin',
+			pinned: 'Pinned',
 			markSeen: 'Mark as seen',
 			seen: 'Seen',
 			seenBy: (seen: number, families: number) =>

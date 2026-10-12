@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import type { Identity, Staff, FamilyIdentity } from '$lib/api';
 import type { ConsentChange, ConsentRow, EventRecord } from '$lib/events/types';
-import { checkClassrooms, transaction, visibleClassrooms } from './database';
+import { checkClassrooms, transaction, visibleClassrooms, visibleFamilies } from './database';
 import { getObject, putObject, deleteMarked, type ObjectStore } from './storage';
 import { day } from '$lib/notices';
 
@@ -165,15 +165,42 @@ export async function saveConsent(
 	]);
 	if (!update.meta.changes) error(409, 'stale');
 }
+/**
+ * The events someone sees that are up, newest first, each with the marks of the families the viewer sees, as
+ * a notice carries them (notices.ts).
+ */
 export async function events(db: D1Database, viewer: Identity) {
+	const [families, familyParams] = visibleFamilies(viewer);
 	const [visible, params] = visibleClassrooms(viewer);
 	const { results } = await db
 		.prepare(
-			`SELECT id,classroom_id AS classroom,teacher_id AS teacher,content,event_key AS eventKey,posted_at AS postedAt,edited_at AS editedAt,edited_by AS editedBy,expires_at AS expiresAt FROM events WHERE posted_at IS NOT NULL AND expires_at>? AND classroom_id IN(${visible}) ORDER BY posted_at DESC`
+			`SELECT id,classroom_id AS classroom,teacher_id AS teacher,content,event_key AS eventKey,posted_at AS postedAt,edited_at AS editedAt,edited_by AS editedBy,expires_at AS expiresAt,
+			(SELECT json_group_array(family_id) FROM event_seen WHERE event_id=events.id AND family_id IN(${families})) AS seen
+			FROM events WHERE posted_at IS NOT NULL AND expires_at>? AND classroom_id IN(${visible}) ORDER BY posted_at DESC`
 		)
-		.bind(Date.now(), ...params)
-		.all<EventRecord>();
-	return results;
+		.bind(...familyParams, Date.now(), ...params)
+		.all<Omit<EventRecord, 'seen'> & { seen: string }>();
+	return results.map((row): EventRecord => ({ ...row, seen: JSON.parse(row.seen) as string[] }));
+}
+/** Marks an event that's up in one of a family's classrooms as seen by the family. Marking it again changes nothing. */
+export async function markEventSeen(db: D1Database, family: FamilyIdentity, id: string) {
+	const [visible, params] = visibleClassrooms(family);
+	const { meta } = await db
+		.prepare(
+			`INSERT OR IGNORE INTO event_seen(event_id,family_id) SELECT id,? FROM events
+			WHERE id=? AND posted_at IS NOT NULL AND expires_at>? AND classroom_id IN(${visible})`
+		)
+		.bind(family.family, id, Date.now(), ...params)
+		.run();
+	// Nothing written is either a mark made already or an event the family doesn't see.
+	if (
+		!meta.changes &&
+		!(await db
+			.prepare('SELECT 1 FROM event_seen WHERE event_id=? AND family_id=?')
+			.bind(id, family.family)
+			.first())
+	)
+		error(404, 'not-found');
 }
 export async function startEvent(
 	db: D1Database,

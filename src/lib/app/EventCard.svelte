@@ -6,14 +6,15 @@
 	import EventActions from './EventActions.svelte';
 	import EventHeading from './EventHeading.svelte';
 	import HideButton from './HideButton.svelte';
+	import SeenMarks from './SeenMarks.svelte';
 	import { getApp, type Picture } from './state.svelte';
 	import { button, surface } from './ui';
 
 	// An event on the board: what it was, when, and the first of its photos as this card's own family sees it,
 	// opening the gallery. That photo is put together on this device like every other one, so the card waits
 	// until it is nearly on the screen before asking for it, and asks for one photo and no more. A device that
-	// can't put photos together, or one the photo wouldn't reach, shows the card without it. Anyone may hide
-	// it on this device.
+	// can't put photos together, or one the photo wouldn't reach, shows the card without it. A family marks it
+	// as seen, as it does a notice, and until then it stands out.
 	let { locale, event }: { locale: Locale; event: OpenEvent } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.events);
@@ -25,6 +26,7 @@
 	let card = $state<HTMLElement>();
 	let cover = $state.raw<Picture>();
 	let failed = $state(false);
+	const unseen = $derived(app.status === 'family' && !app.isSeen(event));
 
 	$effect(() => {
 		const element = card;
@@ -61,7 +63,7 @@
 	});
 </script>
 
-<article class="{surface} grid gap-3" bind:this={card}>
+<article class="{surface} grid gap-3 {unseen ? 'ring-2 ring-accent' : ''}" bind:this={card}>
 	<EventHeading {locale} {event} />
 	{#if !tooOld && !failed}
 		<a
@@ -75,13 +77,12 @@
 	<a class="{button.secondary} justify-self-start" {href}>
 		<Icon name="image" class="size-4" />{t.open} ({event.value.photos.length})
 	</a>
-	<div class="flex flex-wrap items-center justify-between gap-2">
-		<p class="text-sm text-muted">{t.untilShort(until)}</p>
-		<HideButton {locale} post={event} />
-	</div>
-	{#if app.canChangeEvent(event)}
+	<p class="text-sm text-muted">{t.untilShort(until)}</p>
+	<SeenMarks {locale} post={event} onmark={() => app.markEventSeen(event)} />
+	{#if app.status === 'staff'}
 		<div class="-ml-3 flex flex-wrap gap-2">
-			<EventActions {locale} {event} />
+			{#if app.canChangeEvent(event)}<EventActions {locale} {event} />{/if}
+			<HideButton {locale} post={event} />
 		</div>
 	{/if}
 </article>

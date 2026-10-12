@@ -13,7 +13,8 @@ import {
 	changeEvent,
 	events,
 	eventFile,
-	removeEvent
+	removeEvent,
+	markEventSeen
 } from './events';
 import { cleanUp } from './cleanup';
 import type { Staff, FamilyIdentity } from '$lib/api';
@@ -305,6 +306,23 @@ describe('events publication', () => {
 			changeEvent(db, store, staff, 'event', 'changed', ['file'], 30)
 		).rejects.toMatchObject({ status: 404 });
 	});
+	it('takes seen marks from the families that see an event, which its teachers see', async () => {
+		const { db, staff, family, store } = await setup();
+		const snapshot = await consents(db, staff, 'group');
+		await startEvent(db, staff, 'event', 'group', snapshot.catalog, snapshot.revision);
+		await uploadEventFile(db, store, staff, 'event', 'file', new Uint8Array([1]));
+		// An event still being prepared can't be marked.
+		await expect(markEventSeen(db, family('a'), 'event')).rejects.toMatchObject({ status: 404 });
+		await publishEvent(db, store, staff, 'event', 'content', 'key', ['file'], 30);
+
+		await markEventSeen(db, family('a'), 'event');
+		// Marking it again changes nothing; a family of another classroom doesn't see it.
+		await markEventSeen(db, family('a'), 'event');
+		await expect(markEventSeen(db, family('b'), 'event')).rejects.toMatchObject({ status: 404 });
+		expect((await events(db, family('a')))[0].seen).toEqual(['a']);
+		expect((await events(db, staff))[0].seen).toEqual(['a']);
+	});
+
 	it('rejects catalog races and missing R2 bytes; expires staged and published data', async () => {
 		const { db, staff, family, store, objects } = await setup();
 		const snapshot = await consents(db, staff, 'group');

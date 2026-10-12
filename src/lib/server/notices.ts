@@ -25,9 +25,9 @@ import { deleteMarked, getObject, putObject, type ObjectStore } from './storage'
 // deletes with their files (cleanup.ts).
 
 /**
- * The notices someone sees that are still up, the most recently announced first. Each comes once, with its
- * key for every one of its classrooms the viewer sees, and the marks and poll answers of the families the
- * viewer sees. A family also gets the answers of every family a notice is for when its poll shows the counts,
+ * The notices someone sees that are still up, the pinned ones first, then the most recently announced. Each
+ * comes once, with its key for every one of its classrooms the viewer sees, and the marks and poll answers
+ * of the families the viewer sees. A family also gets the answers of every family a notice is for when its poll shows the counts,
  * which are encrypted with the poll's key.
  */
 function boardQuery(db: D1Database, viewer: Identity) {
@@ -45,7 +45,7 @@ function boardQuery(db: D1Database, viewer: Identity) {
 			`WITH visible_families AS (${families})
 			SELECT n.id, n.teacher_id AS teacher, n.content, n.posted_at AS postedAt,
 			n.announced_at AS announcedAt, n.edited_at AS editedAt, n.edited_by AS editedBy,
-			n.expires_at AS expiresAt,
+			n.expires_at AS expiresAt, n.pinned_at AS pinnedAt,
 			json_group_array(json_object('classroom', nc.classroom_id, 'noticeKey', nc.notice_key)) AS classrooms,
 			(SELECT COUNT(*) FROM notice_classrooms WHERE notice_id = n.id) > COUNT(nc.classroom_id) AS elsewhere,
 			(SELECT json_group_array(family_id) FROM notice_seen
@@ -54,7 +54,7 @@ function boardQuery(db: D1Database, viewer: Identity) {
 			WHERE notice_id = n.id AND (family_id IN (SELECT * FROM visible_families) ${counted})) AS votes
 			FROM notices n JOIN notice_classrooms nc ON nc.notice_id = n.id
 			WHERE n.expires_at > ? AND nc.classroom_id IN (${classrooms})
-			GROUP BY n.id ORDER BY n.announced_at DESC, n.id`
+			GROUP BY n.id ORDER BY n.pinned_at IS NULL, n.pinned_at DESC, n.announced_at DESC, n.id`
 		)
 		.bind(...familyParams, Date.now(), ...classroomParams);
 }
@@ -229,6 +229,19 @@ export async function changeNotice(
 	]);
 	await deleteMarked(db, bucket);
 	return records;
+}
+
+/**
+ * Pins a notice to the top of the board, or takes it down among the others again, for whoever may change it.
+ * Pinning notifies no one and leaves the seen marks alone.
+ */
+export async function pinNotice(db: D1Database, staff: Staff, id: string, pinned: boolean) {
+	await changeable(db, staff, id);
+	return changeBoard(db, staff, [
+		db
+			.prepare('UPDATE notices SET pinned_at = CASE WHEN ? THEN ? END WHERE id = ?')
+			.bind(Number(pinned), Date.now(), id)
+	]);
 }
 
 /** Deletes a notice with its files. */

@@ -46,6 +46,7 @@ import {
 	deleteNotice,
 	fileBytes,
 	markSeen,
+	pinNotice,
 	postNotice,
 	uploadFile,
 	vote
@@ -1060,6 +1061,39 @@ describe('notices', () => {
 		expect(await seenBy(head)).toHaveLength(2);
 		await changeNotice(db, bucket, head, posted.id, change([bubbles, owls], true));
 		expect(await seenBy(head)).toEqual([]);
+	});
+
+	it('pin to the top for whoever may change them, the latest pinned first', async () => {
+		const db = localDatabase();
+		const { head } = await setUpKindergarten(db);
+		const [bubbles, owls] = [await addClassroomTo(db, head), await addClassroomTo(db, head)];
+		const teacher = await addTeacherTo(db, head, [bubbles]);
+		const [first, second, shared] = [notice([bubbles]), notice([bubbles]), notice([bubbles, owls])];
+		const order = async () => ids(await board(db, head));
+		let now = 1_000_000;
+		const later = () => vi.setSystemTime((now += 1000));
+		vi.useFakeTimers({ toFake: ['Date'] });
+		try {
+			for (const posted of [first, second, shared]) {
+				later();
+				await postNotice(db, head, posted);
+			}
+			expect(await order()).toEqual([shared.id, second.id, first.id]);
+
+			later();
+			await pinNotice(db, teacher, first.id, true);
+			// A notice that also goes to another group is that group's too, so the teacher leaves it alone.
+			await expect(pinNotice(db, teacher, shared.id, true)).rejects.toMatchObject({ status: 403 });
+			expect(await order()).toEqual([first.id, shared.id, second.id]);
+			later();
+			await pinNotice(db, head, second.id, true);
+			expect(await order()).toEqual([second.id, first.id, shared.id]);
+
+			await pinNotice(db, teacher, second.id, false);
+			expect(await order()).toEqual([first.id, shared.id, second.id]);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('take one answer from each family that sees a poll, which marks it as seen, and lose them with the poll', async () => {

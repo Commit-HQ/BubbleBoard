@@ -40,6 +40,7 @@ type Sealed = Awaited<ReturnType<typeof sealNotice>>;
 function served(id: string, sealed: Sealed, visible?: string[]): NoticeRecord {
 	return {
 		id,
+		pinnedAt: null,
 		teacher: createId(),
 		content: sealed.content,
 		postedAt: 1,

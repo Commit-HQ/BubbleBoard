@@ -103,6 +103,7 @@ describe('notice files', () => {
 			const sealed = await sealNotice(id, content as NoticeContent, [classroom]);
 			return {
 				id,
+				pinnedAt: null,
 				teacher: null,
 				content: sealed.content,
 				postedAt: 1,

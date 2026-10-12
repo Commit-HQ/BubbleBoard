@@ -87,6 +87,7 @@ describe('event privacy', () => {
 			const record: EventRecord = {
 				id,
 				classroom: createId(),
+				seen: [],
 				teacher: null,
 				postedAt: 0,
 				editedAt: null,
