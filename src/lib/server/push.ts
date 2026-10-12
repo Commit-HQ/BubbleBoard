@@ -337,7 +337,7 @@ async function queue(
  * notification that couldn't be queued never fails a change that's already made.
  */
 export function notifyLater(event: RequestEvent, sending: Promise<void>) {
-	event.platform?.ctx.waitUntil(sending.catch(() => {}));
+	event.platform?.ctx.waitUntil(sending.catch((error) => console.error(error)));
 }
 
 /**

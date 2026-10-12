@@ -188,8 +188,9 @@ export async function changeMeeting(
 
 /**
  * Replaces an offer's upcoming free times with the ones a teacher set, in one transaction. Booked times stay as
- * they are, and a time kept with its ID and clock stays too. The change is refused when the offer's upcoming
- * times moved since her device read them (`expected`), such as when a parent booked one meanwhile.
+ * they are, and a time kept with its ID and clock stays too. The change is refused when the offer's times moved
+ * since her device read them (`expected`), such as when a parent booked one meanwhile. A time that started since
+ * then is no change: it stays as it was.
  */
 export async function changeMeetingTimes(
 	db: D1Database,
@@ -224,13 +225,15 @@ export async function changeMeetingTimes(
 	const times = JSON.stringify(slots);
 	try {
 		await transaction(db, [
-			// Empties the offer's classroom unless its upcoming times are exactly those the device read.
+			// Empties the offer's classroom unless every upcoming time is one the device read, and every time it
+			// read is still there as it was.
 			db
 				.prepare(
 					`UPDATE meeting_offers SET classroom_id=CASE WHEN
- (SELECT COUNT(*) FROM meeting_slots WHERE offer_id=?1 AND starts_at>?2)=(SELECT COUNT(*) FROM json_each(?3))
- AND NOT EXISTS(SELECT 1 FROM meeting_slots s WHERE s.offer_id=?1 AND s.starts_at>?2 AND NOT EXISTS(
+ NOT EXISTS(SELECT 1 FROM meeting_slots s WHERE s.offer_id=?1 AND s.starts_at>?2 AND NOT EXISTS(
  SELECT 1 FROM json_each(?3) WHERE json_extract(value,'$.id')=s.id AND json_extract(value,'$.version')=s.version))
+ AND NOT EXISTS(SELECT 1 FROM json_each(?3) e WHERE NOT EXISTS(SELECT 1 FROM meeting_slots s WHERE s.offer_id=?1
+ AND s.id=json_extract(e.value,'$.id') AND s.version=json_extract(e.value,'$.version')))
  THEN classroom_id ELSE NULL END WHERE id=?1`
 				)
 				.bind(offer, now, JSON.stringify(expected)),

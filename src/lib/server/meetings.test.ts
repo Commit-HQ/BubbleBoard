@@ -344,6 +344,31 @@ describe('changing a day of meetings', () => {
 		});
 		expect((await meetingData(db, staff)).slots.map((s) => s.id)).toEqual(slots.map((s) => s.id));
 	});
+	it('keeps a time that started after the device read the times', async () => {
+		const { db, staff, offer } = await fixture();
+		const expected = await read(db, staff);
+		const [first, second] = offer.slots;
+		const later = { id: createId(), start: second.end, end: second.end + 1200000 };
+		await changeMeetingTimes(
+			db,
+			staff,
+			{ offer: offer.id, expected, slots: [second, later] },
+			first.start
+		);
+		expect((await meetingData(db, staff)).slots.map((s) => s.id)).toEqual([
+			first.id,
+			second.id,
+			later.id
+		]);
+	});
+	it('refuses the change if a time the device read was removed meanwhile', async () => {
+		const { db, staff, offer } = await fixture();
+		const expected = await read(db, staff);
+		await db.prepare('DELETE FROM meeting_slots WHERE id=?').bind(offer.slots[1].id).run();
+		await expect(
+			changeMeetingTimes(db, staff, { offer: offer.id, expected, slots: [offer.slots[1]] })
+		).rejects.toMatchObject({ status: 409, body: { message: 'meeting-times-changed' } });
+	});
 	it('refuses the whole change if a parent books after the device read the times', async () => {
 		const { db, staff, parent, offer, child } = await fixture();
 		const expected = await read(db, staff);

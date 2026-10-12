@@ -12,8 +12,8 @@
 	import { getApp, Task } from './state.svelte';
 	import { alert, button, field, surface } from './ui';
 	/**
-	 * The times of one day, each set on its own: a new offer, or an offer's upcoming times (`day`), whose booked
-	 * times stay as they are.
+	 * The times of one day, each set on its own: a new offer, or an offer's times (`day`), whose booked times and
+	 * times that started stay as they are.
 	 */
 	let {
 		locale,
@@ -52,17 +52,20 @@
 	const hasChildren = $derived(
 		!!opened || app.catalog.children.some((c) => c.classroom === chosenClassroom)
 	);
+	/** A booked time, or one that started, stays as it is. */
+	const fixed = (row: Row, at: number) => !!row.slot && (row.slot.booked || row.slot.start <= at);
 	const times = $derived(
-		rows.map((row) => ({
-			start: meetingTimestamp(date, row.from),
-			end: meetingTimestamp(date, row.to)
-		}))
+		rows.map((row) =>
+			row.slot && fixed(row, now)
+				? { start: row.slot.start, end: row.slot.end }
+				: { start: meetingTimestamp(date, row.from), end: meetingTimestamp(date, row.to) }
+		)
 	);
-	/** What's wrong with each row, if anything; a booked time is as it is. */
+	/** What's wrong with each row, if anything. */
 	const problems = $derived(
 		rows.map((row, i) => {
 			const { start, end } = times[i];
-			if (row.slot?.booked || !date) return '';
+			if (fixed(row, now) || !date) return '';
 			if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return t.rowOrder;
 			if (end - start < 5 * 60000 || end - start > 120 * 60000) return t.rowLength;
 			if (start <= now) return t.rowPast;
@@ -76,9 +79,11 @@
 	const add = () => next && (rows = [...rows, { key: String(key++), ...next }]);
 	async function save() {
 		if (!valid || !hasChildren) return;
+		// The clock now, not the one the form last read, so a time that just started isn't sent as offered.
+		const at = Date.now();
 		const free = rows
 			.map((row, i) => ({ row, ...times[i] }))
-			.filter(({ row }) => !row.slot?.booked)
+			.filter(({ row }) => !fixed(row, at))
 			.sort((a, b) => a.start - b.start);
 		if (!opened) {
 			await app.publishMeetings(
@@ -139,14 +144,14 @@
 		<fieldset class="grid min-w-0 gap-2">
 			<legend class="mb-2 font-semibold">{t.times}</legend>
 			{#each rows as row, i (row.key)}
-				{#if row.slot?.booked}
+				{#if row.slot && fixed(row, now)}
 					<div class="flex min-h-12 items-center gap-2 rounded-2xl bg-ink/5 p-3 text-sm">
 						<Icon name="lock" class="size-4 shrink-0 text-muted" />
 						<span class="font-semibold"
 							>{meetingTime(locale, row.slot.start)}–{meetingTime(locale, row.slot.end)}</span
 						>
 						<span class="text-muted"
-							>{t.booked}{#if app.catalog.children.find((c) => c.id === row.slot?.child)}
+							>{#if row.slot.booked}{t.booked}{/if}{#if app.catalog.children.find((c) => c.id === row.slot?.child)}
 								· {app.catalog.children.find((c) => c.id === row.slot?.child)?.name}{/if}</span
 						>
 					</div>

@@ -120,12 +120,13 @@
 	{:else if app.meetingsLoaded}
 		{#if !staff}<p class="text-sm text-muted">{t.onePerChild}</p>{/if}
 		{#if !upcoming.length}<p class="text-muted">{staff ? t.emptyStaff : t.emptyFamily}</p>{/if}
-		{#each upcomingGroups as slots (slots[0].id)}
+		<!-- An offer is one day; keyed by it, an open form stays as its first time passes. -->
+		{#each upcomingGroups as slots (slots[0].offer)}
 			{#if editing === slots[0].offer}
 				<MeetingTimesForm
 					{locale}
 					{now}
-					day={upcoming.filter((s) => s.offer === editing)}
+					day={app.meetings.filter((s) => s.offer === editing)}
 					ondone={done}
 					onclose={() => (editing = undefined)}
 				/>
