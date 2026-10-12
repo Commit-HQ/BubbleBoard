@@ -307,13 +307,12 @@ export async function recipients(
 
 /** Puts devices on the queue in groups, each saying what happened, signed for this installation's address. */
 async function queue(
-	event: RequestEvent,
 	env: PushEnv,
+	subject: string,
 	devices: PushDevice[],
 	kind: PushKind,
 	conversation?: string
 ) {
-	const subject = event.url.origin;
 	const messages: { body: PushMessage }[] = [];
 	for (let start = 0; start < devices.length; start += groupSize) {
 		messages.push({
@@ -352,7 +351,7 @@ export async function announce(
 ) {
 	const env = event.platform?.env;
 	if (!env?.NOTIFICATIONS) return;
-	await queue(event, env, await recipients(env.DB, classrooms, poster), kind);
+	await queue(env, event.url.origin, await recipients(env.DB, classrooms, poster), kind);
 }
 
 type Outcome = 'sent' | 'gone' | 'again' | 'refused';
@@ -484,7 +483,7 @@ export async function announceConversation(
 	const devices = await conversationRecipients(env.DB, conversation, poster, {
 		family: kind === 'message'
 	});
-	await queue(event, env, devices, kind, conversation);
+	await queue(env, event.url.origin, devices, kind, conversation);
 }
 
 /**
@@ -510,5 +509,55 @@ export async function announceMeetingChanges(
 	)
 		.bind(JSON.stringify(changes), Date.now(), poster ?? '')
 		.all<PushDevice>();
-	await queue(event, env, results, 'booking');
+	await queue(env, event.url.origin, results, 'booking');
+}
+
+/**
+ * The daily reminder (worker/index.js): every device of a family with a meeting tomorrow, by the kindergarten's
+ * clock. It runs once a day, so a booking made after it doesn't get one, and it needs no record of what it
+ * sent. The Worker has no request to take its address from, so the deploy gives it as SITE_ORIGIN.
+ */
+export async function remindMeetings(env: PushEnv & { SITE_ORIGIN?: string }, now = Date.now()) {
+	if (!env.SITE_ORIGIN) {
+		console.error('SITE_ORIGIN is not set, so no meeting reminders were sent.');
+		return;
+	}
+	const { results } = await env.DB.prepare(
+		`SELECT DISTINCT p.endpoint, p.p256dh, p.auth FROM push_subscriptions p
+ JOIN sessions s ON s.token_hash=p.session_hash JOIN credentials c ON c.id=s.credential_id
+ JOIN meeting_invites i ON i.family_id=c.family_id
+ JOIN meeting_slots m ON m.offer_id=i.offer_id AND m.child_id=i.child_id
+ JOIN meeting_offers o ON o.id=m.offer_id
+ JOIN family_classrooms f ON f.family_id=i.family_id AND f.classroom_id=o.classroom_id
+ WHERE s.expires_at>? AND m.starts_at>=? AND m.starts_at<?`
+	)
+		.bind(now, zagrebMidnight(now, 1), zagrebMidnight(now, 2))
+		.all<PushDevice>();
+	await queue(env, env.SITE_ORIGIN, results, 'tomorrow');
+}
+
+// The kindergarten's clock (src/lib/messages.ts), here without the app's imports.
+const zagrebClock = new Intl.DateTimeFormat('en-GB', {
+	timeZone: 'Europe/Zagreb',
+	year: 'numeric',
+	month: '2-digit',
+	day: '2-digit',
+	hour: '2-digit',
+	minute: '2-digit',
+	hourCycle: 'h23'
+});
+/** A moment as the wall clock in Zagreb reads it, written as if that were UTC. */
+function wallClock(time: number) {
+	const parts = zagrebClock.formatToParts(time);
+	const value = (type: string) => Number(parts.find((part) => part.type === type)!.value);
+	return Date.UTC(value('year'), value('month') - 1, value('day'), value('hour'), value('minute'));
+}
+/**
+ * Midnight in Zagreb `days` after the day `now` falls on. The clocks change in the small hours, never at
+ * midnight, so the offset at UTC midnight is the one at Zagreb's.
+ */
+export function zagrebMidnight(now: number, days: number) {
+	const today = new Date(wallClock(now));
+	const midnight = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + days);
+	return midnight - (wallClock(midnight) - midnight);
 }

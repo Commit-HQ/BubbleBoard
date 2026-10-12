@@ -11,7 +11,8 @@ export const notificationText: Record<PushKind, string> = {
 	booking: 'Meeting time changed',
 	photos: 'New photos from your kindergarten',
 	corkboard: 'New photo of the notice board',
-	report: 'A parent reported photos'
+	report: 'A parent reported photos',
+	tomorrow: 'You have an individual meeting tomorrow'
 };
 
 export const en = {

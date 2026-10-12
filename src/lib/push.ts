@@ -11,7 +11,8 @@ export const pushKinds = [
 	'booking',
 	'photos',
 	'corkboard',
-	'report'
+	'report',
+	'tomorrow'
 ] as const;
 export type PushKind = (typeof pushKinds)[number];
 
@@ -28,7 +29,8 @@ export const pushPages: Record<PushKind, 'messages' | 'meetings' | undefined> = 
 	photos: undefined,
 	corkboard: undefined,
 	// A family's report of an event's photos, for its teachers, is a conversation.
-	report: 'messages'
+	report: 'messages',
+	tomorrow: 'meetings'
 };
 
 /** The letter that goes over the wire. Each kind starts with a different one. */

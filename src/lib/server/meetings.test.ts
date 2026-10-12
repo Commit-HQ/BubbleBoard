@@ -1,7 +1,7 @@
 import { localDatabase } from './test-database';
 import { changeChild } from './catalog';
 import { childChange } from './validate';
-import { announceMeetingChanges, type PushMessage } from './push';
+import { announceMeetingChanges, remindMeetings, zagrebMidnight, type PushMessage } from './push';
 import { meetingTimestamp } from '$lib/meetings';
 import { messageClock } from '$lib/messages';
 import { describe, expect, it } from 'vitest';
@@ -418,15 +418,15 @@ describe('changing a day of meetings', () => {
 	});
 });
 
-it('notifies only affected families once per device when several bookings are removed', async () => {
-	const { db, staff, parent, second, other, offer, child } = await fixture();
-	for (const who of [staff, parent, second, other]) {
-		const id = who.kind === 'staff' ? who.teacher : who.family;
+/** A signed-in device with notifications on for each of these, and the queue they go to. */
+async function devices(db: D1Database, who: Identity[]) {
+	for (const one of who) {
+		const id = one.kind === 'staff' ? one.teacher : one.family;
 		await db
 			.prepare(
 				'INSERT INTO credentials(id,teacher_id,family_id,auth_token_hash,wrapped_key) VALUES(?,?,?,?,?)'
 			)
-			.bind(id, who.kind === 'staff' ? id : null, who.kind === 'family' ? id : null, id, 'key')
+			.bind(id, one.kind === 'staff' ? id : null, one.kind === 'family' ? id : null, id, 'key')
 			.run();
 		await db
 			.prepare('INSERT INTO sessions (token_hash, credential_id, expires_at) VALUES (?,?,?)')
@@ -438,15 +438,22 @@ it('notifies only affected families once per device when several bookings are re
 			.run();
 	}
 	const sent: PushMessage[] = [];
+	const NOTIFICATIONS = {
+		sendBatch: async (messages: { body: PushMessage }[]) => {
+			for (const { body } of messages) sent.push(body);
+		}
+	};
+	return { sent, NOTIFICATIONS };
+}
+
+it('notifies only affected families once per device when several bookings are removed', async () => {
+	const { db, staff, parent, second, other, offer, child } = await fixture();
+	const { sent, NOTIFICATIONS } = await devices(db, [staff, parent, second, other]);
 	const event = {
 		platform: {
 			env: {
 				DB: db,
-				NOTIFICATIONS: {
-					sendBatch: async (messages: { body: PushMessage }[]) => {
-						for (const { body } of messages) sent.push(body);
-					}
-				}
+				NOTIFICATIONS
 			}
 		},
 		url: new URL('https://example.com')
@@ -462,5 +469,33 @@ it('notifies only affected families once per device when several bookings are re
 	expect(sent.every((message) => message.kind === 'booking')).toBe(true);
 	expect(sent.flatMap((s) => s.devices.map(({ endpoint }) => endpoint)).sort()).toEqual(
 		[`https://push.example/${parent.family}`, `https://push.example/${second.family}`].sort()
+	);
+});
+
+it('reminds the families of a meeting tomorrow, and nobody else', async () => {
+	const { db, staff, parent, second, other, offer, child } = await fixture();
+	await changeMeeting(db, parent, offer.slots[0].id, { action: 'book', version: 0, child });
+	const { sent, NOTIFICATIONS } = await devices(db, [staff, parent, second, other]);
+	const env = { DB: db, NOTIFICATIONS, VAPID_KEY: '', SITE_ORIGIN: 'https://example.com' } as never;
+	// The day before, the meeting is two days away.
+	await remindMeetings(env, Date.now() - 86400000);
+	expect(sent).toEqual([]);
+	await remindMeetings(env);
+	expect(sent.map(({ kind, subject }) => [kind, subject])).toEqual([
+		['tomorrow', 'https://example.com']
+	]);
+	expect(sent[0].devices.map(({ endpoint }) => endpoint).sort()).toEqual(
+		[`https://push.example/${parent.family}`, `https://push.example/${second.family}`].sort()
+	);
+});
+
+it('finds midnight in Zagreb on either side of the clocks changing', () => {
+	// Summer time ends at 3:00 on Sunday 25 October 2026.
+	const saturday = Date.parse('2026-10-24T15:00:00Z');
+	expect(new Date(zagrebMidnight(saturday, 1)).toISOString()).toBe('2026-10-24T22:00:00.000Z');
+	expect(new Date(zagrebMidnight(saturday, 2)).toISOString()).toBe('2026-10-25T23:00:00.000Z');
+	// Late in the evening by UTC is already the next day in Zagreb.
+	expect(new Date(zagrebMidnight(Date.parse('2026-07-01T22:30:00Z'), 0)).toISOString()).toBe(
+		'2026-07-01T22:00:00.000Z'
 	);
 });

@@ -9,7 +9,8 @@ export const notificationText: Record<PushKind, string> = {
 	booking: 'Promjena termina razgovora',
 	photos: 'Nove fotografije iz vrtića',
 	corkboard: 'Nova fotografija oglasne ploče',
-	report: 'Roditelj prijavljuje fotografije'
+	report: 'Roditelj prijavljuje fotografije',
+	tomorrow: 'Sutra imate individualni razgovor'
 };
 
 export const hr = {

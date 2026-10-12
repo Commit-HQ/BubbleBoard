@@ -3,12 +3,19 @@
 // migrations only add. The first deploy is the exception: it creates the database, so it publishes first.
 // A deploy that creates the database, the notifications queue, or the files bucket also writes them into
 // wrangler.jsonc. Later deploys find them by name, so the file goes back to how it was, the same for every
-// installation, however the deploy ends.
+// installation, however the deploy ends. The installation's address goes to the Worker as SITE_ORIGIN, for
+// what it does without a request to read it from, such as meeting reminders.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { hasDatabase, runWrangler, wrangler } from './wrangler.js';
 
 const config = readFileSync('wrangler.jsonc', 'utf8');
+try {
+	process.loadEnvFile('.env');
+} catch {
+	// PUBLIC_SITE_URL may also come from the environment, and the build has already checked it.
+}
+const origin = new URL(process.env.PUBLIC_SITE_URL).origin;
 function migrate() {
 	runWrangler(['d1', 'migrations', 'apply', 'DB', '--remote']);
 	// Answering no to Wrangler's question ends it without an error, and the new code mustn't go out without
@@ -25,7 +32,7 @@ function migrate() {
 try {
 	const existing = hasDatabase(config.match(/"database_name":\s*"([^"]+)"/)[1]);
 	if (existing) migrate();
-	runWrangler(['deploy']);
+	runWrangler(['deploy', '--var', `SITE_ORIGIN:${origin}`]);
 	if (!existing) migrate();
 } catch {
 	// What went wrong has already been said.
