@@ -46,8 +46,9 @@
 	// The daily cleanup of expired notices and sessions, and of files no record names
 	// (src/lib/server/cleanup.ts).
 	"triggers": { "crons": ["23 3 * * *"] },
-	// No invocation logs (product-spec.md §45).
-	"observability": { "enabled": false },
+	// No invocation logs (product-spec.md §45): Workers Logs keep only what the Worker writes to the console,
+	// which is unexpected errors, for 3 days.
+	"observability": { "enabled": true, "logs": { "invocation_logs": false } },
 	// The workers.dev address serves the current version, and is the address of an installation without a
 	// domain of its own. No preview address for each uploaded version, which would keep older versions, with
 	// whatever a later one fixed, reachable with this database and bucket.
