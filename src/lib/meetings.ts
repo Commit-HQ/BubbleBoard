@@ -9,11 +9,20 @@ export type MeetingSlot = {
 	end: number;
 	booked: boolean;
 	mine: boolean;
+	/** Whether staff booked it for the family, which staff and that family see. */
+	staffBooked: boolean;
 	child: string | null;
 	version: number;
 };
 export type MeetingInvite = { offer: string; child: string; family: string; label: string };
-export type MeetingData = { slots: MeetingSlot[]; invites: MeetingInvite[] };
+/** The children each offer invites, which staff choose from to book a time for a family. */
+export type MeetingInvited = { offer: string; child: string };
+export type MeetingData = {
+	slots: MeetingSlot[];
+	invites: MeetingInvite[];
+	/** Staff's alone: a family books from its own `invites`. */
+	invited: MeetingInvited[];
+};
 export type MeetingChild = MeetingInvite & { name: string };
 export type NewMeetingOffer = {
 	id: string;

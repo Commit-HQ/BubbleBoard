@@ -31,7 +31,7 @@
 				<p class="flex items-center gap-2 text-sm font-semibold text-accent">
 					<span class="grid size-5 place-items-center rounded-full bg-accent text-white"
 						><Icon name="check" class="size-3.5" /></span
-					>{t.bookedBadge}
+					>{mine.staffBooked ? t.bookedForYou : t.bookedBadge}
 				</p>
 				<p class="mt-3 font-semibold first-letter:uppercase">{meetingDay(locale, mine.start)}</p>
 				<p class="mt-1 flex items-center gap-2 text-2xl font-bold">

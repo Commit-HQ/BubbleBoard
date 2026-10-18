@@ -740,6 +740,13 @@ export const en = {
 			mine: 'Your meeting',
 			myMeeting: 'Individual meeting',
 			bookedBadge: 'You’ve booked a time',
+			bookedForYou: 'Your teacher booked this time for you',
+			mineByStaff: 'Your meeting, booked by your teacher',
+			byStaff: 'booked by a teacher',
+			bookFor: 'Book for a family',
+			bookForCopy:
+				'Choose the child. Their family will see that you booked this time for them, and can cancel it.',
+			bookedFor: 'The time is booked. The family gets a notification if they turned them on.',
 			change: 'Change or cancel the time',
 			reserve: 'Reserve',
 			reservation: 'Confirm reservation',

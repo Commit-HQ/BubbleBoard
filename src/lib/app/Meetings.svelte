@@ -44,6 +44,17 @@
 		app.meetings.some((s) => s.offer === offer && s.child === chosenChild(offer) && s.mine);
 	const canManage = (s: MeetingSlot) =>
 		staff && (app.manages(s.classroom) || s.teacher === app.me?.id);
+	/** On a staff device, the children an offer invites who have no time in it yet, whom staff book for. */
+	const bookable = (offer: string) => {
+		const booked = new Set(app.meetings.filter((s) => s.offer === offer).map((s) => s.child));
+		return app.meetingInvited
+			.filter((invited) => invited.offer === offer && !booked.has(invited.child))
+			.map(({ child }) => ({
+				id: child,
+				name: app.catalog.children.find((c) => c.id === child)?.name ?? ''
+			}))
+			.toSorted((a, b) => a.name.localeCompare(b.name, locale));
+	};
 	const removableDay = (slot: MeetingSlot) => {
 		const day = messageClock(slot.start).date;
 		return upcoming.filter(
@@ -79,7 +90,10 @@
 	};
 	/** What each of the three changes is called, asked, and said once it's done. */
 	const actions = $derived({
-		book: { title: t.reservation, label: t.reserve, copy: t.confirmCopy, done: t.reserved },
+		// Staff book a time for a family, choosing the child in the question.
+		book: staff
+			? { title: t.bookFor, label: t.reserve, copy: t.bookForCopy, done: t.bookedFor }
+			: { title: t.reservation, label: t.reserve, copy: t.confirmCopy, done: t.reserved },
 		cancel: {
 			title: t.cancelBooking,
 			label: t.cancelBooking,
@@ -207,13 +221,16 @@
 						<p class="font-semibold">{time(slot)}</p>
 						<p class="text-sm text-muted">
 							{slot.mine
-								? t.mine
+								? slot.staffBooked
+									? t.mineByStaff
+									: t.mine
 								: slot.booked
 									? t.booked
 									: isPast
 										? t.closed
 										: t.free}{#if slot.booked && (staff || slot.mine)}{#if childName(slot)}
-									· {childName(slot)}{/if}{/if}
+									· {childName(slot)}{/if}{/if}{#if staff && slot.staffBooked}
+								· {t.byStaff}{/if}
 						</p>
 					</div>
 					{#if !isPast}
@@ -223,11 +240,21 @@
 								onclick={() => (confirmation = { slot, action: 'cancel' })}
 								>{t.cancelBooking}</button
 							>
-						{:else if !slot.booked && canManage(slot)}<button
-								type="button"
-								class={button.quiet}
-								onclick={() => (confirmation = { slot, action: 'remove' })}>{t.remove}</button
-							>
+						{:else if !slot.booked && canManage(slot)}
+							{@const children = bookable(slot.offer)}
+							<div class="flex flex-wrap gap-2">
+								{#if children.length}<button
+										type="button"
+										class={button.secondary}
+										onclick={() => (confirmation = { slot, action: 'book', child: children[0].id })}
+										>{t.bookFor}</button
+									>{/if}
+								<button
+									type="button"
+									class={button.quiet}
+									onclick={() => (confirmation = { slot, action: 'remove' })}>{t.remove}</button
+								>
+							</div>
 						{:else if !slot.booked && !staff}<button
 								type="button"
 								class={button.secondary}
@@ -253,7 +280,23 @@
 		danger={confirmation.action !== 'book'}
 		onconfirm={confirm}
 		onclose={() => (confirmation = undefined)}
-	/>
+	>
+		{#if staff && confirmation.action === 'book'}
+			{@const current = confirmation}
+			<label class={field.label}>
+				<span class={field.name}>{t.child}</span>
+				<select
+					class={field.input}
+					value={current.child}
+					onchange={(e) => (confirmation = { ...current, child: e.currentTarget.value })}
+				>
+					{#each bookable(current.slot.offer) as child (child.id)}
+						<option value={child.id}>{child.name}</option>
+					{/each}
+				</select>
+			</label>
+		{/if}
+	</ConfirmDialog>
 {/if}
 
 {#if dayRemoval?.length}

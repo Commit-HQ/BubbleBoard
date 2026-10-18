@@ -145,6 +145,71 @@ describe('meeting reservations', () => {
 			changeMeeting(db, staff, offer.slots[0].id, { action: 'remove', version: 1 })
 		).rejects.toMatchObject({ status: 409 });
 	});
+	it('lets staff book an invited child, which its families see and cancel', async () => {
+		const { db, staff, parent, second, other, offer, child, otherChild } = await fixture();
+		expect((await meetingData(db, staff)).invited).toEqual(
+			expect.arrayContaining([
+				{ offer: offer.id, child },
+				{ offer: offer.id, child: otherChild }
+			])
+		);
+		expect((await meetingData(db, parent)).invited).toEqual([]);
+		const id = offer.slots[0].id;
+		expect(await changeMeeting(db, staff, id, { action: 'book', version: 0, child })).toEqual({
+			offer: offer.id,
+			child
+		});
+		for (const family of [parent, second])
+			expect((await meetingData(db, family)).slots[0]).toMatchObject({
+				mine: true,
+				staffBooked: true,
+				child
+			});
+		expect((await meetingData(db, other)).slots[0]).toMatchObject({
+			booked: true,
+			mine: false,
+			staffBooked: false,
+			child: null
+		});
+		expect((await meetingData(db, staff)).slots[0]).toMatchObject({ staffBooked: true, child });
+		await changeMeeting(db, second, id, { action: 'cancel', version: 1 });
+		await changeMeeting(db, parent, id, { action: 'book', version: 2, child });
+		expect((await meetingData(db, staff)).slots[0]).toMatchObject({ staffBooked: false, child });
+	});
+	it('lets staff book only invited children, once each, in times they settle', async () => {
+		const { db, staff, offer, child, otherChild } = await fixture();
+		const [first, second] = offer.slots.map((slot) => slot.id);
+		const uninvited = createId();
+		await db
+			.prepare('INSERT INTO children VALUES(?,?,?)')
+			.bind(uninvited, offer.classroom, 'profile')
+			.run();
+		await expect(
+			changeMeeting(db, staff, first, { action: 'book', version: 0, child: uninvited })
+		).rejects.toMatchObject({ status: 409 });
+		await changeMeeting(db, staff, first, { action: 'book', version: 0, child });
+		await expect(
+			changeMeeting(db, staff, second, { action: 'book', version: 0, child })
+		).rejects.toMatchObject({ status: 409 });
+		const colleague: Staff = { ...staff, teacher: createId() };
+		await db
+			.prepare('INSERT INTO teachers (id,profile,role) VALUES(?,?,?)')
+			.bind(colleague.teacher, 'profile', 'teacher')
+			.run();
+		await db
+			.prepare('INSERT INTO teacher_classrooms VALUES(?,?)')
+			.bind(colleague.teacher, offer.classroom)
+			.run();
+		await expect(
+			changeMeeting(db, colleague, second, { action: 'book', version: 0, child: otherChild })
+		).rejects.toMatchObject({ status: 403 });
+		await changeMeeting(db, { ...colleague, role: 'head' }, second, {
+			action: 'book',
+			version: 0,
+			child: otherChild
+		});
+		expect((await meetingData(db, staff)).slots[1]).toMatchObject({ child: otherChild });
+	});
 	it('rejects stale cancellation after another family takes the released time', async () => {
 		const { db, parent, other, staff, offer, child, otherChild } = await fixture();
 		const id = offer.slots[0].id;

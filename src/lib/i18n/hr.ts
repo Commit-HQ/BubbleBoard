@@ -715,6 +715,13 @@ export const hr = {
 			mine: 'Vaš razgovor',
 			myMeeting: 'Individualni razgovor',
 			bookedBadge: 'Rezervirali ste termin',
+			bookedForYou: 'Termin vam je rezervirala odgojiteljica',
+			mineByStaff: 'Vaš razgovor, rezervirala ga je odgojiteljica',
+			byStaff: 'rezervirala odgojiteljica',
+			bookFor: 'Rezerviraj za obitelj',
+			bookForCopy:
+				'Odaberite dijete. Njegova obitelj vidjet će da ste joj rezervirali termin i može ga otkazati.',
+			bookedFor: 'Termin je rezerviran. Obitelj dobiva obavijest ako ih je uključila.',
 			change: 'Promijeni ili otkaži termin',
 			reserve: 'Rezerviraj',
 			reservation: 'Potvrdi rezervaciju',

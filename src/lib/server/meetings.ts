@@ -54,19 +54,26 @@ export async function meetingData(db: D1Database, who: Identity): Promise<Meetin
 	const { results } = await db
 		.prepare(
 			`SELECT s.id,s.offer_id AS offer,o.classroom_id AS classroom,o.teacher_id AS teacher,
- s.starts_at AS start,s.ends_at AS end,s.child_id AS child,s.version,
+ s.starts_at AS start,s.ends_at AS end,s.child_id AS child,s.version,s.staff_booked AS staffBooked,
  EXISTS(SELECT 1 FROM meeting_invites i JOIN family_classrooms f ON f.family_id=i.family_id AND f.classroom_id=o.classroom_id
  WHERE i.offer_id=o.id AND i.child_id=s.child_id AND i.family_id=?) AS mine
  FROM meeting_slots s JOIN meeting_offers o ON o.id=s.offer_id WHERE o.classroom_id IN (${visible}) ORDER BY s.starts_at,s.id`
 		)
 		.bind(family, ...params)
-		.all<Omit<MeetingSlot, 'mine' | 'booked'> & { mine: number }>();
-	const slots = results.map((s) => ({
-		...s,
-		booked: !!s.child,
-		mine: !!s.mine,
-		child: who.kind === 'staff' || s.mine ? s.child : null
-	}));
+		.all<
+			Omit<MeetingSlot, 'mine' | 'booked' | 'staffBooked'> & { mine: number; staffBooked: number }
+		>();
+	const slots = results.map((s) => {
+		// Who booked a time, like whose child it is, is for staff and the child's families alone.
+		const shown = who.kind === 'staff' || !!s.mine;
+		return {
+			...s,
+			booked: !!s.child,
+			mine: !!s.mine,
+			child: shown ? s.child : null,
+			staffBooked: shown && !!s.child && !!s.staffBooked
+		};
+	});
 	const invites =
 		who.kind === 'family'
 			? (
@@ -80,7 +87,22 @@ export async function meetingData(db: D1Database, who: Identity): Promise<Meetin
 						.all<MeetingData['invites'][number]>()
 				).results
 			: [];
-	return { slots, invites };
+	// The children staff may book for: invited, and still in the classroom with a family that is too, as booking
+	// checks.
+	const invited =
+		who.kind === 'staff'
+			? (
+					await db
+						.prepare(
+							`SELECT DISTINCT i.offer_id AS offer,i.child_id AS child
+ FROM meeting_invites i JOIN meeting_offers o ON o.id=i.offer_id JOIN children c ON c.id=i.child_id AND c.classroom_id=o.classroom_id
+ JOIN family_classrooms f ON f.family_id=i.family_id AND f.classroom_id=o.classroom_id WHERE o.classroom_id IN (${visible})`
+						)
+						.bind(...params)
+						.all<MeetingData['invited'][number]>()
+				).results
+			: [];
+	return { slots, invites, invited };
 }
 export async function publishMeetings(db: D1Database, who: Staff, offer: NewMeetingOffer) {
 	await checkClassrooms(db, who, [offer.classroom]);
@@ -142,20 +164,31 @@ export async function changeMeeting(
 			teacher: string | null;
 		}>();
 	if (!slot) error(404, 'missing');
+	// The head and the classroom's lead settle any teacher's times there; a teacher only her own.
+	if (who.kind === 'staff' && !managesOthers(who) && slot.teacher !== who.teacher)
+		error(403, 'forbidden');
 	let sql: string, values: unknown[];
 	/** Whose meeting moved, taken where the request was checked rather than read from the body again. */
 	let booking: { offer: string; child: string } | null = null;
 	if (body.action === 'book') {
-		if (who.kind !== 'family') error(403, 'forbidden');
 		if (!isId(body.child)) invalid();
 		booking = { offer: slot.offer, child: body.child };
-		sql = `UPDATE meeting_slots SET child_id=?,version=version+1 WHERE id=? AND version=? AND child_id IS NULL AND starts_at>?
- AND EXISTS(SELECT 1 FROM meeting_invites i JOIN children c ON c.id=i.child_id AND c.classroom_id=? JOIN family_classrooms f ON f.family_id=i.family_id AND f.classroom_id=c.classroom_id WHERE i.offer_id=meeting_slots.offer_id AND i.child_id=? AND i.family_id=?)`;
-		values = [body.child, id, body.version, now, slot.classroom, body.child, who.family];
+		// A family books for its own child, and staff for any child the offer invites, for the child's families,
+		// who see who booked it and cancel it as they would their own.
+		const family = who.kind === 'family' ? ' AND i.family_id=?' : '';
+		sql = `UPDATE meeting_slots SET child_id=?,staff_booked=?,version=version+1 WHERE id=? AND version=? AND child_id IS NULL AND starts_at>?
+ AND EXISTS(SELECT 1 FROM meeting_invites i JOIN children c ON c.id=i.child_id AND c.classroom_id=? JOIN family_classrooms f ON f.family_id=i.family_id AND f.classroom_id=c.classroom_id WHERE i.offer_id=meeting_slots.offer_id AND i.child_id=?${family})`;
+		values = [
+			body.child,
+			Number(who.kind === 'staff'),
+			id,
+			body.version,
+			now,
+			slot.classroom,
+			body.child
+		];
+		if (who.kind === 'family') values.push(who.family);
 	} else {
-		// The head and the classroom's lead settle any teacher's times there; a teacher only her own.
-		if (who.kind === 'staff' && !managesOthers(who) && slot.teacher !== who.teacher)
-			error(403, 'forbidden');
 		if (body.action === 'remove') {
 			if (who.kind !== 'staff') error(403, 'forbidden');
 			sql =

@@ -29,7 +29,13 @@ import { maxEventContentBytes, maxEventFileBytes } from '$lib/events/types';
 import type { EventDraft } from '$lib/events/publishing';
 import type { Region } from '$lib/events/editor';
 import { encryptData, decryptData, envelopeSize } from '$lib/crypto';
-import type { MeetingSlot, MeetingChild, MeetingData, NewMeetingOffer } from '$lib/meetings';
+import type {
+	MeetingSlot,
+	MeetingChild,
+	MeetingData,
+	MeetingInvited,
+	NewMeetingOffer
+} from '$lib/meetings';
 import { replaceState } from '$app/navigation';
 import { page } from '$app/state';
 import {
@@ -918,6 +924,8 @@ export class App {
 
 	meetings = $state.raw<MeetingSlot[]>([]);
 	meetingChildren = $state.raw<MeetingChild[]>([]);
+	/** On a staff device, the children each offer invites, whom staff book times for. */
+	meetingInvited = $state.raw<MeetingInvited[]>([]);
 	meetingsError = $state<string>();
 	meetingsLoaded = $state(false);
 	#meetingLoad = 0;
@@ -926,6 +934,7 @@ export class App {
 		this.#meetingLoad++;
 		this.meetings = [];
 		this.meetingChildren = [];
+		this.meetingInvited = [];
 		this.meetingsLoaded = false;
 		this.meetingsError = undefined;
 	}
@@ -949,6 +958,7 @@ export class App {
 			if (card !== this.#card || load !== this.#meetingLoad) return;
 			this.meetings = data.slots;
 			this.meetingChildren = children;
+			this.meetingInvited = data.invited;
 			this.meetingsError = undefined;
 			this.meetingsLoaded = true;
 		} catch (cause) {
