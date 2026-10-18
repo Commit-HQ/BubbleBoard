@@ -80,7 +80,14 @@
 		<p class={field.hint}>{t.info.hint}</p>
 	</div>
 
-	<AttachFiles {locale} task={fileTask} disabled={task.busy} bind:files />
+	<AttachFiles
+		{locale}
+		task={fileTask}
+		disabled={task.busy}
+		bind:files
+		openPicture={page && ((file) => app.infoPicture(page, file))}
+		saveDocument={page && ((file) => app.saveInfoFile(page, file))}
+	/>
 
 	{#if task.error}<p class={alert} role="alert">{errorMessage(locale, task.error)}</p>{/if}
 	<button

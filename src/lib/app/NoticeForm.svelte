@@ -195,7 +195,14 @@
 			{/if}
 		</div>
 
-		<AttachFiles {locale} task={fileTask} disabled={task.busy} bind:files />
+		<AttachFiles
+			{locale}
+			task={fileTask}
+			disabled={task.busy}
+			bind:files
+			openPicture={notice && ((file) => app.noticePicture(notice, file))}
+			saveDocument={notice && ((file) => app.saveNoticeFile(notice, file))}
+		/>
 
 		<Checklist
 			{locale}
