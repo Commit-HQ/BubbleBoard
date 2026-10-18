@@ -34,11 +34,13 @@
 
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
+	import { spotlit } from './spotlight.svelte';
 	import { listRow } from './ui';
 
 	// One conversation in the inbox: its tile, its subject, the last thing said and by whom, and when. A
 	// conversation with something new on it stands out, as an unseen notice does on the board.
 	let {
+		id,
 		href,
 		tile,
 		subject,
@@ -48,6 +50,8 @@
 		unread,
 		unreadLabel
 	}: {
+		/** The conversation's, which a tapped notification may light up. */
+		id: string;
 		href: string;
 		tile: Tile;
 		subject: string;
@@ -61,7 +65,7 @@
 
 <!-- The list is a grid, whose rows would otherwise grow as wide as the longest line they cut short. -->
 <li class="min-w-0">
-	<a class="{listRow} {unread ? 'ring-2 ring-accent' : ''}" {href}>
+	<a class="{listRow} {unread ? 'ring-2 ring-accent' : ''}" {href} {@attach spotlit(id)}>
 		<span
 			class="relative grid size-11 shrink-0 place-items-center rounded-2xl {{
 				report: 'bg-red-50 text-red-700 ring-1 ring-red-200',

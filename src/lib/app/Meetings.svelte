@@ -8,6 +8,7 @@
 	import { alert, button, everyHalfMinute, field, surface } from './ui';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import MeetingTimesForm from './MeetingTimesForm.svelte';
+	import { spotlit } from './spotlight.svelte';
 	let { locale }: { locale: Locale } = $props();
 	const app = getApp();
 	const t = $derived(messages[locale].app.meetings);
@@ -195,6 +196,7 @@
 		<ul class="mt-5 grid gap-2">
 			{#each slots as slot (slot.id)}
 				<li
+					{@attach spotlit(slot.id)}
 					class="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-ink/10 p-3 {slot.mine
 						? 'bg-white ring-2 ring-accent/40'
 						: slot.booked

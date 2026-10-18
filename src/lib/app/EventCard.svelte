@@ -7,6 +7,7 @@
 	import EventHeading from './EventHeading.svelte';
 	import HideButton from './HideButton.svelte';
 	import SeenMarks from './SeenMarks.svelte';
+	import { spotlit } from './spotlight.svelte';
 	import { getApp, type Picture } from './state.svelte';
 	import { button, surface } from './ui';
 
@@ -63,7 +64,11 @@
 	});
 </script>
 
-<article class="{surface} grid gap-3 {unseen ? 'ring-2 ring-accent' : ''}" bind:this={card}>
+<article
+	class="{surface} grid gap-3 {unseen ? 'ring-2 ring-accent' : ''}"
+	bind:this={card}
+	{@attach spotlit(event.id)}
+>
 	<EventHeading {locale} {event} />
 	{#if !tooOld && !failed}
 		<a

@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { afterNavigate } from '$app/navigation';
+	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { page, updated } from '$app/state';
 	import PullToRefresh from '$lib/app/PullToRefresh.svelte';
+	import { spotlight, tappedTarget } from '$lib/app/spotlight.svelte';
 	import { App, setApp } from '$lib/app/state.svelte';
 	import BuildLabel from '$lib/components/BuildLabel.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -9,7 +10,7 @@
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
 	import { locales, messages } from '$lib/i18n';
 	import { appPath, homePath, localizedPath } from '$lib/paths';
-	import { pushPages, type PushKind } from '$lib/push';
+	import { isPushKind, pushPages, type PushKind } from '$lib/push';
 	import { onMount, tick } from 'svelte';
 	import type { LayoutProps } from './$types';
 
@@ -20,25 +21,54 @@
 	// navigation's callbacks, so the start waits a tick. The app starts on whichever navigation brings it in,
 	// not only a page load: Back from the landing page (the footer link) returns without one.
 	const app = setApp(new App());
-	let started = false;
-	afterNavigate(() => {
-		if (!started) {
-			started = true;
-			tick().then(() => app.start());
-		}
+	let started: Promise<void> | undefined;
+	afterNavigate(({ to }) => {
+		const opening = !started;
+		if (!started) started = tick().then(() => app.start());
 		// A new deploy found while a page was half written (`backInView`) is loaded on arrival at the next
 		// page, once that page's own question on the way out, if any, is behind.
-		else if (updated.current) location.reload();
+		else if (updated.current) return location.reload();
+		const tapped = to?.url.searchParams.get('tapped');
+		if (isPushKind(tapped)) void showTapped(tapped, opening);
 	});
+
+	/**
+	 * A tapped notification opens its page saying what kind of thing it was about (src/service-worker.ts), and
+	 * once that has loaded, the newest such thing comes into view and glows (`tappedTarget`). An app opening
+	 * has just loaded the board; one already open loads it again first, since asleep it may have missed the
+	 * push. The inbox, meetings, and events load beside the board, so the one in question is loaded here:
+	 * home's meetings card shows only once the meetings have.
+	 */
+	async function showTapped(kind: PushKind, opening: boolean) {
+		await started;
+		// Out of the address bar, so going back or reloading doesn't light it up again.
+		const url = new URL(location.href);
+		url.searchParams.delete('tapped');
+		replaceState(url, page.state);
+		if (!app.connected) return;
+		if (pushPages[kind] === 'messages') await app.loadMessages();
+		else {
+			if (!opening && !pushPages[kind]) await app.refresh({ now: true });
+			if (kind === 'photos') await app.loadEvents();
+			if (kind === 'slots' || kind === 'booking' || kind === 'tomorrow') await app.loadMeetings();
+		}
+		spotlight(tappedTarget(app, kind));
+	}
+
 	// The service worker says when a notification comes or is tapped, and what about (src/service-worker.ts),
 	// so what's new shows straight away when the app is open in view, or once it's back in view
 	// (`App.refresh`). A push about the conversations changes only them, so only they load again (`pushPages`).
+	// A tap the worker couldn't send the window off for comes with the address to go to, which loads what
+	// it's about there (`showTapped`).
 	onMount(() => {
 		const container = navigator.serviceWorker;
 		if (!container) return;
 		const reload = ({ data }: MessageEvent) => {
 			if (data?.type !== 'push') return;
-			if (pushPages[data.kind as PushKind] === 'messages') {
+			if (typeof data.path === 'string') {
+				const here = new URL(data.path, location.href).pathname === location.pathname;
+				void goto(data.path, { replaceState: here });
+			} else if (pushPages[data.kind as PushKind] === 'messages') {
 				if (app.connected) app.loadMessages();
 			} else app.refresh({ now: true });
 		};

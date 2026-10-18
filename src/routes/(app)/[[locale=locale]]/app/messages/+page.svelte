@@ -446,6 +446,7 @@
 
 {#snippet row(item: Conversation)}
 	<InquiryLink
+		id={item.id}
 		href={appPath(data.locale, 'messages', { id: item.id })}
 		tile={tileOf(item)}
 		subject={item.subject}

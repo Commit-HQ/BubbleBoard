@@ -9,6 +9,7 @@
 	import NoticeBody from './NoticeBody.svelte';
 	import NoticePoll from './NoticePoll.svelte';
 	import SeenMarks from './SeenMarks.svelte';
+	import { spotlit } from './spotlight.svelte';
 	import { getApp, Task } from './state.svelte';
 	import { alert, button, paperClass } from './ui';
 
@@ -36,6 +37,7 @@
 </script>
 
 <article
+	{@attach spotlit(notice.id)}
 	class="relative rounded-3xl p-5 text-ink shadow-lg shadow-ink/5 sm:p-6 {unseen
 		? 'ring-2 ring-accent'
 		: 'ring-1 ring-ink/5'} {pinned ? 'mt-3' : ''} {paperClass[notice.paper]}"

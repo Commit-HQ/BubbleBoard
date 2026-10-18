@@ -6,6 +6,7 @@
 	import type { Photo } from '$lib/photos';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import PictureViewer from './PictureViewer.svelte';
+	import { spotlit } from './spotlight.svelte';
 	import { getApp, type Picture } from './state.svelte';
 	import { button } from './ui';
 
@@ -24,7 +25,7 @@
 	let removing = $state(false);
 </script>
 
-<figure class="overflow-hidden rounded-3xl glass">
+<figure class="overflow-hidden rounded-3xl glass" {@attach spotlit(photo.id)}>
 	{#await picture}
 		<p
 			class="grid aspect-4/3 place-items-center bg-ink/5 text-sm font-semibold text-muted"

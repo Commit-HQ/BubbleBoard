@@ -195,6 +195,72 @@
 }
 
 /*
+ * What a tapped notification was about (src/lib/app/spotlight.svelte.ts): the colours of the logo's soap
+ * bubble run round its border for a few seconds, with their glow behind it. The border is drawn just inside
+ * the edge, so the strip of board photos, which cuts off what's outside it, keeps it whole. With reduced
+ * motion the colours stand still. The glow goes behind the card, as it creates no stacking context.
+ */
+@property --spotlight-turn {
+	syntax: '<angle>';
+	inherits: false;
+	initial-value: 0deg;
+}
+[data-spotlight] {
+	position: relative;
+	/* An unseen card's accent ring gives way to the colours meanwhile, rather than doubling them. */
+	--tw-ring-color: transparent;
+}
+[data-spotlight]::before,
+[data-spotlight]::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	padding: 3px;
+	border-radius: inherit;
+	background: conic-gradient(
+		from var(--spotlight-turn),
+		#7c5cff,
+		#4cc3ff,
+		#6fdcb4,
+		#ffc85a,
+		#ff6fb1,
+		#7c5cff
+	);
+	/* Only the ring between the padding's inner edge and the border shows. */
+	mask:
+		linear-gradient(#000 0 0) content-box exclude,
+		linear-gradient(#000 0 0);
+	pointer-events: none;
+	opacity: 0;
+	animation:
+		spotlight-turn 2s linear infinite,
+		spotlight 4s ease-in-out;
+}
+[data-spotlight]::before {
+	z-index: -1;
+	inset: -3px;
+	padding: 8px;
+	filter: blur(10px);
+}
+@media (prefers-reduced-motion: reduce) {
+	[data-spotlight]::before,
+	[data-spotlight]::after {
+		animation: spotlight 4s ease-in-out;
+	}
+}
+@keyframes spotlight-turn {
+	to {
+		--spotlight-turn: 360deg;
+	}
+}
+@keyframes spotlight {
+	10%,
+	80% {
+		opacity: 1;
+	}
+}
+
+/*
  * The bar under a long job's words, such as preparing and uploading an event's photos. The native element
  * is styled through its browser pseudo-elements, and the CSP allows no inline styles, so the rules live
  * here rather than on the element.

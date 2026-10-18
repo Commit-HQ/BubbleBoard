@@ -3,6 +3,7 @@
 	import { messages, type Locale } from '$lib/i18n';
 	import { appPath } from '$lib/paths';
 	import { meetingDay, meetingTime } from '$lib/meetings';
+	import { spotlit } from './spotlight.svelte';
 	import { getApp } from './state.svelte';
 	import { everyHalfMinute, surface } from './ui';
 	let { locale }: { locale: Locale } = $props();
@@ -19,7 +20,11 @@
 <svelte:document onvisibilitychange={() => (now = Date.now())} />
 
 {#if staff || (app.meetingsLoaded && upcoming.length)}
-	<a href={appPath(locale, 'meetings')} class="{surface} block transition hover:bg-white/80">
+	<a
+		href={appPath(locale, 'meetings')}
+		class="{surface} block transition hover:bg-white/80"
+		{@attach spotlit('meetings')}
+	>
 		{#if mine}
 			<h2 class="text-2xl">{t.myMeeting}</h2>
 			<div class="mt-4 rounded-3xl bg-white p-4 ring-2 ring-accent/40">

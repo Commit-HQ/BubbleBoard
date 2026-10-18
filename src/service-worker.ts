@@ -12,7 +12,8 @@ import { pushKind, pushPages, type PushKind } from '$lib/push';
 // (decisions.md). A push carries one letter saying what happened and nothing more, so the words are
 // these, in the language notifications were turned on in, and every push shows one, as Safari requires. The
 // app's open windows are told what happened and load what it changed, straight away in view or once back in
-// view (src/routes/(app)/+layout.svelte), and a tap brings one forward, or opens one, on the page it's about.
+// view (src/routes/(app)/+layout.svelte), and a tap brings one forward, or opens one, on the page it's about,
+// where the newest thing of its kind lights up.
 
 const worker = self as unknown as ServiceWorkerGlobalScope;
 
@@ -49,7 +50,7 @@ worker.addEventListener('push', (event) => {
 					// The tag is the kind, so a second message replaces the first without burying a cancelled
 					// meeting time.
 					notify(worker.registration, notificationTexts[locale][kind], kind, {
-						path: appPath(locale, pushPages[kind])
+						path: appPath(locale, pushPages[kind], { tapped: kind })
 					})
 				),
 			appWindows().then((windows) =>
@@ -59,7 +60,10 @@ worker.addEventListener('push', (event) => {
 	);
 });
 
-/** A tap brings a window forward on the page the notification is about, or opens one there. */
+/**
+ * A tap brings a window forward on the page the notification is about, or opens one there. The address says
+ * what kind of thing it was, which the app finds and lights up (src/routes/(app)/+layout.svelte).
+ */
 async function openPage(path: string, kind: string) {
 	const [open] = await appWindows();
 	if (!open) {
@@ -70,15 +74,15 @@ async function openPage(path: string, kind: string) {
 	// A window is wherever it was last left, which is rarely the page the notification is about, so it's
 	// sent there and loads the board on the way. A window already on that page loads what the notification
 	// is about again instead, as does one this worker doesn't control yet and so can't send: asleep, it may
-	// have missed the push.
-	const elsewhere = new URL(open.url).pathname !== path;
+	// have missed the push. It's given the address to go to itself.
+	const elsewhere = new URL(open.url).pathname !== new URL(path, worker.location.origin).pathname;
 	const sent =
 		elsewhere &&
 		(await open
 			.navigate(path)
 			.then(() => true)
 			.catch(() => false));
-	if (!sent) open.postMessage({ type: 'push', kind });
+	if (!sent) open.postMessage({ type: 'push', kind, path });
 }
 
 worker.addEventListener('notificationclick', (event) => {

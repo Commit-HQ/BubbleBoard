@@ -23,8 +23,10 @@ export type PushKind = (typeof pushKinds)[number];
 export const pushPages: Record<PushKind, 'messages' | 'meetings' | undefined> = {
 	notice: undefined,
 	message: 'messages',
-	slots: 'meetings',
-	booking: 'meetings',
+	// Which meeting times are new, or which booking changed, a push can't say, so a tap opens home, where
+	// the meetings card leads to them.
+	slots: undefined,
+	booking: undefined,
 	// An event's photos are reached from the board, which is home: a push must never say which event.
 	photos: undefined,
 	corkboard: undefined,
@@ -32,6 +34,10 @@ export const pushPages: Record<PushKind, 'messages' | 'meetings' | undefined> = 
 	report: 'messages',
 	tomorrow: 'meetings'
 };
+
+/** Whether a word names a kind, as the address a tapped notification opens does (src/service-worker.ts). */
+export const isPushKind = (value: unknown): value is PushKind =>
+	pushKinds.includes(value as PushKind);
 
 /** The letter that goes over the wire. Each kind starts with a different one. */
 export const pushCode = (kind: PushKind) => kind[0];
