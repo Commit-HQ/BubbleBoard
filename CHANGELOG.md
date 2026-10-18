@@ -2,6 +2,12 @@
 
 What's new in each version of BubbleBoard, newest first. The version an installation runs is in the footer of every page.
 
+## 1.5.0 (2026-10-18)
+
+- Tapping a notification opens the app at what it's about: the notice, event, board photo, message, or meeting comes into view, and its border glows for a moment.
+- Teachers can book a meeting time for a family. The family sees that their teacher booked it, and can cancel it as usual.
+- Files attached to a notice or an info page open from the form, before and after posting, and pictures show a small preview there.
+
 ## 1.4.0 (2026-10-12)
 
 - Parents get a reminder the afternoon before their individual meeting, if they have notifications turned on.
