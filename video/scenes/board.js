@@ -4,9 +4,50 @@
 
 import { el, css, place, words, shareGradient } from '../lib/dom.js';
 import { clamp, lerp, ease, progress, springs, settle, wave } from '../lib/motion.js';
-import { phone, pin, screen, colors, icon } from '../lib/kit.js';
+import { phone, pin, screen, colors, icon, overwrite } from '../lib/kit.js';
 
 export const linger = 0.7;
+
+// Where the app's screen of the board (src/lib/assets/explore/parent-board-*-780.webp) names the app's own
+// made-up kindergarten, measured on the screenshots, with the reel's names set there instead: the group in
+// the meeting card and on the notice where the Croatian screen calls it Mjehurići, and in both languages the
+// teacher who wrote the notice, the trip's. Each box fits these names.
+const renames = {
+	en: (text) => [
+		{
+			box: [230, 874, 446, 912],
+			at: [442, 901.5],
+			align: 'right',
+			font: '400 28px "Hanken Grotesk"',
+			color: colors.muted,
+			text: text.teachers[text.notes[0].teacher]
+		}
+	],
+	hr: (text) => [
+		{
+			box: [78, 546, 216, 590],
+			at: [82, 575.5],
+			font: '400 32px "Hanken Grotesk"',
+			color: colors.muted,
+			text: text.classroom
+		},
+		{
+			box: [66, 826, 194, 866],
+			at: [72, 853.5],
+			font: '600 28px "Hanken Grotesk"',
+			color: colors.ink,
+			text: text.classroom
+		},
+		{
+			box: [250, 826, 466, 866],
+			at: [461.5, 853.5],
+			align: 'right',
+			font: '400 28px "Hanken Grotesk"',
+			color: colors.muted,
+			text: text.teachers[text.notes[0].teacher]
+		}
+	]
+};
 
 /** One notice on its paper, as the app shows it. */
 function paper(note, text) {
@@ -15,7 +56,7 @@ function paper(note, text) {
 		style: { width: '420px', background: colors.papers[note.paper] }
 	});
 	node.innerHTML = `<div class="flow" style="font-size:20px;line-height:1.35">
-<div style="display:flex;justify-content:space-between;font-weight:700"><span>${text.classroom}</span><span style="font-weight:500;color:var(--muted)">${text.author}</span></div>
+<div style="display:flex;justify-content:space-between;font-weight:700"><span>${text.classroom}</span><span style="font-weight:500;color:var(--muted)">${text.teachers[note.teacher]}</span></div>
 <div style="margin-top:14px;font-size:31px;font-weight:700;line-height:1.15;letter-spacing:-0.01em">${note.title}</div>
 <div style="margin-top:10px;font-size:23px;color:#2b2840">${note.body}</div>
 </div>`;
@@ -24,7 +65,7 @@ function paper(note, text) {
 	return { node, head };
 }
 
-export function mount({ root, text, lang, cue }) {
+export async function mount({ root, text, lang, cue }) {
 	// The title, its second line in the sunrise gradient.
 	const title = el('div', {
 		class: 'display',
@@ -60,6 +101,7 @@ export function mount({ root, text, lang, cue }) {
 	// The phone the board goes into, with the app's own board on it.
 	const device = phone(screen('parent-board', lang), 450);
 	root.append(device.node);
+	await overwrite(device, renames[lang](text));
 
 	// The poll, lifted off the screen.
 	const poll = el('div', {

@@ -285,6 +285,49 @@ export function phone(src, width = 380) {
 	};
 }
 
+/**
+ * Sets other words over a phone's screen of the app, which names the app's own made-up kindergarten. Each
+ * patch is a box of the 780-pixel-wide screenshot, painted over with the background on either side of it
+ * blended across, and its words in the app's font, at `at` as canvas text is anchored by `align`.
+ */
+export async function overwrite(device, patches) {
+	await device.image.decode();
+	const scale = device.screenWidth / 780;
+	for (const { box, at, align = 'left', font, color, text } of patches) {
+		const [x0, y0, x1, y1] = box;
+		const w = x1 - x0;
+		const h = y1 - y0;
+		const canvas = el('canvas', {
+			width: w,
+			height: h,
+			style: {
+				position: 'absolute',
+				left: `${x0 * scale}px`,
+				top: `${y0 * scale}px`,
+				width: `${w * scale}px`,
+				height: `${h * scale}px`
+			}
+		});
+		const ctx = canvas.getContext('2d', { willReadFrequently: true });
+		ctx.drawImage(device.image, x0, y0, w, h, 0, 0, w, h);
+		const pixels = ctx.getImageData(0, 0, w, h);
+		const { data } = pixels;
+		for (let row = 0; row < h; row++) {
+			const left = row * w * 4;
+			const right = left + (w - 1) * 4;
+			for (let col = 1; col < w - 1; col++)
+				for (let k = 0; k < 4; k++)
+					data[left + col * 4 + k] = lerp(data[left + k], data[right + k], col / (w - 1));
+		}
+		ctx.putImageData(pixels, 0, 0);
+		ctx.font = font;
+		ctx.fillStyle = color;
+		ctx.textAlign = align;
+		ctx.fillText(text, at[0] - x0, at[1] - y0);
+		device.scroller.append(canvas);
+	}
+}
+
 /** A face sticker (src/lib/assets/face-*.svg) as it covers a face: round, with a white edge. */
 export function sticker(name, size) {
 	return el(

@@ -55,7 +55,7 @@ export function mount({ root, text, copy, cue }) {
 	const where = el('div', {
 		style: { left: '46px', top: '108px', fontSize: '26px', fontWeight: 500, color: colors.muted }
 	});
-	where.textContent = `${copy.board.classroom} · ${copy.board.author}`;
+	where.textContent = `${copy.board.classroom} · ${copy.board.teachers[0]}`;
 	card.append(day, where);
 
 	const top = 180;

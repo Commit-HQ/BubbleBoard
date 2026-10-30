@@ -67,7 +67,7 @@ export function mount({ root, text, copy, cue }) {
 			fontWeight: 800
 		}
 	});
-	avatar.textContent = 'AH';
+	avatar.textContent = text.initials;
 	const who = el('div', {
 		style: { left: '146px', top: '40px', fontSize: '34px', fontWeight: 750 }
 	});

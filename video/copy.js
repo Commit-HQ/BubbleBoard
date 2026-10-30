@@ -1,6 +1,6 @@
 // Every word the reel shows, in English and Croatian. Where the app already says something, the reel says
-// it the same way (src/lib/i18n), and the made-up kindergarten is the one in the app's screens
-// (src/lib/assets/explore): the Bubbles, their teacher Ana Horvat, and Ema Novak's family.
+// it the same way (src/lib/i18n). The kindergarten is a made-up one: the Bubbles, their teachers Romana and
+// Martina, and Una Mjehurić's family, whose names the board's phone shows over the app's own screen.
 
 /** Croatian plurals: one form for 1, 21, 31…, one for 2–4, 22–24…, and one for the rest. */
 function plural(n, one, few, many) {
@@ -22,27 +22,31 @@ export const copy = {
 		board: {
 			title: ['The kindergarten notice board,', 'now in your pocket.'],
 			classroom: 'Bubbles',
-			author: 'Ana Horvat',
+			teachers: ['teacher Romana', 'teacher Martina'],
 			notes: [
 				{
 					paper: 'yellow',
+					teacher: 0,
 					title: 'Trip to Tvrđa on Thursday',
 					body: 'Please pack a water bottle and a hat.'
 				},
 				{
 					paper: 'pink',
+					teacher: 1,
 					title: 'This week’s menu',
 					body: 'What’s for lunch? The whole week is attached.'
 				},
 				{
 					paper: 'blue',
+					teacher: 0,
 					title: 'Parents’ evening on 30 September',
-					body: 'We meet at 17:30 in the Bubbles room.'
+					body: 'We meet at 17:30 in our group’s room.'
 				},
 				{
 					paper: 'green',
-					title: 'Spare clothes, please',
-					body: 'A labelled bag with one change of clothes.'
+					teacher: 1,
+					title: 'Lost and found',
+					body: 'Pyjamas and shoes are waiting to be picked up.'
 				}
 			],
 			question: 'Is your child coming with us?',
@@ -56,7 +60,8 @@ export const copy = {
 		qr: {
 			title: 'One code and you’re in.',
 			sub: 'No usernames. No passwords.',
-			card: 'Novak family',
+			card: 'Mjehurić family',
+			initials: 'UM',
 			connected: 'Connected'
 		},
 		photos: {
@@ -69,9 +74,10 @@ export const copy = {
 		messages: {
 			title: 'Ask the teachers.',
 			sub: 'Other parents don’t see it.',
-			teacher: 'Ana Horvat',
+			teacher: 'teacher Romana',
+			initials: 'R',
 			thread: [
-				{ from: 'parent', text: 'Can grandma pick Ema up at 13:00 on Thursday?' },
+				{ from: 'parent', text: 'Can grandma pick Una up at 13:00 on Thursday?' },
 				{ from: 'teacher', text: 'Of course. We’re back from Tvrđa by 12:00.' },
 				{ from: 'parent', text: 'Perfect, thank you!' }
 			],
@@ -91,12 +97,12 @@ export const copy = {
 			free: 'Available',
 			taken: 'Booked',
 			reserve: 'Reserve',
-			yours: 'Your meeting · Ema Novak',
+			yours: 'Your meeting · Una Mjehurić',
 			note: 'You see which times are taken, not who took them.'
 		},
 		notify: {
 			title: 'Your phone lets you know.',
-			sub: 'What it says stays inside the app.',
+			sub: 'So nothing slips past you.',
 			clock: ['8', '29', '30'],
 			date: 'Thursday, October 1',
 			now: 'now',
@@ -108,7 +114,7 @@ export const copy = {
 		},
 		locked: {
 			title: 'Locked on your phone first.',
-			message: 'Ema has a dentist appointment on Thursday.',
+			message: 'Una has a dentist appointment on Thursday.',
 			server: 'Server',
 			peek: 'Even we can’t peek.',
 			keys: 'Only your kindergarten has the keys.'
@@ -147,28 +153,32 @@ export const copy = {
 		logo: { tagline: 'Malo bliže', accent: 'njihovom danu.' },
 		board: {
 			title: ['Oglasna ploča iz vrtića,', 'sada u vašem džepu.'],
-			classroom: 'Mjehurići',
-			author: 'Ana Horvat',
+			classroom: 'Bubbles',
+			teachers: ['teacher Romana', 'teacher Martina'],
 			notes: [
 				{
 					paper: 'yellow',
+					teacher: 0,
 					title: 'Izlet u Tvrđu u četvrtak',
 					body: 'Djeci spremite bočicu vode i kapu.'
 				},
 				{
 					paper: 'pink',
+					teacher: 1,
 					title: 'Jelovnik za ovaj tjedan',
 					body: 'Što je za ručak? Cijeli tjedan je u privitku.'
 				},
 				{
 					paper: 'blue',
+					teacher: 0,
 					title: 'Roditeljski sastanak 30. rujna',
-					body: 'Vidimo se u 17:30 u sobi Mjehurića.'
+					body: 'Vidimo se u 17:30 u sobi naše grupe.'
 				},
 				{
 					paper: 'green',
-					title: 'Rezervna odjeća',
-					body: 'Označena vrećica s jednom presvlakom.'
+					teacher: 1,
+					title: 'Izgubljeno-nađeno',
+					body: 'Pidžama i cipelice čekaju da ih pokupite.'
 				}
 			],
 			question: 'Ide li vaše dijete s nama?',
@@ -182,7 +192,8 @@ export const copy = {
 		qr: {
 			title: 'Jedan kod i unutra ste.',
 			sub: 'Bez korisničkog imena. Bez lozinke.',
-			card: 'Obitelj Novak',
+			card: 'Obitelj Mjehurić',
+			initials: 'UM',
 			connected: 'Povezano'
 		},
 		photos: {
@@ -195,9 +206,10 @@ export const copy = {
 		messages: {
 			title: 'Pitajte odgojiteljice.',
 			sub: 'Drugi roditelji to ne vide.',
-			teacher: 'Ana Horvat',
+			teacher: 'teacher Romana',
+			initials: 'R',
 			thread: [
-				{ from: 'parent', text: 'Može li baka doći po Emu u četvrtak u 13:00?' },
+				{ from: 'parent', text: 'Može li baka doći po Unu u četvrtak u 13:00?' },
 				{ from: 'teacher', text: 'Naravno. Iz Tvrđe se vraćamo do 12:00.' },
 				{ from: 'parent', text: 'Super, hvala vam!' }
 			],
@@ -217,12 +229,12 @@ export const copy = {
 			free: 'Slobodno',
 			taken: 'Zauzeto',
 			reserve: 'Rezerviraj',
-			yours: 'Vaš razgovor · Ema Novak',
+			yours: 'Vaš razgovor · Una Mjehurić',
 			note: 'Vidite koji su termini zauzeti, ali ne i tko ih je uzeo.'
 		},
 		notify: {
 			title: 'Mobitel vam javi.',
-			sub: 'Što točno piše, vidite tek u aplikaciji.',
+			sub: 'Tako vam ništa neće promaknuti.',
 			clock: ['8', '29', '30'],
 			date: 'četvrtak, 1. listopada',
 			now: 'sada',
@@ -230,7 +242,7 @@ export const copy = {
 		},
 		locked: {
 			title: 'Zaključano već na mobitelu.',
-			message: 'Ema u četvrtak ima zubara.',
+			message: 'Una u četvrtak ima zubara.',
 			server: 'Poslužitelj',
 			peek: 'Ne možemo zaviriti ni mi.',
 			keys: 'Ključeve ima samo vaš vrtić.'

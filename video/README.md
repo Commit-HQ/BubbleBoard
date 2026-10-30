@@ -13,7 +13,7 @@ It's made from code, like the app. The scenes are HTML and SVG drawn in the app'
 5. **Photos with care**: faces found on the teacher's phone, stickers popping onto them, and one family's own child uncovered.
 6. **Private questions** to the teachers, typed and answered.
 7. **Individual meetings**, picked with a tap.
-8. **Notifications that say nothing** on a lock screen.
+8. **Your phone lets you know**, on its lock screen, so nothing slips past.
 9. **Locked on your phone first**: a message crosses the server as a jumble the server can't read.
 10. **Croatian and English** on a split-flap board.
 11. **No sign-ups, no ads, no tracking**, then free and open source over the app's real code, and what it's built with.

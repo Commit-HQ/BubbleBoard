@@ -167,8 +167,12 @@ radial-gradient(50rem 40rem at 50% 0%, rgb(124 92 255 / 0.28), transparent 70%),
 
 	// The two phones, and the server between them.
 	const W = 380;
-	const left = device(W, { name: copy.messages.teacher, initials: 'AH', theirs: false });
-	const right = device(W, { name: copy.qr.card, initials: 'EN', theirs: true });
+	const left = device(W, {
+		name: copy.messages.teacher,
+		initials: copy.messages.initials,
+		theirs: false
+	});
+	const right = device(W, { name: copy.qr.card, initials: copy.qr.initials, theirs: true });
 	left.bubble.textContent = text.message;
 	content.append(left.node, right.node);
 	const message = [...text.message];
@@ -202,8 +206,7 @@ radial-gradient(50rem 40rem at 50% 0%, rgb(124 92 255 / 0.28), transparent 70%),
 			fontSize: '22px',
 			lineHeight: '1.3',
 			color: colors.mint,
-			whiteSpace: 'pre',
-			letterSpacing: '0.04em'
+			whiteSpace: 'pre'
 		}
 	});
 	const label = el('div', {
@@ -220,6 +223,13 @@ radial-gradient(50rem 40rem at 50% 0%, rgb(124 92 255 / 0.28), transparent 70%),
 	label.textContent = text.server;
 	server.append(rack.node, jumble, label);
 	content.append(server);
+	// As many characters a row as the box holds, at least a little apart, spaced to reach both its edges.
+	const probe = el('span', { style: { position: 'static' } }, glyphs.slice(0, 20));
+	jumble.append(probe);
+	const glyph = probe.offsetWidth / 20;
+	probe.remove();
+	const columns = Math.floor(264 / (glyph + 0.88));
+	jumble.style.letterSpacing = `${264 / columns - glyph}px`;
 
 	// Locks where the message leaves and arrives.
 	const padlock = (x, y, color) => {
@@ -398,8 +408,8 @@ radial-gradient(50rem 40rem at 50% 0%, rgb(124 92 255 / 0.28), transparent 70%),
 		const busy = t > 1.6 && t < 4.6;
 		let lines = '';
 		for (let row = 0; row < 7; row++) {
-			for (let col = 0; col < 12; col++)
-				lines += scramble(row * 12 + col, busy ? t : Math.floor(t * 3) / 3, 7);
+			for (let col = 0; col < columns; col++)
+				lines += scramble(row * columns + col, busy ? t : Math.floor(t * 3) / 3, 7);
 			lines += '\n';
 		}
 		jumble.textContent = lines;
