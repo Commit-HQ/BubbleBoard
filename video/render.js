@@ -6,10 +6,12 @@
 //   node video/render.js --still 9.5,27       PNG frames at those seconds, in video/out
 //   node video/render.js --from 26 --to 32    a stretch, for a quick look
 //   node video/render.js --score              only the soundtrack, in video/out
+//   node video/render.js --web                only the landing page's copies, from the rendered reels
 //   node video/render.js --preview            serve the page to open in a browser
 //
-// Needs the repository's own dependencies (npm ci) for the fonts, ffmpeg on the PATH, and Playwright with
-// Chromium (npx playwright install chromium).
+// A whole render also makes the landing page's copies (src/lib/assets/tour). Needs the repository's own
+// dependencies (npm ci) for the fonts, ffmpeg on the PATH with x264, SVT-AV1, Opus, libaom, and WebP, and
+// Playwright with Chromium (npx playwright install chromium).
 
 import http from 'node:http';
 import fs from 'node:fs';
@@ -111,6 +113,137 @@ function run(command, list) {
 	});
 }
 
+// The landing page's copies of the reel, which src/lib/components/Tour.svelte shows. AV1 in ten bits, which
+// keeps the reel's soft gradients from banding, goes to browsers that play it, and H.264 to the rest; each
+// comes at 1080p for big screens and 720p for phones, at the reel's 60 frames a second, with a key frame
+// every two seconds so seeking is quick. Tour.svelte names the same codecs, and src/lib/tour.test.ts checks
+// them against the files.
+const tour = path.join(root, 'src/lib/assets/tour');
+const bt709 = ['-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709'];
+const av1 = (crf) => [
+	'-c:v',
+	'libsvtav1',
+	'-preset',
+	'6',
+	'-crf',
+	String(crf),
+	'-pix_fmt',
+	'yuv420p10le',
+	'-svtav1-params',
+	'tune=0',
+	'-c:a',
+	'libopus',
+	'-b:a',
+	'96k'
+];
+const h264 = (crf, level) => [
+	'-c:v',
+	'libx264',
+	'-preset',
+	'slow',
+	'-crf',
+	String(crf),
+	'-profile:v',
+	'high',
+	'-level:v',
+	level,
+	'-pix_fmt',
+	'yuv420p',
+	'-c:a',
+	'aac',
+	'-b:a',
+	'128k'
+];
+const copies = [
+	{ name: '1080-av1', height: 1080, codec: av1(36) },
+	{ name: '720-av1', height: 720, codec: av1(38) },
+	{ name: '1080-h264', height: 1080, codec: h264(25, '4.2') },
+	{ name: '720-h264', height: 720, codec: h264(26, '3.2') }
+];
+// The poster shows the answer and its upside-down smiley, before anything has moved on.
+const posterTime = 4.9;
+const posterWidths = [640, 1280, 1920];
+
+/** The poster in AVIF at each width, and in WebP for browsers without AVIF, from a lossless frame. */
+async function poster(reel, lang) {
+	const png = path.join(out, `poster-${lang}.png`);
+	fs.writeFileSync(png, await reel.frame(posterTime, 'png'));
+	// Chromium's PNG is sRGB; the AVIF is tagged as such, with BT.709 colour.
+	const still = (width) => [
+		'-y',
+		'-loglevel',
+		'error',
+		'-i',
+		png,
+		'-vf',
+		`scale=${width}:-2:flags=lanczos:out_color_matrix=bt709:out_range=tv,format=yuv420p`
+	];
+	for (const width of posterWidths)
+		await run('ffmpeg', [
+			...still(width),
+			'-c:v',
+			'libaom-av1',
+			'-still-picture',
+			'1',
+			'-crf',
+			'30',
+			'-color_primaries',
+			'bt709',
+			'-color_trc',
+			'iec61966-2-1',
+			'-colorspace',
+			'bt709',
+			path.join(tour, `tour-${lang}-${width}.avif`)
+		]);
+	await run('ffmpeg', [
+		'-y',
+		'-loglevel',
+		'error',
+		'-i',
+		png,
+		'-vf',
+		'scale=1280:-2:flags=lanczos',
+		'-c:v',
+		'libwebp',
+		'-quality',
+		'80',
+		path.join(tour, `tour-${lang}-1280.webp`)
+	]);
+}
+
+/** Encodes the landing page's copies from a whole rendered reel. */
+async function encodeForWeb(lang) {
+	const master = path.join(here, `bubbleboard-${lang}.mp4`);
+	for (const copy of copies) {
+		const target = path.join(tour, `tour-${lang}-${copy.name}.mp4`);
+		const began = Date.now();
+		await run('ffmpeg', [
+			'-y',
+			'-loglevel',
+			'error',
+			'-i',
+			master,
+			'-map',
+			'0:v',
+			'-map',
+			'0:a',
+			'-map_metadata',
+			'-1',
+			'-vf',
+			`scale=-2:${copy.height}:flags=lanczos`,
+			...copy.codec,
+			'-g',
+			'120',
+			...bt709,
+			'-movflags',
+			'+faststart',
+			target
+		]);
+		const size = (fs.statSync(target).size / 1e6).toFixed(1);
+		console.log(`${lang}: ${target}, ${size} MB in ${Math.round((Date.now() - began) / 1000)} s`);
+	}
+}
+
 /** Renders frames `first` to `last - 1` into one file of JPEGs, one after another. */
 async function renderPart(url, fps, first, last, file, report) {
 	const browser = await chromium.launch();
@@ -144,13 +277,21 @@ async function renderLanguage(base, lang) {
 		await browser.close();
 		return;
 	}
+	const whole = !args.includes('--from') && !args.includes('--to') && !args.includes('--score');
+	if (whole) {
+		fs.mkdirSync(tour, { recursive: true });
+		await poster(reel, lang);
+	}
 	await browser.close();
+	if (args.includes('--web')) {
+		await encodeForWeb(lang);
+		return;
+	}
 
 	const from = Number(option('from', 0));
 	const to = Math.min(duration, Number(option('to', duration)));
 	const first = Math.round(from * fps);
 	const last = Math.round(to * fps);
-	const whole = from === 0 && to === duration;
 
 	fs.writeFileSync(path.join(out, `cues-${lang}.json`), JSON.stringify(cues, null, '\t'));
 	const wav = path.join(out, `score-${lang}.wav`);
@@ -230,6 +371,7 @@ async function renderLanguage(base, lang) {
 	]);
 	for (const part of parts) fs.rmSync(part);
 	console.log(`${lang}: ${target}`);
+	if (whole && !args.includes('--silent')) await encodeForWeb(lang);
 }
 
 fs.mkdirSync(out, { recursive: true });

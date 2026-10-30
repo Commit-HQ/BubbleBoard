@@ -28,6 +28,8 @@ Board photos and the files of notices and info pages stay in R2, where nothing c
 
 The landing page is the same on every installation: it names no kindergarten, and its contact details belong to the BubbleBoard project (`src/lib/project.ts`). No credentials belong in Git.
 
+The landing page's one-minute tour plays from your installation: its video files are static assets, which cost nothing to send, but each play takes a few of the Worker's daily requests, for the byte ranges players ask for.
+
 ## Storage
 
 The Worker keeps its records in a D1 database bound as `DB`, with the schema in `migrations/`. `wrangler.jsonc` names the database without an ID, so the first deploy creates it in your account, and local development keeps its own copy in `.wrangler/`. Nothing in it is readable without a card: names live in encrypted profiles, and the server stores hashes of card and session tokens. See [Backup and restore](#backup-and-restore). Board photos and the files of notices and info pages are encrypted in the browser and kept in a private R2 bucket bound as `FILES`, which the first deploy creates as `bubbleboard-files`; only the Worker reads it, for devices that may see a photo or file.

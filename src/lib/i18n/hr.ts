@@ -47,6 +47,13 @@ export const hr = {
 			{ time: '8:30', message: 'Nova obavijest iz vrtića' }
 		]
 	},
+	tour: {
+		title: 'BubbleBoard u jednoj minuti.',
+		copy: 'Kratak pregled svega što opisuje ova stranica, od oglasne ploče do naljepnica koje prekrivaju lica. Uključite zvuk.',
+		label: 'BubbleBoard u jednoj minuti, video',
+		watch: 'Pogledajte video',
+		watchLabel: 'Pogledajte video, 1 minuta i 12 sekundi, sa zvukom'
+	},
 	features: {
 		title: 'Oglasna ploča iz vrtića, sada u vašem džepu.',
 		copy: 'Nema više papirića koji se izgube u ruksaku ni poruka koje se zagube u grupnim razgovorima. Sve važno čeka vas na jednom mjestu.',

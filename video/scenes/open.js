@@ -90,8 +90,11 @@ function chat(parent, { text, dark, size, weight, side }) {
 				top: `${(height - 24) / 2}px`,
 				opacity: 1 - clamp(grow * 2.5)
 			});
+			// The words follow each other in, the last one landing as the bubble finishes growing.
+			const step = parts.length > 1 ? Math.min(0.12, 0.3 / (parts.length - 1)) : 0;
+			const span = 0.65 - step * (parts.length - 1);
 			parts.forEach((part, i) => {
-				const p = clamp((grow - 0.35 - i * 0.12) / 0.4);
+				const p = clamp((grow - 0.35 - i * step) / span);
 				css(part.inner, {
 					transform: `translateY(${lerp(0.9, 0, settle(p)) * size}px)`,
 					opacity: clamp(p * 2)
