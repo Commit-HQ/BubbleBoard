@@ -26,6 +26,10 @@ families.
 - "Children painting with water colors" by Yan Krukau
   https://www.pexels.com/photo/children-painting-with-water-colors-8612967/
 
+The landing page's tour video shows these photos too, with the fonts and icons
+below. Its music and sounds are made by the video's own code, from no
+recordings.
+
 
 FONTS
 -----

@@ -7,6 +7,7 @@
 	import IconTile from '$lib/components/IconTile.svelte';
 	import Photo from '$lib/components/Photo.svelte';
 	import Screenshot from '$lib/components/Screenshot.svelte';
+	import Tour from '$lib/components/Tour.svelte';
 	import { messages } from '$lib/i18n';
 	import { appPath, explorePath } from '$lib/paths';
 	import { contactEmail, repositoryUrl } from '$lib/project';
@@ -97,6 +98,8 @@
 						</li>
 					{/each}
 				</ul>
+				<!-- The one-minute tour, where the photo leaves room, above a bubble that drifts by it on a phone. -->
+				<Tour locale={data.locale} class="absolute top-3 right-3 z-10 sm:top-4 sm:right-4" />
 			</div>
 			<!-- Same big, medium, small grouping as the logo, drifting off the photo. -->
 			<Bubble class="top-12 -left-3 size-28 sm:-left-12 sm:size-36" />
