@@ -2,6 +2,10 @@
 
 What's new in each version of BubbleBoard, newest first. The version an installation runs is in the footer of every page.
 
+## 1.5.1 (2026-10-30)
+
+- The home page has a one-minute video of BubbleBoard, in English and Croatian, with sound. It opens from the photo at the top of the page.
+
 ## 1.5.0 (2026-10-18)
 
 - Tapping a notification opens the app at what it's about: the notice, event, board photo, message, or meeting comes into view, and its border glows for a moment.
