@@ -53,6 +53,7 @@ radial-gradient(40rem 30rem at 20% 100%, rgb(76 195 255 / 0.18), transparent 70%
 			background: '#000'
 		}
 	});
+	// The whole screen and a margin for the blur, the photo cropped at its sides to cover it.
 	const wallpaper = el('img', {
 		src: photo('bubbles'),
 		decoding: 'sync',
@@ -60,7 +61,8 @@ radial-gradient(40rem 30rem at 20% 100%, rgb(76 195 255 / 0.18), transparent 70%
 			left: '-60px',
 			top: '-40px',
 			width: `${sw + 120}px`,
-			height: `${((sw + 120) * 1601) / 1280}px`,
+			height: `${sh + 80}px`,
+			objectFit: 'cover',
 			filter: 'blur(14px) saturate(1.2) brightness(0.62)'
 		}
 	});

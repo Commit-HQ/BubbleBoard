@@ -107,13 +107,18 @@ export function letters(node, text) {
  * shows the slice of the gradient under its place in `container`. Call once laid out.
  */
 export function shareGradient(spans, container, gradient) {
+	// Letters show only inside their word's box, which is a line tall, so each box reaches past its line for
+	// the descenders and accents that stand out of it, while it moves by its line's height as before.
+	for (const span of spans)
+		css(span, { padding: '0.2em 0', margin: '-0.2em 0', transformBox: 'content-box' });
 	const box = container.getBoundingClientRect();
 	for (const span of spans) {
 		const rect = span.getBoundingClientRect();
+		const reach = parseFloat(getComputedStyle(span).paddingTop);
 		css(span, {
 			backgroundImage: gradient,
-			backgroundSize: `${box.width}px ${box.height}px`,
-			backgroundPosition: `${box.left - rect.left}px ${box.top - rect.top}px`,
+			backgroundSize: `${box.width}px ${box.height + 2 * reach}px`,
+			backgroundPosition: `${box.left - rect.left}px ${box.top - reach - rect.top}px`,
 			backgroundClip: 'text',
 			webkitBackgroundClip: 'text',
 			color: 'transparent'
