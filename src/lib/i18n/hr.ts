@@ -52,7 +52,8 @@ export const hr = {
 		copy: 'Kratak pregled svega što opisuje ova stranica, od oglasne ploče do naljepnica koje prekrivaju lica. Uključite zvuk.',
 		label: 'BubbleBoard u jednoj minuti, video',
 		watch: 'Pogledajte video',
-		watchLabel: 'Pogledajte video, 1 minuta i 12 sekundi, sa zvukom'
+		watchLabel: 'Pogledajte video, 1 minuta i 12 sekundi, sa zvukom',
+		close: 'Zatvorite video'
 	},
 	features: {
 		title: 'Oglasna ploča iz vrtića, sada u vašem džepu.',

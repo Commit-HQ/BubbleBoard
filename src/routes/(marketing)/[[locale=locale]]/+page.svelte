@@ -98,22 +98,13 @@
 						</li>
 					{/each}
 				</ul>
+				<!-- The one-minute tour, where the photo leaves room, above a bubble that drifts by it on a phone. -->
+				<Tour locale={data.locale} class="absolute top-3 right-3 z-10 sm:top-4 sm:right-4" />
 			</div>
 			<!-- Same big, medium, small grouping as the logo, drifting off the photo. -->
 			<Bubble class="top-12 -left-3 size-28 sm:-left-12 sm:size-36" />
 			<Bubble class="-top-5 left-28 size-14 sm:left-32 sm:size-16" />
 			<Bubble class="top-52 -left-2 size-8 sm:top-60 sm:-left-20 sm:size-10" />
-		</div>
-	</section>
-
-	<!-- The whole page in a minute, for anyone who'd rather watch than read; the page describes all it shows. -->
-	<section id="tour" aria-labelledby="tour-title">
-		{@render intro('tour', t.tour.title, t.tour.copy)}
-		<div class="mt-10">
-			<Tour
-				locale={data.locale}
-				sizes="(min-width: 80rem) 75rem, (min-width: 64rem) calc(100vw - 5rem), (min-width: 40rem) calc(100vw - 4rem), calc(100vw - 2rem)"
-			/>
 		</div>
 	</section>
 

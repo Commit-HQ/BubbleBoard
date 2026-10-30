@@ -46,7 +46,7 @@ Renders both languages to `video/bubbleboard-en.mp4` and `video/bubbleboard-hr.m
 
 ## On the landing page
 
-The landing page shows the reel under its hero, from copies made for the web in `src/lib/assets/tour`: AV1 in ten bits, which keeps the soft gradients from banding, and H.264 for browsers without AV1, each at 1080p for dense screens and 720p for phones, at 60 frames a second with a key frame every two seconds, and a poster rendered straight from the stage at 4.9 seconds in AVIF and WebP. `src/lib/tour.ts` names their codecs for the page's `<source>` elements, and `npm test` checks them against the files, so change both together. [The architecture notes](../docs/architecture.md#pages-and-languages) explain how the page plays them, and why the Worker serves their byte ranges.
+A button on the landing page's hero photo plays the reel in a dialog, from copies made for the web in `src/lib/assets/tour`: AV1 in ten bits, which keeps the soft gradients from banding, and H.264 for browsers without AV1, each at 1080p for dense screens and 720p for phones, at 60 frames a second with a key frame every two seconds, and a poster rendered straight from the stage at 4.9 seconds in AVIF and WebP. `src/lib/tour.ts` names their codecs for the page's `<source>` elements, and `npm test` checks them against the files, so change both together. [The architecture notes](../docs/architecture.md#pages-and-languages) explain how the page plays them, and why the Worker serves their byte ranges.
 
 ## Credits
 

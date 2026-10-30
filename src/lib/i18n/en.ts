@@ -52,15 +52,16 @@ export const en = {
 			{ time: '8:30', message: 'New notice from your kindergarten' }
 		]
 	},
-	// The one-minute video under the hero (src/lib/components/Tour.svelte). It shows what the rest of the page
-	// says, which the copy tells, so the page is its description for anyone who can't see or hear it.
+	// The one-minute video, opened from the hero's photo (src/lib/components/Tour.svelte). It shows what the rest
+	// of the page says, which the copy tells, so the page is its description for anyone who can't see or hear it.
 	tour: {
 		title: 'BubbleBoard in a minute.',
 		copy: 'A short look at everything this page describes, from the notice board to the stickers that cover faces. Turn the sound on.',
 		label: 'BubbleBoard in a minute, a video',
 		watch: 'Watch the tour',
 		// The button's words with its length read out, for screen readers.
-		watchLabel: 'Watch the tour, 1 minute 12 seconds, with sound'
+		watchLabel: 'Watch the tour, 1 minute 12 seconds, with sound',
+		close: 'Close the video'
 	},
 	features: {
 		title: 'The kindergarten notice board, now in your pocket.',
