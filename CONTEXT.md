@@ -30,6 +30,10 @@ _Avoid_: private instance, on-premise
 Commit's official website about BubbleBoard and its sister apps, at bubbleboard.fyi. It is not an **Installation**: it holds no kindergarten, no copy of the code serves it, and it sends nobody into an installation's app, since families of every installation reach it.
 _Avoid_: landing page (for the whole site), homepage
 
+**Sister app**:
+An app in BubbleBoard's family, Commit's own, such as BubbleCam, or someone else's once Commit approves it. Each has a page of its own on the **Site**, in its own look.
+_Avoid_: plugin, module, ecosystem app
+
 **Head**:
 The staff role that runs a whole **Kindergarten** in the app, which the interface calls "BubbleBoard administrator". A head's reach ends at her own kindergarten, and she has no say over its **Installation**.
 _Avoid_: admin, director
