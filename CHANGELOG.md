@@ -2,6 +2,11 @@
 
 What's new in each version of BubbleBoard, newest first. The version an installation runs is in the footer of every page.
 
+## 1.6.0 (2026-11-05)
+
+- The privacy policy says who is responsible for families' data: their kindergarten, by name if the installation sets it, and whoever runs BubbleBoard on the kindergarten's behalf. Its contact address is the installation's own, no longer the project's.
+- For whoever hosts an installation: `PUBLIC_PRIVACY_EMAIL` is now required in `.env`, and the build stops without it. `PUBLIC_KINDERGARTEN_NAME` and `PUBLIC_OPERATOR_NAME` are optional (see `.env.example`).
+
 ## 1.5.1 (2026-10-30)
 
 - The home page has a one-minute video of BubbleBoard, in English and Croatian, with sound. It opens from the photo at the top of the page.
