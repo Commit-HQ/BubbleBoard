@@ -2,7 +2,6 @@ node_modules
 
 # Output
 .output
-/video/out
 .vercel
 .netlify
 .wrangler

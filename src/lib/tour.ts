@@ -1,8 +1,8 @@
-// The landing page's tour: the reel in video/, encoded for the web by `node video/render.js` into
-// src/lib/assets/tour, and shown by src/lib/components/Tour.svelte. The browser takes the first file it can
-// play whose screen query matches: AV1 in ten bits where it plays, which is smaller and keeps the reel's soft
-// gradients smooth, then H.264, which plays everywhere; each at 1080p for dense screens wide enough to show
-// it and at 720p for the rest, phones among them. src/lib/tour.test.ts checks these codecs against the files.
+// The landing page's tour: the reel that lives with Commit's site (Commit-HQ/bubbleboard.fyi), encoded for
+// the web into src/lib/assets/tour, and shown by src/lib/components/Tour.svelte. The browser takes the first
+// file it can play whose screen query matches: AV1 in ten bits where it plays, which is smaller and keeps the
+// reel's soft gradients smooth, then H.264, which plays everywhere; each at 1080p for dense screens wide enough
+// to show it and at 720p for the rest, phones among them. src/lib/tour.test.ts checks these codecs against the files.
 
 /** The tour's length, which its play button shows. */
 export const tourSeconds = 72;
