@@ -1,0 +1,20 @@
+# The first installation moves to its own subdomain, by new QR codes
+
+Every installation Commit operates gets a subdomain of bubbleboard.fyi of its own, named after its kindergarten in lowercase letters without spaces or diacritics, such as `jabuka`, with the town added only when another kindergarten has the name already. The subdomains named after Commit's apps, such as `bubblecam`, and those kept for the site, such as `www`, `apps`, and `media`, go to no kindergarten. The name is for good, since it is in every printed QR code and installed app, and families sometimes type it from their card.
+
+The first installation, Uske njive's, began at bubbleboard.fyi, where its families' installed apps and printed QR codes point, and moves to `uskenjive.bubbleboard.fyi` with what the app already has, by new QR codes. Meanwhile it answers at both addresses. Its heads connect at the new address by typing the codes on their cards, and from there replace the staff cards, and the heads and the classrooms' leads replace the family cards one family at a time; printed at the new address, the new cards carry it. A replaced card stops working and signs out every device that used it, so a family only deletes the old app and scans its new card. The installation serves its privacy policy at both addresses meanwhile, so the policy leaves out the kindergarten's name until the old address goes, and bubbleboard.fyi never names a kindergarten. Once every card from before the move has been replaced, no device can use the old address, and it goes.
+
+The site waits for the move. Until the old address goes, the landing pages stay in the installation as they are; then bubbleboard.fyi moves to the site whole, and the site sends `/app` and `/en/app` on to the new address, for a forgotten bookmark or an old app nobody deleted.
+
+## Considered options
+
+- **Staying at bubbleboard.fyi for good.** Nobody would ever have to move, but for as long as BubbleBoard runs the site would share the installation's origin and work around its paths, and the first installation would differ from every other.
+- **Moving with redirects from the old address.** A redirect carries the address but nothing a device keeps under it, neither its keys, which can't be exported, nor its installed app, nor its permission to notify, so it would spare no family a thing.
+- **Keeping old devices connected while they move one by one**, with the new address accepting the old QR codes and the old one sending unconnected devices on. Nobody would get a new card, but families would make one-time cards and remove their old devices themselves, and the app would carry code for the move until the last device left.
+- **Opening the site before the move ends**, beside the old address on bubbleboard.fyi. The site would take only the paths it names, with the installation's Custom Domain getting the rest; a front page linked with a query string, such as Facebook's, would slip past the site's routes and open the app; the site would need a way back into the app, since an old installed app opens it in its own window, where iPhone and iPad have no Back button; and the site would share an origin with the keys of every device still connected there. All of it would be thrown away when the move ended, so it waits, unless the move drags on.
+
+## Consequences
+
+- A family moves when its new card reaches it, every device at once, grandparents' included, and allow notifications again in the new app. A family that scans its new card inside an old app it kept is told the card belongs to another BubbleBoard, so the old app goes first.
+- Commit counts who is still on the old address from the database: it keeps a list of the cards that existed when the new address opened, and every few weeks counts those not yet replaced, and the devices they keep connected. The move needs no code.
+- Meanwhile the landing page on bubbleboard.fyi still opens the app at the old address, where a new card scanned inside the app belongs to another BubbleBoard. Families scan their new cards with the camera, and the site follows soon after the last old card is replaced.

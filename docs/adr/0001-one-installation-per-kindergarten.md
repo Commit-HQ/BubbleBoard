@@ -1,0 +1,15 @@
+# One installation per kindergarten, whoever operates it
+
+Kindergartens with nobody technical have asked for BubbleBoard, so Commit will operate installations for them. Each kindergarten still gets an installation of its own, with its own address, records, files, and secrets, as the product specification's opening note says, though no longer always in the kindergarten's own Cloudflare account; no installation holds two kindergartens. An installation Commit operates and one a kindergarten runs itself are the same code, deployed the same way, so setting up your own never means taking on a hosted service's complexity, and two kindergartens are kept apart by being two installations rather than by a check in every query.
+
+## Considered options
+
+- **One shared installation, with the kindergarten as a level above classrooms.** One address and one app for everyone, and a family in two kindergartens would use one app with two cards. Every table, query, and trigger would need a kindergarten boundary, and every self-hosted installation would carry it for a case it never has.
+- **Another kindergarten's classrooms in an existing installation.** Every staff card in an installation opens the same Staff Key, and heads reach every classroom, so this wouldn't keep the kindergartens apart at all.
+- **Linking installations, so that one installed app opens several.** That app would hold another installation's cards and decrypted records under code served by a different operator, whom nobody at that kindergarten chose. Sessions would need tokens that scripts can read instead of a strict cookie, the CSP would have to allow connections anywhere, pushes would need relaying between operators, since a subscription accepts only the VAPID key it was made with, and every API would become a protocol kept compatible between installations running different versions.
+
+## Consequences
+
+- A family with children in two kindergartens, or a teacher who is also a parent at another one, has two installed apps. Each is called BubbleBoard unless its kindergarten gives it a name of its own, so that the two icons and their notifications can be told apart. That name shows on the home screen and with every notification, lock screen included, so it tells anyone who sees the phone which kindergarten a child attends; the kindergarten decides, and BubbleBoard is the default.
+- A release deploys every installation Commit operates, each with its own address, name, storage limits, and privacy contact.
+- Installations in one Cloudflare account share its Free plan. They share its daily requests and database reads and writes, so one device stuck reloading in any kindergarten could stop every installation until midnight UTC; Commit accepts that while its kindergartens stay small, and in November 2026 the first installation used 1–2% of them. They share its five cron triggers, and an installation uses two, so a third installation needs the two merged into one or the Paid plan. And they share its 10 GB of R2 storage with the site's media, so their storage limits must add up to no more than what the media leaves.
