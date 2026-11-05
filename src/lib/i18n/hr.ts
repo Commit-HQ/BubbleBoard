@@ -440,7 +440,13 @@ export const hr = {
 	privacyPolicy: {
 		title: 'Politika privatnosti',
 		description: 'Što BubbleBoard čuva o obiteljima i djeci, gdje i koliko dugo.',
-		updated: 'Ažurirano 27. rujna 2026.',
+		updated: 'Ažurirano 5. studenoga 2026.',
+		responsible: {
+			title: 'Tko odgovara',
+			kindergarten: (name: string) => `Za vaše podatke odgovara ${name}.`,
+			yourKindergarten: 'Za vaše podatke odgovara vaš vrtić.',
+			operator: (name: string) => `Aplikaciju u ime vrtića vodi ${name}, kao izvršitelj obrade.`
+		},
 		points: [
 			{
 				title: 'Fotografije događaja',

@@ -8,10 +8,39 @@ export const contactEmail = 'commit-devs@proton.me';
 // Prerendered pages can't take absolute links such as canonical URLs and link previews from a request,
 // and a Worker variable set later can't change HTML that was already generated. A namespace import lets
 // a missing variable reach the check below instead of failing the bundler with a missing export.
-const siteOrigin = parseSiteOrigin((publicEnv as { PUBLIC_SITE_URL?: string }).PUBLIC_SITE_URL);
+const env = publicEnv as {
+	PUBLIC_SITE_URL?: string;
+	PUBLIC_PRIVACY_EMAIL?: string;
+	PUBLIC_KINDERGARTEN_NAME?: string;
+	PUBLIC_OPERATOR_NAME?: string;
+};
+const siteOrigin = parseSiteOrigin(env.PUBLIC_SITE_URL);
 
 export function absoluteUrl(path: string) {
 	return new URL(path, siteOrigin).href;
+}
+
+/**
+ * Whom the privacy policy names, also set at build time: the address families write to about their data,
+ * which every installation sets, since it's the kindergarten's to answer and not the project's; the
+ * kindergarten that answers for the data, when its name is set; and whoever runs the installation for it,
+ * when that's someone else (docs/adr/0002-the-site-is-commits-alone.md).
+ */
+export const privacyContact = {
+	email: parsePrivacyEmail(env.PUBLIC_PRIVACY_EMAIL),
+	kindergarten: env.PUBLIC_KINDERGARTEN_NAME?.trim() || undefined,
+	operator: env.PUBLIC_OPERATOR_NAME?.trim() || undefined
+};
+
+function parsePrivacyEmail(value: string | undefined) {
+	const invalid = (reason: string) =>
+		new Error(
+			`PUBLIC_PRIVACY_EMAIL ${reason}. Set it in .env to the address families write to about their data, such as privacy@kindergarten.example (see .env.example).`
+		);
+	const email = value?.trim();
+	if (!email) throw invalid('is not set');
+	if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw invalid('is not an email address');
+	return email;
 }
 
 /** Accepts `https://host[:port]`, with or without a trailing slash, and `http://` for localhost only. */

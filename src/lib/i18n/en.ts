@@ -457,8 +457,17 @@ export const en = {
 	privacyPolicy: {
 		title: 'Privacy policy',
 		description: 'What BubbleBoard stores about families and children, where, and for how long.',
-		updated: 'Updated on 27 September 2026',
-		// Followed by the project's contact address, which the last point calls the address below.
+		updated: 'Updated on 5 November 2026',
+		// The first point, from the installation's settings (src/lib/project.ts): the kindergarten by name when
+		// it's set, and whoever runs the installation for it, when someone does.
+		responsible: {
+			title: 'Who’s responsible',
+			kindergarten: (name: string) => `${name} is responsible for your data.`,
+			yourKindergarten: 'Your kindergarten is responsible for your data.',
+			operator: (name: string) =>
+				`${name} runs the app on the kindergarten’s behalf, as its processor.`
+		},
+		// Followed by the installation's privacy address, which the last point calls the address below.
 		points: [
 			{
 				title: 'Event photos',
