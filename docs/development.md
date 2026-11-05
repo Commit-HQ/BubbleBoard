@@ -15,7 +15,7 @@ npm run dev
 
 `npm run setup-link:local` writes a setup token to the ignored `.dev.vars`, generates the ignored Cloudflare runtime types, and prints a setup link for `http://localhost:5173`. Open it once `npm run dev` is running (if Vite prints another port, use that port with the same `/app/setup#token=…`). Setup asks for your name and makes two cards to print: yours and a recovery card. `npm run dev` applies the database migrations to a local copy in `.wrangler/` before starting, and the first time adds a local key for signing notifications to `.dev.vars`. To start over locally, stop the server, delete `.wrangler/state`, and run `npm run setup-link:local` again.
 
-`.env` sets `PUBLIC_SITE_URL`, the public origin used for canonical links and link previews: `https://` and a hostname, with no path, query, or credentials (`http://localhost` also works). Pages are prerendered, so the address is written into the HTML at build time; a Worker variable set at runtime can't change pages that were already generated. The build stops with a message naming `PUBLIC_SITE_URL` when it's missing or invalid. It also holds the storage limits (see [Storage](hosting.md#storage)). Local Worker secrets, such as the setup token, belong in the ignored `.dev.vars`.
+`.env` sets `PUBLIC_SITE_URL`, the installation's public origin, which the deploy prints the first setup link on and gives the Worker for meeting reminders: `https://` and a hostname, with no path, query, or credentials (`http://localhost` also works). The build stops with a message naming `PUBLIC_SITE_URL` when it's missing or invalid. It also holds the storage limits (see [Storage](hosting.md#storage)). Local Worker secrets, such as the setup token, belong in the ignored `.dev.vars`.
 
 | Command                    | Purpose                                                                           |
 | -------------------------- | --------------------------------------------------------------------------------- |
@@ -70,7 +70,7 @@ No component UI library, ORM, remote font service, analytics SDK, or separate ba
 src/
   lib/
     app/                App screens: components, browser state, QR drawing and scanning
-    assets/             Local brand assets, optimized photos, and screens of the app for its walk-through
+    assets/             Local brand assets and the stickers that cover faces
     components/         Reusable Svelte components
     i18n/               Croatian and English interface copy
     server/             Worker only: sessions, request checks, database queries, storage limits
@@ -82,12 +82,12 @@ src/
     device.ts           The connected card's keys in IndexedDB
     files.ts            Files on notices: kinds, sizes, and encryption
     kindergarten.ts     Records the browser decrypts and builds
-    paths.ts            Site paths
-    project.ts          Project links and the validated site address
-  params/               Route matchers (language prefix, record IDs, walk-through roles)
+    paths.ts            Installation paths
+    project.ts          Project links, Commit's site, and the installation's settings
+  params/               Route matchers (language prefix, record IDs)
   routes/
-    (marketing)/        Landing, walk-through, and privacy pages: static HTML without JavaScript
     (app)/              App pages: prerendered shells that run in the browser
+    (privacy)/          The privacy policy: static HTML without JavaScript
     api/                JSON endpoints for the app
   app.d.ts              Worker bindings for TypeScript
   app.html              Document shell
@@ -98,10 +98,11 @@ static/                 Public static files: app icons and third-party notices
 worker/                 The Worker's entry: SvelteKit, sending notifications, daily cleanup
 docs/                   Hosting, development, decisions, architecture, formats, specification
 _headers                Security headers for prerendered pages and assets
+_redirects              The home address to the app, and icons at fixed addresses
 .env.example            Build-time settings to copy into .env
 .github/workflows/      Validation pipeline (never deploys)
 wrangler.jsonc          Worker, database, bucket, queue, schedule, and rate limit configuration
 wrangler.build.jsonc    Where SvelteKit's adapter writes the build the Worker's entry imports
 ```
 
-Croatian is served at `/` and English at `/en`, both as static HTML without client-side JavaScript. The app is at `/app` and `/en/app`. Language, design, font, and security conventions are in the [architecture notes](architecture.md).
+The app is at `/app` in Croatian and `/en/app` in English, and the home address, `/` or `/en`, opens it through `_redirects`, which `npm run preview` reads and `npm run dev` doesn't. The privacy policy, at `/privacy` and `/en/privacy`, is static HTML without client-side JavaScript. Everything about BubbleBoard itself is on Commit's site, a project of its own. Language, design, font, and security conventions are in the [architecture notes](architecture.md).

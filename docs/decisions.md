@@ -107,8 +107,8 @@ R2 charges once a month's use passes its free allowance, and Cloudflare offers n
 
 ## Words
 
-- **QR code, not card.** Parents found "card" confusing, so the app and the landing page call what the kindergarten hands out a QR code ("QR kod"): scan your QR code, family QR code, Replace QR code. Code and these docs keep the word card.
-- **Notice and notification** in English; Croatian keeps "obavijest" for both, as the landing page does.
+- **QR code, not card.** Parents found "card" confusing, so the app calls what the kindergarten hands out a QR code ("QR kod"): scan your QR code, family QR code, Replace QR code. Code and these docs keep the word card.
+- **Notice and notification** in English; Croatian keeps "obavijest" for both.
 - **Odgojiteljica**, in the feminine, throughout the Croatian interface.
 
 ## Scope and constraints
@@ -118,7 +118,6 @@ R2 charges once a month's use passes its free allowance, and Cloudflare offers n
 - The server authorizes every request: teachers post, change, and delete in their assigned classrooms, group leads also manage the children, family cards, and settings of theirs, heads everywhere, and families read their children's classrooms. Every staff card opens the same Staff Key, so check each new query against that trade-off ([access format](access-format.md)).
 - The Free plan keeps working: queue operations and D1 writes per notice stay small. Only Messages and Meetings ask again, every 30 seconds while the page is visible, and they stop after a few minutes without anyone touching the page.
 - No offline content, background sync, or notice content in notifications.
-- **The landing page's tour comes from the installation itself.** A video service would play it with its own script, cookies, and tracking, which the landing page promises none of, and the CSP would have to let them in. On the Free plan the files cost nothing to keep or send, and each play is only a few Worker requests, for the byte ranges players ask for. The landing page stays fast too: nothing of the video loads until someone presses play, and the only script it adds is the play button's own small file, not the app's code ([architecture](architecture.md#pages-and-languages)).
 
 ## Deferred
 

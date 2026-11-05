@@ -80,4 +80,4 @@ Conventions live in the [architecture notes](docs/architecture.md), and the orig
 
 ## License
 
-[GNU AGPL v3.0](LICENSE). Bundled photos, fonts, icons, and libraries keep their own licenses, listed in [`static/third-party-notices.txt`](static/third-party-notices.txt).
+[GNU AGPL v3.0](LICENSE). Bundled fonts, icons, and libraries keep their own licenses, listed in [`static/third-party-notices.txt`](static/third-party-notices.txt).
