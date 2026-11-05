@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { surface } from '$lib/app/ui';
 	import Icon from '$lib/components/Icon.svelte';
 	import { messages } from '$lib/i18n';
 	import { privacyContact } from '$lib/project';
@@ -24,11 +25,11 @@
 	<meta name="description" content={t.description} />
 </svelte:head>
 
-<article class="mx-auto max-w-3xl pt-8 pb-20 lg:pt-12 lg:pb-28">
-	<h1 class="text-5xl sm:text-6xl">{t.title}</h1>
-	<p class="mt-4 text-muted">{t.updated}</p>
+<article>
+	<h1 class="text-4xl sm:text-5xl">{t.title}</h1>
+	<p class="mt-2 text-lg text-muted">{t.updated}</p>
 
-	<div class="mt-10 rounded-4xl glass p-7 sm:p-12">
+	<div class="{surface} mt-6">
 		<ul class="grid gap-6">
 			<li>
 				<h2 class="text-xl">{t.responsible.title}</h2>

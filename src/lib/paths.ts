@@ -1,24 +1,13 @@
 import { defaultLocale, isLocale, type Locale } from '$lib/i18n';
 
-// Every path the site links to. The default language, Croatian, has no prefix (`/`, `/app`); other
-// languages do (`/en`, `/en/app`). Printed cards link to the app pages, so those paths must always work.
+// Every path an installation links to. The default language, Croatian, has no prefix (`/app`, `/privacy`);
+// other languages do (`/en/app`, `/en/privacy`). Printed cards link to the app pages, so those paths must
+// always work. The home address, `/` or `/en`, has no page: it opens the app (`_redirects`).
 
 const prefix = (locale: Locale) => (locale === defaultLocale ? '' : `/${locale}`);
 
-export function homePath(locale: Locale) {
-	return prefix(locale) || '/';
-}
-
 export function privacyPath(locale: Locale) {
 	return `${prefix(locale)}/privacy`;
-}
-
-/** Whose walk through the app a landing page shows (`/explore/parents`, `/en/explore/teachers`). */
-export const exploreRoles = ['parents', 'teachers'] as const;
-export type ExploreRole = (typeof exploreRoles)[number];
-
-export function explorePath(locale: Locale, role: ExploreRole) {
-	return `${prefix(locale)}/explore/${role}`;
 }
 
 /** App pages. Pages are prerendered once, so record IDs go in the query; they aren't secret. */

@@ -1,24 +1,30 @@
 import * as publicEnv from '$env/static/public';
+import type { Locale } from '$lib/i18n';
 
 export const repositoryUrl = 'https://github.com/Commit-HQ/BubbleBoard';
-export const organizationUrl = 'https://github.com/Commit-HQ';
-export const contactEmail = 'commit-devs@proton.me';
+
+/**
+ * Commit's site, where everything about BubbleBoard itself is, in each language. It's a site of its own, on
+ * an origin no installation shares, not this installation's PUBLIC_SITE_URL
+ * (docs/adr/0002-the-site-is-commits-alone.md).
+ */
+export const siteUrl: Record<Locale, string> = {
+	hr: 'https://bubbleboard.fyi',
+	en: 'https://bubbleboard.fyi/en'
+};
 
 // The public origin this installation is served from, set at build time in `.env` (see `.env.example`).
-// Prerendered pages can't take absolute links such as canonical URLs and link previews from a request,
-// and a Worker variable set later can't change HTML that was already generated. A namespace import lets
-// a missing variable reach the check below instead of failing the bundler with a missing export.
+// No page needs it, but `npm run deploy` gives it to the Worker for what it does without a request to read
+// it from, such as meeting reminders, and prints the first setup link on it, so the build the deploy starts
+// with stops here when it's missing or invalid. A namespace import lets a missing variable reach the check
+// below instead of failing the bundler with a missing export.
 const env = publicEnv as {
 	PUBLIC_SITE_URL?: string;
 	PUBLIC_PRIVACY_EMAIL?: string;
 	PUBLIC_KINDERGARTEN_NAME?: string;
 	PUBLIC_OPERATOR_NAME?: string;
 };
-const siteOrigin = parseSiteOrigin(env.PUBLIC_SITE_URL);
-
-export function absoluteUrl(path: string) {
-	return new URL(path, siteOrigin).href;
-}
+checkSiteUrl(env.PUBLIC_SITE_URL);
 
 /**
  * Whom the privacy policy names, also set at build time: the address families write to about their data,
@@ -44,7 +50,7 @@ function parsePrivacyEmail(value: string | undefined) {
 }
 
 /** Accepts `https://host[:port]`, with or without a trailing slash, and `http://` for localhost only. */
-function parseSiteOrigin(value: string | undefined) {
+function checkSiteUrl(value: string | undefined) {
 	// The message never repeats the value, which could contain credentials.
 	const invalid = (reason: string) =>
 		new Error(
@@ -61,5 +67,4 @@ function parseSiteOrigin(value: string | undefined) {
 	if (url.pathname !== '/' || /[?#]/.test(value)) {
 		throw invalid('must not have a path, query, or fragment');
 	}
-	return url.origin;
 }

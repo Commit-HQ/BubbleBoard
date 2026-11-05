@@ -14,8 +14,8 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     env:
-      # Placeholder address; prerendered pages need one at build time (see .env.example). Its canonical
-      # and link-preview URLs point at the placeholder, so never publish this build.
+      # Placeholder settings, which the build needs (see .env.example). The privacy policy names the
+      # placeholder address, so never publish this build.
       PUBLIC_SITE_URL: https://bubbleboard.example.com
       PUBLIC_PRIVACY_EMAIL: privacy@bubbleboard.example.com
     steps:

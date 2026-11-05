@@ -2,8 +2,7 @@ import adapter from '@sveltejs/adapter-cloudflare';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { execSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
-import type { Plugin } from 'vite';
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vitest/config';
 
 const { version } = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string };
@@ -30,28 +29,9 @@ const { built, release } = commit();
 // names, and no page would start. The environment keeps the first one for the later evaluations.
 const stamp = (process.env.BUILD_STAMP ??= Date.now().toString(36));
 
-// The size of each video the site serves, by its path, for the Worker that answers their byte ranges
-// (src/lib/server/ranges.ts): the static assets it reads them from don't say how long they are. Written where
-// the Worker's entry, which is bundled after this build, imports it (worker/index.js).
-function videoSizes(): Plugin {
-	return {
-		name: 'video-sizes',
-		apply: 'build',
-		applyToEnvironment: (environment) => environment.name === 'client',
-		generateBundle(_, bundle) {
-			const sizes: Record<string, number> = {};
-			for (const file of Object.values(bundle))
-				if (file.type === 'asset' && file.fileName.endsWith('.mp4'))
-					sizes[`/${file.fileName}`] = file.source.length;
-			writeFileSync('.svelte-kit/video-sizes.json', JSON.stringify(sizes, null, '\t'));
-		}
-	};
-}
-
 export default defineConfig({
 	plugins: [
 		tailwindcss(),
-		videoSizes(),
 		sveltekit({
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.

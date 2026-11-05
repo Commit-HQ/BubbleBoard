@@ -2,17 +2,15 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import type { Snippet } from 'svelte';
 
-	// The sticky header of every page: the logo leading home, then the page's links and controls. `links` is
-	// how many icon links sit beside the name, which is what decides whether the name still fits.
+	// The sticky header of every page: the logo leading to the app, then the page's links and controls.
+	// `links` is how many icon links sit beside the name, which is what decides whether the name still fits.
 	let {
 		href,
-		label,
 		links = 0,
 		class: className = '',
 		children
 	}: {
 		href: string;
-		label?: string;
 		links?: number;
 		class?: string;
 		children?: Snippet;
@@ -29,11 +27,7 @@
 <header
 	class="sticky top-3 z-10 my-3 flex min-h-14 items-center justify-between gap-4 rounded-full frosted py-1.5 pr-1.5 pl-3 {className}"
 >
-	<a
-		class="inline-flex items-center gap-2.5 text-xl font-bold tracking-tight"
-		{href}
-		aria-label={label}
-	>
+	<a class="inline-flex items-center gap-2.5 text-xl font-bold tracking-tight" {href}>
 		<img src={favicon} alt="" width="36" height="36" />
 		<span class={nameHidden}>BubbleBoard</span>
 	</a>

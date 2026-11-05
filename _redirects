@@ -2,3 +2,12 @@
 # assets without running the Worker, where a missing file would render the 404 page.
 /apple-touch-icon.png /icons/apple-touch-icon.png 301
 /apple-touch-icon-precomposed.png /icons/apple-touch-icon.png 301
+# The home address opens the app, since an installation has no page there: everything about BubbleBoard
+# itself is on Commit's site (docs/adr/0002-the-site-is-commits-alone.md). Here rather than in a hook, so
+# Cloudflare answers it without running the Worker, which spends none of the daily requests that the
+# installations in one Cloudflare account share. A 302, because browsers keep a 301 for good. A rule
+# matches its path exactly, so `/en/` has one of its own. A card's fragment comes along, though printed
+# cards link to the app itself (src/lib/card.ts).
+/ /app 302
+/en /en/app 302
+/en/ /en/app 302

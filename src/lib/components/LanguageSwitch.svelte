@@ -3,8 +3,8 @@
 	import { locales, messages, type Locale } from '$lib/i18n';
 	import { localizedPath } from '$lib/paths';
 
-	// Plain links to the current page in each language: codes in the landing page's header, or with `names`,
-	// the languages' names, as in the app's settings.
+	// Plain links to the current page in each language: codes in a page's header, or with `names`, the
+	// languages' names, as in the app's settings.
 	let { locale, names = false }: { locale: Locale; names?: boolean } = $props();
 </script>
 

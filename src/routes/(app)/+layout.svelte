@@ -9,7 +9,8 @@
 	import LanguageSwitch from '$lib/components/LanguageSwitch.svelte';
 	import SiteHeader from '$lib/components/SiteHeader.svelte';
 	import { locales, messages } from '$lib/i18n';
-	import { appPath, homePath, localizedPath } from '$lib/paths';
+	import { appPath, localizedPath, privacyPath } from '$lib/paths';
+	import { siteUrl } from '$lib/project';
 	import { isPushKind, pushPages, type PushKind } from '$lib/push';
 	import { onMount, tick } from 'svelte';
 	import type { LayoutProps } from './$types';
@@ -19,7 +20,7 @@
 	// One state for every app page, kept while moving between pages and languages. Starting takes a card
 	// or setup token from the address bar, which needs the router: it's ready just after the first
 	// navigation's callbacks, so the start waits a tick. The app starts on whichever navigation brings it in,
-	// not only a page load: Back from the landing page (the footer link) returns without one.
+	// not only a page load: Back from the privacy policy (the footer link) returns without one.
 	const app = setApp(new App());
 	let started: Promise<void> | undefined;
 	afterNavigate(({ to }) => {
@@ -91,7 +92,7 @@
 	const info = $derived(appPath(data.locale, 'info'));
 	const options = $derived(appPath(data.locale, 'options'));
 	// Until a device connects, Settings would hold only the language, so the header has the language switch
-	// instead, as on the landing page. While the app starts, the header has Settings, since most devices that
+	// instead, as on the privacy policy. While the app starts, the header has Settings, since most devices that
 	// open the app are connected.
 	const settings = $derived(app.connected || app.status === 'loading');
 	const staff = $derived(app.status === 'staff');
@@ -112,7 +113,7 @@ everything again. -->
 <svelte:head>
 	<!-- A plain title: tab titles and browser history shouldn't hold children's or families' names. -->
 	<title>BubbleBoard</title>
-	<!-- Search results should lead to the landing page, not to pages that need a card. -->
+	<!-- Search results shouldn't lead to pages that need a card. -->
 	<meta name="robots" content="noindex" />
 	<!-- The page in each language. Prerendering follows these links, which is how it finds each page's
 	other language: prerendered pages show the app starting, whose header has no language switch. -->
@@ -188,12 +189,24 @@ everything again. -->
 	<footer
 		class="flex flex-wrap justify-between gap-x-6 gap-y-2 px-2 pb-6 text-sm text-muted print:hidden"
 	>
-		<!-- In the same window, so Back returns to the app. The landing page is in the installed app's scope, so
-		a new window would open inside the app with no history, and Back on Android would close the app. -->
-		<a class="hover:text-ink" href={homePath(data.locale)}>
-			<span aria-hidden="true">🫧</span>
-			{t.app.about}
-		</a>
+		<div class="flex flex-wrap gap-x-6 gap-y-2">
+			<!-- Commit's site is another origin, outside the installed app's scope, so it opens in a window of
+			its own and the app keeps its place, as the version's link does. The site isn't told which
+			installation, and so which kindergarten, it was opened from. -->
+			<a
+				class="hover:text-ink"
+				href={siteUrl[data.locale]}
+				target="_blank"
+				rel="noopener noreferrer"
+			>
+				<span aria-hidden="true">🫧</span>
+				{t.footer.about}
+			</a>
+			<!-- This installation's privacy policy, in the same window, so Back returns to the app: it's in the
+			installed app's scope, so a new window would open inside the app with no history, and Back on
+			Android would close the app. Its logo leads back where there's no Back button. -->
+			<a class="hover:text-ink" href={privacyPath(data.locale)}>{t.footer.privacy}</a>
+		</div>
 		<BuildLabel locale={data.locale} />
 	</footer>
 </div>

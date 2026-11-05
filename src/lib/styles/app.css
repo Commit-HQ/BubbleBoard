@@ -127,19 +127,6 @@
 	);
 }
 
-/*
- * Brand gradient for heading text, with darker stops than bg-sunrise: at least 4.5:1 on the canvas and
- * 3:1 where the backdrop is most tinted. Padded so descenders aren't clipped, and plain text when forced
- * colours replace backgrounds.
- */
-@utility text-sunrise {
-	background-image: linear-gradient(120deg, #5b3fe0, #c81e6e 60%, #c2410c);
-	@apply bg-clip-text pb-[0.08em] text-transparent;
-	@media (forced-colors: active) {
-		color: CanvasText;
-	}
-}
-
 @layer base {
 	html {
 		background-color: var(--color-canvas);

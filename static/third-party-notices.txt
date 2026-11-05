@@ -4,31 +4,12 @@ BubbleBoard third-party notices
 BubbleBoard is licensed under the GNU Affero General Public License v3.0:
 https://github.com/Commit-HQ/BubbleBoard/blob/main/LICENSE
 
-The photos, fonts, icons, and libraries below are redistributed with
-BubbleBoard, in its source code and on every site built from it. They keep
-their own licenses.
+The fonts, icons, and libraries below are redistributed with BubbleBoard, in
+its source code and by every installation built from it. They keep their own
+licenses.
 
 Every installation serves this file at /third-party-notices.txt. In the source
 code it is static/third-party-notices.txt.
-
-
-PHOTOS
-------
-
-Stock photos from Pexels (https://www.pexels.com), used under the Pexels License
-(https://www.pexels.com/license/). They show models, not real BubbleBoard
-families.
-
-- "Children playing with soap bubbles" by Kampus Production
-  https://www.pexels.com/photo/children-playing-with-soap-bubbles-6299287/
-- "Group of kids lying on floor in kindergarten" by Pavel Danilyuk
-  https://www.pexels.com/photo/group-of-kids-lying-on-floor-in-kindergarten-8441843/
-- "Children painting with water colors" by Yan Krukau
-  https://www.pexels.com/photo/children-painting-with-water-colors-8612967/
-
-The landing page's tour video shows these photos too, with the fonts and icons
-below. Its music and sounds are made by the video's own code, from no
-recordings.
 
 
 FONTS

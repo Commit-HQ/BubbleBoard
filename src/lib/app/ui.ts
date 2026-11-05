@@ -3,8 +3,8 @@ import { page } from '$app/state';
 import type { Paper } from '$lib/notices';
 import { onMount } from 'svelte';
 
-// Class names and small helpers shared by the app's screens, in the landing page's style: an ink pill for
-// the main action, soft white pills for the rest.
+// Class names and small helpers shared by the app's screens: an ink pill for the main action, soft white
+// pills for the rest.
 
 // Each kind sets its own padding: when two classes set the same property, the stylesheet's order picks one,
 // not the order of the class list.
