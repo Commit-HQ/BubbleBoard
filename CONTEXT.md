@@ -31,7 +31,7 @@ Commit's official website about BubbleBoard and its sister apps, at bubbleboard.
 _Avoid_: landing page (for the whole site), homepage
 
 **Sister app**:
-An app in BubbleBoard's family, Commit's own, such as BubbleCam, or someone else's once Commit approves it. Each has a page of its own on the **Site**, in its own look.
+An app in BubbleBoard's family, made together with kindergarten teachers and joining it only once they approve it: Commit's own, such as BubbleCam, or someone else's. Each has a page of its own on the **Site**, in its own look.
 _Avoid_: plugin, module, ecosystem app
 
 **Head**:
